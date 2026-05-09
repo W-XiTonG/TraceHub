@@ -83,108 +83,102 @@ onMounted(loadAll)
 
 <template>
   <div>
-    <h1 class="mb-2 text-2xl font-bold">仪表盘</h1>
-    <p class="mb-6 text-sm text-slate-500">余额与用量概览；周期与图表数据来自用量统计接口。</p>
-    <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
+    <p class="th-kicker mb-2">Overview</p>
+    <h1 class="text-3xl font-semibold tracking-tight text-white">仪表盘</h1>
+    <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">余额与用量概览；切换统计周期查看趋势与模型分布。</p>
+    <p v-if="err" class="mt-4 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2 text-sm text-red-300">{{ err }}</p>
 
-    <div class="mb-6 flex flex-wrap gap-2">
-      <RouterLink to="/console/keys" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800">API Key</RouterLink>
-      <RouterLink to="/console/logs" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800">调用日志</RouterLink>
-      <RouterLink to="/console/group" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800">我的分组</RouterLink>
-      <RouterLink to="/console/billing" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800">充值</RouterLink>
-      <button
-        type="button"
-        :disabled="exportBusy"
-        class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800 disabled:opacity-50"
-        @click="downloadExport('csv')"
-      >
-        导出 CSV
-      </button>
-      <button
-        type="button"
-        :disabled="exportBusy"
-        class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800 disabled:opacity-50"
-        @click="downloadExport('json')"
-      >
-        导出 JSON
-      </button>
+    <div class="mt-8 flex flex-wrap items-center gap-2">
+      <RouterLink to="/console/keys" class="th-btn-secondary !py-2 text-sm">API Key</RouterLink>
+      <RouterLink to="/console/logs" class="th-btn-secondary !py-2 text-sm">调用日志</RouterLink>
+      <RouterLink to="/console/group" class="th-btn-secondary !py-2 text-sm">我的分组</RouterLink>
+      <RouterLink to="/console/billing" class="th-btn-secondary !py-2 text-sm">充值</RouterLink>
+      <button type="button" :disabled="exportBusy" class="th-btn-secondary !py-2 text-sm disabled:opacity-40" @click="downloadExport('csv')">导出 CSV</button>
+      <button type="button" :disabled="exportBusy" class="th-btn-secondary !py-2 text-sm disabled:opacity-40" @click="downloadExport('json')">导出 JSON</button>
     </div>
 
-    <div class="mb-6 flex flex-wrap gap-2 text-sm">
-      <span class="self-center text-slate-500">统计周期</span>
+    <div class="mt-6 flex flex-wrap items-center gap-2">
+      <span class="mr-1 text-xs font-medium uppercase tracking-widest text-slate-600">周期</span>
       <button
         v-for="p in ['today', '7d', '30d', 'all'] as const"
         :key="p"
         type="button"
-        class="rounded-lg px-3 py-1.5 capitalize"
-        :class="period === p ? 'bg-cyan-600 text-white' : 'border border-slate-700 text-slate-300 hover:bg-slate-800'"
+        class="th-pill"
+        :class="{ 'th-pill-active': period === p }"
         @click="period = p"
       >
         {{ p === 'today' ? '今日' : p === '7d' ? '近 7 天' : p === '30d' ? '近 30 天' : '全部' }}
       </button>
     </div>
 
-    <div class="grid gap-4 lg:grid-cols-2">
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-        <h2 class="text-sm text-slate-500">余额（额度）</h2>
-        <p class="mt-2 text-3xl font-semibold text-cyan-400">{{ balance?.balance ?? '—' }}</p>
-        <p class="mt-1 text-xs text-slate-500">
-          约合 ¥ {{ balance?.balance_yuan?.toFixed?.(2) ?? balance?.balance_yuan ?? '—' }} · 分组 {{ balance?.group_name ?? '—' }} · 分组倍率
-          {{ balance?.rate_multiplier ?? '—' }}×
+    <div class="mt-8 grid gap-5 lg:grid-cols-2">
+      <div class="th-glass p-6 md:p-8">
+        <h2 class="text-xs font-medium uppercase tracking-widest text-slate-500">余额（额度）</h2>
+        <p class="mt-3 bg-gradient-to-r from-cyan-300 to-teal-400 bg-clip-text text-4xl font-semibold tracking-tight text-transparent md:text-5xl">
+          {{ balance?.balance ?? '—' }}
+        </p>
+        <p class="mt-3 text-xs leading-relaxed text-slate-500">
+          约合 ¥ {{ balance?.balance_yuan?.toFixed?.(2) ?? balance?.balance_yuan ?? '—' }} · 分组
+          <span class="text-slate-400">{{ balance?.group_name ?? '—' }}</span> · 倍率
+          <span class="font-mono text-cyan-500/90">{{ balance?.rate_multiplier ?? '—' }}×</span>
         </p>
       </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-        <h2 class="text-sm text-slate-500">用量摘要（{{ usage?.period ?? period }}）</h2>
-        <p class="mt-2 text-lg">请求 <span class="font-semibold text-slate-200">{{ usage?.total_requests ?? '—' }}</span></p>
-        <p class="text-lg">Token <span class="font-semibold text-slate-200">{{ usage?.total_tokens ?? '—' }}</span></p>
-        <p class="text-lg text-amber-400/90">
-          消费约 ¥
-          {{
-            usage?.total_cost == null
-              ? '—'
-              : typeof usage.total_cost === 'number'
-                ? usage.total_cost.toFixed(2)
-                : usage.total_cost
-          }}
-        </p>
+      <div class="th-glass p-6 md:p-8">
+        <h2 class="text-xs font-medium uppercase tracking-widest text-slate-500">用量摘要（{{ usage?.period ?? period }}）</h2>
+        <div class="mt-4 space-y-2">
+          <p class="text-base text-slate-400">请求 <span class="font-semibold text-white">{{ usage?.total_requests ?? '—' }}</span></p>
+          <p class="text-base text-slate-400">Token <span class="font-semibold text-white">{{ usage?.total_tokens ?? '—' }}</span></p>
+          <p class="text-lg font-medium text-amber-300/95">
+            消费约 ¥
+            {{
+              usage?.total_cost == null
+                ? '—'
+                : typeof usage.total_cost === 'number'
+                  ? usage.total_cost.toFixed(2)
+                  : usage.total_cost
+            }}
+          </p>
+        </div>
       </div>
     </div>
 
-    <div class="mt-8 grid gap-8 lg:grid-cols-2">
-      <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-        <h3 class="mb-4 text-sm font-medium text-slate-400">每日消费（元）</h3>
-        <div v-if="dailyBars.length" class="flex h-40 items-end gap-1 border-b border-slate-700 pb-1">
-          <div
-            v-for="(b, i) in dailyBars"
-            :key="i"
-            class="group relative flex min-w-0 flex-1 flex-col items-center justify-end"
-          >
+    <div class="mt-8 grid gap-5 lg:grid-cols-2">
+      <div class="th-glass p-6">
+        <h3 class="text-xs font-medium uppercase tracking-widest text-slate-500">每日消费（元）</h3>
+        <div v-if="dailyBars.length" class="mt-6 flex h-44 items-end gap-1 border-b border-white/[0.08] pb-2">
+          <div v-for="(b, i) in dailyBars" :key="i" class="group relative flex min-w-0 flex-1 flex-col items-center justify-end">
             <div
-              class="w-full max-w-[14px] rounded-t bg-cyan-600/80 transition group-hover:bg-cyan-500"
+              class="w-full max-w-[16px] rounded-t-md bg-gradient-to-t from-cyan-600/90 to-cyan-400/70 shadow-sm shadow-cyan-900/40 transition group-hover:from-cyan-500 group-hover:to-teal-300/80"
               :style="{ height: b.h + '%', minHeight: '4px' }"
               :title="`${b.date} ¥${b.cost.toFixed(2)}`"
             />
-            <span class="mt-1 truncate text-[10px] text-slate-600">{{ b.date.slice(5) }}</span>
+            <span class="mt-2 truncate text-[10px] text-slate-600">{{ b.date.slice(5) }}</span>
           </div>
         </div>
-        <p v-else class="py-8 text-center text-sm text-slate-600">该周期暂无按日数据</p>
+        <p v-else class="py-12 text-center text-sm text-slate-600">该周期暂无按日数据</p>
       </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-        <h3 class="mb-4 text-sm font-medium text-slate-400">模型消费 TOP</h3>
-        <div class="max-h-48 space-y-2 overflow-y-auto text-sm">
-          <div v-for="(m, i) in modelRows" :key="m.model" class="flex justify-between gap-2 rounded bg-slate-950/60 px-2 py-1.5">
+      <div class="th-glass p-6">
+        <h3 class="text-xs font-medium uppercase tracking-widest text-slate-500">模型消费 TOP</h3>
+        <div class="mt-4 max-h-52 space-y-2 overflow-y-auto text-sm">
+          <div
+            v-for="(m, i) in modelRows"
+            :key="m.model"
+            class="flex items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-slate-950/50 px-3 py-2 transition hover:border-cyan-500/15"
+          >
             <span class="truncate font-mono text-xs text-cyan-200/90">{{ i + 1 }}. {{ m.model }}</span>
-            <span class="shrink-0 text-slate-400">{{ m.requests }} 次</span>
-            <span class="shrink-0 text-amber-400/90">¥{{ typeof m.cost === 'number' ? m.cost.toFixed(2) : m.cost }}</span>
+            <span class="shrink-0 text-xs text-slate-500">{{ m.requests }} 次</span>
+            <span class="shrink-0 text-sm font-medium text-amber-300/90">¥{{ typeof m.cost === 'number' ? m.cost.toFixed(2) : m.cost }}</span>
           </div>
-          <p v-if="!modelRows.length" class="py-6 text-center text-slate-600">暂无模型维度数据</p>
+          <p v-if="!modelRows.length" class="py-10 text-center text-sm text-slate-600">暂无模型维度数据</p>
         </div>
       </div>
     </div>
 
-    <p class="mt-10 text-sm text-slate-500">
-      调用 AI 请使用 <code class="rounded bg-slate-800 px-1">Authorization: Bearer &lt;API Key&gt;</code> 访问
-      <code class="rounded bg-slate-800 px-1">/v1/chat/completions</code>
-    </p>
+    <div class="th-glass--subtle mt-10 p-4 text-sm text-slate-500">
+      调用请携带
+      <code class="mx-1 rounded-md border border-white/10 bg-black/30 px-2 py-0.5 font-mono text-xs text-cyan-200/90">Authorization: Bearer &lt;API Key&gt;</code>
+      请求
+      <code class="mx-1 rounded-md border border-white/10 bg-black/30 px-2 py-0.5 font-mono text-xs text-cyan-200/90">/v1/chat/completions</code>
+    </div>
   </div>
 </template>

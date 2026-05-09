@@ -29,32 +29,37 @@ async function submit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-    <div class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
-      <h1 class="mb-6 text-center text-2xl font-bold text-white">注册</h1>
-      <form class="space-y-4" @submit.prevent="submit">
-        <div>
-          <label class="mb-1 block text-sm text-slate-400">邮箱</label>
-          <input v-model="email" type="email" required class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm text-slate-400">用户名（可选）</label>
-          <input v-model="username" type="text" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm text-slate-400">密码</label>
-          <input v-model="password" type="password" required minlength="6" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500" />
-        </div>
-        <p v-if="err" class="text-sm text-red-400">{{ err }}</p>
-        <p v-if="ok" class="text-sm text-emerald-400">{{ ok }}</p>
-        <button type="submit" :disabled="loading" class="w-full rounded-lg bg-cyan-500 py-2.5 font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50">
-          {{ loading ? '提交中…' : '注册' }}
-        </button>
-      </form>
-      <p class="mt-4 text-center text-sm text-slate-500">
-        已有账号？
-        <RouterLink to="/login" class="text-cyan-400 hover:underline">登录</RouterLink>
-      </p>
+  <div class="th-page-shell flex min-h-screen items-center justify-center px-4 py-16">
+    <div class="relative w-full max-w-[420px]">
+      <div class="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-b from-teal-500/15 via-transparent to-cyan-600/10 opacity-80 blur-xl" />
+      <div class="th-glass relative overflow-hidden p-8 md:p-10">
+        <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-400/45 to-transparent" />
+        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-white">创建账号</h1>
+        <p class="mb-8 text-center text-sm text-slate-500">加入 TraceHub，开通 API 与控制台</p>
+        <form class="space-y-5" @submit.prevent="submit">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">邮箱</label>
+            <input v-model="email" type="email" required class="th-input" autocomplete="email" />
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">用户名（可选）</label>
+            <input v-model="username" type="text" class="th-input" autocomplete="username" />
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">密码</label>
+            <input v-model="password" type="password" required minlength="6" class="th-input" autocomplete="new-password" />
+          </div>
+          <p v-if="err" class="rounded-lg border border-red-500/20 bg-red-950/40 px-3 py-2 text-sm text-red-300">{{ err }}</p>
+          <p v-if="ok" class="rounded-lg border border-emerald-500/20 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">{{ ok }}</p>
+          <button type="submit" :disabled="loading" class="th-btn-primary w-full py-3">
+            {{ loading ? '提交中…' : '注册' }}
+          </button>
+        </form>
+        <p class="mt-8 text-center text-sm text-slate-500">
+          已有账号？
+          <RouterLink to="/login" class="font-medium text-cyan-400 transition hover:text-cyan-300">登录</RouterLink>
+        </p>
+      </div>
     </div>
   </div>
 </template>

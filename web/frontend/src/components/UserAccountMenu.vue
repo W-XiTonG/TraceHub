@@ -11,7 +11,6 @@ function closeMenu() {
 
 const props = withDefaults(
   defineProps<{
-    /** cyan: 官网/控制台；amber: 管理后台 */
     accent?: 'cyan' | 'amber'
   }>(),
   { accent: 'cyan' },
@@ -20,7 +19,6 @@ const props = withDefaults(
 const auth = useAuthStore()
 const router = useRouter()
 
-/** 主标题：与 store 一致；极端情况下无 JWT 信息时用「账号」占位，不再用「已登录」避免头像显示「已」 */
 const display = computed(() => auth.accountDisplay.trim() || '账号')
 
 const subline = computed(() => {
@@ -30,14 +28,22 @@ const subline = computed(() => {
   return u.email.trim()
 })
 
-const ringClass = computed(() =>
+const summaryRing = computed(() =>
   props.accent === 'amber'
-    ? 'ring-amber-500/40 hover:ring-amber-400/60'
-    : 'ring-cyan-500/40 hover:ring-cyan-400/60',
+    ? 'ring-1 ring-amber-500/15 hover:ring-amber-400/30 hover:bg-amber-950/30'
+    : 'ring-1 ring-cyan-500/15 hover:ring-cyan-400/25 hover:bg-cyan-950/20',
 )
 
-const avatarBg = computed(() =>
-  props.accent === 'amber' ? 'bg-amber-600 text-slate-950' : 'bg-cyan-600 text-slate-950',
+const avatarClass = computed(() =>
+  props.accent === 'amber'
+    ? 'bg-gradient-to-br from-amber-300 to-orange-600 text-slate-950 shadow-md shadow-amber-500/20'
+    : 'bg-gradient-to-br from-cyan-400 to-teal-600 text-slate-950 shadow-md shadow-cyan-500/25',
+)
+
+const dropdownClass = computed(() =>
+  props.accent === 'amber'
+    ? 'border-amber-500/15 bg-slate-950/95 shadow-2xl shadow-black/50'
+    : 'border-cyan-500/10 bg-slate-950/95 shadow-2xl shadow-black/50',
 )
 
 function logout() {
@@ -50,42 +56,43 @@ function logout() {
 <template>
   <details ref="menu" class="group relative">
     <summary
-      class="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 pl-1 pr-2 outline-none ring-1 ring-transparent transition hover:bg-slate-800/80"
-      :class="ringClass"
+      class="flex cursor-pointer list-none items-center gap-2.5 rounded-xl py-1.5 pl-1.5 pr-2 outline-none transition"
+      :class="summaryRing"
     >
       <span
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-inner"
-        :class="avatarBg"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
+        :class="avatarClass"
         :title="display"
       >
         {{ auth.avatarInitial }}
       </span>
       <div class="hidden min-w-0 flex-col text-left sm:flex">
-        <span class="max-w-[160px] truncate text-sm font-medium text-slate-100">{{ display }}</span>
-        <span v-if="subline" class="max-w-[160px] truncate text-xs text-slate-500">{{ subline }}</span>
+        <span class="max-w-[168px] truncate text-sm font-semibold tracking-tight text-slate-100">{{ display }}</span>
+        <span v-if="subline" class="max-w-[168px] truncate text-xs text-slate-500">{{ subline }}</span>
       </div>
-      <svg class="h-4 w-4 shrink-0 text-slate-500 group-open:rotate-180 transition" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
       </svg>
     </summary>
     <div
-      class="absolute right-0 z-30 mt-1 w-52 origin-top-right rounded-xl border border-slate-700 bg-slate-900 py-1 shadow-xl"
+      class="absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border py-1.5 backdrop-blur-xl"
+      :class="dropdownClass"
       @click.stop
     >
-      <div class="border-b border-slate-800 px-3 py-2 sm:hidden">
-        <p class="truncate text-sm font-medium text-slate-100">{{ display }}</p>
+      <div class="border-b border-white/[0.06] px-4 py-3 sm:hidden">
+        <p class="truncate text-sm font-semibold text-slate-100">{{ display }}</p>
         <p v-if="subline" class="truncate text-xs text-slate-500">{{ subline }}</p>
       </div>
       <RouterLink
         to="/console"
-        class="block px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+        class="block px-4 py-2.5 text-sm text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
         @click="closeMenu"
       >
         用户控制台
       </RouterLink>
       <RouterLink
         to="/console/settings"
-        class="block px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+        class="block px-4 py-2.5 text-sm text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
         @click="closeMenu"
       >
         账户设置
@@ -93,17 +100,17 @@ function logout() {
       <RouterLink
         v-if="auth.role === 'admin' || auth.role === 'superadmin'"
         to="/admin"
-        class="block px-3 py-2 text-sm text-amber-400/90 hover:bg-slate-800 hover:text-amber-300"
+        class="block px-4 py-2.5 text-sm font-medium text-amber-400/95 transition hover:bg-amber-500/10 hover:text-amber-300"
         @click="closeMenu"
       >
         管理后台
       </RouterLink>
-      <RouterLink to="/" class="block px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200" @click="closeMenu">
+      <RouterLink to="/" class="block px-4 py-2.5 text-sm text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-300" @click="closeMenu">
         返回首页
       </RouterLink>
       <button
         type="button"
-        class="mt-1 w-full border-t border-slate-800 px-3 py-2 text-left text-sm text-red-400/90 hover:bg-slate-800"
+        class="mt-1 w-full border-t border-white/[0.06] px-4 py-2.5 text-left text-sm text-rose-400/90 transition hover:bg-rose-500/10"
         @click="logout()"
       >
         退出登录
