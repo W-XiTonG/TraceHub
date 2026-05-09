@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
-
-const auth = useAuthStore()
-const router = useRouter()
-
-function logout() {
-  auth.logout()
-  router.push('/')
-}
+import UserAccountMenu from '../components/UserAccountMenu.vue'
 </script>
 
 <template>
@@ -21,10 +12,14 @@ function logout() {
         <RouterLink to="/console/keys" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">API Key</RouterLink>
         <RouterLink to="/console/redeem" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">兑换码</RouterLink>
       </nav>
-      <button type="button" class="mt-8 w-full rounded-lg border border-slate-700 py-2 text-sm text-slate-400 hover:bg-slate-800" @click="logout">退出</button>
     </aside>
-    <main class="flex-1 overflow-auto p-8">
-      <RouterView />
-    </main>
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="flex shrink-0 items-center justify-end border-b border-slate-800 bg-slate-950/90 px-4 py-2 backdrop-blur">
+        <UserAccountMenu accent="cyan" />
+      </header>
+      <main class="flex-1 overflow-auto p-8">
+        <RouterView />
+      </main>
+    </div>
   </div>
 </template>

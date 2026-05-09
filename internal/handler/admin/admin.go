@@ -67,6 +67,25 @@ func ListUsers(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "查询失败")
 			return
 		}
+		reqCounts := map[int]int{}
+		if len(us) > 0 {
+			ids := make([]int, 0, len(us))
+			for _, u := range us {
+				ids = append(ids, u.ID)
+			}
+			var rows []struct {
+				UserID int `json:"user_id"`
+				Count  int `json:"count"`
+			}
+			_ = client.UsageLog.Query().
+				Where(usagelog.UserIDIn(ids...)).
+				GroupBy(usagelog.FieldUserID).
+				Aggregate(ent.As(ent.Count(), "count")).
+				Scan(ctx, &rows)
+			for _, r := range rows {
+				reqCounts[r.UserID] = r.Count
+			}
+		}
 		var items []gin.H
 		for _, u := range us {
 			gn := ""
@@ -74,14 +93,15 @@ func ListUsers(client *ent.Client) gin.HandlerFunc {
 				gn = u.Edges.Group.Name
 			}
 			items = append(items, gin.H{
-				"id":            u.ID,
-				"email":         u.Email,
-				"username":      u.Username,
-				"group_name":    gn,
-				"balance":       u.Balance,
-				"status":        u.Status,
-				"created_at":    u.CreatedAt,
-				"last_login_at": u.LastLoginAt,
+				"id":              u.ID,
+				"email":           u.Email,
+				"username":        u.Username,
+				"group_name":      gn,
+				"balance":         u.Balance,
+				"status":          u.Status,
+				"total_requests":  reqCounts[u.ID],
+				"created_at":      u.CreatedAt,
+				"last_login_at":   u.LastLoginAt,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
@@ -494,6 +514,24 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 		if model := c.Query("model"); model != "" {
 			q = q.Where(usagelog.ModelEQ(model))
 		}
+		if ch := c.Query("channel_id"); ch != "" {
+			id, _ := strconv.Atoi(ch)
+			q = q.Where(usagelog.ChannelIDEQ(id))
+		}
+		if sc := c.Query("status_code"); sc != "" {
+			id, _ := strconv.Atoi(sc)
+			q = q.Where(usagelog.StatusCodeEQ(id))
+		}
+		if st := strings.TrimSpace(c.Query("start_time")); st != "" {
+			if t, err := time.Parse(time.RFC3339, st); err == nil {
+				q = q.Where(usagelog.RequestTimeGTE(t))
+			}
+		}
+		if et := strings.TrimSpace(c.Query("end_time")); et != "" {
+			if t, err := time.Parse(time.RFC3339, et); err == nil {
+				q = q.Where(usagelog.RequestTimeLTE(t))
+			}
+		}
 		total, err := q.Clone().Count(ctx)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")
@@ -520,6 +558,7 @@ func BatchRedeemCodes(client *ent.Client) gin.HandlerFunc {
 			Amount     int64  `json:"amount"`
 			MaxUses    int    `json:"max_uses"`
 			ValidDays  int    `json:"valid_days"`
+			Prefix     string `json:"prefix"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.Count < 1 || req.Count > 500 {
 			httpx.BadRequest(c, "count 须在 1~500")
@@ -534,10 +573,14 @@ func BatchRedeemCodes(client *ent.Client) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		var codes []string
 		until := time.Now().Add(time.Duration(req.ValidDays) * 24 * time.Hour)
+		pfx := strings.TrimSpace(req.Prefix)
+		if pfx == "" {
+			pfx = "TH-"
+		}
 		for i := 0; i < req.Count; i++ {
 			buf := make([]byte, 16)
 			_, _ = rand.Read(buf)
-			code := "TH-" + strings.ToUpper(hex.EncodeToString(buf))
+			code := pfx + strings.ToUpper(hex.EncodeToString(buf))
 			cr := client.RedeemCode.Create().
 				SetCode(code).
 				SetCodeType(req.CodeType).

@@ -9,6 +9,7 @@ import (
 	"time"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/usagelog"
 
@@ -505,6 +506,21 @@ func (_u *ChannelUpdate) AddUsageLogs(v ...*UsageLog) *ChannelUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddModelCatalogSourceIDs adds the "model_catalog_sources" edge to the ModelCatalogSource entity by IDs.
+func (_u *ChannelUpdate) AddModelCatalogSourceIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.AddModelCatalogSourceIDs(ids...)
+	return _u
+}
+
+// AddModelCatalogSources adds the "model_catalog_sources" edges to the ModelCatalogSource entity.
+func (_u *ChannelUpdate) AddModelCatalogSources(v ...*ModelCatalogSource) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddModelCatalogSourceIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdate) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -535,6 +551,27 @@ func (_u *ChannelUpdate) RemoveUsageLogs(v ...*UsageLog) *ChannelUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearModelCatalogSources clears all "model_catalog_sources" edges to the ModelCatalogSource entity.
+func (_u *ChannelUpdate) ClearModelCatalogSources() *ChannelUpdate {
+	_u.mutation.ClearModelCatalogSources()
+	return _u
+}
+
+// RemoveModelCatalogSourceIDs removes the "model_catalog_sources" edge to ModelCatalogSource entities by IDs.
+func (_u *ChannelUpdate) RemoveModelCatalogSourceIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.RemoveModelCatalogSourceIDs(ids...)
+	return _u
+}
+
+// RemoveModelCatalogSources removes "model_catalog_sources" edges to ModelCatalogSource entities.
+func (_u *ChannelUpdate) RemoveModelCatalogSources(v ...*ModelCatalogSource) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveModelCatalogSourceIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -808,6 +845,51 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ModelCatalogSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedModelCatalogSourcesIDs(); len(nodes) > 0 && !_u.mutation.ModelCatalogSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ModelCatalogSourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1309,6 +1391,21 @@ func (_u *ChannelUpdateOne) AddUsageLogs(v ...*UsageLog) *ChannelUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddModelCatalogSourceIDs adds the "model_catalog_sources" edge to the ModelCatalogSource entity by IDs.
+func (_u *ChannelUpdateOne) AddModelCatalogSourceIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.AddModelCatalogSourceIDs(ids...)
+	return _u
+}
+
+// AddModelCatalogSources adds the "model_catalog_sources" edges to the ModelCatalogSource entity.
+func (_u *ChannelUpdateOne) AddModelCatalogSources(v ...*ModelCatalogSource) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddModelCatalogSourceIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -1339,6 +1436,27 @@ func (_u *ChannelUpdateOne) RemoveUsageLogs(v ...*UsageLog) *ChannelUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearModelCatalogSources clears all "model_catalog_sources" edges to the ModelCatalogSource entity.
+func (_u *ChannelUpdateOne) ClearModelCatalogSources() *ChannelUpdateOne {
+	_u.mutation.ClearModelCatalogSources()
+	return _u
+}
+
+// RemoveModelCatalogSourceIDs removes the "model_catalog_sources" edge to ModelCatalogSource entities by IDs.
+func (_u *ChannelUpdateOne) RemoveModelCatalogSourceIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.RemoveModelCatalogSourceIDs(ids...)
+	return _u
+}
+
+// RemoveModelCatalogSources removes "model_catalog_sources" edges to ModelCatalogSource entities.
+func (_u *ChannelUpdateOne) RemoveModelCatalogSources(v ...*ModelCatalogSource) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveModelCatalogSourceIDs(ids...)
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -1642,6 +1760,51 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ModelCatalogSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedModelCatalogSourcesIDs(); len(nodes) > 0 && !_u.mutation.ModelCatalogSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ModelCatalogSourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

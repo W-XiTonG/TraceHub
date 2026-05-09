@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import UserAccountMenu from '../components/UserAccountMenu.vue'
 
 const auth = useAuthStore()
 const version = ref('1.0.0')
@@ -43,10 +44,11 @@ const faqs = [
           <a href="#models" class="text-slate-400 hover:text-white">模型</a>
           <a href="#pricing" class="text-slate-400 hover:text-white">价格</a>
           <a href="#faq" class="text-slate-400 hover:text-white">FAQ</a>
-          <RouterLink v-if="!auth.isLoggedIn" to="/login" class="text-slate-300 hover:text-white">登录</RouterLink>
-          <RouterLink v-if="!auth.isLoggedIn" to="/register" class="rounded-lg bg-cyan-500 px-3 py-1.5 font-medium text-slate-950 hover:bg-cyan-400">注册</RouterLink>
-          <RouterLink v-if="auth.isLoggedIn" to="/console" class="text-cyan-400 hover:text-cyan-300">控制台</RouterLink>
-          <RouterLink v-if="auth.role === 'superadmin' || auth.role === 'admin'" to="/admin" class="text-amber-400 hover:text-amber-300">管理后台</RouterLink>
+          <template v-if="!auth.isLoggedIn">
+            <RouterLink to="/login" class="text-slate-300 hover:text-white">登录</RouterLink>
+            <RouterLink to="/register" class="rounded-lg bg-cyan-500 px-3 py-1.5 font-medium text-slate-950 hover:bg-cyan-400">注册</RouterLink>
+          </template>
+          <UserAccountMenu v-else accent="cyan" />
         </nav>
       </div>
     </header>

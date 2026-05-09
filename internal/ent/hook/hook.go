@@ -80,6 +80,30 @@ func (f GroupModelRateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupModelRateMutation", m)
 }
 
+// The ModelCatalogEntryFunc type is an adapter to allow the use of ordinary
+// function as ModelCatalogEntry mutator.
+type ModelCatalogEntryFunc func(context.Context, *ent.ModelCatalogEntryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ModelCatalogEntryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ModelCatalogEntryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModelCatalogEntryMutation", m)
+}
+
+// The ModelCatalogSourceFunc type is an adapter to allow the use of ordinary
+// function as ModelCatalogSource mutator.
+type ModelCatalogSourceFunc func(context.Context, *ent.ModelCatalogSourceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ModelCatalogSourceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ModelCatalogSourceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModelCatalogSourceMutation", m)
+}
+
 // The RedeemCodeFunc type is an adapter to allow the use of ordinary
 // function as RedeemCode mutator.
 type RedeemCodeFunc func(context.Context, *ent.RedeemCodeMutation) (ent.Value, error)

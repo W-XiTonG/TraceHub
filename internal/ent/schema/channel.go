@@ -53,6 +53,7 @@ func (Channel) Edges() []ent.Edge {
 			Field("group_id").
 			Unique(),
 		edge.To("usage_logs", UsageLog.Type),
+		edge.To("model_catalog_sources", ModelCatalogSource.Type),
 	}
 }
 

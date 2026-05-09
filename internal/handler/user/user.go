@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -213,6 +214,9 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		if !since.IsZero() {
 			q = q.Where(usagelog.RequestTimeGTE(since))
 		}
+		if m := strings.TrimSpace(c.Query("model")); m != "" {
+			q = q.Where(usagelog.ModelEQ(m))
+		}
 		logs, err := q.All(ctx)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")
@@ -220,20 +224,55 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		}
 		var totalReq, totalTok int
 		var totalCost int64
+		byDay := map[string]struct{ reqs int; cost int64 }{}
+		byModel := map[string]struct{ reqs int; cost int64 }{}
 		for _, l := range logs {
 			totalReq++
 			totalTok += l.TotalTokens
 			totalCost += l.TotalCost
+			d := l.RequestTime.In(time.Local).Format("2006-01-02")
+			bd := byDay[d]
+			bd.reqs++
+			bd.cost += l.TotalCost
+			byDay[d] = bd
+			bm := byModel[l.Model]
+			bm.reqs++
+			bm.cost += l.TotalCost
+			byModel[l.Model] = bm
 		}
 		unit := cfg.Site.CurrencyQuotaPerYuan
 		if unit <= 0 {
 			unit = 10000
 		}
+		var dailyBreakdown []gin.H
+		for d, v := range byDay {
+			dailyBreakdown = append(dailyBreakdown, gin.H{
+				"date":     d,
+				"requests": v.reqs,
+				"cost":     float64(v.cost) / float64(unit),
+			})
+		}
+		sort.Slice(dailyBreakdown, func(i, j int) bool {
+			return dailyBreakdown[i]["date"].(string) < dailyBreakdown[j]["date"].(string)
+		})
+		var modelBreakdown []gin.H
+		for m, v := range byModel {
+			modelBreakdown = append(modelBreakdown, gin.H{
+				"model":    m,
+				"requests": v.reqs,
+				"cost":     float64(v.cost) / float64(unit),
+			})
+		}
+		sort.Slice(modelBreakdown, func(i, j int) bool {
+			return modelBreakdown[i]["cost"].(float64) > modelBreakdown[j]["cost"].(float64)
+		})
 		httpx.OK(c, gin.H{
-			"period":         period,
-			"total_requests": totalReq,
-			"total_tokens":   totalTok,
-			"total_cost":     float64(totalCost) / float64(unit),
+			"period":            period,
+			"total_requests":    totalReq,
+			"total_tokens":      totalTok,
+			"total_cost":        float64(totalCost) / float64(unit),
+			"daily_breakdown":   dailyBreakdown,
+			"model_breakdown":   modelBreakdown,
 		})
 	}
 }
@@ -276,12 +315,26 @@ func UsageExport(client *ent.Client) gin.HandlerFunc {
 func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		ctx := c.Request.Context()
 		keys, err := client.APIKey.Query().
 			Where(apikey.HasUserWith(user.IDEQ(u.ID))).
-			All(c.Request.Context())
+			WithGroup().
+			All(ctx)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")
 			return
+		}
+		since24 := time.Now().Add(-24 * time.Hour)
+		logs24, err := client.UsageLog.Query().
+			Where(usagelog.UserIDEQ(u.ID), usagelog.RequestTimeGTE(since24), usagelog.APIKeyIDNotNil()).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		tok24h := map[int]int{}
+		for _, l := range logs24 {
+			tok24h[l.APIKeyID] += l.TotalTokens
 		}
 		var items []gin.H
 		for _, k := range keys {
@@ -289,13 +342,19 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 			if !k.Enabled {
 				st = "disabled"
 			}
+			gn := ""
+			if k.Edges.Group != nil {
+				gn = k.Edges.Group.Name
+			}
 			items = append(items, gin.H{
 				"id":           k.ID,
 				"name":         k.Name,
 				"key_prefix":   k.KeyPrefix,
+				"group_name":   gn,
 				"status":       st,
 				"last_used_at": k.LastUsedAt,
 				"created_at":   k.CreatedAt,
+				"usage_24h":    tok24h[k.ID],
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": len(items)})
@@ -365,13 +424,17 @@ func CreateAPIKey(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 				cr.SetExpiresAt(t)
 			}
 		}
-		if _, err := cr.Save(ctx); err != nil {
+		saved, err := cr.Save(ctx)
+		if err != nil {
 			httpx.ServerError(c, "创建失败")
 			return
 		}
 		httpx.OKMsg(c, "API Key 创建成功", gin.H{
+			"id":         saved.ID,
+			"name":       saved.Name,
 			"key":        raw,
 			"key_prefix": short,
+			"created_at": saved.CreatedAt,
 		})
 	}
 }
@@ -411,6 +474,7 @@ func UpdateAPIKey(client *ent.Client) gin.HandlerFunc {
 		var req struct {
 			Name        *string  `json:"name"`
 			IPWhitelist []string `json:"ip_whitelist"`
+			DailyQuota  *int64   `json:"daily_quota"`
 			Enabled     *bool    `json:"enabled"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -431,6 +495,9 @@ func UpdateAPIKey(client *ent.Client) gin.HandlerFunc {
 		}
 		if req.IPWhitelist != nil {
 			up.SetIPWhitelist(req.IPWhitelist)
+		}
+		if req.DailyQuota != nil {
+			up.SetDailyQuota(*req.DailyQuota)
 		}
 		if req.Enabled != nil {
 			up.SetEnabled(*req.Enabled)
@@ -514,6 +581,59 @@ func Redeem(client *ent.Client) gin.HandlerFunc {
 		}
 		nu, _ := client.User.Get(ctx, u.ID)
 		httpx.OKMsg(c, "兑换成功", gin.H{"amount_added": add, "new_balance": nu.Balance})
+	}
+}
+
+func BindProfile(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		var req struct {
+			Username   *string `json:"username"`
+			WebhookURL *string `json:"webhook_url"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		up := client.User.UpdateOneID(u.ID)
+		changed := false
+		if req.Username != nil {
+			up.SetUsername(strings.TrimSpace(*req.Username))
+			changed = true
+		}
+		if req.WebhookURL != nil {
+			up.SetWebhookURL(strings.TrimSpace(*req.WebhookURL))
+			changed = true
+		}
+		if !changed {
+			httpx.BadRequest(c, "请提供 username 或 webhook_url")
+			return
+		}
+		if err := up.Exec(ctx); err != nil {
+			httpx.ServerError(c, "保存失败")
+			return
+		}
+		httpx.OKMsg(c, "已更新", nil)
+	}
+}
+
+func SetIPWhitelist(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		var req struct {
+			IPWhitelist []string `json:"ip_whitelist"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		if err := client.User.UpdateOneID(u.ID).SetIPWhitelist(req.IPWhitelist).Exec(ctx); err != nil {
+			httpx.ServerError(c, "保存失败")
+			return
+		}
+		httpx.OKMsg(c, "已更新", nil)
 	}
 }
 

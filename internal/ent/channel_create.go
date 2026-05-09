@@ -9,6 +9,7 @@ import (
 	"time"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/usagelog"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -382,6 +383,21 @@ func (_c *ChannelCreate) AddUsageLogs(v ...*UsageLog) *ChannelCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
+// AddModelCatalogSourceIDs adds the "model_catalog_sources" edge to the ModelCatalogSource entity by IDs.
+func (_c *ChannelCreate) AddModelCatalogSourceIDs(ids ...int) *ChannelCreate {
+	_c.mutation.AddModelCatalogSourceIDs(ids...)
+	return _c
+}
+
+// AddModelCatalogSources adds the "model_catalog_sources" edges to the ModelCatalogSource entity.
+func (_c *ChannelCreate) AddModelCatalogSources(v ...*ModelCatalogSource) *ChannelCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddModelCatalogSourceIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_c *ChannelCreate) Mutation() *ChannelMutation {
 	return _c.mutation
@@ -698,6 +714,22 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ModelCatalogSourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelCatalogSourcesTable,
+			Columns: []string{channel.ModelCatalogSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -2,24 +2,113 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { http, type Envelope } from '../api/http'
 
+const LS_USER = 'tracehub_user'
+
+export type AuthUserBrief = {
+  id: number
+  email: string
+  username?: string
+  balance?: number
+  group_name?: string
+}
+
+function readStoredUser(): AuthUserBrief | null {
+  try {
+    const s = localStorage.getItem(LS_USER)
+    if (!s) return null
+    return JSON.parse(s) as AuthUserBrief
+  } catch {
+    return null
+  }
+}
+
+/** JWT payload（access），与后端 jwtx.Claims 字段一致 */
+type AccessPayload = {
+  uid?: number
+  email?: string
+  role?: string
+}
+
+function parseAccessPayload(access: string): AccessPayload | null {
+  try {
+    const parts = access.split('.')
+    if (parts.length < 2) return null
+    return JSON.parse(atob(parts[1])) as AccessPayload
+  } catch {
+    return null
+  }
+}
+
+/** 仅有 token、无本地 user 时，用 JWT 里的 uid/email 补全展示（不写敏感信息） */
+function tryHydrateUserFromToken(t: string, current: AuthUserBrief | null): AuthUserBrief | null {
+  if (current && (current.email?.trim() || current.username?.trim())) return current
+  const p = parseAccessPayload(t)
+  if (!p) return current
+  const id = typeof p.uid === 'number' && !Number.isNaN(p.uid) ? p.uid : 0
+  const email = (p.email && String(p.email).trim()) || ''
+  if (!email && !id) return current
+  const brief: AuthUserBrief = { id, email }
+  if (email) {
+    localStorage.setItem(LS_USER, JSON.stringify(brief))
+  }
+  return brief
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('tracehub_token') || '')
-  const user = ref<{ id: number; email: string; username?: string; balance?: number; group_name?: string } | null>(null)
+  const user = ref<AuthUserBrief | null>(readStoredUser())
   const role = ref('')
 
   const isLoggedIn = computed(() => !!token.value)
 
+  /** 顶栏展示：优先用户名 → 邮箱 → JWT 邮箱 → 用户 #id */
+  const accountDisplay = computed(() => {
+    const u = user.value
+    if (u?.username?.trim()) return u.username.trim()
+    if (u?.email?.trim()) return u.email.trim()
+    const p = token.value ? parseAccessPayload(token.value) : null
+    if (p?.email?.trim()) return p.email.trim()
+    if (p?.uid != null && Number(p.uid) > 0) return `用户 #${p.uid}`
+    return ''
+  })
+
+  /** 头像内单字：取展示串中第一个字母、数字或汉字；「用户 #id」用 U，避免无意义首字 */
+  const avatarInitial = computed(() => {
+    const s = accountDisplay.value.trim()
+    if (!s) return '?'
+    if (/^用户 #\d+$/.test(s)) return 'U'
+    const m = s.match(/[A-Za-z0-9\u4e00-\u9fff]/)
+    if (m) {
+      const c = m[0]
+      return /[a-z]/.test(c) ? c.toUpperCase() : c
+    }
+    return '?'
+  })
+
+  function setRoleFromToken(access: string) {
+    const p = parseAccessPayload(access)
+    if (p?.role) role.value = p.role
+  }
+
+  if (token.value) {
+    setRoleFromToken(token.value)
+    user.value = tryHydrateUserFromToken(token.value, user.value)
+  }
+
   function setSession(access: string, u: typeof user.value, r?: string) {
     token.value = access
     user.value = u
+    if (!user.value) {
+      user.value = tryHydrateUserFromToken(access, null)
+    }
     if (r) role.value = r
     localStorage.setItem('tracehub_token', access)
-    try {
-      const payload = JSON.parse(atob(access.split('.')[1]))
-      if (payload.role) role.value = payload.role
-    } catch {
-      /* ignore */
+    if (user.value) {
+      localStorage.setItem(LS_USER, JSON.stringify(user.value))
+    } else {
+      localStorage.removeItem(LS_USER)
     }
+    setRoleFromToken(access)
   }
 
   function logout() {
@@ -27,6 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     role.value = ''
     localStorage.removeItem('tracehub_token')
+    localStorage.removeItem(LS_USER)
   }
 
   async function login(email: string, password: string) {
@@ -46,5 +136,5 @@ export const useAuthStore = defineStore('auth', () => {
     if (data.code !== 0) throw new Error(data.message || '注册失败')
   }
 
-  return { token, user, role, isLoggedIn, login, register, logout, setSession }
+  return { token, user, role, isLoggedIn, accountDisplay, avatarInitial, login, register, logout, setSession }
 })

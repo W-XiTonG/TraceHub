@@ -17,6 +17,8 @@ import (
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/modelcatalogentry"
+	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
@@ -45,6 +47,10 @@ type Client struct {
 	Group *GroupClient
 	// GroupModelRate is the client for interacting with the GroupModelRate builders.
 	GroupModelRate *GroupModelRateClient
+	// ModelCatalogEntry is the client for interacting with the ModelCatalogEntry builders.
+	ModelCatalogEntry *ModelCatalogEntryClient
+	// ModelCatalogSource is the client for interacting with the ModelCatalogSource builders.
+	ModelCatalogSource *ModelCatalogSourceClient
 	// RedeemCode is the client for interacting with the RedeemCode builders.
 	RedeemCode *RedeemCodeClient
 	// SystemConfig is the client for interacting with the SystemConfig builders.
@@ -70,6 +76,8 @@ func (c *Client) init() {
 	c.DashboardAggregation = NewDashboardAggregationClient(c.config)
 	c.Group = NewGroupClient(c.config)
 	c.GroupModelRate = NewGroupModelRateClient(c.config)
+	c.ModelCatalogEntry = NewModelCatalogEntryClient(c.config)
+	c.ModelCatalogSource = NewModelCatalogSourceClient(c.config)
 	c.RedeemCode = NewRedeemCodeClient(c.config)
 	c.SystemConfig = NewSystemConfigClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
@@ -172,6 +180,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DashboardAggregation: NewDashboardAggregationClient(cfg),
 		Group:                NewGroupClient(cfg),
 		GroupModelRate:       NewGroupModelRateClient(cfg),
+		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
+		ModelCatalogSource:   NewModelCatalogSourceClient(cfg),
 		RedeemCode:           NewRedeemCodeClient(cfg),
 		SystemConfig:         NewSystemConfigClient(cfg),
 		UsageLog:             NewUsageLogClient(cfg),
@@ -201,6 +211,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DashboardAggregation: NewDashboardAggregationClient(cfg),
 		Group:                NewGroupClient(cfg),
 		GroupModelRate:       NewGroupModelRateClient(cfg),
+		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
+		ModelCatalogSource:   NewModelCatalogSourceClient(cfg),
 		RedeemCode:           NewRedeemCodeClient(cfg),
 		SystemConfig:         NewSystemConfigClient(cfg),
 		UsageLog:             NewUsageLogClient(cfg),
@@ -235,7 +247,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.AdminAuditLog, c.Channel, c.DashboardAggregation, c.Group,
-		c.GroupModelRate, c.RedeemCode, c.SystemConfig, c.UsageLog, c.User,
+		c.GroupModelRate, c.ModelCatalogEntry, c.ModelCatalogSource, c.RedeemCode,
+		c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -246,7 +259,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.AdminAuditLog, c.Channel, c.DashboardAggregation, c.Group,
-		c.GroupModelRate, c.RedeemCode, c.SystemConfig, c.UsageLog, c.User,
+		c.GroupModelRate, c.ModelCatalogEntry, c.ModelCatalogSource, c.RedeemCode,
+		c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -267,6 +281,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Group.mutate(ctx, m)
 	case *GroupModelRateMutation:
 		return c.GroupModelRate.mutate(ctx, m)
+	case *ModelCatalogEntryMutation:
+		return c.ModelCatalogEntry.mutate(ctx, m)
+	case *ModelCatalogSourceMutation:
+		return c.ModelCatalogSource.mutate(ctx, m)
 	case *RedeemCodeMutation:
 		return c.RedeemCode.mutate(ctx, m)
 	case *SystemConfigMutation:
@@ -743,6 +761,22 @@ func (c *ChannelClient) QueryUsageLogs(_m *Channel) *UsageLogQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, id),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.UsageLogsTable, channel.UsageLogsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryModelCatalogSources queries the model_catalog_sources edge of a Channel.
+func (c *ChannelClient) QueryModelCatalogSources(_m *Channel) *ModelCatalogSourceQuery {
+	query := (&ModelCatalogSourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(modelcatalogsource.Table, modelcatalogsource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ModelCatalogSourcesTable, channel.ModelCatalogSourcesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1251,6 +1285,320 @@ func (c *GroupModelRateClient) mutate(ctx context.Context, m *GroupModelRateMuta
 		return (&GroupModelRateDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown GroupModelRate mutation op: %q", m.Op())
+	}
+}
+
+// ModelCatalogEntryClient is a client for the ModelCatalogEntry schema.
+type ModelCatalogEntryClient struct {
+	config
+}
+
+// NewModelCatalogEntryClient returns a client for the ModelCatalogEntry from the given config.
+func NewModelCatalogEntryClient(c config) *ModelCatalogEntryClient {
+	return &ModelCatalogEntryClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `modelcatalogentry.Hooks(f(g(h())))`.
+func (c *ModelCatalogEntryClient) Use(hooks ...Hook) {
+	c.hooks.ModelCatalogEntry = append(c.hooks.ModelCatalogEntry, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `modelcatalogentry.Intercept(f(g(h())))`.
+func (c *ModelCatalogEntryClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ModelCatalogEntry = append(c.inters.ModelCatalogEntry, interceptors...)
+}
+
+// Create returns a builder for creating a ModelCatalogEntry entity.
+func (c *ModelCatalogEntryClient) Create() *ModelCatalogEntryCreate {
+	mutation := newModelCatalogEntryMutation(c.config, OpCreate)
+	return &ModelCatalogEntryCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ModelCatalogEntry entities.
+func (c *ModelCatalogEntryClient) CreateBulk(builders ...*ModelCatalogEntryCreate) *ModelCatalogEntryCreateBulk {
+	return &ModelCatalogEntryCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ModelCatalogEntryClient) MapCreateBulk(slice any, setFunc func(*ModelCatalogEntryCreate, int)) *ModelCatalogEntryCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ModelCatalogEntryCreateBulk{err: fmt.Errorf("calling to ModelCatalogEntryClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ModelCatalogEntryCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ModelCatalogEntryCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ModelCatalogEntry.
+func (c *ModelCatalogEntryClient) Update() *ModelCatalogEntryUpdate {
+	mutation := newModelCatalogEntryMutation(c.config, OpUpdate)
+	return &ModelCatalogEntryUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ModelCatalogEntryClient) UpdateOne(_m *ModelCatalogEntry) *ModelCatalogEntryUpdateOne {
+	mutation := newModelCatalogEntryMutation(c.config, OpUpdateOne, withModelCatalogEntry(_m))
+	return &ModelCatalogEntryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ModelCatalogEntryClient) UpdateOneID(id int) *ModelCatalogEntryUpdateOne {
+	mutation := newModelCatalogEntryMutation(c.config, OpUpdateOne, withModelCatalogEntryID(id))
+	return &ModelCatalogEntryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ModelCatalogEntry.
+func (c *ModelCatalogEntryClient) Delete() *ModelCatalogEntryDelete {
+	mutation := newModelCatalogEntryMutation(c.config, OpDelete)
+	return &ModelCatalogEntryDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ModelCatalogEntryClient) DeleteOne(_m *ModelCatalogEntry) *ModelCatalogEntryDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ModelCatalogEntryClient) DeleteOneID(id int) *ModelCatalogEntryDeleteOne {
+	builder := c.Delete().Where(modelcatalogentry.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ModelCatalogEntryDeleteOne{builder}
+}
+
+// Query returns a query builder for ModelCatalogEntry.
+func (c *ModelCatalogEntryClient) Query() *ModelCatalogEntryQuery {
+	return &ModelCatalogEntryQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeModelCatalogEntry},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ModelCatalogEntry entity by its id.
+func (c *ModelCatalogEntryClient) Get(ctx context.Context, id int) (*ModelCatalogEntry, error) {
+	return c.Query().Where(modelcatalogentry.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ModelCatalogEntryClient) GetX(ctx context.Context, id int) *ModelCatalogEntry {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySource queries the source edge of a ModelCatalogEntry.
+func (c *ModelCatalogEntryClient) QuerySource(_m *ModelCatalogEntry) *ModelCatalogSourceQuery {
+	query := (&ModelCatalogSourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(modelcatalogentry.Table, modelcatalogentry.FieldID, id),
+			sqlgraph.To(modelcatalogsource.Table, modelcatalogsource.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, modelcatalogentry.SourceTable, modelcatalogentry.SourceColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ModelCatalogEntryClient) Hooks() []Hook {
+	return c.hooks.ModelCatalogEntry
+}
+
+// Interceptors returns the client interceptors.
+func (c *ModelCatalogEntryClient) Interceptors() []Interceptor {
+	return c.inters.ModelCatalogEntry
+}
+
+func (c *ModelCatalogEntryClient) mutate(ctx context.Context, m *ModelCatalogEntryMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ModelCatalogEntryCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ModelCatalogEntryUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ModelCatalogEntryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ModelCatalogEntryDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ModelCatalogEntry mutation op: %q", m.Op())
+	}
+}
+
+// ModelCatalogSourceClient is a client for the ModelCatalogSource schema.
+type ModelCatalogSourceClient struct {
+	config
+}
+
+// NewModelCatalogSourceClient returns a client for the ModelCatalogSource from the given config.
+func NewModelCatalogSourceClient(c config) *ModelCatalogSourceClient {
+	return &ModelCatalogSourceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `modelcatalogsource.Hooks(f(g(h())))`.
+func (c *ModelCatalogSourceClient) Use(hooks ...Hook) {
+	c.hooks.ModelCatalogSource = append(c.hooks.ModelCatalogSource, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `modelcatalogsource.Intercept(f(g(h())))`.
+func (c *ModelCatalogSourceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ModelCatalogSource = append(c.inters.ModelCatalogSource, interceptors...)
+}
+
+// Create returns a builder for creating a ModelCatalogSource entity.
+func (c *ModelCatalogSourceClient) Create() *ModelCatalogSourceCreate {
+	mutation := newModelCatalogSourceMutation(c.config, OpCreate)
+	return &ModelCatalogSourceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ModelCatalogSource entities.
+func (c *ModelCatalogSourceClient) CreateBulk(builders ...*ModelCatalogSourceCreate) *ModelCatalogSourceCreateBulk {
+	return &ModelCatalogSourceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ModelCatalogSourceClient) MapCreateBulk(slice any, setFunc func(*ModelCatalogSourceCreate, int)) *ModelCatalogSourceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ModelCatalogSourceCreateBulk{err: fmt.Errorf("calling to ModelCatalogSourceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ModelCatalogSourceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ModelCatalogSourceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ModelCatalogSource.
+func (c *ModelCatalogSourceClient) Update() *ModelCatalogSourceUpdate {
+	mutation := newModelCatalogSourceMutation(c.config, OpUpdate)
+	return &ModelCatalogSourceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ModelCatalogSourceClient) UpdateOne(_m *ModelCatalogSource) *ModelCatalogSourceUpdateOne {
+	mutation := newModelCatalogSourceMutation(c.config, OpUpdateOne, withModelCatalogSource(_m))
+	return &ModelCatalogSourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ModelCatalogSourceClient) UpdateOneID(id int) *ModelCatalogSourceUpdateOne {
+	mutation := newModelCatalogSourceMutation(c.config, OpUpdateOne, withModelCatalogSourceID(id))
+	return &ModelCatalogSourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ModelCatalogSource.
+func (c *ModelCatalogSourceClient) Delete() *ModelCatalogSourceDelete {
+	mutation := newModelCatalogSourceMutation(c.config, OpDelete)
+	return &ModelCatalogSourceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ModelCatalogSourceClient) DeleteOne(_m *ModelCatalogSource) *ModelCatalogSourceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ModelCatalogSourceClient) DeleteOneID(id int) *ModelCatalogSourceDeleteOne {
+	builder := c.Delete().Where(modelcatalogsource.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ModelCatalogSourceDeleteOne{builder}
+}
+
+// Query returns a query builder for ModelCatalogSource.
+func (c *ModelCatalogSourceClient) Query() *ModelCatalogSourceQuery {
+	return &ModelCatalogSourceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeModelCatalogSource},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ModelCatalogSource entity by its id.
+func (c *ModelCatalogSourceClient) Get(ctx context.Context, id int) (*ModelCatalogSource, error) {
+	return c.Query().Where(modelcatalogsource.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ModelCatalogSourceClient) GetX(ctx context.Context, id int) *ModelCatalogSource {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChannel queries the channel edge of a ModelCatalogSource.
+func (c *ModelCatalogSourceClient) QueryChannel(_m *ModelCatalogSource) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(modelcatalogsource.Table, modelcatalogsource.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, modelcatalogsource.ChannelTable, modelcatalogsource.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCatalogEntries queries the catalog_entries edge of a ModelCatalogSource.
+func (c *ModelCatalogSourceClient) QueryCatalogEntries(_m *ModelCatalogSource) *ModelCatalogEntryQuery {
+	query := (&ModelCatalogEntryClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(modelcatalogsource.Table, modelcatalogsource.FieldID, id),
+			sqlgraph.To(modelcatalogentry.Table, modelcatalogentry.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, modelcatalogsource.CatalogEntriesTable, modelcatalogsource.CatalogEntriesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ModelCatalogSourceClient) Hooks() []Hook {
+	return c.hooks.ModelCatalogSource
+}
+
+// Interceptors returns the client interceptors.
+func (c *ModelCatalogSourceClient) Interceptors() []Interceptor {
+	return c.inters.ModelCatalogSource
+}
+
+func (c *ModelCatalogSourceClient) mutate(ctx context.Context, m *ModelCatalogSourceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ModelCatalogSourceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ModelCatalogSourceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ModelCatalogSourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ModelCatalogSourceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ModelCatalogSource mutation op: %q", m.Op())
 	}
 }
 
@@ -1966,10 +2314,12 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 type (
 	hooks struct {
 		APIKey, AdminAuditLog, Channel, DashboardAggregation, Group, GroupModelRate,
-		RedeemCode, SystemConfig, UsageLog, User []ent.Hook
+		ModelCatalogEntry, ModelCatalogSource, RedeemCode, SystemConfig, UsageLog,
+		User []ent.Hook
 	}
 	inters struct {
 		APIKey, AdminAuditLog, Channel, DashboardAggregation, Group, GroupModelRate,
-		RedeemCode, SystemConfig, UsageLog, User []ent.Interceptor
+		ModelCatalogEntry, ModelCatalogSource, RedeemCode, SystemConfig, UsageLog,
+		User []ent.Interceptor
 	}
 )

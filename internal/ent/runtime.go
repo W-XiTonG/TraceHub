@@ -10,6 +10,8 @@ import (
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/modelcatalogentry"
+	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/schema"
 	"tracehub/internal/ent/systemconfig"
@@ -367,6 +369,126 @@ func init() {
 	groupmodelrate.DefaultUpdatedAt = groupmodelrateDescUpdatedAt.Default.(func() time.Time)
 	// groupmodelrate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	groupmodelrate.UpdateDefaultUpdatedAt = groupmodelrateDescUpdatedAt.UpdateDefault.(func() time.Time)
+	modelcatalogentryFields := schema.ModelCatalogEntry{}.Fields()
+	_ = modelcatalogentryFields
+	// modelcatalogentryDescModelID is the schema descriptor for model_id field.
+	modelcatalogentryDescModelID := modelcatalogentryFields[0].Descriptor()
+	// modelcatalogentry.ModelIDValidator is a validator for the "model_id" field. It is called by the builders before save.
+	modelcatalogentry.ModelIDValidator = func() func(string) error {
+		validators := modelcatalogentryDescModelID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(model_id string) error {
+			for _, fn := range fns {
+				if err := fn(model_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// modelcatalogentryDescDisplayName is the schema descriptor for display_name field.
+	modelcatalogentryDescDisplayName := modelcatalogentryFields[1].Descriptor()
+	// modelcatalogentry.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
+	modelcatalogentry.DisplayNameValidator = modelcatalogentryDescDisplayName.Validators[0].(func(string) error)
+	// modelcatalogentryDescProviderSlug is the schema descriptor for provider_slug field.
+	modelcatalogentryDescProviderSlug := modelcatalogentryFields[2].Descriptor()
+	// modelcatalogentry.DefaultProviderSlug holds the default value on creation for the provider_slug field.
+	modelcatalogentry.DefaultProviderSlug = modelcatalogentryDescProviderSlug.Default.(string)
+	// modelcatalogentry.ProviderSlugValidator is a validator for the "provider_slug" field. It is called by the builders before save.
+	modelcatalogentry.ProviderSlugValidator = modelcatalogentryDescProviderSlug.Validators[0].(func(string) error)
+	// modelcatalogentryDescOwnedBy is the schema descriptor for owned_by field.
+	modelcatalogentryDescOwnedBy := modelcatalogentryFields[3].Descriptor()
+	// modelcatalogentry.OwnedByValidator is a validator for the "owned_by" field. It is called by the builders before save.
+	modelcatalogentry.OwnedByValidator = modelcatalogentryDescOwnedBy.Validators[0].(func(string) error)
+	// modelcatalogentryDescVisible is the schema descriptor for visible field.
+	modelcatalogentryDescVisible := modelcatalogentryFields[7].Descriptor()
+	// modelcatalogentry.DefaultVisible holds the default value on creation for the visible field.
+	modelcatalogentry.DefaultVisible = modelcatalogentryDescVisible.Default.(bool)
+	// modelcatalogentryDescEnabled is the schema descriptor for enabled field.
+	modelcatalogentryDescEnabled := modelcatalogentryFields[8].Descriptor()
+	// modelcatalogentry.DefaultEnabled holds the default value on creation for the enabled field.
+	modelcatalogentry.DefaultEnabled = modelcatalogentryDescEnabled.Default.(bool)
+	// modelcatalogentryDescCreatedAt is the schema descriptor for created_at field.
+	modelcatalogentryDescCreatedAt := modelcatalogentryFields[10].Descriptor()
+	// modelcatalogentry.DefaultCreatedAt holds the default value on creation for the created_at field.
+	modelcatalogentry.DefaultCreatedAt = modelcatalogentryDescCreatedAt.Default.(func() time.Time)
+	// modelcatalogentryDescUpdatedAt is the schema descriptor for updated_at field.
+	modelcatalogentryDescUpdatedAt := modelcatalogentryFields[11].Descriptor()
+	// modelcatalogentry.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	modelcatalogentry.DefaultUpdatedAt = modelcatalogentryDescUpdatedAt.Default.(func() time.Time)
+	// modelcatalogentry.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	modelcatalogentry.UpdateDefaultUpdatedAt = modelcatalogentryDescUpdatedAt.UpdateDefault.(func() time.Time)
+	modelcatalogsourceFields := schema.ModelCatalogSource{}.Fields()
+	_ = modelcatalogsourceFields
+	// modelcatalogsourceDescName is the schema descriptor for name field.
+	modelcatalogsourceDescName := modelcatalogsourceFields[0].Descriptor()
+	// modelcatalogsource.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	modelcatalogsource.NameValidator = func() func(string) error {
+		validators := modelcatalogsourceDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// modelcatalogsourceDescProviderSlug is the schema descriptor for provider_slug field.
+	modelcatalogsourceDescProviderSlug := modelcatalogsourceFields[1].Descriptor()
+	// modelcatalogsource.DefaultProviderSlug holds the default value on creation for the provider_slug field.
+	modelcatalogsource.DefaultProviderSlug = modelcatalogsourceDescProviderSlug.Default.(string)
+	// modelcatalogsource.ProviderSlugValidator is a validator for the "provider_slug" field. It is called by the builders before save.
+	modelcatalogsource.ProviderSlugValidator = modelcatalogsourceDescProviderSlug.Validators[0].(func(string) error)
+	// modelcatalogsourceDescBaseURL is the schema descriptor for base_url field.
+	modelcatalogsourceDescBaseURL := modelcatalogsourceFields[2].Descriptor()
+	// modelcatalogsource.BaseURLValidator is a validator for the "base_url" field. It is called by the builders before save.
+	modelcatalogsource.BaseURLValidator = func() func(string) error {
+		validators := modelcatalogsourceDescBaseURL.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(base_url string) error {
+			for _, fn := range fns {
+				if err := fn(base_url); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// modelcatalogsourceDescModelsPath is the schema descriptor for models_path field.
+	modelcatalogsourceDescModelsPath := modelcatalogsourceFields[3].Descriptor()
+	// modelcatalogsource.DefaultModelsPath holds the default value on creation for the models_path field.
+	modelcatalogsource.DefaultModelsPath = modelcatalogsourceDescModelsPath.Default.(string)
+	// modelcatalogsource.ModelsPathValidator is a validator for the "models_path" field. It is called by the builders before save.
+	modelcatalogsource.ModelsPathValidator = modelcatalogsourceDescModelsPath.Validators[0].(func(string) error)
+	// modelcatalogsourceDescEnabled is the schema descriptor for enabled field.
+	modelcatalogsourceDescEnabled := modelcatalogsourceFields[9].Descriptor()
+	// modelcatalogsource.DefaultEnabled holds the default value on creation for the enabled field.
+	modelcatalogsource.DefaultEnabled = modelcatalogsourceDescEnabled.Default.(bool)
+	// modelcatalogsourceDescLastSyncOk is the schema descriptor for last_sync_ok field.
+	modelcatalogsourceDescLastSyncOk := modelcatalogsourceFields[11].Descriptor()
+	// modelcatalogsource.DefaultLastSyncOk holds the default value on creation for the last_sync_ok field.
+	modelcatalogsource.DefaultLastSyncOk = modelcatalogsourceDescLastSyncOk.Default.(bool)
+	// modelcatalogsourceDescCreatedAt is the schema descriptor for created_at field.
+	modelcatalogsourceDescCreatedAt := modelcatalogsourceFields[13].Descriptor()
+	// modelcatalogsource.DefaultCreatedAt holds the default value on creation for the created_at field.
+	modelcatalogsource.DefaultCreatedAt = modelcatalogsourceDescCreatedAt.Default.(func() time.Time)
+	// modelcatalogsourceDescUpdatedAt is the schema descriptor for updated_at field.
+	modelcatalogsourceDescUpdatedAt := modelcatalogsourceFields[14].Descriptor()
+	// modelcatalogsource.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	modelcatalogsource.DefaultUpdatedAt = modelcatalogsourceDescUpdatedAt.Default.(func() time.Time)
+	// modelcatalogsource.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	modelcatalogsource.UpdateDefaultUpdatedAt = modelcatalogsourceDescUpdatedAt.UpdateDefault.(func() time.Time)
 	redeemcodeFields := schema.RedeemCode{}.Fields()
 	_ = redeemcodeFields
 	// redeemcodeDescCode is the schema descriptor for code field.

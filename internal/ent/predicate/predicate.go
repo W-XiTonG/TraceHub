@@ -24,6 +24,12 @@ type Group func(*sql.Selector)
 // GroupModelRate is the predicate function for groupmodelrate builders.
 type GroupModelRate func(*sql.Selector)
 
+// ModelCatalogEntry is the predicate function for modelcatalogentry builders.
+type ModelCatalogEntry func(*sql.Selector)
+
+// ModelCatalogSource is the predicate function for modelcatalogsource builders.
+type ModelCatalogSource func(*sql.Selector)
+
 // RedeemCode is the predicate function for redeemcode builders.
 type RedeemCode func(*sql.Selector)
 

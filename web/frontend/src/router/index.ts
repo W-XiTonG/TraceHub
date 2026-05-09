@@ -26,6 +26,7 @@ const router = createRouter({
         { path: 'users', name: 'admin-users', component: () => import('../views/AdminUsers.vue') },
         { path: 'channels', name: 'admin-channels', component: () => import('../views/AdminChannels.vue') },
         { path: 'logs', name: 'admin-logs', component: () => import('../views/AdminLogs.vue') },
+        { path: 'model-market', name: 'admin-model-market', component: () => import('../views/AdminModelMarket.vue') },
       ],
     },
   ],

@@ -9,6 +9,7 @@ import (
 	"math"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/usagelog"
 
@@ -21,12 +22,13 @@ import (
 // ChannelQuery is the builder for querying Channel entities.
 type ChannelQuery struct {
 	config
-	ctx           *QueryContext
-	order         []channel.OrderOption
-	inters        []Interceptor
-	predicates    []predicate.Channel
-	withGroup     *GroupQuery
-	withUsageLogs *UsageLogQuery
+	ctx                     *QueryContext
+	order                   []channel.OrderOption
+	inters                  []Interceptor
+	predicates              []predicate.Channel
+	withGroup               *GroupQuery
+	withUsageLogs           *UsageLogQuery
+	withModelCatalogSources *ModelCatalogSourceQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +102,28 @@ func (_q *ChannelQuery) QueryUsageLogs() *UsageLogQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, selector),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.UsageLogsTable, channel.UsageLogsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryModelCatalogSources chains the current query on the "model_catalog_sources" edge.
+func (_q *ChannelQuery) QueryModelCatalogSources() *ModelCatalogSourceQuery {
+	query := (&ModelCatalogSourceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, selector),
+			sqlgraph.To(modelcatalogsource.Table, modelcatalogsource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ModelCatalogSourcesTable, channel.ModelCatalogSourcesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -294,13 +318,14 @@ func (_q *ChannelQuery) Clone() *ChannelQuery {
 		return nil
 	}
 	return &ChannelQuery{
-		config:        _q.config,
-		ctx:           _q.ctx.Clone(),
-		order:         append([]channel.OrderOption{}, _q.order...),
-		inters:        append([]Interceptor{}, _q.inters...),
-		predicates:    append([]predicate.Channel{}, _q.predicates...),
-		withGroup:     _q.withGroup.Clone(),
-		withUsageLogs: _q.withUsageLogs.Clone(),
+		config:                  _q.config,
+		ctx:                     _q.ctx.Clone(),
+		order:                   append([]channel.OrderOption{}, _q.order...),
+		inters:                  append([]Interceptor{}, _q.inters...),
+		predicates:              append([]predicate.Channel{}, _q.predicates...),
+		withGroup:               _q.withGroup.Clone(),
+		withUsageLogs:           _q.withUsageLogs.Clone(),
+		withModelCatalogSources: _q.withModelCatalogSources.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -326,6 +351,17 @@ func (_q *ChannelQuery) WithUsageLogs(opts ...func(*UsageLogQuery)) *ChannelQuer
 		opt(query)
 	}
 	_q.withUsageLogs = query
+	return _q
+}
+
+// WithModelCatalogSources tells the query-builder to eager-load the nodes that are connected to
+// the "model_catalog_sources" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ChannelQuery) WithModelCatalogSources(opts ...func(*ModelCatalogSourceQuery)) *ChannelQuery {
+	query := (&ModelCatalogSourceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withModelCatalogSources = query
 	return _q
 }
 
@@ -407,9 +443,10 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 	var (
 		nodes       = []*Channel{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withGroup != nil,
 			_q.withUsageLogs != nil,
+			_q.withModelCatalogSources != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -440,6 +477,15 @@ func (_q *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 		if err := _q.loadUsageLogs(ctx, query, nodes,
 			func(n *Channel) { n.Edges.UsageLogs = []*UsageLog{} },
 			func(n *Channel, e *UsageLog) { n.Edges.UsageLogs = append(n.Edges.UsageLogs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withModelCatalogSources; query != nil {
+		if err := _q.loadModelCatalogSources(ctx, query, nodes,
+			func(n *Channel) { n.Edges.ModelCatalogSources = []*ModelCatalogSource{} },
+			func(n *Channel, e *ModelCatalogSource) {
+				n.Edges.ModelCatalogSources = append(n.Edges.ModelCatalogSources, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -490,6 +536,36 @@ func (_q *ChannelQuery) loadUsageLogs(ctx context.Context, query *UsageLogQuery,
 	}
 	query.Where(predicate.UsageLog(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(channel.UsageLogsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ChannelID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "channel_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ChannelQuery) loadModelCatalogSources(ctx context.Context, query *ModelCatalogSourceQuery, nodes []*Channel, init func(*Channel), assign func(*Channel, *ModelCatalogSource)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Channel)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(modelcatalogsource.FieldChannelID)
+	}
+	query.Where(predicate.ModelCatalogSource(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(channel.ModelCatalogSourcesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

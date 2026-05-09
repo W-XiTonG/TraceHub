@@ -24,6 +24,10 @@ type Tx struct {
 	Group *GroupClient
 	// GroupModelRate is the client for interacting with the GroupModelRate builders.
 	GroupModelRate *GroupModelRateClient
+	// ModelCatalogEntry is the client for interacting with the ModelCatalogEntry builders.
+	ModelCatalogEntry *ModelCatalogEntryClient
+	// ModelCatalogSource is the client for interacting with the ModelCatalogSource builders.
+	ModelCatalogSource *ModelCatalogSourceClient
 	// RedeemCode is the client for interacting with the RedeemCode builders.
 	RedeemCode *RedeemCodeClient
 	// SystemConfig is the client for interacting with the SystemConfig builders.
@@ -169,6 +173,8 @@ func (tx *Tx) init() {
 	tx.DashboardAggregation = NewDashboardAggregationClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)
 	tx.GroupModelRate = NewGroupModelRateClient(tx.config)
+	tx.ModelCatalogEntry = NewModelCatalogEntryClient(tx.config)
+	tx.ModelCatalogSource = NewModelCatalogSourceClient(tx.config)
 	tx.RedeemCode = NewRedeemCodeClient(tx.config)
 	tx.SystemConfig = NewSystemConfigClient(tx.config)
 	tx.UsageLog = NewUsageLogClient(tx.config)

@@ -268,6 +268,103 @@ var (
 			},
 		},
 	}
+	// ModelCatalogEntriesColumns holds the columns for the "model_catalog_entries" table.
+	ModelCatalogEntriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "model_id", Type: field.TypeString, Unique: true, Size: 255},
+		{Name: "display_name", Type: field.TypeString, Nullable: true, Size: 255},
+		{Name: "provider_slug", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "owned_by", Type: field.TypeString, Nullable: true, Size: 128},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
+		{Name: "visible", Type: field.TypeBool, Default: true},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "source_id", Type: field.TypeInt, Nullable: true},
+	}
+	// ModelCatalogEntriesTable holds the schema information for the "model_catalog_entries" table.
+	ModelCatalogEntriesTable = &schema.Table{
+		Name:       "model_catalog_entries",
+		Columns:    ModelCatalogEntriesColumns,
+		PrimaryKey: []*schema.Column{ModelCatalogEntriesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "model_catalog_entries_model_catalog_sources_catalog_entries",
+				Columns:    []*schema.Column{ModelCatalogEntriesColumns[12]},
+				RefColumns: []*schema.Column{ModelCatalogSourcesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "modelcatalogentry_model_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModelCatalogEntriesColumns[1]},
+			},
+			{
+				Name:    "modelcatalogentry_source_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModelCatalogEntriesColumns[12]},
+			},
+			{
+				Name:    "modelcatalogentry_visible",
+				Unique:  false,
+				Columns: []*schema.Column{ModelCatalogEntriesColumns[7]},
+			},
+			{
+				Name:    "modelcatalogentry_provider_slug",
+				Unique:  false,
+				Columns: []*schema.Column{ModelCatalogEntriesColumns[3]},
+			},
+		},
+	}
+	// ModelCatalogSourcesColumns holds the columns for the "model_catalog_sources" table.
+	ModelCatalogSourcesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Size: 120},
+		{Name: "provider_slug", Type: field.TypeString, Size: 64, Default: "openai_compatible"},
+		{Name: "base_url", Type: field.TypeString, Size: 500},
+		{Name: "models_path", Type: field.TypeString, Size: 255, Default: "/v1/models"},
+		{Name: "credential_mode", Type: field.TypeEnum, Enums: []string{"none", "static", "channel"}, Default: "static"},
+		{Name: "api_key_encrypted", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "extra_headers", Type: field.TypeJSON, Nullable: true},
+		{Name: "parse_mode", Type: field.TypeEnum, Enums: []string{"openai_json"}, Default: "openai_json"},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "last_sync_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_sync_ok", Type: field.TypeBool, Default: false},
+		{Name: "last_sync_message", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
+	}
+	// ModelCatalogSourcesTable holds the schema information for the "model_catalog_sources" table.
+	ModelCatalogSourcesTable = &schema.Table{
+		Name:       "model_catalog_sources",
+		Columns:    ModelCatalogSourcesColumns,
+		PrimaryKey: []*schema.Column{ModelCatalogSourcesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "model_catalog_sources_channels_model_catalog_sources",
+				Columns:    []*schema.Column{ModelCatalogSourcesColumns[15]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "modelcatalogsource_enabled",
+				Unique:  false,
+				Columns: []*schema.Column{ModelCatalogSourcesColumns[9]},
+			},
+			{
+				Name:    "modelcatalogsource_channel_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModelCatalogSourcesColumns[15]},
+			},
+		},
+	}
 	// RedeemCodesColumns holds the columns for the "redeem_codes" table.
 	RedeemCodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -470,6 +567,8 @@ var (
 		DashboardAggregationsTable,
 		GroupsTable,
 		GroupModelRatesTable,
+		ModelCatalogEntriesTable,
+		ModelCatalogSourcesTable,
 		RedeemCodesTable,
 		SystemConfigsTable,
 		UsageLogsTable,
@@ -483,6 +582,8 @@ func init() {
 	AdminAuditLogsTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelsTable.ForeignKeys[0].RefTable = GroupsTable
 	GroupModelRatesTable.ForeignKeys[0].RefTable = GroupsTable
+	ModelCatalogEntriesTable.ForeignKeys[0].RefTable = ModelCatalogSourcesTable
+	ModelCatalogSourcesTable.ForeignKeys[0].RefTable = ChannelsTable
 	RedeemCodesTable.ForeignKeys[0].RefTable = UsersTable
 	RedeemCodesTable.ForeignKeys[1].RefTable = UsersTable
 	UsageLogsTable.ForeignKeys[0].RefTable = APIKeysTable

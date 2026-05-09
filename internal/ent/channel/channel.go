@@ -71,6 +71,8 @@ const (
 	EdgeGroup = "group"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeModelCatalogSources holds the string denoting the model_catalog_sources edge name in mutations.
+	EdgeModelCatalogSources = "model_catalog_sources"
 	// Table holds the table name of the channel in the database.
 	Table = "channels"
 	// GroupTable is the table that holds the group relation/edge.
@@ -87,6 +89,13 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "channel_id"
+	// ModelCatalogSourcesTable is the table that holds the model_catalog_sources relation/edge.
+	ModelCatalogSourcesTable = "model_catalog_sources"
+	// ModelCatalogSourcesInverseTable is the table name for the ModelCatalogSource entity.
+	// It exists in this package in order to avoid circular dependency with the "modelcatalogsource" package.
+	ModelCatalogSourcesInverseTable = "model_catalog_sources"
+	// ModelCatalogSourcesColumn is the table column denoting the model_catalog_sources relation/edge.
+	ModelCatalogSourcesColumn = "channel_id"
 )
 
 // Columns holds all SQL columns for channel fields.
@@ -344,6 +353,20 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByModelCatalogSourcesCount orders the results by model_catalog_sources count.
+func ByModelCatalogSourcesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newModelCatalogSourcesStep(), opts...)
+	}
+}
+
+// ByModelCatalogSources orders the results by model_catalog_sources terms.
+func ByModelCatalogSources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newModelCatalogSourcesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -356,5 +379,12 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newModelCatalogSourcesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ModelCatalogSourcesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ModelCatalogSourcesTable, ModelCatalogSourcesColumn),
 	)
 }

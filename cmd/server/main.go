@@ -9,6 +9,7 @@ import (
 	"tracehub/internal/bootstrap"
 	"tracehub/internal/ent"
 	"tracehub/internal/pkg/config"
+	"tracehub/internal/pkg/pginit"
 	"tracehub/internal/server"
 
 	_ "github.com/lib/pq"
@@ -31,13 +32,21 @@ func main() {
 		zlog.Fatal("加载配置失败", zap.Error(err), zap.String("path", *cfgPath))
 	}
 
+	ctx := context.Background()
+	createdDB, createdDBName, err := pginit.EnsureDatabase(ctx, cfg.Database.DSN)
+	if err != nil {
+		zlog.Fatal("数据库准备失败", zap.Error(err))
+	}
+	if createdDB {
+		zlog.Info("已自动创建 PostgreSQL 数据库（表结构将由迁移创建）", zap.String("database", createdDBName))
+	}
+
 	client, err := ent.Open("postgres", cfg.Database.DSN)
 	if err != nil {
 		zlog.Fatal("数据库连接失败", zap.Error(err))
 	}
 	defer client.Close()
 
-	ctx := context.Background()
 	if err := client.Schema.Create(ctx); err != nil {
 		zlog.Fatal("数据库迁移失败", zap.Error(err))
 	}

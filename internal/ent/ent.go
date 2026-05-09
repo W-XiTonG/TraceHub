@@ -14,6 +14,8 @@ import (
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/modelcatalogentry"
+	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
@@ -88,6 +90,8 @@ func checkColumn(t, c string) error {
 			dashboardaggregation.Table: dashboardaggregation.ValidColumn,
 			group.Table:                group.ValidColumn,
 			groupmodelrate.Table:       groupmodelrate.ValidColumn,
+			modelcatalogentry.Table:    modelcatalogentry.ValidColumn,
+			modelcatalogsource.Table:   modelcatalogsource.ValidColumn,
 			redeemcode.Table:           redeemcode.ValidColumn,
 			systemconfig.Table:         systemconfig.ValidColumn,
 			usagelog.Table:             usagelog.ValidColumn,
