@@ -69,7 +69,12 @@ const faqs = [
           一套 OpenAI 兼容接口，智能路由、Token 级计费、多账号负载与粘性会话，可私有化部署。
         </p>
         <div class="relative mt-10 flex flex-wrap justify-center gap-4">
-          <RouterLink to="/register" class="th-btn-primary px-10 py-3.5 text-base">立即开始</RouterLink>
+          <RouterLink
+            :to="auth.isLoggedIn ? '/console' : '/register'"
+            class="th-btn-primary px-10 py-3.5 text-base"
+          >
+            {{ auth.isLoggedIn ? '进入控制台' : '立即开始' }}
+          </RouterLink>
           <a href="#pricing" class="th-btn-secondary px-10 py-3.5 text-base">查看价格</a>
         </div>
       </section>
