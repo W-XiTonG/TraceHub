@@ -1,7 +1,41 @@
 /bin/
 /web/frontend/dist/
 /web/frontend/node_modules/
+
 *.exe
 *.test
+*.out
+*.dll
+*.so
+*.dylib
+
 .env
+.env.*
+!.env.example
 configs/config.local.yaml
+
+# 日志与临时文件
+*.log
+/tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# Go
+coverage.out
+coverage.html
+/vendor/
+
+# IDE / 编辑器
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Air（Go 热重载）
+tmp/
