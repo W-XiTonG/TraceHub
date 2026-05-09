@@ -1,0 +1,26 @@
+server:
+  addr: ":8080"
+  mode: debug
+
+database:
+  dsn: "postgres://tracehub:tracehub@localhost:5432/tracehub?sslmode=disable"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+security:
+  jwt_secret: "tracehub-dev-change-me-please-use-long-secret"
+
+site:
+  api_key_prefix: "sk-th-"
+  currency_quota_per_yuan: 10000
+  default_new_user_balance: 100000
+  cors_origins:
+    - "*"
+
+bootstrap:
+  admin_email: "admin@example.com"
+  admin_password: "Admin123!"
+  default_group_name: "基础分组"

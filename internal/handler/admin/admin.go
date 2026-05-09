@@ -1,0 +1,597 @@
+package adminhandler
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"strconv"
+	"strings"
+	"time"
+
+	"tracehub/internal/ent"
+	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/usagelog"
+	"tracehub/internal/ent/user"
+	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/cryptokey"
+	"tracehub/internal/pkg/httpx"
+
+	"github.com/gin-gonic/gin"
+)
+
+func auditLog(client *ent.Client, adminID int, action, resource, rid string, detail map[string]any, c *gin.Context) {
+	ip := c.ClientIP()
+	ua := c.GetHeader("User-Agent")
+	cr := client.AdminAuditLog.Create().
+		SetAdminID(adminID).
+		SetAction(action).
+		SetResource(resource).
+		SetIPAddress(ip).
+		SetUserAgent(ua)
+	if rid != "" {
+		cr.SetResourceID(rid)
+	}
+	if detail != nil {
+		cr.SetDetail(detail)
+	}
+	_, _ = cr.Save(context.Background())
+}
+
+func ListUsers(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+		if page < 1 {
+			page = 1
+		}
+		if ps < 1 || ps > 200 {
+			ps = 20
+		}
+		ctx := c.Request.Context()
+		q := client.User.Query().WithGroup()
+		if em := strings.TrimSpace(c.Query("email")); em != "" {
+			q = q.Where(user.EmailContainsFold(em))
+		}
+		total, err := q.Clone().Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		us, err := q.
+			Offset((page - 1) * ps).
+			Limit(ps).
+			Order(ent.Desc(user.FieldCreatedAt)).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		var items []gin.H
+		for _, u := range us {
+			gn := ""
+			if u.Edges.Group != nil {
+				gn = u.Edges.Group.Name
+			}
+			items = append(items, gin.H{
+				"id":            u.ID,
+				"email":         u.Email,
+				"username":      u.Username,
+				"group_name":    gn,
+				"balance":       u.Balance,
+				"status":        u.Status,
+				"created_at":    u.CreatedAt,
+				"last_login_at": u.LastLoginAt,
+			})
+		}
+		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
+	}
+}
+
+func UpdateUser(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		var req struct {
+			Status          *int     `json:"status"`
+			GroupID         *int     `json:"group_id"`
+			RateMultiplier  *float64 `json:"rate_multiplier"`
+			BalanceAlert    *int64   `json:"balance_alert_threshold"`
+			IPWhitelist     []string `json:"ip_whitelist"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		u, err := client.User.Get(ctx, id)
+		if err != nil {
+			httpx.BadRequest(c, "用户不存在")
+			return
+		}
+		up := client.User.UpdateOne(u)
+		if req.Status != nil {
+			up.SetStatus(*req.Status)
+		}
+		if req.GroupID != nil {
+			up.SetGroupID(*req.GroupID)
+		}
+		if req.RateMultiplier != nil {
+			up.SetRateMultiplier(*req.RateMultiplier)
+		}
+		if req.BalanceAlert != nil {
+			up.SetBalanceAlertThreshold(*req.BalanceAlert)
+		}
+		if req.IPWhitelist != nil {
+			up.SetIPWhitelist(req.IPWhitelist)
+		}
+		if err := up.Exec(ctx); err != nil {
+			httpx.ServerError(c, "更新失败")
+			return
+		}
+		auditLog(client, adm.ID, "user.update", "user", strconv.Itoa(id), map[string]any{"body": req}, c)
+		httpx.OKMsg(c, "已更新", nil)
+	}
+}
+
+func AdjustBalance(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		var req struct {
+			Delta int64 `json:"delta"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		if err := client.User.UpdateOneID(id).AddBalance(req.Delta).Exec(ctx); err != nil {
+			httpx.ServerError(c, "调整失败")
+			return
+		}
+		auditLog(client, adm.ID, "user.balance", "user", strconv.Itoa(id), map[string]any{"delta": req.Delta}, c)
+		httpx.OKMsg(c, "已调整", nil)
+	}
+}
+
+func ListChannels(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		chs, err := client.Channel.Query().WithGroup().All(c.Request.Context())
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		var items []gin.H
+		for _, ch := range chs {
+			items = append(items, gin.H{
+				"id":             ch.ID,
+				"group_id":       ch.GroupID,
+				"channel_type":   ch.ChannelType,
+				"channel_name":   ch.ChannelName,
+				"auth_type":      ch.AuthType,
+				"api_base_url":   ch.APIBaseURL,
+				"models":         ch.Models,
+				"model_alias":    ch.ModelAlias,
+				"priority":       ch.Priority,
+				"weight":         ch.Weight,
+				"concurrency":    ch.Concurrency,
+				"enabled":        ch.Enabled,
+				"health_status":  ch.HealthStatus,
+				"schedulable":    ch.Schedulable,
+				"has_api_secret": ch.APIKey != "" || ch.OauthToken != "",
+			})
+		}
+		httpx.OK(c, gin.H{"items": items, "total": len(items)})
+	}
+}
+
+type ChannelDeps struct {
+	Client *ent.Client
+	AESKey []byte
+}
+
+func CreateChannel(d ChannelDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		var req struct {
+			GroupID       int               `json:"group_id"`
+			ChannelType   string            `json:"channel_type"`
+			ChannelName   string            `json:"channel_name"`
+			AuthType      channel.AuthType  `json:"auth_type"`
+			APIKey        string            `json:"api_key"`
+			OauthToken    string            `json:"oauth_token"`
+			OauthRefresh  string            `json:"oauth_refresh_token"`
+			SetupToken    string            `json:"setup_token"`
+			APIBaseURL    string            `json:"api_base_url"`
+			Models        []string          `json:"models"`
+			ModelAlias    map[string]string `json:"model_alias"`
+			Priority      int               `json:"priority"`
+			Weight        int               `json:"weight"`
+			Concurrency   int               `json:"concurrency"`
+			Enabled       bool              `json:"enabled"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || req.ChannelType == "" || req.GroupID == 0 {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		cr := d.Client.Channel.Create().
+			SetGroupID(req.GroupID).
+			SetChannelType(req.ChannelType).
+			SetChannelName(req.ChannelName).
+			SetAuthType(req.AuthType).
+			SetAPIBaseURL(req.APIBaseURL).
+			SetModels(req.Models).
+			SetPriority(req.Priority).
+			SetWeight(req.Weight).
+			SetConcurrency(req.Concurrency).
+			SetEnabled(req.Enabled)
+		if len(req.ModelAlias) > 0 {
+			cr.SetModelAlias(req.ModelAlias)
+		}
+		if req.APIKey != "" {
+			enc, err := cryptokey.EncryptGCM(d.AESKey, []byte(req.APIKey))
+			if err != nil {
+				httpx.ServerError(c, "加密失败")
+				return
+			}
+			cr.SetAPIKey(enc)
+		}
+		if req.OauthToken != "" {
+			enc, err := cryptokey.EncryptGCM(d.AESKey, []byte(req.OauthToken))
+			if err != nil {
+				httpx.ServerError(c, "加密失败")
+				return
+			}
+			cr.SetOauthToken(enc)
+		}
+		if req.OauthRefresh != "" {
+			enc, err := cryptokey.EncryptGCM(d.AESKey, []byte(req.OauthRefresh))
+			if err != nil {
+				httpx.ServerError(c, "加密失败")
+				return
+			}
+			cr.SetOauthRefreshToken(enc)
+		}
+		if req.SetupToken != "" {
+			enc, err := cryptokey.EncryptGCM(d.AESKey, []byte(req.SetupToken))
+			if err != nil {
+				httpx.ServerError(c, "加密失败")
+				return
+			}
+			cr.SetSetupToken(enc)
+		}
+		ch, err := cr.Save(ctx)
+		if err != nil {
+			httpx.ServerError(c, "创建失败")
+			return
+		}
+		auditLog(d.Client, adm.ID, "channel.create", "channel", strconv.Itoa(ch.ID), map[string]any{"type": req.ChannelType}, c)
+		httpx.OKMsg(c, "创建成功", gin.H{"id": ch.ID})
+	}
+}
+
+func UpdateChannel(d ChannelDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		var req struct {
+			ChannelName string            `json:"channel_name"`
+			APIKey      *string           `json:"api_key"`
+			APIBaseURL  *string           `json:"api_base_url"`
+			Models      []string          `json:"models"`
+			ModelAlias  map[string]string `json:"model_alias"`
+			Priority    *int              `json:"priority"`
+			Weight      *int              `json:"weight"`
+			Concurrency *int              `json:"concurrency"`
+			Enabled     *bool             `json:"enabled"`
+			Schedulable *bool             `json:"schedulable"`
+			Health      *int              `json:"health_status"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		ch, err := d.Client.Channel.Get(ctx, id)
+		if err != nil {
+			httpx.BadRequest(c, "不存在")
+			return
+		}
+		up := d.Client.Channel.UpdateOne(ch)
+		if req.ChannelName != "" {
+			up.SetChannelName(req.ChannelName)
+		}
+		if req.APIBaseURL != nil {
+			up.SetAPIBaseURL(*req.APIBaseURL)
+		}
+		if len(req.Models) > 0 {
+			up.SetModels(req.Models)
+		}
+		if req.ModelAlias != nil {
+			up.SetModelAlias(req.ModelAlias)
+		}
+		if req.Priority != nil {
+			up.SetPriority(*req.Priority)
+		}
+		if req.Weight != nil {
+			up.SetWeight(*req.Weight)
+		}
+		if req.Concurrency != nil {
+			up.SetConcurrency(*req.Concurrency)
+		}
+		if req.Enabled != nil {
+			up.SetEnabled(*req.Enabled)
+		}
+		if req.Schedulable != nil {
+			up.SetSchedulable(*req.Schedulable)
+		}
+		if req.Health != nil {
+			up.SetHealthStatus(*req.Health)
+		}
+		if req.APIKey != nil && *req.APIKey != "" {
+			enc, err := cryptokey.EncryptGCM(d.AESKey, []byte(*req.APIKey))
+			if err != nil {
+				httpx.ServerError(c, "加密失败")
+				return
+			}
+			up.SetAPIKey(enc)
+		}
+		if err := up.Exec(ctx); err != nil {
+			httpx.ServerError(c, "更新失败")
+			return
+		}
+		auditLog(d.Client, adm.ID, "channel.update", "channel", strconv.Itoa(id), map[string]any{"body": req}, c)
+		httpx.OKMsg(c, "已更新", nil)
+	}
+}
+
+func DeleteChannel(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		ctx := c.Request.Context()
+		if err := client.Channel.DeleteOneID(id).Exec(ctx); err != nil {
+			httpx.ServerError(c, "删除失败")
+			return
+		}
+		auditLog(client, adm.ID, "channel.delete", "channel", strconv.Itoa(id), nil, c)
+		httpx.OKMsg(c, "已删除", nil)
+	}
+}
+
+func ListGroups(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		gs, err := client.Group.Query().All(c.Request.Context())
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		httpx.OK(c, gin.H{"items": gs, "total": len(gs)})
+	}
+}
+
+func CreateGroup(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		var req struct {
+			Name            string             `json:"name"`
+			Description     string             `json:"description"`
+			RateMultiplier  float64            `json:"rate_multiplier"`
+			RPMLimit        int                `json:"rpm_limit"`
+			ModelRouting    map[string][]int64 `json:"model_routing"`
+			DefaultModel    string             `json:"default_model"`
+			Enabled         bool               `json:"enabled"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		cr := client.Group.Create().
+			SetName(req.Name).
+			SetDescription(req.Description).
+			SetRateMultiplier(req.RateMultiplier).
+			SetRpmLimit(req.RPMLimit).
+			SetDefaultModel(req.DefaultModel).
+			SetEnabled(req.Enabled)
+		if len(req.ModelRouting) > 0 {
+			cr.SetModelRouting(req.ModelRouting)
+		}
+		g, err := cr.Save(ctx)
+		if err != nil {
+			httpx.ServerError(c, "创建失败")
+			return
+		}
+		auditLog(client, adm.ID, "group.create", "group", strconv.Itoa(g.ID), nil, c)
+		httpx.OKMsg(c, "创建成功", gin.H{"id": g.ID})
+	}
+}
+
+func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		gid, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		var req struct {
+			Rates []struct {
+				ModelName string  `json:"model_name"`
+				InputRate float64 `json:"input_rate"`
+				OutputRate float64 `json:"output_rate"`
+				Enabled   bool    `json:"enabled"`
+			} `json:"rates"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		for _, r := range req.Rates {
+			existing, err := client.GroupModelRate.Query().
+				Where(groupmodelrate.GroupIDEQ(gid), groupmodelrate.ModelNameEQ(r.ModelName)).
+				Only(ctx)
+			if ent.IsNotFound(err) {
+				_, err = client.GroupModelRate.Create().
+					SetGroupID(gid).
+					SetModelName(r.ModelName).
+					SetInputRate(r.InputRate).
+					SetOutputRate(r.OutputRate).
+					SetEnabled(r.Enabled).
+					Save(ctx)
+			} else if err == nil {
+				err = client.GroupModelRate.UpdateOne(existing).
+					SetInputRate(r.InputRate).
+					SetOutputRate(r.OutputRate).
+					SetEnabled(r.Enabled).
+					Exec(ctx)
+			}
+			if err != nil {
+				httpx.ServerError(c, "保存倍率失败")
+				return
+			}
+		}
+		auditLog(client, adm.ID, "group.model_rates", "group", strconv.Itoa(gid), map[string]any{"count": len(req.Rates)}, c)
+		httpx.OKMsg(c, "已保存", nil)
+	}
+}
+
+func ListLogs(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+		if page < 1 {
+			page = 1
+		}
+		if ps < 1 || ps > 200 {
+			ps = 50
+		}
+		ctx := c.Request.Context()
+		q := client.UsageLog.Query()
+		if uid := c.Query("user_id"); uid != "" {
+			id, _ := strconv.Atoi(uid)
+			q = q.Where(usagelog.UserIDEQ(id))
+		}
+		if model := c.Query("model"); model != "" {
+			q = q.Where(usagelog.ModelEQ(model))
+		}
+		total, err := q.Clone().Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		logs, err := q.Order(ent.Desc(usagelog.FieldRequestTime)).
+			Offset((page - 1) * ps).
+			Limit(ps).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		httpx.OK(c, gin.H{"items": logs, "total": total, "page": page, "page_size": ps})
+	}
+}
+
+func BatchRedeemCodes(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		var req struct {
+			Count      int    `json:"count"`
+			CodeType   string `json:"code_type"`
+			Amount     int64  `json:"amount"`
+			MaxUses    int    `json:"max_uses"`
+			ValidDays  int    `json:"valid_days"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || req.Count < 1 || req.Count > 500 {
+			httpx.BadRequest(c, "count 须在 1~500")
+			return
+		}
+		if req.CodeType == "" {
+			req.CodeType = "fixed"
+		}
+		if req.MaxUses < 1 {
+			req.MaxUses = 1
+		}
+		ctx := c.Request.Context()
+		var codes []string
+		until := time.Now().Add(time.Duration(req.ValidDays) * 24 * time.Hour)
+		for i := 0; i < req.Count; i++ {
+			buf := make([]byte, 16)
+			_, _ = rand.Read(buf)
+			code := "TH-" + strings.ToUpper(hex.EncodeToString(buf))
+			cr := client.RedeemCode.Create().
+				SetCode(code).
+				SetCodeType(req.CodeType).
+				SetAmount(req.Amount).
+				SetMaxUses(req.MaxUses).
+				SetStatus(1).
+				SetCreatedBy(adm.ID)
+			if req.ValidDays > 0 {
+				cr.SetValidUntil(until)
+			}
+			if _, err := cr.Save(ctx); err != nil {
+				httpx.ServerError(c, "生成失败")
+				return
+			}
+			codes = append(codes, code)
+		}
+		auditLog(client, adm.ID, "redeem.batch", "redeem", "", map[string]any{"count": len(codes)}, c)
+		httpx.OK(c, gin.H{"codes": codes})
+	}
+}
+
+func DashboardSummary(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		users, err := client.User.Query().Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		start := time.Now().Truncate(24 * time.Hour)
+		todayLogs, err := client.UsageLog.Query().
+			Where(usagelog.RequestTimeGTE(start)).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		var tokens int64
+		var cost int64
+		for _, l := range todayLogs {
+			tokens += int64(l.TotalTokens)
+			cost += l.TotalCost
+		}
+		channels, err := client.Channel.Query().Where(channel.Enabled(true)).Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		httpx.OK(c, gin.H{
+			"total_users":       users,
+			"enabled_channels":  channels,
+			"today_requests":    len(todayLogs),
+			"today_tokens":      tokens,
+			"today_cost_quota":  cost,
+		})
+	}
+}

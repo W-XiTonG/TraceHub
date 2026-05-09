@@ -1,0 +1,33 @@
+{
+  "name": "_auto_bd390f2820fc43f58e9a6fb59b0c0985",
+  "leadAgentId": "bd390f2820fc43f58e9a6fb59b0c0985",
+  "workspacePath": "d:\\开源项目\\TraceHub",
+  "createdAt": "2026-05-09T05:34:42.924Z",
+  "options": {
+    "workspacePath": "d:\\开源项目\\TraceHub",
+    "isAutoTeam": true
+  },
+  "members": [
+    {
+      "memberId": "team-lead@_auto_bd390f2820fc43f58e9a6fb59b0c0985",
+      "name": "team-lead",
+      "role": "Team Lead - coordinates the team and interacts with the user"
+    },
+    {
+      "memberId": "arch-doc-writer@_auto_bd390f2820fc43f58e9a6fb59b0c0985",
+      "name": "arch-doc-writer",
+      "role": "编写技术架构设计文档"
+    },
+    {
+      "memberId": "db-doc-writer@_auto_bd390f2820fc43f58e9a6fb59b0c0985",
+      "name": "db-doc-writer",
+      "role": "编写数据库设计完整文档"
+    },
+    {
+      "memberId": "api-doc-writer@_auto_bd390f2820fc43f58e9a6fb59b0c0985",
+      "name": "api-doc-writer",
+      "role": "编写API接口详细设计文档"
+    }
+  ],
+  "isAutoTeam": true
+}
