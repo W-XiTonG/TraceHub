@@ -1,6 +1,22 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+const showAdminDenied = computed(() => route.query.denied === 'admin')
+
+function dismissAdminDenied() {
+  const q = { ...route.query } as Record<string, string | string[]>
+  delete q.denied
+  router.replace({ path: route.path, query: q })
+}
+
+const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role))
 </script>
 
 <template>
@@ -21,6 +37,7 @@ import UserAccountMenu from '../components/UserAccountMenu.vue'
         <RouterLink to="/console/billing" class="th-nav-link">充值中心</RouterLink>
         <RouterLink to="/console/redeem" class="th-nav-link">兑换码</RouterLink>
         <RouterLink to="/console/settings" class="th-nav-link">账户设置</RouterLink>
+        <RouterLink v-if="canAccessAdmin" to="/admin" class="th-nav-link border-t border-white/[0.06] pt-3 mt-2">管理后台</RouterLink>
       </nav>
       <RouterLink to="/" class="mt-4 rounded-lg px-3 py-2 text-xs text-slate-600 transition hover:bg-white/5 hover:text-slate-400">← 返回官网</RouterLink>
     </aside>
@@ -30,6 +47,20 @@ import UserAccountMenu from '../components/UserAccountMenu.vue'
         <UserAccountMenu accent="cyan" />
       </header>
       <main class="flex-1 overflow-auto p-6 md:p-10">
+        <div
+          v-if="showAdminDenied"
+          class="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/25 bg-amber-950/35 px-4 py-3 text-sm text-amber-100/95"
+          role="alert"
+        >
+          <p>
+            管理后台仅限 <span class="font-medium text-white">admin / superadmin</span> 角色账号访问。当前账号无管理员权限；若需开通，请在数据库中修改用户
+            <code class="mx-1 rounded bg-black/30 px-1.5 py-0.5 font-mono text-xs text-cyan-200/90">role</code>
+            字段，或使用配置里
+            <code class="mx-1 rounded bg-black/30 px-1.5 py-0.5 font-mono text-xs text-cyan-200/90">bootstrap.admin_email</code>
+            种子账号登录。
+          </p>
+          <button type="button" class="shrink-0 rounded-lg px-2 py-1 text-xs text-amber-200/80 hover:bg-white/10" @click="dismissAdminDenied">关闭</button>
+        </div>
         <RouterView />
       </main>
     </div>

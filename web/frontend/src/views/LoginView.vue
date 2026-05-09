@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-const email = ref('')
+/** 邮箱或用户名（与后端 JSON 字段 email 兼容） */
+const account = ref('')
 const password = ref('')
 const err = ref('')
 const loading = ref(false)
@@ -15,7 +16,7 @@ async function submit() {
   err.value = ''
   loading.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(account.value, password.value)
     const redir = (route.query.redirect as string) || '/console'
     router.push(redir)
   } catch (e: unknown) {
@@ -39,8 +40,8 @@ async function submit() {
         <p class="mb-8 text-center text-sm text-slate-500">登录 TraceHub 控制台</p>
         <form class="space-y-5" @submit.prevent="submit">
           <div>
-            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">邮箱</label>
-            <input v-model="email" type="email" required class="th-input" autocomplete="email" />
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">邮箱或用户名</label>
+            <input v-model="account" type="text" required class="th-input" autocomplete="username" placeholder="例如 admin 或 your@email.com" />
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">密码</label>

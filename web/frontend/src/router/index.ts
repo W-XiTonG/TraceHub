@@ -42,7 +42,7 @@ router.beforeEach((to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresAdmin && !['admin', 'superadmin'].includes(auth.role)) {
-    return { name: 'home' }
+    return { path: '/console', query: { denied: 'admin' } }
   }
   return true
 })

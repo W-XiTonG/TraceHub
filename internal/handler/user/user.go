@@ -91,17 +91,28 @@ func Login(client *ent.Client, cfg *config.Config, jwtSecret []byte) gin.Handler
 			httpx.BadRequest(c, "参数无效")
 			return
 		}
+		id := strings.TrimSpace(req.Email)
+		if id == "" || req.Password == "" {
+			httpx.BadRequest(c, "邮箱或用户名与密码必填")
+			return
+		}
 		ctx := c.Request.Context()
 		u, err := client.User.Query().
-			Where(user.EmailEQ(strings.TrimSpace(req.Email))).
+			Where(user.EmailEQ(id)).
 			WithGroup().
 			Only(ctx)
+		if ent.IsNotFound(err) {
+			u, err = client.User.Query().
+				Where(user.UsernameEQ(id)).
+				WithGroup().
+				Only(ctx)
+		}
 		if err != nil || u.Status != 1 {
-			httpx.Unauthorized(c, "邮箱或密码错误")
+			httpx.Unauthorized(c, "账号或密码错误")
 			return
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
-			httpx.Unauthorized(c, "邮箱或密码错误")
+			httpx.Unauthorized(c, "账号或密码错误")
 			return
 		}
 		_ = client.User.UpdateOneID(u.ID).SetLastLoginAt(time.Now()).Exec(ctx)

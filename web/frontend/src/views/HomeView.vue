@@ -70,7 +70,7 @@ const faqs = [
         </p>
         <div class="relative mt-10 flex flex-wrap justify-center gap-4">
           <RouterLink
-            :to="auth.isLoggedIn ? '/console' : '/register'"
+            :to="auth.isLoggedIn ? '/console' : '/login'"
             class="th-btn-primary px-10 py-3.5 text-base"
           >
             {{ auth.isLoggedIn ? '进入控制台' : '立即开始' }}

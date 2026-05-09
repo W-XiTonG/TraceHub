@@ -119,10 +119,11 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(LS_USER)
   }
 
-  async function login(email: string, password: string) {
+  /** account：邮箱或用户名（请求体仍使用字段名 email 以兼容后端） */
+  async function login(account: string, password: string) {
     const { data } = await http.post<
       Envelope<{ access_token: string; user: typeof user.value }>
-    >('/api/user/login', { email, password })
+    >('/api/user/login', { email: account.trim(), password })
     if (data.code !== 0) throw new Error(data.message || '登录失败')
     setSession(data.data.access_token, data.data.user)
   }
