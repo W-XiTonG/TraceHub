@@ -1,14 +1,33 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { http, type Envelope } from '../api/http'
 
-type KeyRow = { id: number; name?: string; key_prefix?: string; status: string }
+type KeyRow = {
+  id: number
+  name?: string
+  key_prefix?: string
+  group_name?: string
+  status: string
+  last_used_at?: string
+  usage_24h?: number
+  daily_quota?: number
+  ip_whitelist?: string[]
+}
 
 const items = ref<KeyRow[]>([])
 const name = ref('')
 const err = ref('')
 const createdKey = ref('')
 const loading = ref(false)
+
+const editOpen = ref(false)
+const edit = reactive({
+  id: 0,
+  name: '',
+  enabled: true,
+  daily_quota: '' as string | number,
+  ip_whitelist: '',
+})
 
 async function load() {
   const { data } = await http.get<Envelope<{ items: KeyRow[] }>>('/api/user/apikeys')
@@ -20,7 +39,7 @@ async function createKey() {
   createdKey.value = ''
   loading.value = true
   try {
-    const { data } = await http.post<Envelope<{ key: string }>>('/api/user/apikeys', { name: name.value })
+    const { data } = await http.post<Envelope<{ key: string; id?: number }>>('/api/user/apikeys', { name: name.value })
     if (data.code !== 0) throw new Error(data.message || '创建失败')
     createdKey.value = data.data.key
     name.value = ''
@@ -29,6 +48,41 @@ async function createKey() {
     err.value = e instanceof Error ? e.message : '创建失败'
   } finally {
     loading.value = false
+  }
+}
+
+function openEdit(k: KeyRow) {
+  edit.id = k.id
+  edit.name = k.name || ''
+  edit.enabled = k.status === 'enabled'
+  edit.daily_quota = k.daily_quota != null && k.daily_quota >= 0 ? String(k.daily_quota) : k.daily_quota === -1 ? '-1' : ''
+  edit.ip_whitelist = (k.ip_whitelist || []).join('\n')
+  editOpen.value = true
+}
+
+async function saveEdit() {
+  err.value = ''
+  const lines = edit.ip_whitelist
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const body: Record<string, unknown> = {
+    name: edit.name.trim() || undefined,
+    enabled: edit.enabled,
+    ip_whitelist: lines.length ? lines : [],
+  }
+  const dq = String(edit.daily_quota).trim()
+  if (dq !== '') {
+    const n = parseInt(dq, 10)
+    if (!Number.isNaN(n)) body.daily_quota = n
+  }
+  try {
+    const { data } = await http.put<Envelope<null>>(`/api/user/apikeys/${edit.id}`, body)
+    if (data.code !== 0) throw new Error(data.message || '保存失败')
+    editOpen.value = false
+    await load()
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : '保存失败'
   }
 }
 
@@ -43,10 +97,16 @@ onMounted(load)
 
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold">API Key</h1>
+    <h1 class="mb-2 text-2xl font-bold">API Key</h1>
+    <p class="mb-6 text-sm text-slate-500">创建、重命名、启用/禁用与 IP 白名单；完整 Key 仅在创建时显示一次。</p>
     <div class="mb-6 flex flex-wrap gap-2">
       <input v-model="name" placeholder="备注名称" class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm" />
-      <button type="button" :disabled="loading" class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50" @click="createKey">
+      <button
+        type="button"
+        :disabled="loading"
+        class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+        @click="createKey"
+      >
         新建 Key
       </button>
     </div>
@@ -60,20 +120,54 @@ onMounted(load)
         <tr>
           <th class="pb-2">名称</th>
           <th class="pb-2">前缀</th>
+          <th class="pb-2">分组</th>
+          <th class="pb-2">24h Token</th>
           <th class="pb-2">状态</th>
-          <th></th>
+          <th class="pb-2"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-800">
         <tr v-for="k in items" :key="k.id">
           <td class="py-2">{{ k.name || '—' }}</td>
           <td class="py-2 font-mono text-xs">{{ k.key_prefix }}</td>
+          <td class="py-2 text-xs text-slate-400">{{ k.group_name || '—' }}</td>
+          <td class="py-2 text-xs">{{ k.usage_24h ?? '—' }}</td>
           <td class="py-2">{{ k.status }}</td>
-          <td class="py-2 text-right">
+          <td class="space-x-2 py-2 text-right">
+            <button type="button" class="text-cyan-400 hover:underline" @click="openEdit(k)">编辑</button>
             <button type="button" class="text-red-400 hover:underline" @click="remove(k.id)">删除</button>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <div
+      v-if="editOpen"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+      @click.self="editOpen = false"
+    >
+      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+        <h3 class="mb-4 font-semibold">编辑 API Key</h3>
+        <label class="mb-3 block text-sm">
+          <span class="text-slate-500">名称</span>
+          <input v-model="edit.name" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5" />
+        </label>
+        <label class="mb-3 flex items-center gap-2 text-sm">
+          <input v-model="edit.enabled" type="checkbox" /> 启用
+        </label>
+        <label class="mb-3 block text-sm">
+          <span class="text-slate-500">每日额度（空=不改；-1=不限）</span>
+          <input v-model="edit.daily_quota" placeholder="留空表示本次不修改" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-xs" />
+        </label>
+        <label class="mb-4 block text-sm">
+          <span class="text-slate-500">IP 白名单（每行或逗号分隔）</span>
+          <textarea v-model="edit.ip_whitelist" rows="3" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-xs" />
+        </label>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="rounded border border-slate-600 px-3 py-1.5 text-sm" @click="editOpen = false">取消</button>
+          <button type="button" class="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white" @click="saveEdit">保存</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

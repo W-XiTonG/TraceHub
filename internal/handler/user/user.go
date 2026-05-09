@@ -347,14 +347,16 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 				gn = k.Edges.Group.Name
 			}
 			items = append(items, gin.H{
-				"id":           k.ID,
-				"name":         k.Name,
-				"key_prefix":   k.KeyPrefix,
-				"group_name":   gn,
-				"status":       st,
-				"last_used_at": k.LastUsedAt,
-				"created_at":   k.CreatedAt,
-				"usage_24h":    tok24h[k.ID],
+				"id":            k.ID,
+				"name":          k.Name,
+				"key_prefix":    k.KeyPrefix,
+				"group_name":    gn,
+				"status":        st,
+				"last_used_at":  k.LastUsedAt,
+				"created_at":    k.CreatedAt,
+				"usage_24h":     tok24h[k.ID],
+				"daily_quota":   k.DailyQuota,
+				"ip_whitelist":  k.IPWhitelist,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": len(items)})
@@ -603,7 +605,12 @@ func BindProfile(client *ent.Client) gin.HandlerFunc {
 			changed = true
 		}
 		if req.WebhookURL != nil {
-			up.SetWebhookURL(strings.TrimSpace(*req.WebhookURL))
+			v := strings.TrimSpace(*req.WebhookURL)
+			if v == "" {
+				up.ClearWebhookURL()
+			} else {
+				up.SetWebhookURL(v)
+			}
 			changed = true
 		}
 		if !changed {

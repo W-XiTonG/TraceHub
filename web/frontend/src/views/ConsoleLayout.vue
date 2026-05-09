@@ -10,7 +10,11 @@ import UserAccountMenu from '../components/UserAccountMenu.vue'
       <nav class="flex flex-col gap-2 text-sm">
         <RouterLink to="/console" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">概览</RouterLink>
         <RouterLink to="/console/keys" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">API Key</RouterLink>
+        <RouterLink to="/console/logs" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">调用日志</RouterLink>
+        <RouterLink to="/console/group" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">我的分组</RouterLink>
+        <RouterLink to="/console/billing" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">充值中心</RouterLink>
         <RouterLink to="/console/redeem" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">兑换码</RouterLink>
+        <RouterLink to="/console/settings" class="rounded-lg px-3 py-2 hover:bg-slate-800" active-class="bg-slate-800 text-cyan-400">账户设置</RouterLink>
       </nav>
     </aside>
     <div class="flex min-w-0 flex-1 flex-col">

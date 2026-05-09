@@ -14,6 +14,10 @@ const router = createRouter({
       children: [
         { path: '', name: 'console', component: () => import('../views/DashboardView.vue') },
         { path: 'keys', name: 'keys', component: () => import('../views/ApiKeysView.vue') },
+        { path: 'logs', name: 'console-logs', component: () => import('../views/UsageLogsView.vue') },
+        { path: 'group', name: 'console-group', component: () => import('../views/GroupView.vue') },
+        { path: 'billing', name: 'console-billing', component: () => import('../views/BillingView.vue') },
+        { path: 'settings', name: 'console-settings', component: () => import('../views/SettingsView.vue') },
         { path: 'redeem', name: 'redeem', component: () => import('../views/RedeemView.vue') },
       ],
     },

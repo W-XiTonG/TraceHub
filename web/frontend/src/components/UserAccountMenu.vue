@@ -84,6 +84,13 @@ function logout() {
         用户控制台
       </RouterLink>
       <RouterLink
+        to="/console/settings"
+        class="block px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+        @click="closeMenu"
+      >
+        账户设置
+      </RouterLink>
+      <RouterLink
         v-if="auth.role === 'admin' || auth.role === 'superadmin'"
         to="/admin"
         class="block px-3 py-2 text-sm text-amber-400/90 hover:bg-slate-800 hover:text-amber-300"
