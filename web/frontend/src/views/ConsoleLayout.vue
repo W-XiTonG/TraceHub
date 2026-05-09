@@ -20,8 +20,8 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
 </script>
 
 <template>
-  <div class="th-page-shell flex min-h-screen text-slate-100">
-    <aside class="th-sidebar flex w-60 shrink-0 flex-col px-4 py-6">
+  <div class="th-page-shell flex h-[100dvh] min-h-0 overflow-hidden text-slate-100">
+    <aside class="th-sidebar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
       <div class="mb-8 flex items-center gap-3 px-2">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-600 font-mono text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20">TH</div>
         <div>
@@ -41,12 +41,12 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
       </nav>
       <RouterLink to="/" class="mt-4 rounded-lg px-3 py-2 text-xs text-slate-600 transition hover:bg-white/5 hover:text-slate-400">← 返回官网</RouterLink>
     </aside>
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <header class="th-topbar flex shrink-0 items-center justify-between px-6 py-3">
         <p class="text-xs font-medium uppercase tracking-widest text-slate-600">TraceHub Console</p>
         <UserAccountMenu accent="cyan" />
       </header>
-      <main class="flex-1 overflow-auto p-6 md:p-10">
+      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:p-10">
         <div
           v-if="showAdminDenied"
           class="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/25 bg-amber-950/35 px-4 py-3 text-sm text-amber-100/95"
