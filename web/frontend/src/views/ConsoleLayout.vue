@@ -31,6 +31,7 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
       </div>
       <nav class="flex flex-1 flex-col gap-0.5 text-sm">
         <RouterLink :to="{ name: 'console' }" class="th-nav-link">概览</RouterLink>
+        <RouterLink :to="{ name: 'console-models' }" class="th-nav-link">可用模型</RouterLink>
         <RouterLink to="/console/keys" class="th-nav-link">API Key</RouterLink>
         <RouterLink to="/console/logs" class="th-nav-link">调用日志</RouterLink>
         <RouterLink to="/console/group" class="th-nav-link">我的分组</RouterLink>

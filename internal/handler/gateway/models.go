@@ -1,14 +1,9 @@
 package gateway
 
 import (
-	"sort"
-	"strings"
-	"time"
-
 	"tracehub/internal/ent"
-	"tracehub/internal/ent/channel"
-	"tracehub/internal/ent/group"
 	"tracehub/internal/middleware"
+	"tracehub/internal/service/availmodels"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,50 +17,18 @@ func ModelsList(client *ent.Client) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组")
 			return
 		}
-		channels, err := client.Channel.Query().
-			Where(
-				channel.Enabled(true),
-				channel.Schedulable(true),
-				channel.HealthStatusEQ(1),
-				channel.HasGroupWith(group.IDEQ(gid)),
-			).
-			All(c.Request.Context())
+		items, err := availmodels.ListForGroup(c.Request.Context(), client, gid)
 		if err != nil {
 			middleware.WriteOpenAIError(c, 500, "api_error", "读取模型列表失败")
 			return
 		}
-		set := map[string]struct{}{}
-		for _, ch := range channels {
-			for _, m := range ch.Models {
-				set[m] = struct{}{}
-			}
-			for alias := range ch.ModelAlias {
-				set[alias] = struct{}{}
-			}
-		}
-		var ids []string
-		for m := range set {
-			ids = append(ids, m)
-		}
-		sort.Strings(ids)
-		ts := time.Now().Unix()
-		var data []gin.H
-		for _, id := range ids {
-			owner := "tracehub"
-			if strings.HasPrefix(id, "gpt") || strings.Contains(id, "gpt") {
-				owner = "openai"
-			} else if strings.HasPrefix(id, "claude") {
-				owner = "anthropic"
-			} else if strings.HasPrefix(id, "gemini") {
-				owner = "google"
-			} else if strings.HasPrefix(id, "deepseek") {
-				owner = "deepseek"
-			}
+		data := make([]gin.H, 0, len(items))
+		for _, it := range items {
 			data = append(data, gin.H{
-				"id":       id,
-				"object":   "model",
-				"created":  ts,
-				"owned_by": owner,
+				"id":        it.ID,
+				"object":    it.Object,
+				"created":   it.Created,
+				"owned_by":  it.OwnedBy,
 			})
 		}
 		c.JSON(200, gin.H{"object": "list", "data": data})

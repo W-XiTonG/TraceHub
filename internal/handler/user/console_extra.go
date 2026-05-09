@@ -11,6 +11,7 @@ import (
 	"tracehub/internal/ent/user"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/service/availmodels"
 
 	"github.com/gin-gonic/gin"
 )
@@ -150,4 +151,44 @@ func MyGroup(client *ent.Client) gin.HandlerFunc {
 			"model_rates": rates,
 		})
 	}
+}
+
+// AvailableModels 控制台模型列表：合并「分组下渠道可调度的模型」与「模型市场中对用户可见的目录」。
+func AvailableModels(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		gid := u.GroupID
+		ctx := c.Request.Context()
+		items, err := availmodels.ListConsoleMerged(ctx, client, gid)
+		if err != nil {
+			httpx.ServerError(c, "读取模型列表失败")
+			return
+		}
+		hint := ""
+		switch {
+		case gid <= 0 && len(items) == 0:
+			hint = "账户尚未分配分组；模型市场也无可见条目。分配分组并配置渠道后，方可通过 API 调用模型。"
+		case gid <= 0:
+			hint = "账户尚未分配分组：调用 GET /v1/models 需分组与渠道。下列含「目录」条目来自模型市场，实际可调用的模型以渠道配置为准。"
+		case len(items) > 0 && countGateway(items) == 0:
+			hint = "当前分组下暂无渠道可用模型；下列均为模型市场目录，请在管理后台为该分组配置启用且健康的渠道。"
+		}
+		httpx.OK(c, gin.H{
+			"items":          items,
+			"total":          len(items),
+			"group_id":       gid,
+			"group_assigned": gid > 0,
+			"hint":           hint,
+		})
+	}
+}
+
+func countGateway(items []availmodels.ConsoleModel) int {
+	n := 0
+	for _, it := range items {
+		if it.InGateway {
+			n++
+		}
+	}
+	return n
 }

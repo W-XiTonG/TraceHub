@@ -79,6 +79,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	authUser.GET("/balance", userhandler.Balance(opt.Client, opt.Config))
 	authUser.GET("/usage-logs", userhandler.UsageLogs(opt.Client))
 	authUser.GET("/group", userhandler.MyGroup(opt.Client))
+	authUser.GET("/available-models", userhandler.AvailableModels(opt.Client))
+	authUser.GET("/models", userhandler.AvailableModels(opt.Client))
 	authUser.GET("/usage", userhandler.Usage(opt.Client, opt.Config))
 	authUser.GET("/usage/export", userhandler.UsageExport(opt.Client))
 	authUser.GET("/apikeys", userhandler.ListAPIKeys(opt.Client))
