@@ -1,8 +1,11 @@
+import './theme-boot'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+import './themes.css'
+import './themes-light.css'
 
 const app = createApp(App)
 app.use(createPinia())

@@ -28,16 +28,18 @@ async function submit() {
 </script>
 
 <template>
-  <div class="th-page-shell flex min-h-screen items-center justify-center px-4 py-16">
-    <div class="relative w-full max-w-[420px]">
-      <div class="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-b from-cyan-500/20 via-transparent to-violet-600/10 opacity-80 blur-xl" />
-      <div class="th-glass relative overflow-hidden p-8 md:p-10">
-        <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+  <div class="th-page-shell th-auth-canvas flex min-h-screen items-center justify-center px-4 py-16">
+    <div class="relative z-[1] w-full max-w-[400px]">
+      <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
+        <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
         <div class="mb-8 flex justify-center">
-          <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-600 font-mono text-lg font-bold text-slate-950 shadow-lg shadow-cyan-500/30">TH</div>
+          <div class="th-logo-mark th-logo-mark--lg">TH</div>
         </div>
-        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-white">欢迎回来</h1>
-        <p class="mb-8 text-center text-sm text-slate-500">登录 TraceHub 控制台</p>
+        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">欢迎回来</h1>
+        <p class="mb-1 text-center text-sm text-slate-500">登录 TraceHub 控制台</p>
+        <p class="mb-8 text-center text-[11px] leading-relaxed text-slate-600">
+          会话令牌由服务端签发；请在可信网络环境下访问，并妥善保管密码。
+        </p>
         <form class="space-y-5" @submit.prevent="submit">
           <div>
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">邮箱或用户名</label>
@@ -54,10 +56,10 @@ async function submit() {
         </form>
         <p class="mt-8 text-center text-sm text-slate-500">
           没有账号？
-          <RouterLink to="/register" class="font-medium text-cyan-400 transition hover:text-cyan-300">注册</RouterLink>
+          <RouterLink to="/register" class="th-link-accent font-medium">注册</RouterLink>
         </p>
         <p class="mt-6 text-center">
-          <RouterLink to="/" class="text-sm text-slate-600 transition hover:text-slate-400">← 返回首页</RouterLink>
+          <RouterLink to="/" class="text-sm text-slate-600 transition hover:text-slate-400">返回首页</RouterLink>
         </p>
       </div>
     </div>

@@ -52,11 +52,11 @@ onMounted(load)
 
 <template>
   <div>
-    <p class="th-kicker mb-2">Models</p>
-    <h1 class="text-3xl font-semibold tracking-tight text-white">可用模型</h1>
+    <p class="th-kicker mb-2"><span class="th-kicker-accent">Models</span></p>
+    <h1 class="text-3xl font-semibold tracking-tight text-slate-100">可用模型</h1>
     <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
       列表合并两类来源：<span class="text-slate-400">网关</span>（分组下启用且健康的渠道所配置的模型，与
-      <code class="rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-xs text-cyan-200/90">GET /v1/models</code>
+      <code class="rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-xs text-sky-200/85">GET /v1/models</code>
       一致）与 <span class="text-slate-400">目录</span>（管理端模型市场中对用户可见的条目）。仅有「目录」时尚需在渠道中配置方可调用。
     </p>
 

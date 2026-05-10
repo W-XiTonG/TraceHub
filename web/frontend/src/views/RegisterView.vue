@@ -29,13 +29,18 @@ async function submit() {
 </script>
 
 <template>
-  <div class="th-page-shell flex min-h-screen items-center justify-center px-4 py-16">
-    <div class="relative w-full max-w-[420px]">
-      <div class="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-b from-teal-500/15 via-transparent to-cyan-600/10 opacity-80 blur-xl" />
-      <div class="th-glass relative overflow-hidden p-8 md:p-10">
-        <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-400/45 to-transparent" />
-        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-white">创建账号</h1>
-        <p class="mb-8 text-center text-sm text-slate-500">加入 TraceHub，开通 API 与控制台</p>
+  <div class="th-page-shell th-auth-canvas flex min-h-screen items-center justify-center px-4 py-16">
+    <div class="relative z-[1] w-full max-w-[400px]">
+      <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
+        <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+        <div class="mb-6 flex justify-center">
+          <div class="th-logo-mark th-logo-mark--lg">TH</div>
+        </div>
+        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">创建账号</h1>
+        <p class="mb-1 text-center text-sm text-slate-500">开通控制台与 API Key</p>
+        <p class="mb-8 text-center text-[11px] leading-relaxed text-slate-600">
+          注册即表示您理解平台计费与安全策略；管理员可后续为您分配分组与额度。
+        </p>
         <form class="space-y-5" @submit.prevent="submit">
           <div>
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">邮箱</label>
@@ -57,7 +62,7 @@ async function submit() {
         </form>
         <p class="mt-8 text-center text-sm text-slate-500">
           已有账号？
-          <RouterLink to="/login" class="font-medium text-cyan-400 transition hover:text-cyan-300">登录</RouterLink>
+          <RouterLink to="/login" class="th-link-accent font-medium">登录</RouterLink>
         </p>
       </div>
     </div>

@@ -83,8 +83,8 @@ onMounted(loadAll)
 
 <template>
   <div>
-    <p class="th-kicker mb-2">Overview</p>
-    <h1 class="text-3xl font-semibold tracking-tight text-white">仪表盘</h1>
+    <p class="th-kicker mb-2"><span class="th-kicker-accent">Overview</span></p>
+    <h1 class="text-3xl font-semibold tracking-tight text-slate-100">仪表盘</h1>
     <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">余额与用量概览；切换统计周期查看趋势与模型分布。</p>
     <p v-if="err" class="mt-4 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2 text-sm text-red-300">{{ err }}</p>
 

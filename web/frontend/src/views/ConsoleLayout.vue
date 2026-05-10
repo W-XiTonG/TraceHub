@@ -23,10 +23,10 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
   <div class="th-page-shell flex h-[100dvh] min-h-0 overflow-hidden text-slate-100">
     <aside class="th-sidebar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
       <div class="mb-8 flex items-center gap-3 px-2">
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-600 font-mono text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20">TH</div>
+        <div class="th-logo-mark th-logo-mark--md shrink-0">TH</div>
         <div>
-          <p class="th-sidebar-brand text-sm font-semibold text-white">控制台</p>
-          <p class="text-[10px] uppercase tracking-widest text-slate-600">User</p>
+          <p class="th-sidebar-brand text-sm font-semibold text-slate-100">控制台</p>
+          <p class="text-[10px] uppercase tracking-[0.18em] text-slate-600">User</p>
         </div>
       </div>
       <nav class="flex flex-1 flex-col gap-0.5 text-sm">
@@ -40,14 +40,17 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         <RouterLink to="/console/settings" class="th-nav-link">账户设置</RouterLink>
         <RouterLink v-if="canAccessAdmin" to="/admin" class="th-nav-link border-t border-white/[0.06] pt-3 mt-2">管理后台</RouterLink>
       </nav>
-      <RouterLink to="/" class="mt-4 rounded-lg px-3 py-2 text-xs text-slate-600 transition hover:bg-white/5 hover:text-slate-400">← 返回官网</RouterLink>
+      <RouterLink to="/" class="mt-4 rounded-lg px-3 py-2 text-xs text-slate-600 transition hover:bg-white/[0.04] hover:text-slate-400">返回官网</RouterLink>
     </aside>
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header class="th-topbar flex shrink-0 items-center justify-between px-6 py-3">
-        <p class="text-xs font-medium uppercase tracking-widest text-slate-600">TraceHub Console</p>
+      <header class="th-topbar flex shrink-0 items-center justify-between px-6 py-3.5">
+        <div>
+          <p class="th-topbar-title">控制台</p>
+          <p class="mt-0.5 text-[11px] text-slate-600">用量、密钥与账户安全</p>
+        </div>
         <UserAccountMenu accent="cyan" />
       </header>
-      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:p-10">
+      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <div
           v-if="showAdminDenied"
           class="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/25 bg-amber-950/35 px-4 py-3 text-sm text-amber-100/95"
@@ -62,7 +65,9 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
           </p>
           <button type="button" class="shrink-0 rounded-lg px-2 py-1 text-xs text-amber-200/80 hover:bg-white/10" @click="dismissAdminDenied">关闭</button>
         </div>
-        <RouterView />
+        <div class="th-main-inner">
+          <RouterView />
+        </div>
       </main>
     </div>
   </div>

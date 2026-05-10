@@ -1,0 +1,313 @@
+/* 浅色主题：重映射 Tailwind @theme 色板 + TraceHub 语义变量 + 少量组件覆写 */
+
+html[data-th-theme="dawn"],
+html[data-th-theme="paper"] {
+  color-scheme: light;
+  /* 浅色文档：slate 标号仍表示「对比层级」，数值与默认 Tailwind 相反映射 */
+  --color-slate-50: oklch(98.5% 0.004 248);
+  --color-slate-100: oklch(24% 0.045 265);
+  --color-slate-200: oklch(30% 0.04 265);
+  --color-slate-300: oklch(38% 0.035 265);
+  --color-slate-400: oklch(45% 0.03 265);
+  --color-slate-500: oklch(52% 0.028 265);
+  --color-slate-600: oklch(48% 0.03 265);
+  --color-slate-700: oklch(78% 0.018 265);
+  --color-slate-800: oklch(88% 0.012 265);
+  --color-slate-900: oklch(96.5% 0.008 265);
+  --color-slate-950: oklch(99.2% 0.003 248);
+  /* 原 text-white 多用于浅色字：在浅色界面改为墨色 */
+  --color-white: oklch(22% 0.04 265);
+  --color-sky-200: oklch(52% 0.06 231);
+  --color-teal-300: oklch(58% 0.1 181);
+  --color-teal-400: oklch(52% 0.11 182);
+  --color-teal-600: oklch(42% 0.1 184);
+  --color-emerald-300: oklch(58% 0.1 165);
+  --color-emerald-400: oklch(50% 0.12 163);
+  --color-emerald-500: oklch(46% 0.12 162);
+  --color-emerald-800: oklch(38% 0.08 167);
+  --color-emerald-950: oklch(96% 0.02 172);
+  --color-orange-600: oklch(48% 0.18 41);
+  /* 表格/标签里的 cyan·emerald 多用于「深色界面上的浅色字」，浅色主题需改成深色以保证对比 */
+  --color-cyan-100: oklch(34% 0.09 215);
+  --color-cyan-200: oklch(40% 0.095 215);
+  --color-cyan-300: oklch(46% 0.11 215);
+  --color-cyan-400: oklch(50% 0.12 215);
+  --color-cyan-500: oklch(48% 0.13 215);
+  --color-cyan-600: oklch(42% 0.12 222);
+  --color-emerald-400: oklch(42% 0.14 163);
+  --color-emerald-500: oklch(46% 0.14 162);
+}
+
+html[data-th-theme="dawn"] {
+  --th-bg-deep: #eef2f7;
+  --th-bg: #e2e8f0;
+  --th-bg-floor: #d8dee8;
+  --th-surface: rgba(255, 255, 255, 0.78);
+  --th-border: rgba(15, 23, 42, 0.08);
+  --th-border-strong: rgba(15, 23, 42, 0.12);
+  --th-glow-cyan: rgba(14, 165, 233, 0.14);
+  --th-glow-violet: rgba(99, 102, 241, 0.1);
+  --th-glow-amber: rgba(245, 158, 11, 0.1);
+  --th-text: #0f172a;
+  --th-text-muted: #64748b;
+  --th-accent: #0284c7;
+  --th-accent-dim: rgba(14, 165, 233, 0.16);
+  --th-primary-from: #bae6fd;
+  --th-primary-mid: #0ea5e9;
+  --th-primary-to: #0369a1;
+  --th-primary-glow-rgb: 14, 165, 233;
+  --th-kicker-accent-color: #0369a1;
+  --th-headline-end: #0ea5e9;
+  --th-headline-glow-rgb: 14, 165, 233;
+  --th-selection-bg: rgba(14, 165, 233, 0.22);
+  --th-selection-fg: #0f172a;
+  --th-input-focus-border: rgba(14, 165, 233, 0.55);
+  --th-input-focus-ring: rgba(14, 165, 233, 0.14);
+  --th-chip-hover-border: rgba(14, 165, 233, 0.38);
+  --th-pill-from: #e0f2fe;
+  --th-pill-to: #0284c7;
+  --th-logo-from: #bae6fd;
+  --th-logo-mid: #0ea5e9;
+  --th-logo-to: #0369a1;
+  --th-logo-shadow-rgb: 14, 165, 233;
+  --th-hero-glow-a: rgba(14, 165, 233, 0.22);
+  --th-hero-glow-b: rgba(99, 102, 241, 0.14);
+  --th-auth-grad-mid: rgba(14, 165, 233, 0.1);
+  --th-home-blob-1: rgba(56, 189, 248, 0.38);
+  --th-home-blob-2: rgba(99, 102, 241, 0.26);
+  --th-home-blob-3: rgba(45, 212, 191, 0.22);
+  --th-mesh-stop-1: rgba(14, 165, 233, 0.14);
+  --th-mesh-stop-2: rgba(99, 102, 241, 0.1);
+  --th-mesh-stop-3: rgba(45, 212, 191, 0.08);
+  --th-home-vignette-mid: rgba(241, 245, 249, 0.55);
+  --th-home-vignette-edge: rgba(226, 232, 240, 0.92);
+}
+
+html[data-th-theme="paper"] {
+  --th-bg-deep: #e8ecf2;
+  --th-bg: #dfe5ee;
+  --th-bg-floor: #d4dce8;
+  --th-surface: rgba(255, 255, 255, 0.82);
+  --th-border: rgba(30, 41, 59, 0.09);
+  --th-border-strong: rgba(30, 41, 59, 0.14);
+  --th-glow-cyan: rgba(59, 130, 246, 0.12);
+  --th-glow-violet: rgba(99, 102, 241, 0.09);
+  --th-glow-amber: rgba(245, 158, 11, 0.09);
+  --th-text: #0f172a;
+  --th-text-muted: #5c6b82;
+  --th-accent: #2563eb;
+  --th-accent-dim: rgba(37, 99, 235, 0.14);
+  --th-primary-from: #bfdbfe;
+  --th-primary-mid: #3b82f6;
+  --th-primary-to: #1d4ed8;
+  --th-primary-glow-rgb: 37, 99, 235;
+  --th-kicker-accent-color: #1d4ed8;
+  --th-headline-end: #2563eb;
+  --th-headline-glow-rgb: 37, 99, 235;
+  --th-selection-bg: rgba(37, 99, 235, 0.2);
+  --th-selection-fg: #0f172a;
+  --th-input-focus-border: rgba(37, 99, 235, 0.5);
+  --th-input-focus-ring: rgba(37, 99, 235, 0.12);
+  --th-chip-hover-border: rgba(37, 99, 235, 0.35);
+  --th-pill-from: #dbeafe;
+  --th-pill-to: #2563eb;
+  --th-logo-from: #bfdbfe;
+  --th-logo-mid: #3b82f6;
+  --th-logo-to: #1d4ed8;
+  --th-logo-shadow-rgb: 37, 99, 235;
+  --th-hero-glow-a: rgba(59, 130, 246, 0.2);
+  --th-hero-glow-b: rgba(99, 102, 241, 0.12);
+  --th-auth-grad-mid: rgba(59, 130, 246, 0.09);
+  --th-home-blob-1: rgba(59, 130, 246, 0.34);
+  --th-home-blob-2: rgba(99, 102, 241, 0.24);
+  --th-home-blob-3: rgba(56, 189, 248, 0.2);
+  --th-mesh-stop-1: rgba(59, 130, 246, 0.12);
+  --th-mesh-stop-2: rgba(99, 102, 241, 0.09);
+  --th-mesh-stop-3: rgba(59, 130, 246, 0.08);
+  --th-home-vignette-mid: rgba(236, 241, 248, 0.58);
+  --th-home-vignette-edge: rgba(220, 230, 242, 0.94);
+}
+
+html[data-th-theme="dawn"] .th-page-shell::before,
+html[data-th-theme="paper"] .th-page-shell::before {
+  opacity: 0.28;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+}
+
+html[data-th-theme="dawn"] .th-glass,
+html[data-th-theme="paper"] .th-glass {
+  border-color: rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, transparent 14%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.88) 0%, rgba(241, 245, 249, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 18px 40px -28px rgba(15, 23, 42, 0.1);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+html[data-th-theme="dawn"] .th-glass--subtle,
+html[data-th-theme="paper"] .th-glass--subtle {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+html[data-th-theme="dawn"] .th-sidebar,
+html[data-th-theme="paper"] .th-sidebar {
+  border-right-color: rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 250, 252, 0.99) 100%);
+  box-shadow:
+    inset -1px 0 0 rgba(15, 23, 42, 0.05),
+    2px 0 24px -14px rgba(15, 23, 42, 0.08);
+}
+
+html[data-th-theme="dawn"] .th-topbar,
+html[data-th-theme="paper"] .th-topbar {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.9) 100%);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+html[data-th-theme="dawn"] .th-site-header,
+html[data-th-theme="paper"] .th-site-header {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.9) 100%);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+html[data-th-theme="dawn"] .th-nav-link:hover,
+html[data-th-theme="paper"] .th-nav-link:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+html[data-th-theme="dawn"] .th-nav-link.router-link-exact-active,
+html[data-th-theme="paper"] .th-nav-link.router-link-exact-active {
+  color: #0c4a6e;
+}
+
+html[data-th-theme="dawn"] .th-nav-link--amber.router-link-exact-active,
+html[data-th-theme="paper"] .th-nav-link--amber.router-link-exact-active {
+  color: #713f12;
+  background: rgba(251, 191, 36, 0.2);
+  border-left-color: #ca8a04;
+}
+
+html[data-th-theme="dawn"] .th-nav-link--amber:hover,
+html[data-th-theme="paper"] .th-nav-link--amber:hover {
+  color: #713f12;
+}
+
+html[data-th-theme="dawn"] .th-table-wrap,
+html[data-th-theme="paper"] .th-table-wrap {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 20px 44px -30px rgba(15, 23, 42, 0.12);
+}
+
+html[data-th-theme="dawn"] .th-input,
+html[data-th-theme="paper"] .th-input {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+html[data-th-theme="dawn"] .th-chip,
+html[data-th-theme="paper"] .th-chip {
+  background: rgba(255, 255, 255, 0.7);
+  color: #334155;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+html[data-th-theme="dawn"] .th-chip:hover,
+html[data-th-theme="paper"] .th-chip:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+html[data-th-theme="dawn"] .th-btn-secondary,
+html[data-th-theme="paper"] .th-btn-secondary {
+  color: #334155;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+html[data-th-theme="dawn"] .th-btn-secondary:hover,
+html[data-th-theme="paper"] .th-btn-secondary:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+html[data-th-theme="dawn"] .th-site-nav-link:hover,
+html[data-th-theme="paper"] .th-site-nav-link:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+html[data-th-theme="dawn"] .th-headline-gradient,
+html[data-th-theme="paper"] .th-headline-gradient {
+  /* filter 与 background-clip:text 同元素并存时，Chromium 常把渐变字「裁没」，故浅色下不用 drop-shadow */
+  background: linear-gradient(120deg, #0f172a 0%, #475569 42%, var(--th-headline-end) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: none;
+}
+
+html[data-th-theme="dawn"] .th-page-shell--admin,
+html[data-th-theme="paper"] .th-page-shell--admin {
+  background-image:
+    radial-gradient(ellipse 85% 50% at 40% -12%, rgba(251, 191, 36, 0.14), transparent 55%),
+    linear-gradient(180deg, #fffaf5 0%, var(--th-bg-deep) 50%, var(--th-bg-floor) 100%);
+}
+
+html[data-th-theme="dawn"] .th-theme-picker [role="listbox"],
+html[data-th-theme="paper"] .th-theme-picker [role="listbox"] {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.15);
+}
+
+html[data-th-theme="dawn"] .th-theme-picker [role="listbox"] p,
+html[data-th-theme="paper"] .th-theme-picker [role="listbox"] p {
+  color: #64748b;
+}
+
+html[data-th-theme="dawn"] .th-theme-picker [role="option"],
+html[data-th-theme="paper"] .th-theme-picker [role="option"] {
+  color: #1e293b;
+}
+
+html[data-th-theme="dawn"] .th-theme-picker [role="option"] .text-slate-500,
+html[data-th-theme="paper"] .th-theme-picker [role="option"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+html[data-th-theme="dawn"] .th-theme-picker .rounded-full,
+html[data-th-theme="paper"] .th-theme-picker .rounded-full {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  color: #334155;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.12);
+}
+
+html[data-th-theme="dawn"] .th-theme-picker .rounded-full:hover,
+html[data-th-theme="paper"] .th-theme-picker .rounded-full:hover {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: #fff;
+  color: #0f172a;
+}
+
+html[data-th-theme="paper"] .th-nav-link.router-link-exact-active {
+  color: #1e3a8a;
+}
