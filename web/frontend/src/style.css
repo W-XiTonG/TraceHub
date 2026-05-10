@@ -808,6 +808,29 @@
   transform: translateY(-6px);
 }
 
+/* 控制台 / 管理端：仅右侧功能区子路由切换（壳不重挂载，依赖 App.vue shellKey） */
+.th-subpage-enter-active {
+  transition:
+    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.th-subpage-leave-active {
+  transition:
+    opacity 0.16s ease-out,
+    transform 0.16s ease-out;
+}
+
+.th-subpage-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.th-subpage-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .th-page-enter-active,
   .th-page-leave-active,
@@ -816,7 +839,9 @@
   .th-modal-enter-active .th-modal-surface,
   .th-modal-leave-active .th-modal-surface,
   .th-fade-enter-active,
-  .th-fade-leave-active {
+  .th-fade-leave-active,
+  .th-subpage-enter-active,
+  .th-subpage-leave-active {
     transition-duration: 0.01ms !important;
   }
 
@@ -825,7 +850,9 @@
   .th-modal-enter-from,
   .th-modal-leave-to,
   .th-modal-enter-from .th-modal-surface,
-  .th-modal-leave-to .th-modal-surface {
+  .th-modal-leave-to .th-modal-surface,
+  .th-subpage-enter-from,
+  .th-subpage-leave-to {
     transform: none !important;
   }
 

@@ -22,13 +22,17 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
 <template>
   <div class="th-page-shell flex h-[100dvh] min-h-0 overflow-hidden text-slate-100">
     <aside class="th-sidebar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
-      <div class="mb-8 flex items-center gap-3 px-2">
-        <div class="th-logo-mark th-logo-mark--md shrink-0">TH</div>
-        <div>
+      <RouterLink
+        to="/"
+        title="返回 TraceHub 官网首页"
+        class="group mb-8 flex items-center gap-3 rounded-xl px-2 py-1.5 outline-none transition hover:bg-white/[0.05]"
+      >
+        <div class="th-logo-mark th-logo-mark--md shrink-0 transition group-hover:brightness-105">TH</div>
+        <div class="min-w-0">
           <p class="th-sidebar-brand text-sm font-semibold text-slate-100">控制台</p>
           <p class="text-[10px] uppercase tracking-[0.18em] text-slate-600">User</p>
         </div>
-      </div>
+      </RouterLink>
       <nav class="flex flex-1 flex-col gap-0.5 text-sm">
         <RouterLink :to="{ name: 'console' }" class="th-nav-link">概览</RouterLink>
         <RouterLink :to="{ name: 'console-models' }" class="th-nav-link">可用模型</RouterLink>
@@ -40,13 +44,32 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         <RouterLink to="/console/settings" class="th-nav-link">账户设置</RouterLink>
         <RouterLink v-if="canAccessAdmin" to="/admin" class="th-nav-link border-t border-white/[0.06] pt-3 mt-2">管理后台</RouterLink>
       </nav>
-      <RouterLink to="/" class="mt-4 rounded-lg px-3 py-2 text-xs text-slate-600 transition hover:bg-white/[0.04] hover:text-slate-400">返回官网</RouterLink>
+      <RouterLink
+        to="/"
+        class="mt-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-300"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden="true">
+          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 101.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+        </svg>
+        官网首页
+      </RouterLink>
     </aside>
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header class="th-topbar flex shrink-0 items-center justify-between px-6 py-3.5">
-        <div>
-          <p class="th-topbar-title">控制台</p>
-          <p class="mt-0.5 text-[11px] text-slate-600">用量、密钥与账户安全</p>
+      <header class="th-topbar flex shrink-0 items-center justify-between gap-4 px-6 py-3.5">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+          <div class="min-w-0">
+            <p class="th-topbar-title">控制台</p>
+            <p class="mt-0.5 text-[11px] text-slate-600">用量、密钥与账户安全</p>
+          </div>
+          <RouterLink
+            to="/"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-slate-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 opacity-90" aria-hidden="true">
+              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 101.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+            </svg>
+            官网首页
+          </RouterLink>
         </div>
         <UserAccountMenu accent="cyan" />
       </header>
@@ -68,8 +91,9 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
           </div>
         </Transition>
         <div class="th-main-inner">
+          <!-- 仅右侧主内容区过渡；壳层 key 在 App.vue 按 shell 固定，避免侧栏随路由 path 重挂载 -->
           <RouterView v-slot="{ Component }">
-            <Transition name="th-page" mode="out-in">
+            <Transition name="th-subpage" mode="out-in">
               <component :is="Component" :key="route.path" />
             </Transition>
           </RouterView>
