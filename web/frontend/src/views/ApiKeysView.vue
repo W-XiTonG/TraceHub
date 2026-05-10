@@ -15,10 +15,13 @@ type KeyRow = {
 }
 
 const items = ref<KeyRow[]>([])
-const name = ref('')
 const err = ref('')
 const createdKey = ref('')
 const loading = ref(false)
+
+const createOpen = ref(false)
+const createName = ref('')
+const createErr = ref('')
 
 const editOpen = ref(false)
 const edit = reactive({
@@ -34,18 +37,35 @@ async function load() {
   if (data.code === 0) items.value = data.data.items
 }
 
-async function createKey() {
-  err.value = ''
+function openCreateModal() {
+  createErr.value = ''
+  createName.value = ''
+  createOpen.value = true
+}
+
+function closeCreateModal() {
+  createOpen.value = false
+  createErr.value = ''
+}
+
+async function submitCreateKey() {
+  const label = createName.value.trim()
+  if (!label) {
+    createErr.value = '请先填写 Key 名称（备注），便于在列表中识别。'
+    return
+  }
+  createErr.value = ''
   createdKey.value = ''
   loading.value = true
   try {
-    const { data } = await http.post<Envelope<{ key: string; id?: number }>>('/api/user/apikeys', { name: name.value })
+    const { data } = await http.post<Envelope<{ key: string; id?: number }>>('/api/user/apikeys', { name: label })
     if (data.code !== 0) throw new Error(data.message || '创建失败')
     createdKey.value = data.data.key
-    name.value = ''
+    createOpen.value = false
+    createName.value = ''
     await load()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : '创建失败'
+    createErr.value = e instanceof Error ? e.message : '创建失败'
   } finally {
     loading.value = false
   }
@@ -99,13 +119,11 @@ onMounted(load)
   <div>
     <h1 class="mb-2 text-2xl font-bold">API Key</h1>
     <p class="mb-6 text-sm text-slate-500">创建、重命名、启用/禁用与 IP 白名单；完整 Key 仅在创建时显示一次。</p>
-    <div class="mb-6 flex flex-wrap gap-2">
-      <input v-model="name" placeholder="备注名称" class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm" />
+    <div class="mb-6">
       <button
         type="button"
-        :disabled="loading"
         class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
-        @click="createKey"
+        @click="openCreateModal"
       >
         新建 Key
       </button>
@@ -140,6 +158,45 @@ onMounted(load)
         </tr>
       </tbody>
     </table>
+
+    <div
+      v-if="createOpen"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-key-title"
+      @click.self="closeCreateModal"
+    >
+      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+        <h3 id="create-key-title" class="mb-1 font-semibold">新建 API Key</h3>
+        <p class="mb-4 text-sm text-slate-500">请先填写名称（备注），用于在列表中区分不同 Key；不会在请求中暴露。</p>
+        <label class="mb-4 block text-sm">
+          <span class="text-slate-400">Key 名称 / 备注</span>
+          <input
+            v-model="createName"
+            type="text"
+            required
+            maxlength="128"
+            autocomplete="off"
+            placeholder="例如：生产环境 · 主业务"
+            class="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            @keydown.enter.prevent="submitCreateKey"
+          />
+        </label>
+        <p v-if="createErr" class="mb-3 rounded-lg border border-red-500/25 bg-red-950/35 px-3 py-2 text-sm text-red-300">{{ createErr }}</p>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm" @click="closeCreateModal">取消</button>
+          <button
+            type="button"
+            :disabled="loading"
+            class="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+            @click="submitCreateKey"
+          >
+            {{ loading ? '创建中…' : '生成 Key' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div
       v-if="editOpen"
