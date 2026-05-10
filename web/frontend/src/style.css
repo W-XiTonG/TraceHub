@@ -737,3 +737,99 @@
   border-color: rgba(148, 163, 184, 0.14) !important;
   box-shadow: 0 12px 32px -28px rgba(0, 0, 0, 0.5);
 }
+
+/* —— 视图切换 / 弹窗 / 轻提示：统一过渡 —— */
+.th-page-enter-active,
+.th-page-leave-active {
+  transition:
+    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.th-page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.th-page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.th-modal-enter-active,
+.th-modal-leave-active {
+  transition: opacity 0.2s ease-out;
+}
+
+.th-modal-enter-from,
+.th-modal-leave-to {
+  opacity: 0;
+}
+
+.th-modal-enter-active .th-modal-surface,
+.th-modal-leave-active .th-modal-surface {
+  transition:
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.th-modal-enter-from .th-modal-surface,
+.th-modal-leave-to .th-modal-surface {
+  opacity: 0;
+  transform: translateY(16px) scale(0.96);
+}
+
+@keyframes th-dropdown-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.th-account-menu[open] > .th-account-dropdown {
+  animation: th-dropdown-open 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: top right;
+}
+
+.th-fade-enter-active,
+.th-fade-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.th-fade-enter-from,
+.th-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th-page-enter-active,
+  .th-page-leave-active,
+  .th-modal-enter-active,
+  .th-modal-leave-active,
+  .th-modal-enter-active .th-modal-surface,
+  .th-modal-leave-active .th-modal-surface,
+  .th-fade-enter-active,
+  .th-fade-leave-active {
+    transition-duration: 0.01ms !important;
+  }
+
+  .th-page-enter-from,
+  .th-page-leave-to,
+  .th-modal-enter-from,
+  .th-modal-leave-to,
+  .th-modal-enter-from .th-modal-surface,
+  .th-modal-leave-to .th-modal-surface {
+    transform: none !important;
+  }
+
+  .th-account-menu[open] > .th-account-dropdown {
+    animation: none !important;
+  }
+}

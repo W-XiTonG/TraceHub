@@ -330,12 +330,10 @@ onMounted(async () => {
       </div>
     </section>
 
-    <div
-      v-if="editingEntry"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      @click.self="editingEntry = null"
-    >
-      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
+    <Transition name="th-modal">
+      <div v-if="editingEntry" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60" aria-hidden="true" @click="editingEntry = null" />
+        <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
         <h3 class="mb-3 font-semibold">编辑 {{ editingEntry.model_id }}</h3>
         <label class="mb-3 flex flex-col gap-1">
           <span class="text-slate-500">显示名</span>
@@ -355,7 +353,8 @@ onMounted(async () => {
           <button type="button" class="rounded border border-slate-600 px-3 py-1" @click="editingEntry = null">取消</button>
           <button type="button" class="rounded bg-amber-500 px-3 py-1 font-medium text-slate-950" @click="saveEntry">保存</button>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>

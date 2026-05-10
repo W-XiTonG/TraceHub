@@ -49,8 +49,8 @@ onBeforeUnmount(() => {
 <template>
   <div ref="root" class="th-theme-picker pointer-events-none fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-2 md:bottom-6 md:right-6">
     <Transition
-      enter-active-class="transition duration-200 ease-out"
-      leave-active-class="transition duration-150 ease-in"
+      enter-active-class="transition duration-220 ease-[cubic-bezier(0.22,1,0.36,1)]"
+      leave-active-class="transition duration-160 ease-in"
       enter-from-class="translate-y-2 opacity-0 scale-[0.98]"
       leave-to-class="translate-y-1 opacity-0 scale-[0.99]"
     >

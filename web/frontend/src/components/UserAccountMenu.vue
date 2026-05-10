@@ -54,7 +54,7 @@ function logout() {
 </script>
 
 <template>
-  <details ref="menu" class="group relative">
+  <details ref="menu" class="th-account-menu group relative">
     <summary
       class="flex cursor-pointer list-none items-center gap-2.5 rounded-xl py-1.5 pl-1.5 pr-2 outline-none transition"
       :class="summaryRing"
@@ -75,7 +75,7 @@ function logout() {
       </svg>
     </summary>
     <div
-      class="absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border py-1.5 backdrop-blur-xl"
+      class="th-account-dropdown absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border py-1.5 backdrop-blur-xl"
       :class="dropdownClass"
       @click.stop
     >

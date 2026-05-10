@@ -159,15 +159,16 @@ onMounted(load)
       </tbody>
     </table>
 
-    <div
-      v-if="createOpen"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-key-title"
-      @click.self="closeCreateModal"
-    >
-      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+    <Transition name="th-modal">
+      <div
+        v-if="createOpen"
+        class="fixed inset-0 z-40 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-key-title"
+      >
+        <div class="absolute inset-0 bg-black/60" aria-hidden="true" @click="closeCreateModal" />
+        <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
         <h3 id="create-key-title" class="mb-1 font-semibold">新建 API Key</h3>
         <p class="mb-4 text-sm text-slate-500">请先填写名称（备注），用于在列表中区分不同 Key；不会在请求中暴露。</p>
         <label class="mb-4 block text-sm">
@@ -195,15 +196,14 @@ onMounted(load)
             {{ loading ? '创建中…' : '生成 Key' }}
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
 
-    <div
-      v-if="editOpen"
-      class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
-      @click.self="editOpen = false"
-    >
-      <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+    <Transition name="th-modal">
+      <div v-if="editOpen" class="fixed inset-0 z-40 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60" aria-hidden="true" @click="editOpen = false" />
+        <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
         <h3 class="mb-4 font-semibold">编辑 API Key</h3>
         <label class="mb-3 block text-sm">
           <span class="text-slate-500">名称</span>
@@ -224,7 +224,8 @@ onMounted(load)
           <button type="button" class="rounded border border-slate-600 px-3 py-1.5 text-sm" @click="editOpen = false">取消</button>
           <button type="button" class="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white" @click="saveEdit">保存</button>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>

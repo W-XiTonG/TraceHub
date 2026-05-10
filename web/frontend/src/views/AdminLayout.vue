@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
+
+const route = useRoute()
 </script>
 
 <template>
@@ -32,7 +34,11 @@ import UserAccountMenu from '../components/UserAccountMenu.vue'
       </header>
       <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <div class="th-main-inner">
-          <RouterView />
+          <RouterView v-slot="{ Component }">
+            <Transition name="th-page" mode="out-in">
+              <component :is="Component" :key="route.path" />
+            </Transition>
+          </RouterView>
         </div>
       </main>
     </div>
