@@ -306,8 +306,8 @@ function featureLink(to: string) {
             >
               <div class="flex items-start justify-between gap-3">
                 <span
-                  class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl [&>svg]:h-5 [&>svg]:w-5"
-                  :class="accentIconBg[f.accent]"
+                  class="th-home-feature-icon inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl [&>svg]:h-5 [&>svg]:w-5"
+                  :class="[accentIconBg[f.accent], `th-home-feature-icon--${f.accent}`]"
                 >
                   <svg><use :href="`#th-icon-${f.iconId}`" /></svg>
                 </span>
@@ -353,18 +353,18 @@ function featureLink(to: string) {
                 </li>
               </ul>
             </div>
-            <div class="th-glass overflow-hidden rounded-[var(--th-radius-xl)] p-1">
-              <div class="flex items-center gap-2 border-b border-white/[0.06] bg-slate-950/80 px-4 py-2.5">
+            <div class="th-glass th-home-code-window overflow-hidden rounded-[var(--th-radius-xl)] p-1">
+              <div class="th-home-code-window-titlebar flex items-center gap-2 border-b border-white/[0.06] bg-slate-950/80 px-4 py-2.5">
                 <span class="h-2.5 w-2.5 rounded-full bg-red-500/70" aria-hidden="true" />
                 <span class="h-2.5 w-2.5 rounded-full bg-amber-500/70" aria-hidden="true" />
                 <span class="h-2.5 w-2.5 rounded-full bg-emerald-500/70" aria-hidden="true" />
                 <span class="ml-2 font-mono text-[11px] text-slate-600">curl · chat.completions</span>
               </div>
-              <pre class="max-h-[min(22rem,52vh)] overflow-auto bg-[#050a14] p-4 font-mono text-[11px] leading-relaxed text-slate-400 md:text-xs"><code><span class="text-slate-600"># 将 BASE 与 KEY 替换为你的网关地址与控制台 API Key</span>
-curl -sS <span class="text-emerald-400/90">"$BASE/v1/chat/completions"</span> \
-  -H <span class="text-amber-200/85">"Authorization: Bearer $KEY"</span> \
-  -H <span class="text-amber-200/85">"Content-Type: application/json"</span> \
-  -d <span class="text-sky-200/90">'{
+              <pre class="th-home-code-window-pre max-h-[min(22rem,52vh)] overflow-auto bg-[#050a14] p-4 font-mono text-[11px] leading-relaxed text-slate-400 md:text-xs"><code><span class="th-home-code-comment text-slate-600"># 将 BASE 与 KEY 替换为你的网关地址与控制台 API Key</span>
+curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/completions"</span> \
+  -H <span class="th-home-code-hdr text-amber-200/85">"Authorization: Bearer $KEY"</span> \
+  -H <span class="th-home-code-hdr text-amber-200/85">"Content-Type: application/json"</span> \
+  -d <span class="th-home-code-json text-sky-200/90">'{
     "model": "gpt-4o-mini",
     "messages": [{ "role": "user", "content": "Hello from TraceHub" }]
   }'</span></code></pre>
