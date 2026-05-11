@@ -106,6 +106,7 @@ export default {
     consoleBackTitle: 'Back to TraceHub homepage',
     navOverview: 'Overview',
     navModels: 'Models',
+    navPlayground: 'Playground',
     navKeys: 'API Key',
     navLogs: 'Request logs',
     navGroup: 'My group',

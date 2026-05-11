@@ -110,6 +110,7 @@ export default {
     consoleBackTitle: '返回 TraceHub 官网首页',
     navOverview: '概览',
     navModels: '可用模型',
+    navPlayground: '操练场',
     navKeys: 'API Key',
     navLogs: '调用日志',
     navGroup: '我的分组',

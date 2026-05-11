@@ -39,6 +39,7 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
       <nav class="flex flex-1 flex-col gap-0.5 text-sm">
         <RouterLink :to="{ name: 'console' }" class="th-nav-link">{{ t('layout.navOverview') }}</RouterLink>
         <RouterLink :to="{ name: 'console-models' }" class="th-nav-link">{{ t('layout.navModels') }}</RouterLink>
+        <RouterLink :to="{ name: 'console-playground' }" class="th-nav-link">{{ t('layout.navPlayground') }}</RouterLink>
         <RouterLink to="/console/keys" class="th-nav-link">{{ t('layout.navKeys') }}</RouterLink>
         <RouterLink to="/console/logs" class="th-nav-link">{{ t('layout.navLogs') }}</RouterLink>
         <RouterLink to="/console/group" class="th-nav-link">{{ t('layout.navGroup') }}</RouterLink>
@@ -88,11 +89,11 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         </div>
         <UserAccountMenu accent="cyan" />
       </header>
-      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
+      <main class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <Transition name="th-fade">
           <div
             v-if="showAdminDenied"
-            class="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/25 bg-amber-950/35 px-4 py-3 text-sm text-amber-100/95"
+            class="mb-6 flex shrink-0 items-start justify-between gap-4 rounded-xl border border-amber-500/25 bg-amber-950/35 px-4 py-3 text-sm text-amber-100/95"
             role="alert"
           >
             <p>
@@ -107,11 +108,11 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
             <button type="button" class="shrink-0 rounded-lg px-2 py-1 text-xs text-amber-200/80 hover:bg-white/10" @click="dismissAdminDenied">{{ t('common.close') }}</button>
           </div>
         </Transition>
-        <div class="th-main-inner">
+        <div class="th-main-inner flex min-h-0 min-w-0 flex-1 flex-col">
           <!-- 仅右侧主内容区过渡；壳层 key 在 App.vue 按 shell 固定，避免侧栏随路由 path 重挂载 -->
           <RouterView v-slot="{ Component }">
             <Transition name="th-subpage" mode="out-in">
-              <component :is="Component" :key="route.path" />
+              <component :is="Component" :key="route.path" class="th-route-view flex min-h-0 w-full flex-1 flex-col" />
             </Transition>
           </RouterView>
         </div>

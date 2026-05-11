@@ -36,6 +36,7 @@ const showAdminQuick = computed(() => ['admin', 'superadmin'].includes(auth.role
 
 const quickLinks = computed(() => [
   { to: '/console/models', title: t('ql.models'), desc: t('ql.modelsD') },
+  { to: '/console/playground', title: t('ql.playground'), desc: t('ql.playgroundD') },
   { to: '/console/keys', title: t('ql.keys'), desc: t('ql.keysD') },
   { to: '/console/logs', title: t('ql.logs'), desc: t('ql.logsD') },
   { to: '/console/group', title: t('ql.group'), desc: t('ql.groupD') },

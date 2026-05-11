@@ -15,6 +15,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'console', component: () => import('../views/DashboardView.vue') },
         { path: 'models', name: 'console-models', component: () => import('../views/AvailableModelsView.vue') },
+        { path: 'playground', name: 'console-playground', component: () => import('../views/PlaygroundView.vue') },
         { path: 'keys', name: 'keys', component: () => import('../views/ApiKeysView.vue') },
         { path: 'logs', name: 'console-logs', component: () => import('../views/UsageLogsView.vue') },
         { path: 'group', name: 'console-group', component: () => import('../views/GroupView.vue') },
