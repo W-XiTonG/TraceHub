@@ -70,6 +70,11 @@ func KeyHash(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldKeyHash, v))
 }
 
+// KeyMaterialEnc applies equality check predicate on the "key_material_enc" field. It's identical to KeyMaterialEncEQ.
+func KeyMaterialEnc(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldKeyMaterialEnc, v))
+}
+
 // KeyPrefix applies equality check predicate on the "key_prefix" field. It's identical to KeyPrefixEQ.
 func KeyPrefix(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldKeyPrefix, v))
@@ -273,6 +278,81 @@ func KeyHashEqualFold(v string) predicate.APIKey {
 // KeyHashContainsFold applies the ContainsFold predicate on the "key_hash" field.
 func KeyHashContainsFold(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldContainsFold(FieldKeyHash, v))
+}
+
+// KeyMaterialEncEQ applies the EQ predicate on the "key_material_enc" field.
+func KeyMaterialEncEQ(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncNEQ applies the NEQ predicate on the "key_material_enc" field.
+func KeyMaterialEncNEQ(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncIn applies the In predicate on the "key_material_enc" field.
+func KeyMaterialEncIn(vs ...string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldIn(FieldKeyMaterialEnc, vs...))
+}
+
+// KeyMaterialEncNotIn applies the NotIn predicate on the "key_material_enc" field.
+func KeyMaterialEncNotIn(vs ...string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotIn(FieldKeyMaterialEnc, vs...))
+}
+
+// KeyMaterialEncGT applies the GT predicate on the "key_material_enc" field.
+func KeyMaterialEncGT(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGT(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncGTE applies the GTE predicate on the "key_material_enc" field.
+func KeyMaterialEncGTE(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGTE(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncLT applies the LT predicate on the "key_material_enc" field.
+func KeyMaterialEncLT(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLT(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncLTE applies the LTE predicate on the "key_material_enc" field.
+func KeyMaterialEncLTE(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLTE(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncContains applies the Contains predicate on the "key_material_enc" field.
+func KeyMaterialEncContains(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldContains(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncHasPrefix applies the HasPrefix predicate on the "key_material_enc" field.
+func KeyMaterialEncHasPrefix(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldHasPrefix(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncHasSuffix applies the HasSuffix predicate on the "key_material_enc" field.
+func KeyMaterialEncHasSuffix(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldHasSuffix(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncIsNil applies the IsNil predicate on the "key_material_enc" field.
+func KeyMaterialEncIsNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldIsNull(FieldKeyMaterialEnc))
+}
+
+// KeyMaterialEncNotNil applies the NotNil predicate on the "key_material_enc" field.
+func KeyMaterialEncNotNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotNull(FieldKeyMaterialEnc))
+}
+
+// KeyMaterialEncEqualFold applies the EqualFold predicate on the "key_material_enc" field.
+func KeyMaterialEncEqualFold(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEqualFold(FieldKeyMaterialEnc, v))
+}
+
+// KeyMaterialEncContainsFold applies the ContainsFold predicate on the "key_material_enc" field.
+func KeyMaterialEncContainsFold(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldContainsFold(FieldKeyMaterialEnc, v))
 }
 
 // KeyPrefixEQ applies the EQ predicate on the "key_prefix" field.

@@ -20,6 +20,8 @@ const (
 	FieldGroupID = "group_id"
 	// FieldKeyHash holds the string denoting the key_hash field in the database.
 	FieldKeyHash = "key_hash"
+	// FieldKeyMaterialEnc holds the string denoting the key_material_enc field in the database.
+	FieldKeyMaterialEnc = "key_material_enc"
 	// FieldKeyPrefix holds the string denoting the key_prefix field in the database.
 	FieldKeyPrefix = "key_prefix"
 	// FieldName holds the string denoting the name field in the database.
@@ -97,6 +99,7 @@ var Columns = []string{
 	FieldUserID,
 	FieldGroupID,
 	FieldKeyHash,
+	FieldKeyMaterialEnc,
 	FieldKeyPrefix,
 	FieldName,
 	FieldIPWhitelist,
@@ -187,6 +190,11 @@ func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
 // ByKeyHash orders the results by the key_hash field.
 func ByKeyHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKeyHash, opts...).ToFunc()
+}
+
+// ByKeyMaterialEnc orders the results by the key_material_enc field.
+func ByKeyMaterialEnc(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKeyMaterialEnc, opts...).ToFunc()
 }
 
 // ByKeyPrefix orders the results by the key_prefix field.

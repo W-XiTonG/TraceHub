@@ -19,6 +19,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/apikeyhash"
 	"tracehub/internal/pkg/config"
+	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
 
@@ -348,17 +349,18 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 				gn = k.Edges.Group.Name
 			}
 			row := gin.H{
-				"id":               k.ID,
-				"name":             k.Name,
-				"key_prefix":       k.KeyPrefix,
-				"group_name":       gn,
-				"status":           st,
-				"last_used_at":     k.LastUsedAt,
-				"created_at":       k.CreatedAt,
-				"usage_24h":        tok24h[k.ID],
-				"daily_quota":      k.DailyQuota,
-				"ip_whitelist":     k.IPWhitelist,
-				"log_full_request": k.LogFullRequest,
+				"id":                   k.ID,
+				"name":                 k.Name,
+				"key_prefix":           k.KeyPrefix,
+				"can_reveal_full_key":  strings.TrimSpace(k.KeyMaterialEnc) != "",
+				"group_name":           gn,
+				"status":               st,
+				"last_used_at":         k.LastUsedAt,
+				"created_at":           k.CreatedAt,
+				"usage_24h":            tok24h[k.ID],
+				"daily_quota":          k.DailyQuota,
+				"ip_whitelist":         k.IPWhitelist,
+				"log_full_request":     k.LogFullRequest,
 			}
 			if !k.ExpiresAt.IsZero() {
 				row["expires_at"] = k.ExpiresAt.UTC().Format(time.RFC3339)
@@ -369,7 +371,7 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-func CreateAPIKey(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+func CreateAPIKey(client *ent.Client, cfg *config.Config, aesKey []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
@@ -409,9 +411,15 @@ func CreateAPIKey(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		if len(short) > 16 {
 			short = short[:16] + "..."
 		}
+		encStr, err := cryptokey.EncryptGCM(aesKey, []byte(raw))
+		if err != nil {
+			httpx.ServerError(c, "加密失败")
+			return
+		}
 		cr := client.APIKey.Create().
 			SetUserID(u.ID).
 			SetKeyHash(hash).
+			SetKeyMaterialEnc(encStr).
 			SetKeyPrefix(short).
 			SetName(req.Name)
 		if len(req.IPWhitelist) > 0 {
@@ -444,6 +452,36 @@ func CreateAPIKey(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 			"key_prefix": short,
 			"created_at": saved.CreatedAt,
 		})
+	}
+}
+
+// RevealAPIKey POST /api/user/apikeys/:id/reveal — 解密服务端保管的完整密钥（新建密钥起可用）。
+func RevealAPIKey(client *ent.Client, aesKey []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		ctx := c.Request.Context()
+		k, err := client.APIKey.Query().
+			Where(apikey.IDEQ(id), apikey.HasUserWith(user.IDEQ(u.ID))).
+			Only(ctx)
+		if err != nil {
+			httpx.BadRequest(c, "不存在")
+			return
+		}
+		if strings.TrimSpace(k.KeyMaterialEnc) == "" {
+			httpx.BadRequest(c, "该密钥创建较早，服务端未保存可恢复的完整密钥，请新建密钥或删除后重建")
+			return
+		}
+		plain, err := cryptokey.DecryptGCM(aesKey, k.KeyMaterialEnc)
+		if err != nil {
+			httpx.ServerError(c, "解密失败")
+			return
+		}
+		httpx.OK(c, gin.H{"key": string(plain)})
 	}
 }
 

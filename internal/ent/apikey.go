@@ -26,6 +26,8 @@ type APIKey struct {
 	GroupID int `json:"group_id,omitempty"`
 	// KeyHash holds the value of the "key_hash" field.
 	KeyHash string `json:"key_hash,omitempty"`
+	// KeyMaterialEnc holds the value of the "key_material_enc" field.
+	KeyMaterialEnc string `json:"-"`
 	// KeyPrefix holds the value of the "key_prefix" field.
 	KeyPrefix string `json:"key_prefix,omitempty"`
 	// Name holds the value of the "name" field.
@@ -127,7 +129,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID, apikey.FieldDailyQuota, apikey.FieldMonthlyQuota, apikey.FieldTotalQuota, apikey.FieldWindow5hCount, apikey.FieldWindow1dCount, apikey.FieldWindow7dCount, apikey.FieldWindow5hTokens, apikey.FieldWindow1dTokens, apikey.FieldWindow7dTokens:
 			values[i] = new(sql.NullInt64)
-		case apikey.FieldKeyHash, apikey.FieldKeyPrefix, apikey.FieldName:
+		case apikey.FieldKeyHash, apikey.FieldKeyMaterialEnc, apikey.FieldKeyPrefix, apikey.FieldName:
 			values[i] = new(sql.NullString)
 		case apikey.FieldWindowResetTime, apikey.FieldExpiresAt, apikey.FieldLastUsedAt, apikey.FieldCreatedAt, apikey.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -169,6 +171,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field key_hash", values[i])
 			} else if value.Valid {
 				_m.KeyHash = value.String
+			}
+		case apikey.FieldKeyMaterialEnc:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field key_material_enc", values[i])
+			} else if value.Valid {
+				_m.KeyMaterialEnc = value.String
 			}
 		case apikey.FieldKeyPrefix:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -353,6 +361,8 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("key_hash=")
 	builder.WriteString(_m.KeyHash)
+	builder.WriteString(", ")
+	builder.WriteString("key_material_enc=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("key_prefix=")
 	builder.WriteString(_m.KeyPrefix)

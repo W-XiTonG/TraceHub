@@ -18,6 +18,8 @@ func (APIKey) Fields() []ent.Field {
 		field.Int("user_id"),
 		field.Int("group_id").Optional(),
 		field.String("key_hash").MaxLen(255).Unique().NotEmpty(),
+		// 服务端 AES-GCM 加密后的完整密钥；仅用于控制台「显示/复制」，网关校验仍用 key_hash。
+		field.Text("key_material_enc").Optional().Sensitive(),
 		field.String("key_prefix").Optional().MaxLen(32),
 		field.String("name").Optional().MaxLen(100),
 		field.JSON("ip_whitelist", []string{}).Optional(),

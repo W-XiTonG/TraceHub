@@ -80,6 +80,26 @@ func (_u *APIKeyUpdate) SetNillableKeyHash(v *string) *APIKeyUpdate {
 	return _u
 }
 
+// SetKeyMaterialEnc sets the "key_material_enc" field.
+func (_u *APIKeyUpdate) SetKeyMaterialEnc(v string) *APIKeyUpdate {
+	_u.mutation.SetKeyMaterialEnc(v)
+	return _u
+}
+
+// SetNillableKeyMaterialEnc sets the "key_material_enc" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableKeyMaterialEnc(v *string) *APIKeyUpdate {
+	if v != nil {
+		_u.SetKeyMaterialEnc(*v)
+	}
+	return _u
+}
+
+// ClearKeyMaterialEnc clears the value of the "key_material_enc" field.
+func (_u *APIKeyUpdate) ClearKeyMaterialEnc() *APIKeyUpdate {
+	_u.mutation.ClearKeyMaterialEnc()
+	return _u
+}
+
 // SetKeyPrefix sets the "key_prefix" field.
 func (_u *APIKeyUpdate) SetKeyPrefix(v string) *APIKeyUpdate {
 	_u.mutation.SetKeyPrefix(v)
@@ -576,6 +596,12 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.KeyHash(); ok {
 		_spec.SetField(apikey.FieldKeyHash, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.KeyMaterialEnc(); ok {
+		_spec.SetField(apikey.FieldKeyMaterialEnc, field.TypeString, value)
+	}
+	if _u.mutation.KeyMaterialEncCleared() {
+		_spec.ClearField(apikey.FieldKeyMaterialEnc, field.TypeString)
+	}
 	if value, ok := _u.mutation.KeyPrefix(); ok {
 		_spec.SetField(apikey.FieldKeyPrefix, field.TypeString, value)
 	}
@@ -859,6 +885,26 @@ func (_u *APIKeyUpdateOne) SetNillableKeyHash(v *string) *APIKeyUpdateOne {
 	if v != nil {
 		_u.SetKeyHash(*v)
 	}
+	return _u
+}
+
+// SetKeyMaterialEnc sets the "key_material_enc" field.
+func (_u *APIKeyUpdateOne) SetKeyMaterialEnc(v string) *APIKeyUpdateOne {
+	_u.mutation.SetKeyMaterialEnc(v)
+	return _u
+}
+
+// SetNillableKeyMaterialEnc sets the "key_material_enc" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableKeyMaterialEnc(v *string) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetKeyMaterialEnc(*v)
+	}
+	return _u
+}
+
+// ClearKeyMaterialEnc clears the value of the "key_material_enc" field.
+func (_u *APIKeyUpdateOne) ClearKeyMaterialEnc() *APIKeyUpdateOne {
+	_u.mutation.ClearKeyMaterialEnc()
 	return _u
 }
 
@@ -1387,6 +1433,12 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if value, ok := _u.mutation.KeyHash(); ok {
 		_spec.SetField(apikey.FieldKeyHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.KeyMaterialEnc(); ok {
+		_spec.SetField(apikey.FieldKeyMaterialEnc, field.TypeString, value)
+	}
+	if _u.mutation.KeyMaterialEncCleared() {
+		_spec.ClearField(apikey.FieldKeyMaterialEnc, field.TypeString)
 	}
 	if value, ok := _u.mutation.KeyPrefix(); ok {
 		_spec.SetField(apikey.FieldKeyPrefix, field.TypeString, value)

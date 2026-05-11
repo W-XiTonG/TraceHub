@@ -49,6 +49,20 @@ func (_c *APIKeyCreate) SetKeyHash(v string) *APIKeyCreate {
 	return _c
 }
 
+// SetKeyMaterialEnc sets the "key_material_enc" field.
+func (_c *APIKeyCreate) SetKeyMaterialEnc(v string) *APIKeyCreate {
+	_c.mutation.SetKeyMaterialEnc(v)
+	return _c
+}
+
+// SetNillableKeyMaterialEnc sets the "key_material_enc" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableKeyMaterialEnc(v *string) *APIKeyCreate {
+	if v != nil {
+		_c.SetKeyMaterialEnc(*v)
+	}
+	return _c
+}
+
 // SetKeyPrefix sets the "key_prefix" field.
 func (_c *APIKeyCreate) SetKeyPrefix(v string) *APIKeyCreate {
 	_c.mutation.SetKeyPrefix(v)
@@ -521,6 +535,10 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.KeyHash(); ok {
 		_spec.SetField(apikey.FieldKeyHash, field.TypeString, value)
 		_node.KeyHash = value
+	}
+	if value, ok := _c.mutation.KeyMaterialEnc(); ok {
+		_spec.SetField(apikey.FieldKeyMaterialEnc, field.TypeString, value)
+		_node.KeyMaterialEnc = value
 	}
 	if value, ok := _c.mutation.KeyPrefix(); ok {
 		_spec.SetField(apikey.FieldKeyPrefix, field.TypeString, value)

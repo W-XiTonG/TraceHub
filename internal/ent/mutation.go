@@ -56,6 +56,7 @@ type APIKeyMutation struct {
 	typ                 string
 	id                  *int
 	key_hash            *string
+	key_material_enc    *string
 	key_prefix          *string
 	name                *string
 	ip_whitelist        *[]string
@@ -317,6 +318,55 @@ func (m *APIKeyMutation) OldKeyHash(ctx context.Context) (v string, err error) {
 // ResetKeyHash resets all changes to the "key_hash" field.
 func (m *APIKeyMutation) ResetKeyHash() {
 	m.key_hash = nil
+}
+
+// SetKeyMaterialEnc sets the "key_material_enc" field.
+func (m *APIKeyMutation) SetKeyMaterialEnc(s string) {
+	m.key_material_enc = &s
+}
+
+// KeyMaterialEnc returns the value of the "key_material_enc" field in the mutation.
+func (m *APIKeyMutation) KeyMaterialEnc() (r string, exists bool) {
+	v := m.key_material_enc
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyMaterialEnc returns the old "key_material_enc" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldKeyMaterialEnc(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyMaterialEnc is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyMaterialEnc requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyMaterialEnc: %w", err)
+	}
+	return oldValue.KeyMaterialEnc, nil
+}
+
+// ClearKeyMaterialEnc clears the value of the "key_material_enc" field.
+func (m *APIKeyMutation) ClearKeyMaterialEnc() {
+	m.key_material_enc = nil
+	m.clearedFields[apikey.FieldKeyMaterialEnc] = struct{}{}
+}
+
+// KeyMaterialEncCleared returns if the "key_material_enc" field was cleared in this mutation.
+func (m *APIKeyMutation) KeyMaterialEncCleared() bool {
+	_, ok := m.clearedFields[apikey.FieldKeyMaterialEnc]
+	return ok
+}
+
+// ResetKeyMaterialEnc resets all changes to the "key_material_enc" field.
+func (m *APIKeyMutation) ResetKeyMaterialEnc() {
+	m.key_material_enc = nil
+	delete(m.clearedFields, apikey.FieldKeyMaterialEnc)
 }
 
 // SetKeyPrefix sets the "key_prefix" field.
@@ -1484,7 +1534,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.user != nil {
 		fields = append(fields, apikey.FieldUserID)
 	}
@@ -1493,6 +1543,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.key_hash != nil {
 		fields = append(fields, apikey.FieldKeyHash)
+	}
+	if m.key_material_enc != nil {
+		fields = append(fields, apikey.FieldKeyMaterialEnc)
 	}
 	if m.key_prefix != nil {
 		fields = append(fields, apikey.FieldKeyPrefix)
@@ -1568,6 +1621,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.GroupID()
 	case apikey.FieldKeyHash:
 		return m.KeyHash()
+	case apikey.FieldKeyMaterialEnc:
+		return m.KeyMaterialEnc()
 	case apikey.FieldKeyPrefix:
 		return m.KeyPrefix()
 	case apikey.FieldName:
@@ -1623,6 +1678,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldGroupID(ctx)
 	case apikey.FieldKeyHash:
 		return m.OldKeyHash(ctx)
+	case apikey.FieldKeyMaterialEnc:
+		return m.OldKeyMaterialEnc(ctx)
 	case apikey.FieldKeyPrefix:
 		return m.OldKeyPrefix(ctx)
 	case apikey.FieldName:
@@ -1692,6 +1749,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKeyHash(v)
+		return nil
+	case apikey.FieldKeyMaterialEnc:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyMaterialEnc(v)
 		return nil
 	case apikey.FieldKeyPrefix:
 		v, ok := value.(string)
@@ -1977,6 +2041,9 @@ func (m *APIKeyMutation) ClearedFields() []string {
 	if m.FieldCleared(apikey.FieldGroupID) {
 		fields = append(fields, apikey.FieldGroupID)
 	}
+	if m.FieldCleared(apikey.FieldKeyMaterialEnc) {
+		fields = append(fields, apikey.FieldKeyMaterialEnc)
+	}
 	if m.FieldCleared(apikey.FieldKeyPrefix) {
 		fields = append(fields, apikey.FieldKeyPrefix)
 	}
@@ -2015,6 +2082,9 @@ func (m *APIKeyMutation) ClearField(name string) error {
 	case apikey.FieldGroupID:
 		m.ClearGroupID()
 		return nil
+	case apikey.FieldKeyMaterialEnc:
+		m.ClearKeyMaterialEnc()
+		return nil
 	case apikey.FieldKeyPrefix:
 		m.ClearKeyPrefix()
 		return nil
@@ -2052,6 +2122,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldKeyHash:
 		m.ResetKeyHash()
+		return nil
+	case apikey.FieldKeyMaterialEnc:
+		m.ResetKeyMaterialEnc()
 		return nil
 	case apikey.FieldKeyPrefix:
 		m.ResetKeyPrefix()

@@ -12,6 +12,7 @@ var (
 	APIKeysColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "key_hash", Type: field.TypeString, Unique: true, Size: 255},
+		{Name: "key_material_enc", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "key_prefix", Type: field.TypeString, Nullable: true, Size: 32},
 		{Name: "name", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "ip_whitelist", Type: field.TypeJSON, Nullable: true},
@@ -43,13 +44,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "api_keys_groups_api_keys",
-				Columns:    []*schema.Column{APIKeysColumns[22]},
+				Columns:    []*schema.Column{APIKeysColumns[23]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "api_keys_users_api_keys",
-				Columns:    []*schema.Column{APIKeysColumns[23]},
+				Columns:    []*schema.Column{APIKeysColumns[24]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -63,12 +64,12 @@ var (
 			{
 				Name:    "apikey_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{APIKeysColumns[23]},
+				Columns: []*schema.Column{APIKeysColumns[24]},
 			},
 			{
 				Name:    "apikey_enabled",
 				Unique:  false,
-				Columns: []*schema.Column{APIKeysColumns[16]},
+				Columns: []*schema.Column{APIKeysColumns[17]},
 			},
 		},
 	}

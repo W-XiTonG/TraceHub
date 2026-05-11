@@ -44,63 +44,63 @@ func init() {
 		}
 	}()
 	// apikeyDescKeyPrefix is the schema descriptor for key_prefix field.
-	apikeyDescKeyPrefix := apikeyFields[3].Descriptor()
+	apikeyDescKeyPrefix := apikeyFields[4].Descriptor()
 	// apikey.KeyPrefixValidator is a validator for the "key_prefix" field. It is called by the builders before save.
 	apikey.KeyPrefixValidator = apikeyDescKeyPrefix.Validators[0].(func(string) error)
 	// apikeyDescName is the schema descriptor for name field.
-	apikeyDescName := apikeyFields[4].Descriptor()
+	apikeyDescName := apikeyFields[5].Descriptor()
 	// apikey.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	apikey.NameValidator = apikeyDescName.Validators[0].(func(string) error)
 	// apikeyDescDailyQuota is the schema descriptor for daily_quota field.
-	apikeyDescDailyQuota := apikeyFields[7].Descriptor()
+	apikeyDescDailyQuota := apikeyFields[8].Descriptor()
 	// apikey.DefaultDailyQuota holds the default value on creation for the daily_quota field.
 	apikey.DefaultDailyQuota = apikeyDescDailyQuota.Default.(int64)
 	// apikeyDescMonthlyQuota is the schema descriptor for monthly_quota field.
-	apikeyDescMonthlyQuota := apikeyFields[8].Descriptor()
+	apikeyDescMonthlyQuota := apikeyFields[9].Descriptor()
 	// apikey.DefaultMonthlyQuota holds the default value on creation for the monthly_quota field.
 	apikey.DefaultMonthlyQuota = apikeyDescMonthlyQuota.Default.(int64)
 	// apikeyDescTotalQuota is the schema descriptor for total_quota field.
-	apikeyDescTotalQuota := apikeyFields[9].Descriptor()
+	apikeyDescTotalQuota := apikeyFields[10].Descriptor()
 	// apikey.DefaultTotalQuota holds the default value on creation for the total_quota field.
 	apikey.DefaultTotalQuota = apikeyDescTotalQuota.Default.(int64)
 	// apikeyDescWindow5hCount is the schema descriptor for window_5h_count field.
-	apikeyDescWindow5hCount := apikeyFields[10].Descriptor()
+	apikeyDescWindow5hCount := apikeyFields[11].Descriptor()
 	// apikey.DefaultWindow5hCount holds the default value on creation for the window_5h_count field.
 	apikey.DefaultWindow5hCount = apikeyDescWindow5hCount.Default.(int)
 	// apikeyDescWindow1dCount is the schema descriptor for window_1d_count field.
-	apikeyDescWindow1dCount := apikeyFields[11].Descriptor()
+	apikeyDescWindow1dCount := apikeyFields[12].Descriptor()
 	// apikey.DefaultWindow1dCount holds the default value on creation for the window_1d_count field.
 	apikey.DefaultWindow1dCount = apikeyDescWindow1dCount.Default.(int)
 	// apikeyDescWindow7dCount is the schema descriptor for window_7d_count field.
-	apikeyDescWindow7dCount := apikeyFields[12].Descriptor()
+	apikeyDescWindow7dCount := apikeyFields[13].Descriptor()
 	// apikey.DefaultWindow7dCount holds the default value on creation for the window_7d_count field.
 	apikey.DefaultWindow7dCount = apikeyDescWindow7dCount.Default.(int)
 	// apikeyDescWindow5hTokens is the schema descriptor for window_5h_tokens field.
-	apikeyDescWindow5hTokens := apikeyFields[13].Descriptor()
+	apikeyDescWindow5hTokens := apikeyFields[14].Descriptor()
 	// apikey.DefaultWindow5hTokens holds the default value on creation for the window_5h_tokens field.
 	apikey.DefaultWindow5hTokens = apikeyDescWindow5hTokens.Default.(int64)
 	// apikeyDescWindow1dTokens is the schema descriptor for window_1d_tokens field.
-	apikeyDescWindow1dTokens := apikeyFields[14].Descriptor()
+	apikeyDescWindow1dTokens := apikeyFields[15].Descriptor()
 	// apikey.DefaultWindow1dTokens holds the default value on creation for the window_1d_tokens field.
 	apikey.DefaultWindow1dTokens = apikeyDescWindow1dTokens.Default.(int64)
 	// apikeyDescWindow7dTokens is the schema descriptor for window_7d_tokens field.
-	apikeyDescWindow7dTokens := apikeyFields[15].Descriptor()
+	apikeyDescWindow7dTokens := apikeyFields[16].Descriptor()
 	// apikey.DefaultWindow7dTokens holds the default value on creation for the window_7d_tokens field.
 	apikey.DefaultWindow7dTokens = apikeyDescWindow7dTokens.Default.(int64)
 	// apikeyDescEnabled is the schema descriptor for enabled field.
-	apikeyDescEnabled := apikeyFields[17].Descriptor()
+	apikeyDescEnabled := apikeyFields[18].Descriptor()
 	// apikey.DefaultEnabled holds the default value on creation for the enabled field.
 	apikey.DefaultEnabled = apikeyDescEnabled.Default.(bool)
 	// apikeyDescLogFullRequest is the schema descriptor for log_full_request field.
-	apikeyDescLogFullRequest := apikeyFields[18].Descriptor()
+	apikeyDescLogFullRequest := apikeyFields[19].Descriptor()
 	// apikey.DefaultLogFullRequest holds the default value on creation for the log_full_request field.
 	apikey.DefaultLogFullRequest = apikeyDescLogFullRequest.Default.(bool)
 	// apikeyDescCreatedAt is the schema descriptor for created_at field.
-	apikeyDescCreatedAt := apikeyFields[21].Descriptor()
+	apikeyDescCreatedAt := apikeyFields[22].Descriptor()
 	// apikey.DefaultCreatedAt holds the default value on creation for the created_at field.
 	apikey.DefaultCreatedAt = apikeyDescCreatedAt.Default.(func() time.Time)
 	// apikeyDescUpdatedAt is the schema descriptor for updated_at field.
-	apikeyDescUpdatedAt := apikeyFields[22].Descriptor()
+	apikeyDescUpdatedAt := apikeyFields[23].Descriptor()
 	// apikey.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	apikey.DefaultUpdatedAt = apikeyDescUpdatedAt.Default.(func() time.Time)
 	// apikey.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

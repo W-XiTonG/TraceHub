@@ -9,6 +9,8 @@ type KeyRow = {
   id: number
   name?: string
   key_prefix?: string
+  /** 服务端是否存有可解密的完整密钥（新建密钥起） */
+  can_reveal_full_key?: boolean
   group_name?: string
   status: string
   last_used_at?: string
@@ -52,6 +54,12 @@ const compact = ref(false)
 const selectedIds = ref<number[]>([])
 const flash = ref('')
 
+/** 拉取并缓存的完整密钥（仅内存，刷新列表会按 id 清理） */
+const fullKeyById = ref<Record<number, string>>({})
+/** 是否在表格中明文展示完整密钥 */
+const showFullKeyForId = ref<Record<number, boolean>>({})
+const revealBusyId = ref<number | null>(null)
+
 const filteredItems = computed(() => {
   const n = filterName.value.trim().toLowerCase()
   const p = filterPrefix.value.trim().toLowerCase()
@@ -88,6 +96,68 @@ async function load() {
     items.value = data.data.items
     const idSet = new Set(items.value.map((x) => x.id))
     selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
+    fullKeyById.value = Object.fromEntries(
+      Object.entries(fullKeyById.value).filter(([id]) => idSet.has(Number(id))),
+    ) as Record<number, string>
+    showFullKeyForId.value = Object.fromEntries(
+      Object.entries(showFullKeyForId.value).filter(([id]) => idSet.has(Number(id))),
+    ) as Record<number, boolean>
+  }
+}
+
+async function fetchRevealFullKey(id: number): Promise<string> {
+  if (fullKeyById.value[id]) return fullKeyById.value[id]
+  const { data } = await http.post<Envelope<{ key: string }>>(`/api/user/apikeys/${id}/reveal`, {})
+  if (data.code !== 0) throw new Error(data.message || t('apiKeys.revealFail'))
+  const k = data.data?.key?.trim()
+  if (!k) throw new Error(t('apiKeys.revealFail'))
+  fullKeyById.value = { ...fullKeyById.value, [id]: k }
+  return k
+}
+
+function displayKeyCell(k: KeyRow): string {
+  if (showFullKeyForId.value[k.id] && fullKeyById.value[k.id]) return fullKeyById.value[k.id]
+  return k.key_prefix || ''
+}
+
+async function toggleShowFullKey(k: KeyRow) {
+  if (!k.can_reveal_full_key) {
+    flash.value = t('apiKeys.revealLegacyHint')
+    window.setTimeout(() => {
+      if (flash.value === t('apiKeys.revealLegacyHint')) flash.value = ''
+    }, 3200)
+    return
+  }
+  err.value = ''
+  if (showFullKeyForId.value[k.id]) {
+    showFullKeyForId.value = { ...showFullKeyForId.value, [k.id]: false }
+    return
+  }
+  revealBusyId.value = k.id
+  try {
+    await fetchRevealFullKey(k.id)
+    showFullKeyForId.value = { ...showFullKeyForId.value, [k.id]: true }
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('apiKeys.revealFail')
+  } finally {
+    revealBusyId.value = null
+  }
+}
+
+async function copyFullSecret(k: KeyRow) {
+  err.value = ''
+  if (!k.can_reveal_full_key) {
+    flash.value = t('apiKeys.revealLegacyHint')
+    window.setTimeout(() => {
+      if (flash.value === t('apiKeys.revealLegacyHint')) flash.value = ''
+    }, 3200)
+    return
+  }
+  try {
+    const full = await fetchRevealFullKey(k.id)
+    await copyText(full)
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('apiKeys.revealFail')
   }
 }
 
@@ -478,17 +548,37 @@ onMounted(() => {
               {{ k.group_name || t('apiKeys.dash') }}
             </td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
-              <div class="flex items-center gap-1.5">
-                <code class="max-w-[12rem] truncate font-mono text-[11px] text-cyan-200/90">{{ k.key_prefix }}</code>
+              <div class="flex max-w-[14rem] flex-col gap-1">
+                <div class="flex items-start gap-1">
+                  <code
+                    class="min-w-0 flex-1 font-mono text-[11px] leading-snug text-cyan-200/90"
+                    :class="showFullKeyForId[k.id] ? 'break-all' : 'truncate'"
+                  >{{ displayKeyCell(k) }}</code>
+                  <button
+                    type="button"
+                    class="shrink-0 rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-400 disabled:opacity-40"
+                    :title="t('apiKeys.copyFullKey')"
+                    :disabled="revealBusyId === k.id"
+                    @click="copyFullSecret(k)"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                    </svg>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  class="shrink-0 rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-400"
-                  :title="t('apiKeys.copyPrefix')"
-                  @click="copyText(k.key_prefix || '')"
+                  class="self-start text-[10px] font-medium text-slate-500 underline-offset-2 hover:text-cyan-400 hover:underline disabled:opacity-40"
+                  :disabled="revealBusyId === k.id"
+                  @click="toggleShowFullKey(k)"
                 >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-                  </svg>
+                  {{
+                    revealBusyId === k.id
+                      ? t('apiKeys.revealLoading')
+                      : showFullKeyForId[k.id]
+                        ? t('apiKeys.revealHide')
+                        : t('apiKeys.revealShow')
+                  }}
                 </button>
               </div>
             </td>
