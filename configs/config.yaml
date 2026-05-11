@@ -6,7 +6,7 @@ database:
   dsn: "postgres://tracehub:tracehub@localhost:5432/tracehub?sslmode=disable"
 
 redis:
-  addr: "localhost:6379"
+  addr: "192.168.236.164:6379"
   password: ""
   db: 0
 
@@ -19,6 +19,22 @@ site:
   default_new_user_balance: 100000
   cors_origins:
     - "*"
+
+# 邮箱验证码登录：enabled 为 true 时需 Redis + SMTP（本地可用 MailHog 等）
+email:
+  enabled: true
+  smtp_host: "smtp.qq.com"
+  smtp_port: 587
+  smtp_user: "2751799737@qq.com"
+  smtp_password: "cwzjnavjozjnddjf"
+  from: "2751799737@qq.com"
+  starttls: true
+  insecure_skip_verify: false
+  login_code_subject: "TraceHub 登录验证码"
+  register_code_subject: "TraceHub 注册验证码"
+  login_code_ttl_minutes: 10
+  login_code_resend_seconds: 60
+  login_code_max_per_hour: 8
 
 bootstrap:
   admin_email: "admin@example.com"

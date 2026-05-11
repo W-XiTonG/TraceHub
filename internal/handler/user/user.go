@@ -23,21 +23,40 @@ import (
 	"tracehub/internal/pkg/jwtx"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const maxAPIKeysPerUser = 20
 
-func Register(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+func Register(client *ent.Client, cfg *config.Config, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
 			Username string `json:"username"`
+			Code     string `json:"code"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.Email == "" || req.Password == "" {
 			httpx.BadRequest(c, "邮箱与密码必填")
 			return
+		}
+		if cfg.Email.Enabled {
+			if rdb == nil {
+				httpx.ServiceUnavailable(c, "已启用邮件验证但未连接 Redis，无法注册")
+				return
+			}
+			if strings.TrimSpace(cfg.Email.SMTPHost) == "" || strings.TrimSpace(cfg.Email.From) == "" {
+				httpx.ServiceUnavailable(c, "已启用邮件验证但 SMTP 未配置完整，无法注册")
+				return
+			}
+			if strings.TrimSpace(req.Code) == "" {
+				httpx.BadRequest(c, "请填写邮箱验证码")
+				return
+			}
+			if !verifyAndConsumeRegisterCode(c, rdb, req.Email, req.Code) {
+				return
+			}
 		}
 		ctx := c.Request.Context()
 		ok, err := client.User.Query().Where(user.EmailEQ(req.Email)).Exist(ctx)
@@ -115,36 +134,7 @@ func Login(client *ent.Client, cfg *config.Config, jwtSecret []byte) gin.Handler
 			httpx.Unauthorized(c, "账号或密码错误")
 			return
 		}
-		_ = client.User.UpdateOneID(u.ID).SetLastLoginAt(time.Now()).Exec(ctx)
-
-		accessTTL := 72 * time.Hour
-		refreshTTL := 30 * 24 * time.Hour
-		at, err := jwtx.SignAccess(jwtSecret, int64(u.ID), u.Email, u.Role, accessTTL)
-		if err != nil {
-			httpx.ServerError(c, "签发令牌失败")
-			return
-		}
-		rt, err := jwtx.SignRefresh(jwtSecret, int64(u.ID), u.Email, refreshTTL)
-		if err != nil {
-			httpx.ServerError(c, "签发令牌失败")
-			return
-		}
-		gname := ""
-		if u.Edges.Group != nil {
-			gname = u.Edges.Group.Name
-		}
-		httpx.OK(c, gin.H{
-			"access_token":  at,
-			"refresh_token": rt,
-			"expires_in":    int(accessTTL.Seconds()),
-			"user": gin.H{
-				"id":         u.ID,
-				"email":      u.Email,
-				"username":   u.Username,
-				"balance":    u.Balance,
-				"group_name": gname,
-			},
-		})
+		writeUserSession(c, client, u, jwtSecret)
 	}
 }
 

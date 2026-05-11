@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -7,14 +7,31 @@ import AuthFeatureAside from '../components/AuthFeatureAside.vue'
 
 const { t } = useI18n()
 
-/** 邮箱或用户名（与后端 JSON 字段 email 兼容） */
+type LoginMode = 'password' | 'code'
+const mode = ref<LoginMode>('password')
+
+/** 密码模式：邮箱或用户名；验证码模式：注册邮箱 */
 const account = ref('')
 const password = ref('')
+const code = ref('')
 const err = ref('')
 const loading = ref(false)
+const sendLoading = ref(false)
+const cooldown = ref(0)
+let cdTimer: ReturnType<typeof setInterval> | null = null
+
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+
+watch(mode, () => {
+  err.value = ''
+  code.value = ''
+})
+
+onUnmounted(() => {
+  if (cdTimer) clearInterval(cdTimer)
+})
 
 const redirectLabel = computed(() => {
   const r = route.query.redirect
@@ -23,11 +40,45 @@ const redirectLabel = computed(() => {
   return path.length > 52 ? `${path.slice(0, 50)}…` : path
 })
 
+function startCooldown(sec: number) {
+  if (cdTimer) clearInterval(cdTimer)
+  cooldown.value = Math.max(0, Math.floor(sec))
+  cdTimer = setInterval(() => {
+    cooldown.value -= 1
+    if (cooldown.value <= 0 && cdTimer) {
+      clearInterval(cdTimer)
+      cdTimer = null
+    }
+  }, 1000)
+}
+
+async function sendCode() {
+  err.value = ''
+  const em = account.value.trim()
+  if (!em.includes('@')) {
+    err.value = t('login.codeEmailInvalid')
+    return
+  }
+  sendLoading.value = true
+  try {
+    const next = await auth.sendLoginCode(em)
+    startCooldown(typeof next === 'number' && next > 0 ? next : 60)
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('login.sendCodeFail')
+  } finally {
+    sendLoading.value = false
+  }
+}
+
 async function submit() {
   err.value = ''
   loading.value = true
   try {
-    await auth.login(account.value, password.value)
+    if (mode.value === 'code') {
+      await auth.loginWithEmailCode(account.value, code.value)
+    } else {
+      await auth.login(account.value, password.value)
+    }
     const redir = (route.query.redirect as string) || '/console'
     router.push(redir)
   } catch (e: unknown) {
@@ -50,9 +101,27 @@ async function submit() {
         </div>
         <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">{{ t('login.title') }}</h1>
         <p class="mb-1 text-center text-sm text-slate-500">{{ t('login.subtitle') }}</p>
-        <p class="mb-8 text-center text-[11px] leading-relaxed text-slate-600">
-          {{ t('login.hint') }}
+        <p class="mb-5 text-center text-[11px] leading-relaxed text-slate-600">
+          {{ mode === 'code' ? t('login.hintCode') : t('login.hint') }}
         </p>
+        <div class="mb-6 flex justify-center gap-1 rounded-lg border border-white/8 bg-black/20 p-1">
+          <button
+            type="button"
+            class="flex-1 rounded-md px-3 py-2 text-xs font-medium transition"
+            :class="mode === 'password' ? 'bg-white/10 text-slate-100 shadow-sm' : 'text-slate-500 hover:text-slate-300'"
+            @click="mode = 'password'"
+          >
+            {{ t('login.modePassword') }}
+          </button>
+          <button
+            type="button"
+            class="flex-1 rounded-md px-3 py-2 text-xs font-medium transition"
+            :class="mode === 'code' ? 'bg-white/10 text-slate-100 shadow-sm' : 'text-slate-500 hover:text-slate-300'"
+            @click="mode = 'code'"
+          >
+            {{ t('login.modeCode') }}
+          </button>
+        </div>
         <p
           v-if="redirectLabel"
           class="mb-5 rounded-lg border border-cyan-500/15 bg-cyan-950/25 px-3 py-2 text-center text-[11px] leading-relaxed text-cyan-200/85"
@@ -62,12 +131,51 @@ async function submit() {
         </p>
         <form class="space-y-5" @submit.prevent="submit">
           <div>
-            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('login.accountLabel') }}</label>
-            <input v-model="account" type="text" required class="th-input" autocomplete="username" :placeholder="t('login.accountPlaceholder')" />
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+              mode === 'code' ? t('login.codeEmailLabel') : t('login.accountLabel')
+            }}</label>
+            <input
+              v-model="account"
+              :type="mode === 'code' ? 'email' : 'text'"
+              required
+              class="th-input"
+              :autocomplete="mode === 'code' ? 'email' : 'username'"
+              :placeholder="mode === 'code' ? t('login.codeEmailPlaceholder') : t('login.accountPlaceholder')"
+            />
           </div>
-          <div>
+          <div v-if="mode === 'password'">
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('login.password') }}</label>
             <input v-model="password" type="password" required class="th-input" autocomplete="current-password" />
+          </div>
+          <div v-else class="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div class="min-w-0 flex-1">
+              <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('login.codeLabel') }}</label>
+              <input
+                v-model="code"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                pattern="[0-9]*"
+                required
+                class="th-input font-mono tracking-widest"
+                autocomplete="one-time-code"
+                :placeholder="t('login.codePlaceholder')"
+              />
+            </div>
+            <button
+              type="button"
+              :disabled="sendLoading || cooldown > 0"
+              class="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-950/40 px-4 py-3 text-sm font-medium text-cyan-100/95 transition hover:border-cyan-400/40 hover:bg-cyan-900/35 disabled:cursor-not-allowed disabled:opacity-45"
+              @click="sendCode"
+            >
+              {{
+                sendLoading
+                  ? t('common.sending')
+                  : cooldown > 0
+                    ? t('login.sendCodeWait', { n: cooldown })
+                    : t('login.sendCode')
+              }}
+            </button>
           </div>
           <p v-if="err" class="rounded-lg border border-red-500/20 bg-red-950/40 px-3 py-2 text-sm text-red-300">{{ err }}</p>
           <button type="submit" :disabled="loading" class="th-btn-primary w-full py-3">

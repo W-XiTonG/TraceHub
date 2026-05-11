@@ -36,6 +36,22 @@ site:
   #   deny_prefixes: []
   #   patch_model_in_json: true
 
+# 邮箱验证码登录（可选）：enabled 为 true 时需可连 Redis，并配置 SMTP；465 为 implicit TLS，587 常用 STARTTLS
+email:
+  enabled: false
+  smtp_host: ""
+  smtp_port: 587
+  smtp_user: ""
+  smtp_password: ""
+  from: "" # 例: "TraceHub <noreply@example.com>"
+  starttls: true
+  insecure_skip_verify: false
+  login_code_subject: "TraceHub 登录验证码"
+  register_code_subject: "TraceHub 注册验证码"
+  login_code_ttl_minutes: 10
+  login_code_resend_seconds: 60
+  login_code_max_per_hour: 8
+
 bootstrap:
   admin_email: "admin@example.com"
   admin_password: "Admin123!"

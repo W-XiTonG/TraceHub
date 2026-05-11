@@ -36,6 +36,14 @@ func Forbidden(c *gin.Context, msg string) {
 	Err(c, http.StatusForbidden, 40300, msg)
 }
 
+func TooManyRequests(c *gin.Context, msg string) {
+	Err(c, http.StatusTooManyRequests, 42900, msg)
+}
+
+func ServiceUnavailable(c *gin.Context, msg string) {
+	Err(c, http.StatusServiceUnavailable, 50300, msg)
+}
+
 func ServerError(c *gin.Context, msg string) {
 	Err(c, http.StatusInternalServerError, 50000, msg)
 }

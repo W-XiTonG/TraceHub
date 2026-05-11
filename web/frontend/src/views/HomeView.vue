@@ -369,11 +369,38 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
       >
         <div class="relative mx-auto max-w-6xl px-5">
           <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.modelsTitle') }}</h2>
-          <p class="mx-auto mt-3 max-w-lg text-center text-sm leading-relaxed text-slate-500">
+          <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500">
             {{ t('home.modelsDesc') }}
           </p>
-          <div class="th-home-chip-row mt-10 flex flex-wrap justify-center gap-2">
-            <span v-for="m in models" :key="m" class="th-chip">{{ m }}</span>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
+            {{ t('home.modelsNote') }}
+          </p>
+          <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+            <RouterLink
+              to="/docs#doc-gateway"
+              class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
+            >
+              {{ t('home.modelsLinkDocs') }}
+            </RouterLink>
+            <RouterLink
+              to="/console/models"
+              class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
+            >
+              {{ t('home.modelsLinkConsole') }}
+            </RouterLink>
+          </div>
+          <div class="mt-10 flex flex-col items-center gap-3">
+            <span
+              class="rounded-full border border-amber-500/25 bg-amber-950/25 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-200/90"
+            >
+              {{ t('home.modelsBadge') }}
+            </span>
+            <div class="th-home-chip-row flex max-w-3xl flex-wrap justify-center gap-2">
+              <span v-for="m in models" :key="m" class="th-chip">{{ m }}</span>
+              <span
+                class="th-chip border border-dashed border-slate-600/70 bg-transparent font-sans text-slate-500 italic ring-0"
+              >{{ t('home.modelsMore') }}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -382,6 +409,9 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
         <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.pricingTitle') }}</h2>
         <p class="mx-auto mt-3 max-w-lg text-center text-sm leading-relaxed text-slate-500">
           {{ t('home.pricingDesc') }}
+        </p>
+        <p class="mx-auto mt-4 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
+          {{ t('home.pricingSampleLead') }}
         </p>
         <div class="th-table-wrap mt-10 overflow-hidden">
           <table class="w-full text-left text-sm">

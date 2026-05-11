@@ -175,8 +175,12 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	}
 
 	u := r.Group("/api/user")
-	u.POST("/register", userhandler.Register(opt.Client, opt.Config))
+	u.GET("/register/email-code-meta", userhandler.RegisterEmailCodeMeta(opt.Config, opt.Redis))
+	u.POST("/register/email-code/send", userhandler.SendRegisterCode(opt.Client, opt.Config, opt.Redis))
+	u.POST("/register", userhandler.Register(opt.Client, opt.Config, opt.Redis))
 	u.POST("/login", userhandler.Login(opt.Client, opt.Config, jwtSecret))
+	u.POST("/login-code/send", userhandler.SendLoginCode(opt.Client, opt.Config, opt.Redis))
+	u.POST("/login-code/verify", userhandler.VerifyLoginCode(opt.Client, opt.Config, jwtSecret, opt.Redis))
 	u.POST("/refresh", userhandler.Refresh(opt.Client, jwtSecret))
 
 	authUser := u.Group("")

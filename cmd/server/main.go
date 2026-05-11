@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	cfgPath := flag.String("config", "configs/config.yaml", "配置文件路径")
+	cfgPath := flag.String("config", "configs/config.yaml", "path to YAML config file")
 	flag.Parse()
 
 	zlog, err := zap.NewProduction()
@@ -29,30 +29,35 @@ func main() {
 
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
-		zlog.Fatal("加载配置失败", zap.Error(err), zap.String("path", *cfgPath))
+		zlog.Fatal("failed to load config", zap.Error(err), zap.String("path", *cfgPath))
 	}
 
 	ctx := context.Background()
 	createdDB, createdDBName, err := pginit.EnsureDatabase(ctx, cfg.Database.DSN)
 	if err != nil {
-		zlog.Fatal("数据库准备失败", zap.Error(err))
+		zlog.Fatal("database preparation failed", zap.Error(err))
 	}
 	if createdDB {
-		zlog.Info("已自动创建 PostgreSQL 数据库（表结构将由迁移创建）", zap.String("database", createdDBName))
+		zlog.Info("created PostgreSQL database (schema will be applied by migration)", zap.String("database", createdDBName))
 	}
 
 	client, err := ent.Open("postgres", cfg.Database.DSN)
 	if err != nil {
-		zlog.Fatal("数据库连接失败", zap.Error(err))
+		zlog.Fatal("database connection failed", zap.Error(err))
 	}
 	defer client.Close()
 
 	if err := client.Schema.Create(ctx); err != nil {
-		zlog.Fatal("数据库迁移失败", zap.Error(err))
+		zlog.Fatal("database migration failed", zap.Error(err))
 	}
 
 	var rdb *redis.Client
 	if cfg.Redis.Addr != "" {
+		zlog.Info("connecting to Redis (using redis.addr from config)",
+			zap.String("redis_addr", cfg.Redis.Addr),
+			zap.Int("redis_db", cfg.Redis.DB),
+			zap.Bool("redis_password_set", cfg.Redis.Password != ""),
+		)
 		rdb = redis.NewClient(&redis.Options{
 			Addr:     cfg.Redis.Addr,
 			Password: cfg.Redis.Password,
@@ -60,13 +65,24 @@ func main() {
 		})
 		defer func() { _ = rdb.Close() }()
 		if err := rdb.Ping(ctx).Err(); err != nil {
-			zlog.Warn("Redis 不可用，粘性会话与部分限流将降级", zap.Error(err))
+			zlog.Warn("Redis ping failed; running without Redis (email OTP login/register disabled)",
+				zap.String("redis_addr", cfg.Redis.Addr),
+				zap.Int("redis_db", cfg.Redis.DB),
+				zap.Error(err),
+			)
 			rdb = nil
+		} else {
+			zlog.Info("Redis connected and ready",
+				zap.String("redis_addr", cfg.Redis.Addr),
+				zap.Int("redis_db", cfg.Redis.DB),
+			)
 		}
+	} else {
+		zlog.Info("Redis skipped (redis.addr is empty)")
 	}
 
 	if err := bootstrap.EnsureDefaults(ctx, client, cfg, zlog); err != nil {
-		zlog.Fatal("初始化数据失败", zap.Error(err))
+		zlog.Fatal("bootstrap defaults failed", zap.Error(err))
 	}
 
 	r, err := server.NewRouter(server.Options{
@@ -76,7 +92,7 @@ func main() {
 		Log:    zlog,
 	})
 	if err != nil {
-		zlog.Fatal("路由初始化失败", zap.Error(err))
+		zlog.Fatal("router init failed", zap.Error(err))
 	}
 
 	addr := cfg.Server.Addr
@@ -89,8 +105,8 @@ func main() {
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 120 * time.Second,
 	}
-	zlog.Info("TraceHub 网关启动", zap.String("addr", addr))
+	zlog.Info("TraceHub gateway listening", zap.String("addr", addr))
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		zlog.Fatal("HTTP 服务异常退出", zap.Error(err))
+		zlog.Fatal("HTTP server exited with error", zap.Error(err))
 	}
 }

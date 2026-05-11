@@ -12,7 +12,25 @@ type Config struct {
 	Redis     RedisConfig     `mapstructure:"redis"`
 	Security  SecurityConfig  `mapstructure:"security"`
 	Site      SiteConfig      `mapstructure:"site"`
+	Email     EmailConfig     `mapstructure:"email"`
 	Bootstrap BootstrapConfig `mapstructure:"bootstrap"`
+}
+
+// EmailConfig 用于发送登录验证码等系统邮件；未启用时仍可密码登录。
+type EmailConfig struct {
+	Enabled            bool   `mapstructure:"enabled"`
+	SMTPHost           string `mapstructure:"smtp_host"`
+	SMTPPort           int    `mapstructure:"smtp_port"`
+	SMTPUser           string `mapstructure:"smtp_user"`
+	SMTPPassword       string `mapstructure:"smtp_password"`
+	From               string `mapstructure:"from"`
+	StartTLS           bool   `mapstructure:"starttls"`
+	InsecureSkipVerify bool   `mapstructure:"insecure_skip_verify"`
+	LoginCodeSubject    string `mapstructure:"login_code_subject"`
+	RegisterCodeSubject string `mapstructure:"register_code_subject"`
+	LoginCodeTTLMin     int    `mapstructure:"login_code_ttl_minutes"`
+	LoginCodeResendSec  int    `mapstructure:"login_code_resend_seconds"`
+	LoginCodeMaxHour    int    `mapstructure:"login_code_max_per_hour"`
 }
 
 type ServerConfig struct {
@@ -94,6 +112,13 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.openai_passthrough.enabled", false)
 	v.SetDefault("site.openai_passthrough.patch_model_in_json", true)
 	v.SetDefault("bootstrap.default_group_name", "基础分组")
+	v.SetDefault("email.smtp_port", 587)
+	v.SetDefault("email.starttls", true)
+	v.SetDefault("email.login_code_ttl_minutes", 10)
+	v.SetDefault("email.login_code_resend_seconds", 60)
+	v.SetDefault("email.login_code_max_per_hour", 8)
+	v.SetDefault("email.login_code_subject", "TraceHub 登录验证码")
+	v.SetDefault("email.register_code_subject", "TraceHub 注册验证码")
 
 	var c Config
 	if err := v.Unmarshal(&c); err != nil {

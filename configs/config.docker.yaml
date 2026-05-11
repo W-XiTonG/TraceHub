@@ -20,6 +20,21 @@ site:
   cors_origins:
     - "*"
 
+email:
+  enabled: false
+  smtp_host: ""
+  smtp_port: 587
+  smtp_user: ""
+  smtp_password: ""
+  from: ""
+  starttls: true
+  insecure_skip_verify: false
+  login_code_subject: "TraceHub 登录验证码"
+  register_code_subject: "TraceHub 注册验证码"
+  login_code_ttl_minutes: 10
+  login_code_resend_seconds: 60
+  login_code_max_per_hour: 8
+
 bootstrap:
   admin_email: "admin@example.com"
   admin_password: "Admin123!"

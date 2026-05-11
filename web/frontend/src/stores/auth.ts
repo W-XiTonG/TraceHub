@@ -1,6 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import { http, type Envelope } from '../api/http'
+
+function apiErrorMessage(e: unknown, fallback: string) {
+  if (axios.isAxiosError(e)) {
+    const d = e.response?.data as { message?: string } | undefined
+    if (d?.message) return d.message
+  }
+  if (e instanceof Error) return e.message
+  return fallback
+}
 
 const LS_USER = 'tracehub_user'
 
@@ -10,6 +20,15 @@ export type AuthUserBrief = {
   username?: string
   balance?: number
   group_name?: string
+}
+
+export type RegisterEmailCodeMeta = {
+  required: boolean
+  can_send: boolean
+  /** 服务端 Redis 客户端非 nil（与启动时 Ping 结果一致） */
+  redis_ok?: boolean
+  /** 已配置 smtp_host 与 from */
+  smtp_ready?: boolean
 }
 
 function readStoredUser(): AuthUserBrief | null {
@@ -121,21 +140,97 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** account：邮箱或用户名（请求体仍使用字段名 email 以兼容后端） */
   async function login(account: string, password: string) {
-    const { data } = await http.post<
-      Envelope<{ access_token: string; user: typeof user.value }>
-    >('/api/user/login', { email: account.trim(), password })
-    if (data.code !== 0) throw new Error(data.message || '登录失败')
-    setSession(data.data.access_token, data.data.user)
+    try {
+      const { data } = await http.post<
+        Envelope<{ access_token: string; user: typeof user.value }>
+      >('/api/user/login', { email: account.trim(), password })
+      if (data.code !== 0) throw new Error(data.message || '登录失败')
+      setSession(data.data.access_token, data.data.user)
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '登录失败'))
+    }
   }
 
-  async function register(email: string, password: string, username?: string) {
-    const { data } = await http.post<Envelope<null>>('/api/user/register', {
-      email,
-      password,
-      username,
-    })
-    if (data.code !== 0) throw new Error(data.message || '注册失败')
+  /** 发送登录邮箱验证码（需后端启用 email 且 Redis 可用） */
+  async function sendLoginCode(email: string): Promise<number | undefined> {
+    try {
+      const { data } = await http.post<Envelope<{ next_resend_sec?: number }>>(
+        '/api/user/login-code/send',
+        { email: email.trim() },
+      )
+      if (data.code !== 0) throw new Error(data.message || '发送失败')
+      return data.data?.next_resend_sec
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '发送失败'))
+    }
   }
 
-  return { token, user, role, isLoggedIn, accountDisplay, avatarInitial, login, register, logout, setSession }
+  async function loginWithEmailCode(email: string, code: string) {
+    try {
+      const { data } = await http.post<
+        Envelope<{ access_token: string; user: typeof user.value }>
+      >('/api/user/login-code/verify', { email: email.trim(), code: code.trim() })
+      if (data.code !== 0) throw new Error(data.message || '登录失败')
+      setSession(data.data.access_token, data.data.user)
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '登录失败'))
+    }
+  }
+
+  async function fetchRegisterEmailCodeMeta(): Promise<RegisterEmailCodeMeta> {
+    try {
+      const { data } = await http.get<Envelope<RegisterEmailCodeMeta>>(
+        '/api/user/register/email-code-meta',
+      )
+      if (data.code !== 0) throw new Error(data.message || '加载失败')
+      return data.data ?? { required: false, can_send: false }
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '加载失败'))
+    }
+  }
+
+  async function sendRegisterCode(email: string): Promise<number | undefined> {
+    try {
+      const { data } = await http.post<Envelope<{ next_resend_sec?: number }>>(
+        '/api/user/register/email-code/send',
+        { email: email.trim() },
+      )
+      if (data.code !== 0) throw new Error(data.message || '发送失败')
+      return data.data?.next_resend_sec
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '发送失败'))
+    }
+  }
+
+  async function register(email: string, password: string, username?: string, code?: string) {
+    try {
+      const body: Record<string, string | undefined> = {
+        email,
+        password,
+        username,
+      }
+      if (code !== undefined) body.code = code
+      const { data } = await http.post<Envelope<null>>('/api/user/register', body)
+      if (data.code !== 0) throw new Error(data.message || '注册失败')
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '注册失败'))
+    }
+  }
+
+  return {
+    token,
+    user,
+    role,
+    isLoggedIn,
+    accountDisplay,
+    avatarInitial,
+    login,
+    sendLoginCode,
+    loginWithEmailCode,
+    fetchRegisterEmailCodeMeta,
+    sendRegisterCode,
+    register,
+    logout,
+    setSession,
+  }
 })
