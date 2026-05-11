@@ -49,6 +49,23 @@ func RealtimeTranscriptionSessions(d ChatDeps) gin.HandlerFunc {
 	}
 }
 
+// RealtimeClientSecrets POST /v1/realtime/client_secrets（浏览器 WebRTC ephemeral，见 OpenAI Realtime WebRTC 文档）。
+func RealtimeClientSecrets(d ChatDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法读取请求体")
+			return
+		}
+		model, est, err := extractClientSecretsRoutingModel(body, c.Request.URL.Query())
+		if err != nil || model == "" {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model：请在 session.model 中设置，或 Query 增加 model=")
+			return
+		}
+		openAIForwardJSONCustomPatch(c, d, body, model, est, 2048, "realtime/client_secrets", patchClientSecretsSessionBody)
+	}
+}
+
 func normalizeRealtimeJSONBody(body []byte) []byte {
 	b := bytes.TrimSpace(body)
 	if len(b) == 0 {
@@ -122,3 +139,49 @@ func patchTranscriptionSessionBody(body []byte, upstream string) ([]byte, error)
 	}
 	return json.Marshal(m)
 }
+
+func extractClientSecretsRoutingModel(body []byte, q url.Values) (model string, promptEst string, err error) {
+	b := normalizeRealtimeJSONBody(body)
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(b, &m); err != nil {
+		return "", "", err
+	}
+	if raw, ok := m["session"]; ok {
+		var s map[string]json.RawMessage
+		if json.Unmarshal(raw, &s) == nil {
+			if rm, ok2 := s["model"]; ok2 {
+				var ms string
+				_ = json.Unmarshal(rm, &ms)
+				model = strings.TrimSpace(ms)
+			}
+		}
+	}
+	if model == "" {
+		if raw, ok := m["model"]; ok {
+			var s string
+			_ = json.Unmarshal(raw, &s)
+			model = strings.TrimSpace(s)
+		}
+	}
+	if model == "" {
+		model = strings.TrimSpace(q.Get("model"))
+	}
+	return model, string(b), nil
+}
+
+func patchClientSecretsSessionBody(body []byte, upstream string) ([]byte, error) {
+	b := normalizeRealtimeJSONBody(body)
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	sess, ok := m["session"].(map[string]interface{})
+	if !ok || sess == nil {
+		m["session"] = map[string]interface{}{"model": upstream}
+	} else {
+		sess["model"] = upstream
+		m["session"] = sess
+	}
+	return json.Marshal(m)
+}
+

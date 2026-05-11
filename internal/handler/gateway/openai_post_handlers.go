@@ -149,7 +149,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	rid, _ := reqID.(string)
 	start := time.Now()
 
-	resp, err := relay.ForwardOpenAIPostWithHeaders(c.Request.Context(), baseURL, secret, subpath, patched, openAIPassthroughHeaders(c))
+	resp, err := relay.ForwardOpenAIPostWithHeaders(c.Request.Context(), baseURL, secret, subpath, patched, openAIPassthroughHeaders(c), "")
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
 		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())

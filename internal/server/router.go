@@ -108,6 +108,12 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}))
+	gate.POST("/responses", gatewayhandler.ResponsesCreate(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
 	rtDeps := gatewayhandler.ChatDeps{
 		Client:  opt.Client,
 		RDB:     opt.Redis,
@@ -116,6 +122,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	}
 	gate.POST("/realtime/sessions", gatewayhandler.RealtimeSessions(rtDeps))
 	gate.POST("/realtime/transcription_sessions", gatewayhandler.RealtimeTranscriptionSessions(rtDeps))
+	gate.POST("/realtime/calls", gatewayhandler.RealtimeCallsWebRTC(rtDeps))
+	gate.POST("/realtime/client_secrets", gatewayhandler.RealtimeClientSecrets(rtDeps))
 	gate.GET("/realtime", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/realtime/*realtimePath", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))
