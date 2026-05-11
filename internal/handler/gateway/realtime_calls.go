@@ -88,8 +88,8 @@ func RealtimeCallsWebRTC(d ChatDeps) gin.HandlerFunc {
 		}
 		ch := sel.Channel
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if chType != "openai" && chType != "deepseek" {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Realtime calls，请使用 openai / deepseek 渠道")
+		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Realtime calls，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
 			return
 		}
 
@@ -172,6 +172,20 @@ func RealtimeCallsWebRTC(d ChatDeps) gin.HandlerFunc {
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 
+		if d.RTCall.MappingEnabled && d.RDB != nil {
+			ttl := d.RTCall.MappingTTLSec
+			if ttl <= 0 {
+				ttl = 86400
+			}
+			if callID := extractCallIDFromRealtimeCallsResponse(raw); callID != "" {
+				_ = setRealtimeCallMapping(c.Request.Context(), d.RDB, k.ID, callID, realtimeCallMapping{
+					ChannelID:     ch.ID,
+					UpstreamModel: sel.UpstreamModel,
+					LogicalModel:  model,
+				}, ttl)
+			}
+		}
+
 		outCT := resp.Header.Get("Content-Type")
 		if outCT == "" {
 			outCT = "application/sdp"
@@ -197,6 +211,24 @@ func readFirstFormString(form *multipart.Form, name string) string {
 		return string(b)
 	}
 	return ""
+}
+
+func extractCallIDFromRealtimeCallsResponse(b []byte) string {
+	b = bytes.TrimSpace(b)
+	if len(b) == 0 || b[0] != '{' {
+		return ""
+	}
+	var m struct {
+		CallID string `json:"call_id"`
+		ID     string `json:"id"`
+	}
+	if json.Unmarshal(b, &m) != nil {
+		return ""
+	}
+	if s := strings.TrimSpace(m.CallID); s != "" {
+		return s
+	}
+	return strings.TrimSpace(m.ID)
 }
 
 func modelFromRealtimeSessionJSON(sessionBytes []byte, q url.Values) (string, error) {

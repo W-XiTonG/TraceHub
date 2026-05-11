@@ -22,6 +22,11 @@ type Selected struct {
 	UpstreamModel string
 }
 
+// MatchModelOnChannel 判断渠道是否支持该逻辑模型名（含别名表），并返回上游模型名。
+func MatchModelOnChannel(ch *ent.Channel, requested string) (upstream string, ok bool) {
+	return modelMatch(ch, requested)
+}
+
 func modelMatch(ch *ent.Channel, requested string) (upstream string, ok bool) {
 	for _, m := range ch.Models {
 		if m == requested {

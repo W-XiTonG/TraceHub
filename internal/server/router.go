@@ -60,85 +60,50 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 
 	gate := r.Group("/v1")
 	gate.Use(middleware.GatewayAPIKeyAuth(opt.Client))
-	gate.POST("/chat/completions", gatewayhandler.ChatCompletions(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/images/generations", gatewayhandler.ImageGenerations(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/images/edits", gatewayhandler.ImageEdits(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/images/variations", gatewayhandler.ImageVariations(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/embeddings", gatewayhandler.Embeddings(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/completions", gatewayhandler.Completions(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/moderations", gatewayhandler.Moderations(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/audio/transcriptions", gatewayhandler.AudioTranscriptions(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/audio/translations", gatewayhandler.AudioTranslations(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	gate.POST("/audio/speech", gatewayhandler.AudioSpeech(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
-	respDeps := gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
+	gate.Use(middleware.DenyOpenAIAccountAdminUnderV1(opt.Config.Site.BlockOpenAIAccountAdminPaths, opt.Config.Site.OpenAIAccountAdminDenyPrefixes))
+
+	gwBase := gatewayhandler.ChatDeps{
+		Client:             opt.Client,
+		RDB:                opt.Redis,
+		AESKey:             aesKey,
+		Billing:            billingEngine,
+		OpenAICompatExtras: opt.Config.Site.OpenAICompatChannelTypes,
+		Passthrough: gatewayhandler.OpenAIPassthroughSettings{
+			Enabled:          opt.Config.Site.OpenAIPassthrough.Enabled,
+			AllowPrefixes:    opt.Config.Site.OpenAIPassthrough.AllowPrefixes,
+			DenyPrefixes:     opt.Config.Site.OpenAIPassthrough.DenyPrefixes,
+			PatchModelInJSON: opt.Config.Site.OpenAIPassthrough.PatchModelInJSON,
+		},
 	}
+
+	gate.POST("/chat/completions", gatewayhandler.ChatCompletions(gwBase))
+	gate.POST("/images/generations", gatewayhandler.ImageGenerations(gwBase))
+	gate.POST("/images/edits", gatewayhandler.ImageEdits(gwBase))
+	gate.POST("/images/variations", gatewayhandler.ImageVariations(gwBase))
+	gate.POST("/embeddings", gatewayhandler.Embeddings(gwBase))
+	gate.POST("/completions", gatewayhandler.Completions(gwBase))
+	gate.POST("/moderations", gatewayhandler.Moderations(gwBase))
+	gate.POST("/audio/transcriptions", gatewayhandler.AudioTranscriptions(gwBase))
+	gate.POST("/audio/translations", gatewayhandler.AudioTranslations(gwBase))
+	gate.POST("/audio/speech", gatewayhandler.AudioSpeech(gwBase))
+	respDeps := gwBase
 	gate.POST("/responses", gatewayhandler.ResponsesCreate(respDeps))
 	gate.GET("/responses/:response_id", gatewayhandler.ResponsesGet(respDeps))
 	gate.DELETE("/responses/:response_id", gatewayhandler.ResponsesDelete(respDeps))
 	gate.POST("/responses/:response_id/cancel", gatewayhandler.ResponsesCancel(respDeps))
-	rtDeps := gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
+	rtDeps := gwBase
+	rtDeps.RTCall = gatewayhandler.RealtimeCallGatewayConfig{
+		MappingEnabled:   opt.Config.Site.RealtimeCallMappingEnabled,
+		MappingTTLSec:    opt.Config.Site.RealtimeCallMappingTTLSec,
+		BillRejectHangup: opt.Config.Site.RealtimeCallControlBillRejectHangup,
 	}
 	gate.POST("/realtime/sessions", gatewayhandler.RealtimeSessions(rtDeps))
 	gate.POST("/realtime/transcription_sessions", gatewayhandler.RealtimeTranscriptionSessions(rtDeps))
 	gate.POST("/realtime/calls", gatewayhandler.RealtimeCallsWebRTC(rtDeps))
+	gate.POST("/realtime/calls/:call_id/accept", gatewayhandler.RealtimeCallAccept(rtDeps))
+	gate.POST("/realtime/calls/:call_id/reject", gatewayhandler.RealtimeCallReject(rtDeps))
+	gate.POST("/realtime/calls/:call_id/hangup", gatewayhandler.RealtimeCallHangup(rtDeps))
+	gate.POST("/realtime/calls/:call_id/refer", gatewayhandler.RealtimeCallRefer(rtDeps))
 	gate.POST("/realtime/client_secrets", gatewayhandler.RealtimeClientSecrets(rtDeps))
 	gate.GET("/realtime", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/realtime/*realtimePath", gatewayhandler.RealtimeWebSocket(rtDeps))
@@ -204,6 +169,10 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	gate.GET("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresRetrieve(respDeps))
 	gate.POST("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresModify(respDeps))
 	gate.DELETE("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresDelete(respDeps))
+
+	if opt.Config.Site.OpenAIPassthrough.Enabled {
+		gate.Any("/*gwOpenAICatchAll", gatewayhandler.OpenAIV1Passthrough(gwBase))
+	}
 
 	u := r.Group("/api/user")
 	u.POST("/register", userhandler.Register(opt.Client, opt.Config))

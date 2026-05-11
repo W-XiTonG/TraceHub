@@ -105,8 +105,8 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	}
 	ch := sel.Channel
 	ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
-	if ct != "openai" && ct != "deepseek" {
-		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持该 OpenAI 企业管理接口，请使用 openai / deepseek 渠道")
+	if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持该 OpenAI 企业管理接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
 		return nil, nil, nil, "", "", "", false
 	}
 

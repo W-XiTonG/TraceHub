@@ -23,7 +23,7 @@ For full product requirements and the roadmap, see the docs in this repository:
 
 ## Features (high level)
 
-- **Gateway**: `POST /v1/chat/completions` (OpenAI/DeepSeek passthrough with SSE; Claude & Gemini non-stream protocol adaptation), `GET /v1/models`
+- **Gateway**: `POST /v1/chat/completions` (OpenAI-compatible upstreams with SSE; native **Claude** / **Gemini** channels emit OpenAI-style `chat.completion.chunk` streams), `GET /v1/models`; optional **passthrough** for additional `/v1/*` paths via `site.openai_passthrough.allow_prefixes` (disabled by default); account/admin-style OpenAI paths under `/v1` are blocked by default (`site.block_openai_account_admin_paths`)
 - **Routing**: channels filtered by group & model, weighted random selection; optional Redis sticky sessions
 - **Billing**: token estimation & quota deduction; group / user / per-model multipliers
 - **Users**: registration & login (JWT), API keys (hashed), balance & usage, redeem codes, password change

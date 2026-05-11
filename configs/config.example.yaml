@@ -21,6 +21,20 @@ site:
   default_new_user_balance: 100000 # 试用额度（额度单位）
   cors_origins:
     - "*"
+  # Realtime 通话子资源（POST .../realtime/calls/{id}/accept 等）：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
+  # realtime_call_mapping_enabled: false
+  # realtime_call_mapping_ttl_sec: 86400
+  # realtime_call_control_bill_reject_hangup: false
+  #
+  # 三～五：OpenAI 兼容扩展（可选）
+  # openai_compat_channel_types: [] # 例: ["siliconflow"] — 与 openai 一样走 /v1 JSON 透传的额外渠道类型名
+  # block_openai_account_admin_paths: true # 四：默认拦截 /v1 下 organizations、organization、dashboard、billing 等账号/控制台类路径
+  # openai_account_admin_deny_prefixes: [] # 相对 /v1/ 的额外拒绝前缀
+  # openai_passthrough:
+  #   enabled: false
+  #   allow_prefixes: [] # 必填白名单，如 ["experimental/foo"]；未命中则 404
+  #   deny_prefixes: []
+  #   patch_model_in_json: true
 
 bootstrap:
   admin_email: "admin@example.com"

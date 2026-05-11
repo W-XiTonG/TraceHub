@@ -21,6 +21,7 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 		return "", fmt.Errorf("api_base_url 仅支持 http/https")
 	}
 	p := strings.TrimSuffix(u.Path, "/")
+	p = stripMisconfiguredRealtimeCallSubpath(p)
 	for {
 		changed := false
 		for _, suf := range []string{
@@ -36,11 +37,18 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 			"/v1/audio/speech",
 			"/v1/realtime/transcription_sessions",
 			"/v1/realtime/client_secrets",
+			"/v1/realtime/calls/accept",
+			"/v1/realtime/calls/reject",
+			"/v1/realtime/calls/hangup",
+			"/v1/realtime/calls/refer",
 			"/v1/realtime/calls",
 			"/v1/realtime/sessions",
 			"/v1/realtime/translations",
 			"/v1/realtime",
 			"/v1/responses",
+			"/v1/assistants",
+			"/v1/threads",
+			"/v1/vector_stores",
 			"/v1/files",
 			"/v1/batches",
 			"/v1/fine_tuning/jobs",
@@ -56,11 +64,18 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 			"/audio/speech",
 			"/realtime/transcription_sessions",
 			"/realtime/client_secrets",
+			"/realtime/calls/accept",
+			"/realtime/calls/reject",
+			"/realtime/calls/hangup",
+			"/realtime/calls/refer",
 			"/realtime/calls",
 			"/realtime/sessions",
 			"/realtime/translations",
 			"/realtime",
 			"/responses",
+			"/assistants",
+			"/threads",
+			"/vector_stores",
 			"/files",
 			"/batches",
 			"/fine_tuning/jobs",
@@ -86,4 +101,25 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 	u.RawQuery = ""
 	u.Fragment = ""
 	return strings.TrimRight(u.String(), "/"), nil
+}
+
+// stripMisconfiguredRealtimeCallSubpath 将误粘贴的「…/realtime/calls/{id}/accept|reject|hangup|refer」规范为「…/realtime/calls」。
+func stripMisconfiguredRealtimeCallSubpath(p string) string {
+	const marker = "/realtime/calls/"
+	i := strings.Index(p, marker)
+	if i < 0 {
+		return p
+	}
+	rest := strings.Trim(p[i+len(marker):], "/")
+	if rest == "" {
+		return p
+	}
+	parts := strings.Split(rest, "/")
+	if len(parts) >= 2 {
+		switch parts[1] {
+		case "accept", "reject", "hangup", "refer":
+			return p[:i] + "/realtime/calls"
+		}
+	}
+	return p
 }

@@ -99,8 +99,8 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if ct != "openai" && ct != "deepseek" {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片编辑/变体，请使用 openai / deepseek 渠道")
+		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片编辑/变体，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
 			return
 		}
 
@@ -279,8 +279,8 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 		rid, _ := reqID.(string)
 
 		start := time.Now()
-		switch ct {
-		case "openai", "deepseek":
+		switch {
+		case router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras):
 			resp, err := relay.ForwardOpenAIImageGenerations(c.Request.Context(), baseURL, secret, patched)
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
@@ -311,7 +311,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			c.Data(resp.StatusCode, "application/json", raw)
 
 		default:
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（如硅基流动配置为 openai 类型）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
 		}
 	}
 }
