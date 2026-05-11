@@ -493,3 +493,32 @@ html[data-th-theme="dawn"] .th-home-code-window-pre .th-home-code-json,
 html[data-th-theme="paper"] .th-home-code-window-pre .th-home-code-json {
   color: #0369a1 !important;
 }
+
+/* 顶栏用户头像：浅色主题下默认渐变偏深，改为更亮的 pastel；侧箭头略提亮 */
+html[data-th-theme="dawn"] .th-account-avatar--cyan,
+html[data-th-theme="paper"] .th-account-avatar--cyan {
+  background: linear-gradient(145deg, #bae6fd 0%, #5eead4 42%, #2dd4bf 100%) !important;
+  color: #0c4a6e !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.65) inset,
+    0 6px 16px -6px rgba(14, 165, 233, 0.38);
+}
+
+html[data-th-theme="dawn"] .th-account-avatar--amber,
+html[data-th-theme="paper"] .th-account-avatar--amber {
+  background: linear-gradient(145deg, #fef9c3 0%, #fde047 38%, #fbbf24 100%) !important;
+  color: #78350f !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 6px 16px -6px rgba(245, 158, 11, 0.35);
+}
+
+html[data-th-theme="dawn"] .th-account-menu .th-account-chevron,
+html[data-th-theme="paper"] .th-account-menu .th-account-chevron {
+  color: #94a3b8;
+}
+
+html[data-th-theme="dawn"] .th-account-menu summary:hover .th-account-chevron,
+html[data-th-theme="paper"] .th-account-menu summary:hover .th-account-chevron {
+  color: #64748b;
+}
