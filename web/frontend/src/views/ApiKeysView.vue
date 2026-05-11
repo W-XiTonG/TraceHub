@@ -542,7 +542,11 @@ onMounted(() => {
         aria-modal="true"
         aria-labelledby="create-key-drawer-title"
       >
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" aria-hidden="true" @click="closeCreateModal" />
+        <div
+          class="absolute inset-0 cursor-pointer bg-black/60 backdrop-blur-[2px]"
+          aria-hidden="true"
+          @click="closeCreateModal"
+        />
         <aside
           class="th-drawer-panel relative z-10 flex h-full w-full max-w-md flex-col border-l border-slate-700/90 bg-slate-900 shadow-2xl shadow-black/40"
         >
@@ -725,7 +729,7 @@ onMounted(() => {
 
     <Transition name="th-modal">
       <div v-if="editOpen" class="fixed inset-0 z-40 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60" aria-hidden="true" @click="editOpen = false" />
+        <div class="absolute inset-0 cursor-pointer bg-black/60" aria-hidden="true" @click="editOpen = false" />
         <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
           <h3 class="mb-4 font-semibold">{{ t('apiKeys.editTitle') }}</h3>
           <label class="mb-3 block text-sm">

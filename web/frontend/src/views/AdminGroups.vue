@@ -418,11 +418,11 @@ onMounted(load)
     <Teleport to="body">
       <div
         v-if="editOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         @click.self="editOpen = false"
       >
         <div
-          class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+          class="max-h-[90vh] w-full max-w-lg cursor-default overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
           role="dialog"
           aria-modal="true"
         >

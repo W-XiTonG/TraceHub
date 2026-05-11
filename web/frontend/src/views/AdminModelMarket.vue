@@ -330,7 +330,7 @@ onMounted(async () => {
 
     <Transition name="th-modal">
       <div v-if="editingEntry" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60" aria-hidden="true" @click="editingEntry = null" />
+        <div class="absolute inset-0 cursor-pointer bg-black/60" aria-hidden="true" @click="editingEntry = null" />
         <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
         <h3 class="mb-3 font-semibold">{{ t('adminMarket.editTitle', { id: editingEntry.model_id }) }}</h3>
         <label class="mb-3 flex flex-col gap-1">

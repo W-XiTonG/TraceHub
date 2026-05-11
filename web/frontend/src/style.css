@@ -68,6 +68,44 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* 可点击控件：统一手型（Preflight 等常把 button 设为 default） */
+  a[href]:not([tabindex="-1"]),
+  button:not(:disabled),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [type="button"]:disabled,
+  [type="submit"]:disabled,
+  [type="reset"]:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  label:has(input[type="checkbox"]:not(:disabled)),
+  label:has(input[type="radio"]:not(:disabled)) {
+    cursor: pointer;
+  }
+
   h1,
   h2,
   h3,
@@ -738,6 +776,7 @@
 
 /* 导航 */
 .th-nav-link {
+  cursor: pointer;
   display: block;
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
@@ -787,6 +826,7 @@
 
 /* 按钮：略收敛光晕 */
 .th-btn-primary {
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -821,6 +861,7 @@
 }
 
 .th-btn-secondary {
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -840,7 +881,12 @@
   border-color: rgba(148, 163, 184, 0.22);
 }
 
+.th-btn-secondary:disabled {
+  cursor: not-allowed;
+}
+
 .th-btn-amber {
+  cursor: pointer;
   color: #0c0a09;
   background: linear-gradient(145deg, #fde68a 0%, #f59e0b 100%);
   box-shadow:
@@ -849,6 +895,10 @@
 }
 .th-btn-amber:hover:not(:disabled) {
   filter: brightness(1.03);
+}
+
+.th-btn-amber:disabled {
+  cursor: not-allowed;
 }
 
 /* 表单 */
@@ -910,6 +960,7 @@
 
 /* 分段切换 */
 .th-pill {
+  cursor: pointer;
   border-radius: 9999px;
   padding: 0.375rem 0.875rem;
   font-size: 0.8125rem;
@@ -945,6 +996,7 @@
 }
 
 .th-site-nav-link {
+  cursor: pointer;
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.8125rem;
@@ -980,6 +1032,7 @@
 
 /* 随主题变化的文字链接（登录/注册等） */
 .th-link-accent {
+  cursor: pointer;
   color: color-mix(in srgb, var(--th-accent) 78%, white);
   transition: color 0.12s ease;
 }
