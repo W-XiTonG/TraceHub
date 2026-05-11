@@ -347,18 +347,23 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 			if k.Edges.Group != nil {
 				gn = k.Edges.Group.Name
 			}
-			items = append(items, gin.H{
-				"id":            k.ID,
-				"name":          k.Name,
-				"key_prefix":    k.KeyPrefix,
-				"group_name":    gn,
-				"status":        st,
-				"last_used_at":  k.LastUsedAt,
-				"created_at":    k.CreatedAt,
-				"usage_24h":     tok24h[k.ID],
-				"daily_quota":   k.DailyQuota,
-				"ip_whitelist":  k.IPWhitelist,
-			})
+			row := gin.H{
+				"id":               k.ID,
+				"name":             k.Name,
+				"key_prefix":       k.KeyPrefix,
+				"group_name":       gn,
+				"status":           st,
+				"last_used_at":     k.LastUsedAt,
+				"created_at":       k.CreatedAt,
+				"usage_24h":        tok24h[k.ID],
+				"daily_quota":      k.DailyQuota,
+				"ip_whitelist":     k.IPWhitelist,
+				"log_full_request": k.LogFullRequest,
+			}
+			if !k.ExpiresAt.IsZero() {
+				row["expires_at"] = k.ExpiresAt.UTC().Format(time.RFC3339)
+			}
+			items = append(items, row)
 		}
 		httpx.OK(c, gin.H{"items": items, "total": len(items)})
 	}

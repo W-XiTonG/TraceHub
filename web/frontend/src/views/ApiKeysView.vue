@@ -15,6 +15,9 @@ type KeyRow = {
   usage_24h?: number
   daily_quota?: number
   ip_whitelist?: string[]
+  created_at?: string
+  expires_at?: string
+  log_full_request?: boolean
 }
 
 type ExpiryPreset = 'never' | '1h' | '1d' | '30d' | 'custom'
@@ -43,6 +46,35 @@ const edit = reactive({
   ip_whitelist: '',
 })
 
+const filterName = ref('')
+const filterPrefix = ref('')
+const compact = ref(false)
+const selectedIds = ref<number[]>([])
+const flash = ref('')
+
+const filteredItems = computed(() => {
+  const n = filterName.value.trim().toLowerCase()
+  const p = filterPrefix.value.trim().toLowerCase()
+  return items.value.filter((k) => {
+    if (n) {
+      const name = (k.name || '').toLowerCase()
+      const pref = (k.key_prefix || '').toLowerCase()
+      if (!name.includes(n) && !pref.includes(n)) return false
+    }
+    if (p) {
+      const pref = (k.key_prefix || '').toLowerCase()
+      if (!pref.includes(p)) return false
+    }
+    return true
+  })
+})
+
+const allFilteredSelected = computed(() => {
+  const f = filteredItems.value
+  if (!f.length) return false
+  return f.every((k) => selectedIds.value.includes(k.id))
+})
+
 /** datetime-local 最小可选值（本地） */
 const minDatetimeLocal = computed(() => {
   const d = new Date()
@@ -52,7 +84,125 @@ const minDatetimeLocal = computed(() => {
 
 async function load() {
   const { data } = await http.get<Envelope<{ items: KeyRow[] }>>('/api/user/apikeys')
-  if (data.code === 0) items.value = data.data.items
+  if (data.code === 0) {
+    items.value = data.data.items
+    const idSet = new Set(items.value.map((x) => x.id))
+    selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
+  }
+}
+
+function toggleSelectAll(checked: boolean) {
+  if (checked) {
+    const set = new Set(selectedIds.value)
+    for (const k of filteredItems.value) set.add(k.id)
+    selectedIds.value = [...set]
+  } else {
+    const drop = new Set(filteredItems.value.map((k) => k.id))
+    selectedIds.value = selectedIds.value.filter((id) => !drop.has(id))
+  }
+}
+
+function toggleRow(id: number) {
+  if (selectedIds.value.includes(id)) {
+    selectedIds.value = selectedIds.value.filter((x) => x !== id)
+  } else {
+    selectedIds.value = [...selectedIds.value, id]
+  }
+}
+
+function resetFilters() {
+  filterName.value = ''
+  filterPrefix.value = ''
+  void load()
+}
+
+async function runQuery() {
+  await load()
+}
+
+async function copyText(text: string) {
+  if (!text.trim()) return
+  try {
+    await navigator.clipboard.writeText(text)
+    flash.value = t('apiKeys.copied')
+    window.setTimeout(() => {
+      if (flash.value === t('apiKeys.copied')) flash.value = ''
+    }, 2200)
+  } catch {
+    flash.value = t('apiKeys.copyFail')
+  }
+}
+
+function copySelectedPrefixes() {
+  const set = new Set(selectedIds.value)
+  const lines = items.value.filter((k) => set.has(k.id)).map((k) => k.key_prefix || '').filter(Boolean)
+  if (!lines.length) {
+    err.value = t('apiKeys.nothingSelected')
+    return
+  }
+  err.value = ''
+  void copyText(lines.join('\n'))
+}
+
+async function bulkRemove() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) {
+    err.value = t('apiKeys.nothingSelected')
+    return
+  }
+  if (!confirm(t('apiKeys.bulkDeleteConfirm', { n: ids.length }))) return
+  err.value = ''
+  try {
+    for (const id of ids) {
+      await http.delete(`/api/user/apikeys/${id}`)
+    }
+    selectedIds.value = []
+    await load()
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('apiKeys.saveFail')
+  }
+}
+
+async function quickSetEnabled(k: KeyRow, enabled: boolean) {
+  err.value = ''
+  try {
+    const { data } = await http.put<Envelope<null>>(`/api/user/apikeys/${k.id}`, { enabled })
+    if (data.code !== 0) throw new Error(data.message || t('apiKeys.saveFail'))
+    await load()
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('apiKeys.saveFail')
+  }
+}
+
+function formatLocal(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString()
+}
+
+function quotaCell(k: KeyRow) {
+  const u = k.usage_24h ?? 0
+  const cap = k.daily_quota != null && k.daily_quota >= 0 ? String(k.daily_quota) : t('apiKeys.quotaNoCap')
+  return `${u} / ${cap}`
+}
+
+function ipSummary(k: KeyRow) {
+  const list = k.ip_whitelist || []
+  if (!list.length) return t('apiKeys.ipUnlimited')
+  if (list.length === 1) return list[0]
+  return t('apiKeys.ipCount', { n: list.length })
+}
+
+function expiresSummary(k: KeyRow) {
+  if (!k.expires_at) return t('apiKeys.expiryNever')
+  return formatLocal(k.expires_at)
+}
+
+function statusBadgeClass(st: string) {
+  return st === 'enabled'
+    ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-200'
+    : 'border-slate-500/35 bg-slate-500/10 text-slate-400'
 }
 
 async function loadGroup() {
@@ -200,47 +350,189 @@ onMounted(() => {
 
 <template>
   <div>
-    <h1 class="mb-2 text-2xl font-bold">{{ t('apiKeys.title') }}</h1>
-    <p class="mb-6 text-sm text-slate-500">{{ t('apiKeys.desc') }}</p>
-    <div class="mb-6">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="flex min-w-0 items-start gap-3">
+        <span class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/12 text-cyan-300 ring-1 ring-cyan-500/25">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H3.75v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
+            />
+          </svg>
+        </span>
+        <div class="min-w-0">
+          <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">{{ t('apiKeys.pageKicker') }}</p>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-100">{{ t('apiKeys.title') }}</h1>
+          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">{{ t('apiKeys.desc') }}</p>
+        </div>
+      </div>
       <button
         type="button"
-        class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
-        @click="openCreateModal"
+        class="shrink-0 self-start text-[13px] text-cyan-400/90 underline-offset-4 hover:text-cyan-300 hover:underline"
+        @click="compact = !compact"
       >
-        {{ t('apiKeys.newKey') }}
+        {{ compact ? t('apiKeys.standardList') : t('apiKeys.compactList') }}
       </button>
     </div>
+
+    <div
+      class="mb-6 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+    >
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+          @click="openCreateModal"
+        >
+          {{ t('apiKeys.newKey') }}
+        </button>
+        <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-white/5" @click="copySelectedPrefixes">
+          {{ t('apiKeys.copySelected') }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-red-500/40 bg-red-950/25 px-3 py-2 text-sm font-medium text-red-200 hover:bg-red-950/40"
+          @click="bulkRemove"
+        >
+          {{ t('apiKeys.bulkDelete') }}
+        </button>
+      </div>
+      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+        <input
+          v-model="filterName"
+          type="search"
+          :placeholder="t('apiKeys.toolbarSearchPh')"
+          class="w-full min-w-[10rem] rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 sm:max-w-[14rem]"
+        />
+        <input
+          v-model="filterPrefix"
+          type="search"
+          :placeholder="t('apiKeys.toolbarPrefixPh')"
+          class="w-full min-w-[8rem] rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 font-mono text-xs text-slate-100 placeholder:text-slate-600 sm:max-w-[12rem]"
+        />
+        <div class="flex gap-2">
+          <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-white/5" @click="runQuery">
+            {{ t('apiKeys.query') }}
+          </button>
+          <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400 hover:bg-white/5" @click="resetFilters">
+            {{ t('apiKeys.reset') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="flash" class="mb-3 text-sm text-emerald-400">{{ flash }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
+    <p class="mb-4 text-[11px] text-slate-600">{{ t('apiKeys.copyPrefixNote') }}</p>
     <div v-if="createdKey" class="mb-6 rounded-xl border border-amber-600/50 bg-amber-950/40 p-4 text-sm">
       <p class="font-medium text-amber-400">{{ t('apiKeys.saveOnce') }}</p>
       <code class="mt-2 block break-all text-cyan-300">{{ createdKey }}</code>
     </div>
-    <table class="w-full text-left text-sm">
-      <thead class="text-slate-500">
-        <tr>
-          <th class="pb-2">{{ t('apiKeys.thName') }}</th>
-          <th class="pb-2">{{ t('apiKeys.thPrefix') }}</th>
-          <th class="pb-2">{{ t('apiKeys.thGroup') }}</th>
-          <th class="pb-2">{{ t('apiKeys.th24') }}</th>
-          <th class="pb-2">{{ t('apiKeys.thStatus') }}</th>
-          <th class="pb-2"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-800">
-        <tr v-for="k in items" :key="k.id">
-          <td class="py-2">{{ k.name || t('apiKeys.dash') }}</td>
-          <td class="py-2 font-mono text-xs">{{ k.key_prefix }}</td>
-          <td class="py-2 text-xs text-slate-400">{{ k.group_name || t('apiKeys.dash') }}</td>
-          <td class="py-2 text-xs">{{ k.usage_24h ?? t('apiKeys.dash') }}</td>
-          <td class="py-2">{{ k.status }}</td>
-          <td class="space-x-2 py-2 text-right">
-            <button type="button" class="text-cyan-400 hover:underline" @click="openEdit(k)">{{ t('apiKeys.editBtn') }}</button>
-            <button type="button" class="text-red-400 hover:underline" @click="remove(k.id)">{{ t('apiKeys.deleteBtn') }}</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+
+    <div class="overflow-x-auto rounded-xl border border-slate-800/80">
+      <table class="w-full min-w-[56rem] text-left" :class="compact ? 'text-xs' : 'text-sm'">
+        <thead class="border-b border-slate-800 bg-slate-950/50 text-slate-500">
+          <tr>
+            <th class="w-10 px-3 py-2.5" :class="compact ? 'py-1.5' : ''">
+              <input
+                type="checkbox"
+                class="h-4 w-4 rounded border-slate-600 bg-slate-950 text-cyan-500"
+                :checked="allFilteredSelected"
+                @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+              />
+            </th>
+            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('apiKeys.thName') }}</th>
+            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('apiKeys.thStatus') }}</th>
+            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('apiKeys.thQuota') }}</th>
+            <th v-if="!compact" class="hidden px-3 py-2.5 font-medium md:table-cell">{{ t('apiKeys.thGroup') }}</th>
+            <th class="min-w-[9rem] px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('apiKeys.thPrefix') }}</th>
+            <th v-if="!compact" class="hidden px-3 py-2.5 font-medium lg:table-cell">{{ t('apiKeys.thModels') }}</th>
+            <th v-if="!compact" class="hidden px-3 py-2.5 font-medium xl:table-cell">{{ t('apiKeys.thIp') }}</th>
+            <th v-if="!compact" class="hidden px-3 py-2.5 font-medium xl:table-cell">{{ t('apiKeys.thCreated') }}</th>
+            <th v-if="!compact" class="hidden px-3 py-2.5 font-medium xl:table-cell">{{ t('apiKeys.thExpires') }}</th>
+            <th class="px-3 py-2.5 text-right font-medium" :class="compact ? 'py-1.5' : ''">{{ t('apiKeys.thActions') }}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/90">
+          <tr v-for="k in filteredItems" :key="k.id" class="hover:bg-white/[0.02]">
+            <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
+              <input
+                type="checkbox"
+                class="h-4 w-4 rounded border-slate-600 bg-slate-950 text-cyan-500"
+                :checked="selectedIds.includes(k.id)"
+                @change="toggleRow(k.id)"
+              />
+            </td>
+            <td class="px-3 font-medium text-slate-200" :class="compact ? 'py-1.5' : 'py-2.5'">{{ k.name || t('apiKeys.dash') }}</td>
+            <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
+              <span
+                class="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                :class="statusBadgeClass(k.status)"
+              >
+                {{ k.status === 'enabled' ? t('apiKeys.statusEnabled') : t('apiKeys.statusDisabled') }}
+              </span>
+            </td>
+            <td class="px-3 font-mono text-slate-400" :class="compact ? 'py-1.5 text-[11px]' : 'py-2.5 text-xs'">{{ quotaCell(k) }}</td>
+            <td v-if="!compact" class="hidden px-3 text-xs text-slate-500 md:table-cell" :class="compact ? '' : 'py-2.5'">
+              {{ k.group_name || t('apiKeys.dash') }}
+            </td>
+            <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
+              <div class="flex items-center gap-1.5">
+                <code class="max-w-[12rem] truncate font-mono text-[11px] text-cyan-200/90">{{ k.key_prefix }}</code>
+                <button
+                  type="button"
+                  class="shrink-0 rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-400"
+                  :title="t('apiKeys.copyPrefix')"
+                  @click="copyText(k.key_prefix || '')"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+            <td v-if="!compact" class="hidden px-3 text-xs text-slate-500 lg:table-cell" :class="compact ? '' : 'py-2.5'">
+              {{ t('apiKeys.modelsNA') }}
+            </td>
+            <td v-if="!compact" class="hidden max-w-[8rem] truncate px-3 text-xs text-slate-500 xl:table-cell" :class="compact ? '' : 'py-2.5'" :title="ipSummary(k)">
+              {{ ipSummary(k) }}
+            </td>
+            <td v-if="!compact" class="hidden whitespace-nowrap px-3 text-xs text-slate-500 xl:table-cell" :class="compact ? '' : 'py-2.5'">
+              {{ k.created_at ? formatLocal(k.created_at) : t('apiKeys.dash') }}
+            </td>
+            <td v-if="!compact" class="hidden whitespace-nowrap px-3 text-xs text-slate-500 xl:table-cell" :class="compact ? '' : 'py-2.5'">
+              {{ expiresSummary(k) }}
+            </td>
+            <td class="px-3 text-right" :class="compact ? 'py-1.5' : 'py-2.5'">
+              <div class="flex flex-wrap justify-end gap-x-2 gap-y-1">
+                <button
+                  v-if="k.status === 'enabled'"
+                  type="button"
+                  class="rounded border border-red-500/35 px-2 py-0.5 text-[11px] font-medium text-red-300 hover:bg-red-950/40"
+                  @click="quickSetEnabled(k, false)"
+                >
+                  {{ t('apiKeys.disableBtn') }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="rounded border border-emerald-500/35 px-2 py-0.5 text-[11px] font-medium text-emerald-300 hover:bg-emerald-950/30"
+                  @click="quickSetEnabled(k, true)"
+                >
+                  {{ t('apiKeys.enableBtn') }}
+                </button>
+                <button type="button" class="text-[11px] text-cyan-400 hover:underline" @click="openEdit(k)">{{ t('apiKeys.editBtn') }}</button>
+                <button type="button" class="text-[11px] text-red-400 hover:underline" @click="remove(k.id)">{{ t('apiKeys.deleteBtn') }}</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="!filteredItems.length" class="px-4 py-8 text-center text-sm text-slate-500">
+        {{ items.length ? t('apiKeys.noMatch') : t('apiKeys.emptyList') }}
+      </p>
+    </div>
 
     <Transition name="th-drawer">
       <div
