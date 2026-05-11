@@ -12,6 +12,8 @@ export default {
     integration: 'Integration',
     models: 'Models',
     pricing: 'Pricing',
+    whyTraceHub: 'Why TraceHub',
+    quickStart: 'Quick start',
     faq: 'FAQ',
     backHome: 'Back to home',
     product: 'Product',

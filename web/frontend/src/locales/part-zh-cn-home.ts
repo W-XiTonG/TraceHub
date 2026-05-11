@@ -11,6 +11,31 @@ export default {
     ctaDocs: '使用文档',
     ctaIntegration: '接入示例',
     trustAria: '产品要点',
+    whySectionTitle: '为什么选择 TraceHub？',
+    whySectionSubtitle: '面向团队与企业场景的 OpenAI 兼容网关：统一接入、可观测、可私有化部署。',
+    why1Title: '统一兼容接口',
+    why1Desc:
+      '一套 /v1 接口对接多上游与自建端点；控制台签发 API Key 即可调用，减少多平台账号与接入碎片化。',
+    why2Title: '路由与观测一体化',
+    why2Desc:
+      '渠道路由、可用模型列表与健康检查可配置；调用日志与用量汇总便于排障与内部分析（按部署开启）。',
+    why3Title: '安全与合规取向',
+    why3Desc:
+      '上游密钥加密存储，用户 API Key 仅存哈希；支持 HTTPS、密钥轮换与私有化部署，便于纳入现有安全体系。',
+    why4Title: '可扩展交付形态',
+    why4Desc:
+      '开源可自建；管理后台涵盖渠道、分组与模型目录，适合PoC、生产与对内交付，而非仅限公有 SaaS 一种形态。',
+    stepsSectionTitle: '三步接入',
+    stepsSectionSubtitle: '无需改写业务语义：换 Base URL、换 Key，其余沿用 OpenAI 兼容调用习惯。',
+    step1Title: '注册账号',
+    step1Desc: '使用邮箱注册；登录支持密码或邮箱验证码（验证码需在部署中启用 SMTP 与 Redis）。',
+    step1MockHint: '示意：与真实登录页一致的密码 / 邮箱验证码两种方式（非第三方一键登录）。',
+    step2Title: '熟悉控制台',
+    step2Desc: '在控制台查看可用模型、分组与用量摘要，按需创建或轮换 API Key。',
+    step2MockHint: '示意：用量趋势（非标价）',
+    step3Title: '获取 API Key',
+    step3Desc: '复制控制台中的密钥，将 Base URL 指向你的 TraceHub 网关即可开始调用。',
+    step3Badge: '兼容 OpenAI SDK',
     featuresTitle: '不只是转发：控制台与治理能力',
     featuresDesc:
       '从个人开发者到团队交付，TraceHub 在用户端与管理端覆盖密钥、用量、路由与运维配置；以下为与仓库实现一致的核心能力展示。',
@@ -41,6 +66,8 @@ export default {
     footerBlurb:
       '开源 AI API 网关：统一 OpenAI 兼容入口、用量观测与用户控制台，可按仓库文档私有化部署。',
     footerProduct: '产品',
+    footerWhy: '为何选择',
+    footerSteps: '三步接入',
     footerFeat: '功能亮点',
     footerInteg: '接入说明',
     footerModels: '模型说明',

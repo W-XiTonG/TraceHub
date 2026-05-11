@@ -473,6 +473,50 @@
   transition-delay: 0.34s;
 }
 
+/* 官网：价值四宫格（参考 landing 信息架构，保留深色气质） */
+.th-home-value-card {
+  transition:
+    transform 0.35s var(--th-ease-out),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+.th-home-value-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(148, 163, 184, 0.14);
+  box-shadow:
+    0 20px 48px -32px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(56, 189, 248, 0.06);
+}
+
+.th-home-step-num {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%);
+  font-family: var(--th-font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.th-home-step-mock {
+  border-radius: var(--th-radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(2, 6, 23, 0.55);
+  padding: 1rem 1rem 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th-home-value-card:hover {
+    transform: none;
+  }
+}
+
 .th-home-feature-card .th-home-feature-icon {
   transition: transform 0.35s var(--th-ease-out);
 }

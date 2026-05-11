@@ -152,6 +152,42 @@ const trustPoints = computed(() => [
   { label: t('home.t3label'), hint: t('home.t3hint') },
 ])
 
+type WhyAccent = 'violet' | 'cyan' | 'emerald' | 'amber'
+
+const whyCards = computed(() => [
+  {
+    iconId: 'bolt',
+    title: t('home.why1Title'),
+    desc: t('home.why1Desc'),
+    accent: 'violet' as WhyAccent,
+  },
+  {
+    iconId: 'globe',
+    title: t('home.why2Title'),
+    desc: t('home.why2Desc'),
+    accent: 'cyan' as WhyAccent,
+  },
+  {
+    iconId: 'shield',
+    title: t('home.why3Title'),
+    desc: t('home.why3Desc'),
+    accent: 'emerald' as WhyAccent,
+  },
+  {
+    iconId: 'rocket',
+    title: t('home.why4Title'),
+    desc: t('home.why4Desc'),
+    accent: 'amber' as WhyAccent,
+  },
+])
+
+const whyIconWrap: Record<WhyAccent, string> = {
+  violet: 'bg-violet-500/15 text-violet-200 ring-violet-500/20',
+  cyan: 'bg-cyan-500/15 text-cyan-200 ring-cyan-500/20',
+  emerald: 'bg-emerald-500/15 text-emerald-200 ring-emerald-500/20',
+  amber: 'bg-amber-500/15 text-amber-200 ring-amber-500/20',
+}
+
 function featureLink(to: string) {
   if (auth.isLoggedIn) return { path: to }
   return { path: '/login', query: { redirect: to } }
@@ -202,6 +238,8 @@ function featureLink(to: string) {
           <span class="ml-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-500">v{{ version }}</span>
         </div>
         <nav class="flex flex-wrap items-center justify-end gap-0.5 sm:gap-1">
+          <a href="#why" class="th-site-nav-link hidden md:inline">{{ t('nav.whyTraceHub') }}</a>
+          <a href="#steps" class="th-site-nav-link hidden lg:inline">{{ t('nav.quickStart') }}</a>
           <a href="#features" class="th-site-nav-link">{{ t('nav.features') }}</a>
           <a href="#integration" class="th-site-nav-link hidden sm:inline">{{ t('nav.integration') }}</a>
           <a href="#models" class="th-site-nav-link">{{ t('nav.models') }}</a>
@@ -256,8 +294,139 @@ function featureLink(to: string) {
         </div>
       </section>
 
+      <section id="why" class="th-reveal relative border-y border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent py-20 md:py-24">
+        <div class="mx-auto max-w-6xl px-5">
+          <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.85rem]">
+            {{ t('home.whySectionTitle') }}
+          </h2>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500 md:text-[0.9375rem]">
+            {{ t('home.whySectionSubtitle') }}
+          </p>
+          <div class="th-reveal-stagger mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+              v-for="w in whyCards"
+              :key="w.title"
+              class="th-home-value-card flex flex-col rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/35 p-6 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.65)]"
+            >
+              <span
+                class="inline-flex h-12 w-12 items-center justify-center rounded-xl ring-1 [&>svg]:h-6 [&>svg]:w-6"
+                :class="whyIconWrap[w.accent]"
+              >
+                <svg aria-hidden="true"><use :href="`#th-icon-${w.iconId}`" /></svg>
+              </span>
+              <h3 class="mt-4 text-base font-semibold tracking-tight text-slate-100">{{ w.title }}</h3>
+              <p class="mt-2 flex-1 text-[13px] leading-relaxed text-slate-500">{{ w.desc }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="steps" class="th-reveal relative py-20 md:py-24">
+        <div class="mx-auto max-w-6xl px-5">
+          <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.85rem]">
+            {{ t('home.stepsSectionTitle') }}
+          </h2>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500">
+            {{ t('home.stepsSectionSubtitle') }}
+          </p>
+          <div
+            class="th-reveal-stagger mt-14 flex flex-col gap-10 lg:mt-16 lg:flex-row lg:items-stretch lg:justify-center lg:gap-4"
+          >
+            <div class="th-home-step flex flex-1 flex-col items-center text-center lg:max-w-[17rem]">
+              <span class="th-home-step-num" aria-hidden="true">1</span>
+              <h3 class="mt-4 text-base font-semibold text-slate-100">{{ t('home.step1Title') }}</h3>
+              <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('home.step1Desc') }}</p>
+              <div class="th-home-step-mock mt-6 w-full max-w-[15rem]">
+                <div
+                  class="rounded-xl border border-white/[0.08] bg-[#050a14] p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  aria-hidden="true"
+                >
+                  <div class="mb-3 flex gap-1 rounded-lg border border-white/8 bg-black/25 p-0.5">
+                    <span
+                      class="flex-1 rounded-md bg-white/10 px-2 py-1.5 text-center text-[10px] font-medium text-slate-100 shadow-sm"
+                    >
+                      {{ t('login.modePassword') }}
+                    </span>
+                    <span class="flex-1 rounded-md px-2 py-1.5 text-center text-[10px] font-medium text-slate-500">
+                      {{ t('login.modeCode') }}
+                    </span>
+                  </div>
+                  <div class="space-y-2.5">
+                    <div>
+                      <div class="mb-1 text-[10px] text-slate-500">{{ t('login.accountLabel') }}</div>
+                      <div class="h-2 rounded bg-slate-700/55" />
+                    </div>
+                    <div>
+                      <div class="mb-1 text-[10px] text-slate-500">{{ t('login.password') }}</div>
+                      <div class="h-2 w-[88%] rounded bg-slate-700/55" />
+                    </div>
+                  </div>
+                </div>
+                <p class="mt-3 text-center text-[11px] leading-snug text-slate-600">{{ t('home.step1MockHint') }}</p>
+              </div>
+            </div>
+            <div class="hidden items-center justify-center px-1 text-slate-600 lg:flex" aria-hidden="true">
+              <span class="text-2xl font-light leading-none text-slate-600">›</span>
+            </div>
+            <div class="th-home-step flex flex-1 flex-col items-center text-center lg:max-w-[17rem]">
+              <span class="th-home-step-num" aria-hidden="true">2</span>
+              <h3 class="mt-4 text-base font-semibold text-slate-100">{{ t('home.step2Title') }}</h3>
+              <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('home.step2Desc') }}</p>
+              <div class="th-home-step-mock mt-6 w-full max-w-[15rem] space-y-2.5 px-1">
+                <div class="h-2 w-full rounded-full bg-slate-700/50">
+                  <div class="h-full w-[72%] rounded-full bg-gradient-to-r from-violet-500/70 to-cyan-500/60" />
+                </div>
+                <div class="h-2 w-full rounded-full bg-slate-700/50">
+                  <div class="h-full w-[48%] rounded-full bg-slate-500/45" />
+                </div>
+                <div class="h-2 w-full rounded-full bg-slate-700/50">
+                  <div class="h-full w-[88%] rounded-full bg-emerald-500/35" />
+                </div>
+                <p class="pt-1 text-center text-[11px] text-slate-600">{{ t('home.step2MockHint') }}</p>
+              </div>
+            </div>
+            <div class="hidden items-center justify-center px-1 text-slate-600 lg:flex" aria-hidden="true">
+              <span class="text-2xl font-light leading-none text-slate-600">›</span>
+            </div>
+            <div class="th-home-step flex flex-1 flex-col items-center text-center lg:max-w-[17rem]">
+              <span class="th-home-step-num" aria-hidden="true">3</span>
+              <h3 class="mt-4 text-base font-semibold text-slate-100">{{ t('home.step3Title') }}</h3>
+              <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('home.step3Desc') }}</p>
+              <div class="th-home-step-mock mt-6 w-full max-w-[15rem] space-y-3">
+                <div
+                  class="rounded-lg border border-white/[0.08] bg-[#050a14] px-3 py-2.5 text-left font-mono text-[11px] text-slate-400"
+                >
+                  sk-th-••••••••••••
+                </div>
+                <div class="flex justify-center">
+                  <span
+                    class="rounded-full border border-violet-500/25 bg-violet-950/40 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-violet-200/95"
+                  >
+                    {{ t('home.step3Badge') }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <svg class="pointer-events-none absolute h-0 w-0 overflow-hidden" aria-hidden="true" focusable="false">
         <defs>
+          <symbol id="th-icon-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 3L4 14h7v7l9-11h-7l2-7z" />
+          </symbol>
+          <symbol id="th-icon-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12h19.5M12 2.25c2.85 3.6 2.85 15.9 0 19.5M12 2.25c-2.85 3.6-2.85 15.9 0 19.5" />
+          </symbol>
+          <symbol id="th-icon-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 12 3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L6 12Zm0 0h7.5"
+            />
+          </symbol>
           <symbol id="th-icon-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75v-6z" />
           </symbol>
@@ -456,6 +625,8 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.product') }}</p>
             <ul class="mt-3 space-y-2 text-sm text-slate-400">
+              <li><a href="#why" class="transition hover:text-cyan-400/90">{{ t('home.footerWhy') }}</a></li>
+              <li><a href="#steps" class="transition hover:text-cyan-400/90">{{ t('home.footerSteps') }}</a></li>
               <li><a href="#features" class="transition hover:text-cyan-400/90">{{ t('home.footerFeat') }}</a></li>
               <li><a href="#integration" class="transition hover:text-cyan-400/90">{{ t('home.footerInteg') }}</a></li>
               <li><a href="#models" class="transition hover:text-cyan-400/90">{{ t('home.footerModels') }}</a></li>

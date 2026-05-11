@@ -11,6 +11,33 @@ export default {
     ctaDocs: 'Documentation',
     ctaIntegration: 'Integration',
     trustAria: 'Highlights',
+    whySectionTitle: 'Why TraceHub?',
+    whySectionSubtitle:
+      'An OpenAI-compatible gateway for teams and operators: one surface, observable traffic, self-hostable.',
+    why1Title: 'One compatible surface',
+    why1Desc:
+      'A single /v1-style API across vendors and custom endpoints; console-issued API keys reduce fragmented integrations.',
+    why2Title: 'Routing plus observability',
+    why2Desc:
+      'Configurable channels, model discovery and health endpoints; logs and usage rollups help debug and review traffic.',
+    why3Title: 'Security-minded defaults',
+    why3Desc:
+      'Upstream secrets encrypted at rest; user keys stored as hashes. HTTPS, rotation and private deployment supported.',
+    why4Title: 'Flexible delivery',
+    why4Desc:
+      'Open source and self-hosted; admin tools for channels, groups and catalog—fits PoC, production and internal rollouts.',
+    stepsSectionTitle: 'Three steps to start',
+    stepsSectionSubtitle: 'Keep your SDK semantics: change Base URL and API key, keep the rest.',
+    step1Title: 'Create an account',
+    step1Desc:
+      'Sign up with email; sign in with password or email OTP (requires SMTP + Redis enabled on your deployment).',
+    step1MockHint: 'Illustration: the real login modes—password vs email code—not social login buttons.',
+    step2Title: 'Explore the console',
+    step2Desc: 'See available models, group context and usage summaries; create or rotate API keys as needed.',
+    step2MockHint: 'Illustration: usage trend (not a price list)',
+    step3Title: 'Copy your API key',
+    step3Desc: 'Point your OpenAI-compatible client at your TraceHub base URL and use the console key.',
+    step3Badge: 'OpenAI SDK compatible',
     featuresTitle: 'More than a proxy: console & governance',
     featuresDesc:
       'From solo developers to teams, TraceHub covers keys, usage, routing and ops on both user and admin sides; aligned with the open-source implementation.',
@@ -39,6 +66,8 @@ export default {
     footerBlurb:
       'Open-source AI API gateway: OpenAI-compatible entry, observability and user console; deploy privately per repo docs.',
     footerProduct: 'Product',
+    footerWhy: 'Why TraceHub',
+    footerSteps: 'Quick start',
     footerFeat: 'Highlights',
     footerInteg: 'Integration',
     footerModels: 'Models',

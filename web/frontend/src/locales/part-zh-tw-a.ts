@@ -16,6 +16,8 @@ export default {
     integration: '接入',
     models: '模型',
     pricing: '价格',
+    whyTraceHub: '為何選擇',
+    quickStart: '快速上手',
     faq: 'FAQ',
     backHome: '返回首頁',
     product: '产品',
