@@ -72,6 +72,18 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}))
+	gate.POST("/images/edits", gatewayhandler.ImageEdits(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
+	gate.POST("/images/variations", gatewayhandler.ImageVariations(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
 	gate.POST("/embeddings", gatewayhandler.Embeddings(gatewayhandler.ChatDeps{
 		Client:  opt.Client,
 		RDB:     opt.Redis,
@@ -108,12 +120,16 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}))
-	gate.POST("/responses", gatewayhandler.ResponsesCreate(gatewayhandler.ChatDeps{
+	respDeps := gatewayhandler.ChatDeps{
 		Client:  opt.Client,
 		RDB:     opt.Redis,
 		AESKey:  aesKey,
 		Billing: billingEngine,
-	}))
+	}
+	gate.POST("/responses", gatewayhandler.ResponsesCreate(respDeps))
+	gate.GET("/responses/:response_id", gatewayhandler.ResponsesGet(respDeps))
+	gate.DELETE("/responses/:response_id", gatewayhandler.ResponsesDelete(respDeps))
+	gate.POST("/responses/:response_id/cancel", gatewayhandler.ResponsesCancel(respDeps))
 	rtDeps := gatewayhandler.ChatDeps{
 		Client:  opt.Client,
 		RDB:     opt.Redis,
@@ -127,6 +143,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	gate.GET("/realtime", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/realtime/*realtimePath", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))
+	gate.GET("/models/:model_id", gatewayhandler.ModelsGet(opt.Client))
 
 	u := r.Group("/api/user")
 	u.POST("/register", userhandler.Register(opt.Client, opt.Config))

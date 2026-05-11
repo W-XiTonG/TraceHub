@@ -26,6 +26,8 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 		for _, suf := range []string{
 			"/v1/chat/completions",
 			"/v1/images/generations",
+			"/v1/images/edits",
+			"/v1/images/variations",
 			"/v1/completions",
 			"/v1/embeddings",
 			"/v1/moderations",
@@ -41,6 +43,8 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 			"/v1/responses",
 			"/chat/completions",
 			"/images/generations",
+			"/images/edits",
+			"/images/variations",
 			"/completions",
 			"/embeddings",
 			"/moderations",

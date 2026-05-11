@@ -131,6 +131,29 @@ func ForwardOpenAISpeech(ctx context.Context, baseURL, apiKey string, body []byt
 	return httpAudioUpstream.Do(req)
 }
 
+// ForwardOpenAIHTTP 向 OpenAI 兼容根路径（…/v1）下子路径发起任意方法的请求（如 GET/DELETE 资源、POST cancel）。
+// body 非空时设置 Content-Type: application/json；passthrough 不覆盖 Authorization。
+func ForwardOpenAIHTTP(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, passthrough http.Header) (*http.Response, error) {
+	base := strings.TrimRight(baseURL, "/")
+	rel := strings.Trim(strings.TrimSpace(relativePath), "/")
+	fullURL := base + "/" + rel
+	var r io.Reader = http.NoBody
+	if len(body) > 0 {
+		r = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, r)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	if len(body) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+		req.ContentLength = int64(len(body))
+	}
+	applyPassthroughHeaders(req, passthrough)
+	return httpUpstream.Do(req)
+}
+
 func DrainBody(rc io.ReadCloser) {
 	if rc != nil {
 		_, _ = io.Copy(io.Discard, rc)
