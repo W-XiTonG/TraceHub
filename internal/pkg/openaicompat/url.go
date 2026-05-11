@@ -28,9 +28,12 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 			"/v1/images/generations",
 			"/v1/completions",
 			"/v1/embeddings",
+			"/v1/moderations",
 			"/chat/completions",
 			"/images/generations",
 			"/completions",
+			"/embeddings",
+			"/moderations",
 			"/models",
 		} {
 			if strings.HasSuffix(p, suf) {

@@ -72,6 +72,24 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}))
+	gate.POST("/embeddings", gatewayhandler.Embeddings(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
+	gate.POST("/completions", gatewayhandler.Completions(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
+	gate.POST("/moderations", gatewayhandler.Moderations(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))
 
 	u := r.Group("/api/user")

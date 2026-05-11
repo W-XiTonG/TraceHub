@@ -47,6 +47,20 @@ func ForwardOpenAIImageGenerations(ctx context.Context, baseURL, apiKey string, 
 	return httpImageUpstream.Do(req)
 }
 
+// ForwardOpenAIPost 向 OpenAI 兼容根路径（…/v1）下子路径发起 POST，例如 embeddings、completions、moderations。
+func ForwardOpenAIPost(ctx context.Context, baseURL, apiKey, relativePath string, body []byte) (*http.Response, error) {
+	base := strings.TrimRight(baseURL, "/")
+	rel := strings.Trim(strings.TrimSpace(relativePath), "/")
+	url := base + "/" + rel
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	return httpUpstream.Do(req)
+}
+
 func DrainBody(rc io.ReadCloser) {
 	if rc != nil {
 		_, _ = io.Copy(io.Discard, rc)
