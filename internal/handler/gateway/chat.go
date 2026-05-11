@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
+	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelsecret"
 
@@ -22,11 +24,22 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
+// RealtimeCallGatewayConfig 控制 Realtime 通话子资源（accept/reject/hangup/refer）的映射与计费策略。
+type RealtimeCallGatewayConfig struct {
+	MappingEnabled       bool
+	MappingTTLSec        int
+	BillRejectHangup     bool
+}
+
 type ChatDeps struct {
 	Client  *ent.Client
 	RDB     *redis.Client
 	AESKey  []byte
 	Billing *billing.Engine
+	RTCall  RealtimeCallGatewayConfig
+	// OpenAICompatExtras 为除 openai/deepseek 外、仍走 OpenAI 兼容 relay 的渠道类型名（见配置 site.openai_compat_channel_types）。
+	OpenAICompatExtras []string
+	Passthrough          OpenAIPassthroughSettings
 }
 
 func ChatCompletions(d ChatDeps) gin.HandlerFunc {
@@ -73,10 +86,6 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if stream && ct != "openai" && ct != "deepseek" {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂仅支持非流式，请将 stream 设为 false")
-			return
-		}
 
 		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptText)
 		if promptToks < 1 {
@@ -91,6 +100,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		baseURL := strings.TrimSpace(ch.APIBaseURL)
 		if baseURL == "" {
 			baseURL = router.DefaultBaseURL(ch.ChannelType)
+		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
+			baseURL = nb
 		}
 		var secret string
 		switch ch.AuthType {
@@ -111,7 +122,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
 			return
 		}
-		if stream && (ct == "openai" || ct == "deepseek") {
+		if stream && router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
 			patched, _ = injectStreamUsageJSON(patched)
 		}
 
@@ -119,8 +130,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		rid, _ := reqID.(string)
 
 		start := time.Now()
-		switch ct {
-		case "openai", "deepseek":
+		switch {
+		case router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras):
 			resp, err := relay.ForwardOpenAIChat(c.Request.Context(), baseURL, secret, patched, stream)
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
@@ -135,11 +146,14 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if h != "" {
 					c.Writer.Header().Set("Content-Type", h)
 				}
+				if c.Writer.Header().Get("X-Accel-Buffering") == "" {
+					c.Writer.Header().Set("X-Accel-Buffering", "no")
+				}
 				c.Writer.WriteHeader(resp.StatusCode)
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
 				}
-				_, _ = io.Copy(c.Writer, resp.Body)
+				_, _ = copyStreamFlushing(c.Writer, resp.Body)
 				pt := promptToks
 				comp := maxOut
 				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
@@ -152,6 +166,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			raw, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode >= 400 {
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
+				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
 				c.Data(resp.StatusCode, "application/json", raw)
 				return
 			}
@@ -168,7 +183,38 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			c.Data(resp.StatusCode, "application/json", raw)
 
-		case "claude":
+		case ct == "claude":
+			if stream {
+				c.Writer.Header().Set("Content-Type", "text/event-stream")
+				var flusher http.Flusher
+				if f, ok := c.Writer.(http.Flusher); ok {
+					flusher = f
+				}
+				pt2, ct2, err := relay.StreamClaudeMessagesAsOpenAIChatSSE(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model, c.Writer, flusher)
+				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+				if err != nil {
+					var u *relay.UpstreamJSONError
+					if errors.As(err, &u) {
+						metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(u.StatusCode)).Inc()
+						c.Data(u.StatusCode, "application/json", u.Body)
+						return
+					}
+					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
+					middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+					return
+				}
+				if pt2 == 0 {
+					pt2 = promptToks
+				}
+				if ct2 == 0 {
+					ct2 = maxOut
+				}
+				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+				_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, nil, time.Since(start))
+				return
+			}
 			out, status, err := relay.CallClaudeMessages(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			if err != nil {
@@ -187,7 +233,38 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), status, nil, time.Since(start))
 			c.Data(status, "application/json", out)
 
-		case "gemini":
+		case ct == "gemini":
+			if stream {
+				c.Writer.Header().Set("Content-Type", "text/event-stream")
+				var flusher http.Flusher
+				if f, ok := c.Writer.(http.Flusher); ok {
+					flusher = f
+				}
+				pt2, ct2, err := relay.StreamGeminiGenerateContentAsOpenAIChatSSE(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model, c.Writer, flusher)
+				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+				if err != nil {
+					var u *relay.UpstreamJSONError
+					if errors.As(err, &u) {
+						metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(u.StatusCode)).Inc()
+						c.Data(u.StatusCode, "application/json", u.Body)
+						return
+					}
+					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
+					middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+					return
+				}
+				if pt2 == 0 {
+					pt2 = promptToks
+				}
+				if ct2 == 0 {
+					ct2 = maxOut
+				}
+				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+				_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, nil, time.Since(start))
+				return
+			}
 			out, status, err := relay.CallGeminiGenerateContent(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			if err != nil {

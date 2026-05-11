@@ -1,5 +1,7 @@
 package billing
 
+import "sort"
+
 // DefaultQuotaPer1K 默认每千 Token 计费（额度单位），可按模型覆盖；管理员可通过后续版本写入 DB。
 var DefaultQuotaPer1K = map[string]struct {
 	In  int64
@@ -22,4 +24,14 @@ func LookupPricing(model string) (inPer1k, outPer1k int64) {
 		return p.In, p.Out
 	}
 	return 100, 400
+}
+
+// DefaultModelIDs 返回内置默认定价表中的模型 ID（排序），供 /v1/models 在无渠道配置时兜底展示。
+func DefaultModelIDs() []string {
+	ids := make([]string, 0, len(DefaultQuotaPer1K))
+	for id := range DefaultQuotaPer1K {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }

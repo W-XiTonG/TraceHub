@@ -25,7 +25,7 @@
 
 ## 已实现能力（概要）
 
-- 网关：`POST /v1/chat/completions`（OpenAI/DeepSeek 直连含流式；Claude / Gemini 非流式协议转换）、`GET /v1/models`
+- 网关：`POST /v1/chat/completions`（OpenAI 兼容上游含 SSE；原生 **Claude** / **Gemini** 渠道将上游流式转为 OpenAI 风格 `chat.completion.chunk`）、`GET /v1/models`；可选按白名单透传更多 `/v1/*`（`site.openai_passthrough`，默认关闭）；默认拦截 `/v1` 下组织/账单等控制台类路径（`site.block_openai_account_admin_paths`）
 - 路由：按分组与模型筛选渠道，加权随机；Redis 可选粘性会话
 - 计费：Token 估算与额度扣减；分组 / 用户 / 模型倍率参与计价
 - 用户：注册登录 JWT、API Key（哈希存储）、余额与用量、兑换码、修改密码

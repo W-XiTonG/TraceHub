@@ -40,6 +40,26 @@ type SiteConfig struct {
 	CurrencyQuotaPerYuan  int64    `mapstructure:"currency_quota_per_yuan"`
 	DefaultNewUserBalance int64    `mapstructure:"default_new_user_balance"`
 	CORSOrigins           []string `mapstructure:"cors_origins"`
+	// Realtime 通话子资源：call_id → 渠道映射（需 Redis）；未命中时要求 Query / X-TraceHub-Model / JSON model。
+	RealtimeCallMappingEnabled bool `mapstructure:"realtime_call_mapping_enabled"`
+	RealtimeCallMappingTTLSec  int  `mapstructure:"realtime_call_mapping_ttl_sec"`
+	// RealtimeCallControlBillRejectHangup 为 true 时对 reject / hangup 按次预估扣费；默认 false。
+	RealtimeCallControlBillRejectHangup bool `mapstructure:"realtime_call_control_bill_reject_hangup"`
+	// OpenAICompatChannelTypes：除 openai/deepseek 外，仍按 OpenAI 兼容协议转发的渠道类型名（如 siliconflow、custom_openai）。
+	OpenAICompatChannelTypes []string `mapstructure:"openai_compat_channel_types"`
+	// BlockOpenAIAccountAdminPaths：拦截 OpenAI 控制台/账号类路径（组织、账单等），避免用户 Key 误代转发；默认 true。
+	BlockOpenAIAccountAdminPaths bool `mapstructure:"block_openai_account_admin_paths"`
+	// OpenAIAccountAdminDenyPrefixes：在 block 开启时，相对 /v1/ 的额外拒绝前缀（不含前导 /）。
+	OpenAIAccountAdminDenyPrefixes []string `mapstructure:"openai_account_admin_deny_prefixes"`
+	OpenAIPassthrough              OpenAIPassthroughConfig `mapstructure:"openai_passthrough"`
+}
+
+// OpenAIPassthroughConfig 可选：将未显式注册的路径按白名单透传到 OpenAI 兼容上游（需配置 allow 前缀）。
+type OpenAIPassthroughConfig struct {
+	Enabled          bool     `mapstructure:"enabled"`
+	AllowPrefixes    []string `mapstructure:"allow_prefixes"`
+	DenyPrefixes     []string `mapstructure:"deny_prefixes"`
+	PatchModelInJSON bool     `mapstructure:"patch_model_in_json"`
 }
 
 type BootstrapConfig struct {
@@ -67,6 +87,12 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.currency_quota_per_yuan", 10000)
 	v.SetDefault("site.default_new_user_balance", 0)
 	v.SetDefault("site.cors_origins", []string{"*"})
+	v.SetDefault("site.realtime_call_mapping_enabled", false)
+	v.SetDefault("site.realtime_call_mapping_ttl_sec", 86400)
+	v.SetDefault("site.realtime_call_control_bill_reject_hangup", false)
+	v.SetDefault("site.block_openai_account_admin_paths", true)
+	v.SetDefault("site.openai_passthrough.enabled", false)
+	v.SetDefault("site.openai_passthrough.patch_model_in_json", true)
 	v.SetDefault("bootstrap.default_group_name", "基础分组")
 
 	var c Config

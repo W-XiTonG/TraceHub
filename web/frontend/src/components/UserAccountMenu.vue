@@ -36,8 +36,8 @@ const summaryRing = computed(() =>
 
 const avatarClass = computed(() =>
   props.accent === 'amber'
-    ? 'bg-gradient-to-br from-amber-300 to-orange-600 text-slate-950 shadow-md shadow-amber-500/20'
-    : 'bg-gradient-to-br from-cyan-400 to-teal-600 text-slate-950 shadow-md shadow-cyan-500/25',
+    ? 'th-account-avatar th-account-avatar--amber bg-gradient-to-br from-amber-300 to-orange-600 text-slate-950 shadow-md shadow-amber-500/20'
+    : 'th-account-avatar th-account-avatar--cyan bg-gradient-to-br from-cyan-400 to-teal-600 text-slate-950 shadow-md shadow-cyan-500/25',
 )
 
 const dropdownClass = computed(() =>
@@ -70,7 +70,7 @@ function logout() {
         <span class="max-w-[168px] truncate text-sm font-semibold tracking-tight text-slate-100">{{ display }}</span>
         <span v-if="subline" class="max-w-[168px] truncate text-xs text-slate-500">{{ subline }}</span>
       </div>
-      <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <svg class="th-account-chevron h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
       </svg>
     </summary>

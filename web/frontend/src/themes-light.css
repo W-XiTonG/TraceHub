@@ -36,6 +36,20 @@ html[data-th-theme="paper"] {
   --color-cyan-600: oklch(42% 0.12 222);
   --color-emerald-400: oklch(42% 0.14 163);
   --color-emerald-500: oklch(46% 0.14 162);
+  /* 琥珀/警示色：浅色页面上浅琥珀字可读性不足 */
+  --color-amber-100: oklch(28% 0.06 75);
+  --color-amber-200: oklch(34% 0.08 75);
+  --color-amber-300: oklch(40% 0.1 75);
+  --color-amber-400: oklch(46% 0.12 75);
+  --color-amber-500: oklch(50% 0.14 75);
+  --color-amber-600: oklch(48% 0.14 75);
+  --color-amber-950: oklch(97% 0.02 85);
+  --color-violet-300: oklch(42% 0.12 290);
+  --color-violet-400: oklch(48% 0.14 290);
+  --color-fuchsia-300: oklch(42% 0.14 320);
+  --color-fuchsia-400: oklch(48% 0.16 320);
+  --color-rose-300: oklch(42% 0.12 15);
+  --color-rose-400: oklch(48% 0.14 15);
 }
 
 html[data-th-theme="dawn"] {
@@ -276,6 +290,7 @@ html[data-th-theme="paper"] .th-theme-picker [role="listbox"] {
   border-color: rgba(15, 23, 42, 0.1);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.15);
+  color: #1e293b;
 }
 
 html[data-th-theme="dawn"] .th-theme-picker [role="listbox"] p,
@@ -310,4 +325,200 @@ html[data-th-theme="paper"] .th-theme-picker .rounded-full:hover {
 
 html[data-th-theme="paper"] .th-nav-link.router-link-exact-active {
   color: #1e3a8a;
+}
+
+/*
+ * 反转 slate 标号后，700～900 档在浅底上会变成「浅灰字」；950 在彩按钮上会变成近白字。
+ * 用前景覆写保证正文/辅助字/按钮标签对比度（不改变 bg-slate-* 的用法）。
+ */
+html[data-th-theme="dawn"] .text-slate-700,
+html[data-th-theme="paper"] .text-slate-700 {
+  color: oklch(42% 0.028 265);
+}
+
+html[data-th-theme="dawn"] .text-slate-800,
+html[data-th-theme="paper"] .text-slate-800 {
+  color: oklch(35% 0.03 265);
+}
+
+html[data-th-theme="dawn"] .text-slate-900,
+html[data-th-theme="paper"] .text-slate-900 {
+  color: oklch(28% 0.035 265);
+}
+
+html[data-th-theme="dawn"] .text-slate-950,
+html[data-th-theme="paper"] .text-slate-950 {
+  color: oklch(18% 0.04 265);
+}
+
+/* style.css 内硬编码的浅灰 hover，浅色侧栏/主区上偏淡 */
+html[data-th-theme="dawn"] .th-pill:hover,
+html[data-th-theme="paper"] .th-pill:hover {
+  color: #475569;
+  background: rgba(15, 23, 42, 0.06);
+}
+
+html[data-th-theme="dawn"] .th-kicker,
+html[data-th-theme="paper"] .th-kicker {
+  color: #64748b;
+}
+
+html[data-th-theme="dawn"] .th-topbar-title,
+html[data-th-theme="paper"] .th-topbar-title {
+  color: #64748b;
+}
+
+html[data-th-theme="dawn"] .th-link-accent,
+html[data-th-theme="paper"] .th-link-accent {
+  color: var(--th-accent);
+}
+
+html[data-th-theme="dawn"] .th-link-accent:hover,
+html[data-th-theme="paper"] .th-link-accent:hover {
+  color: var(--th-primary-to);
+}
+
+html[data-th-theme="dawn"] .th-site-nav-link,
+html[data-th-theme="paper"] .th-site-nav-link {
+  color: var(--th-text-muted);
+}
+
+html[data-th-theme="dawn"] .th-logo-mark:not(.th-logo-mark--amber),
+html[data-th-theme="paper"] .th-logo-mark:not(.th-logo-mark--amber) {
+  color: #020617;
+}
+
+html[data-th-theme="dawn"] .th-logo-mark--amber,
+html[data-th-theme="paper"] .th-logo-mark--amber {
+  color: #0c0a09;
+}
+
+/* 列表行 hover 等仍在使用偏浅的 slate 字色 */
+html[data-th-theme="dawn"] .hover\:text-slate-300:hover,
+html[data-th-theme="paper"] .hover\:text-slate-300:hover {
+  color: oklch(38% 0.032 265);
+}
+
+html[data-th-theme="dawn"] .hover\:text-slate-200:hover,
+html[data-th-theme="paper"] .hover\:text-slate-200:hover {
+  color: oklch(30% 0.035 265);
+}
+
+html[data-th-theme="dawn"] .hover\:text-white:hover,
+html[data-th-theme="paper"] .hover\:text-white:hover {
+  color: #0f172a;
+}
+
+html[data-th-theme="dawn"] .th-theme-picker [role="listbox"] button,
+html[data-th-theme="paper"] .th-theme-picker [role="listbox"] button {
+  color: #1e293b;
+}
+
+html[data-th-theme="dawn"] .th-theme-picker [role="listbox"] button:hover,
+html[data-th-theme="paper"] .th-theme-picker [role="listbox"] button:hover {
+  color: #0f172a;
+}
+
+/* 官网功能卡图标：浅色主题下 cyan/violet/emerald 等「浅色字 + 淡底」对比不足，改为深色描边 + 略饱和底 */
+html[data-th-theme="dawn"] .th-home-feature-icon--cyan,
+html[data-th-theme="paper"] .th-home-feature-icon--cyan {
+  background-color: rgba(14, 165, 233, 0.14);
+  color: #0369a1;
+}
+
+html[data-th-theme="dawn"] .th-home-feature-icon--violet,
+html[data-th-theme="paper"] .th-home-feature-icon--violet {
+  background-color: rgba(139, 92, 246, 0.16);
+  color: #6d28d9;
+}
+
+html[data-th-theme="dawn"] .th-home-feature-icon--emerald,
+html[data-th-theme="paper"] .th-home-feature-icon--emerald {
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+html[data-th-theme="dawn"] .th-home-feature-icon--sky,
+html[data-th-theme="paper"] .th-home-feature-icon--sky {
+  background-color: rgba(56, 189, 248, 0.14);
+  color: #0369a1;
+}
+
+html[data-th-theme="dawn"] .th-home-feature-icon--amber,
+html[data-th-theme="paper"] .th-home-feature-icon--amber {
+  background-color: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+html[data-th-theme="dawn"] .th-home-feature-icon--fuchsia,
+html[data-th-theme="paper"] .th-home-feature-icon--fuchsia {
+  background-color: rgba(217, 70, 239, 0.14);
+  color: #a21caf;
+}
+
+/* 官网接入示例：浅色主题下终端窗口与深色代码块统一为浅底深字 */
+html[data-th-theme="dawn"] .th-home-code-window-titlebar,
+html[data-th-theme="paper"] .th-home-code-window-titlebar {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+html[data-th-theme="dawn"] .th-home-code-window-titlebar .text-slate-600,
+html[data-th-theme="paper"] .th-home-code-window-titlebar .text-slate-600 {
+  color: #475569;
+}
+
+html[data-th-theme="dawn"] .th-home-code-window-pre,
+html[data-th-theme="paper"] .th-home-code-window-pre {
+  background: #f1f5f9 !important;
+  color: #334155;
+}
+
+html[data-th-theme="dawn"] .th-home-code-window-pre .th-home-code-comment,
+html[data-th-theme="paper"] .th-home-code-window-pre .th-home-code-comment {
+  color: #64748b !important;
+}
+
+html[data-th-theme="dawn"] .th-home-code-window-pre .th-home-code-str,
+html[data-th-theme="paper"] .th-home-code-window-pre .th-home-code-str {
+  color: #047857 !important;
+}
+
+html[data-th-theme="dawn"] .th-home-code-window-pre .th-home-code-hdr,
+html[data-th-theme="paper"] .th-home-code-window-pre .th-home-code-hdr {
+  color: #b45309 !important;
+}
+
+html[data-th-theme="dawn"] .th-home-code-window-pre .th-home-code-json,
+html[data-th-theme="paper"] .th-home-code-window-pre .th-home-code-json {
+  color: #0369a1 !important;
+}
+
+/* 顶栏用户头像：浅色主题下默认渐变偏深，改为更亮的 pastel；侧箭头略提亮 */
+html[data-th-theme="dawn"] .th-account-avatar--cyan,
+html[data-th-theme="paper"] .th-account-avatar--cyan {
+  background: linear-gradient(145deg, #bae6fd 0%, #5eead4 42%, #2dd4bf 100%) !important;
+  color: #0c4a6e !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.65) inset,
+    0 6px 16px -6px rgba(14, 165, 233, 0.38);
+}
+
+html[data-th-theme="dawn"] .th-account-avatar--amber,
+html[data-th-theme="paper"] .th-account-avatar--amber {
+  background: linear-gradient(145deg, #fef9c3 0%, #fde047 38%, #fbbf24 100%) !important;
+  color: #78350f !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 6px 16px -6px rgba(245, 158, 11, 0.35);
+}
+
+html[data-th-theme="dawn"] .th-account-menu .th-account-chevron,
+html[data-th-theme="paper"] .th-account-menu .th-account-chevron {
+  color: #94a3b8;
+}
+
+html[data-th-theme="dawn"] .th-account-menu summary:hover .th-account-chevron,
+html[data-th-theme="paper"] .th-account-menu summary:hover .th-account-chevron {
+  color: #64748b;
 }

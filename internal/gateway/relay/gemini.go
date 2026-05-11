@@ -14,26 +14,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// CallGeminiGenerateContent OpenAI Chat -> Gemini generateContent（非流式）。
-func CallGeminiGenerateContent(ctx context.Context, apiKey string, baseURL string, openAIBody []byte, upstreamModel string, clientModel string) ([]byte, int, error) {
-	base := strings.TrimRight(baseURL, "/")
-	if base == "" {
-		base = "https://generativelanguage.googleapis.com"
-	}
-	m := strings.TrimPrefix(upstreamModel, "models/")
-	apiURL := fmt.Sprintf("%s/v1beta/models/%s:generateContent?key=%s", base, url.PathEscape(m), url.QueryEscape(apiKey))
-
+// BuildGeminiGenerateContentBody OpenAI Chat JSON -> Gemini generateContent 请求体。
+func BuildGeminiGenerateContentBody(openAIBody []byte) ([]byte, error) {
 	var req map[string]json.RawMessage
 	if err := json.Unmarshal(openAIBody, &req); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	msgsRaw, ok := req["messages"]
 	if !ok {
-		return nil, 0, fmt.Errorf("missing messages")
+		return nil, fmt.Errorf("missing messages")
 	}
 	var messages []map[string]any
 	if err := json.Unmarshal(msgsRaw, &messages); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	var sysText []string
@@ -70,7 +63,19 @@ func CallGeminiGenerateContent(ctx context.Context, apiKey string, baseURL strin
 		}
 	}
 
-	body, err := json.Marshal(payload)
+	return json.Marshal(payload)
+}
+
+// CallGeminiGenerateContent OpenAI Chat -> Gemini generateContent（非流式）。
+func CallGeminiGenerateContent(ctx context.Context, apiKey string, baseURL string, openAIBody []byte, upstreamModel string, clientModel string) ([]byte, int, error) {
+	base := strings.TrimRight(baseURL, "/")
+	if base == "" {
+		base = "https://generativelanguage.googleapis.com"
+	}
+	m := strings.TrimPrefix(upstreamModel, "models/")
+	apiURL := fmt.Sprintf("%s/v1beta/models/%s:generateContent?key=%s", base, url.PathEscape(m), url.QueryEscape(apiKey))
+
+	body, err := BuildGeminiGenerateContentBody(openAIBody)
 	if err != nil {
 		return nil, 0, err
 	}

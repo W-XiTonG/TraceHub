@@ -13,27 +13,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// CallClaudeMessages 将 OpenAI Chat Completions 请求转换为 Anthropic Messages API（非流式）。
-// clientModel 为返回给下游的 model 字段（通常与用户请求的 model 一致）。
-func CallClaudeMessages(ctx context.Context, apiKey string, baseURL string, openAIBody []byte, upstreamModel string, clientModel string) ([]byte, int, error) {
-	base := strings.TrimRight(baseURL, "/")
-	if base == "" {
-		base = "https://api.anthropic.com/v1"
-	}
-	url := base + "/messages"
-
+// BuildAnthropicMessagesBody 将 OpenAI Chat Completions JSON 转为 Anthropic Messages 请求体。
+func BuildAnthropicMessagesBody(openAIBody []byte, upstreamModel string, stream bool) ([]byte, error) {
 	var req map[string]json.RawMessage
 	if err := json.Unmarshal(openAIBody, &req); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	msgsRaw, ok := req["messages"]
 	if !ok {
-		return nil, 0, fmt.Errorf("missing messages")
+		return nil, fmt.Errorf("missing messages")
 	}
 	var messages []map[string]any
 	if err := json.Unmarshal(msgsRaw, &messages); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	var sysParts []string
@@ -78,12 +71,25 @@ func CallClaudeMessages(ctx context.Context, apiKey string, baseURL string, open
 		"max_tokens":  maxTok,
 		"messages":    anthMsgs,
 		"temperature": unmarshalFloat(req, "temperature", 1.0),
+		"stream":      stream,
 	}
 	if len(sysParts) > 0 {
 		payload["system"] = strings.Join(sysParts, "\n")
 	}
 
-	body, err := json.Marshal(payload)
+	return json.Marshal(payload)
+}
+
+// CallClaudeMessages 将 OpenAI Chat Completions 请求转换为 Anthropic Messages API（非流式）。
+// clientModel 为返回给下游的 model 字段（通常与用户请求的 model 一致）。
+func CallClaudeMessages(ctx context.Context, apiKey string, baseURL string, openAIBody []byte, upstreamModel string, clientModel string) ([]byte, int, error) {
+	base := strings.TrimRight(baseURL, "/")
+	if base == "" {
+		base = "https://api.anthropic.com/v1"
+	}
+	url := base + "/messages"
+
+	body, err := BuildAnthropicMessagesBody(openAIBody, upstreamModel, false)
 	if err != nil {
 		return nil, 0, err
 	}

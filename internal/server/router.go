@@ -60,13 +60,119 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 
 	gate := r.Group("/v1")
 	gate.Use(middleware.GatewayAPIKeyAuth(opt.Client))
-	gate.POST("/chat/completions", gatewayhandler.ChatCompletions(gatewayhandler.ChatDeps{
-		Client:  opt.Client,
-		RDB:     opt.Redis,
-		AESKey:  aesKey,
-		Billing: billingEngine,
-	}))
+	gate.Use(middleware.DenyOpenAIAccountAdminUnderV1(opt.Config.Site.BlockOpenAIAccountAdminPaths, opt.Config.Site.OpenAIAccountAdminDenyPrefixes))
+
+	gwBase := gatewayhandler.ChatDeps{
+		Client:             opt.Client,
+		RDB:                opt.Redis,
+		AESKey:             aesKey,
+		Billing:            billingEngine,
+		OpenAICompatExtras: opt.Config.Site.OpenAICompatChannelTypes,
+		Passthrough: gatewayhandler.OpenAIPassthroughSettings{
+			Enabled:          opt.Config.Site.OpenAIPassthrough.Enabled,
+			AllowPrefixes:    opt.Config.Site.OpenAIPassthrough.AllowPrefixes,
+			DenyPrefixes:     opt.Config.Site.OpenAIPassthrough.DenyPrefixes,
+			PatchModelInJSON: opt.Config.Site.OpenAIPassthrough.PatchModelInJSON,
+		},
+	}
+
+	gate.POST("/chat/completions", gatewayhandler.ChatCompletions(gwBase))
+	gate.POST("/images/generations", gatewayhandler.ImageGenerations(gwBase))
+	gate.POST("/images/edits", gatewayhandler.ImageEdits(gwBase))
+	gate.POST("/images/variations", gatewayhandler.ImageVariations(gwBase))
+	gate.POST("/embeddings", gatewayhandler.Embeddings(gwBase))
+	gate.POST("/completions", gatewayhandler.Completions(gwBase))
+	gate.POST("/moderations", gatewayhandler.Moderations(gwBase))
+	gate.POST("/audio/transcriptions", gatewayhandler.AudioTranscriptions(gwBase))
+	gate.POST("/audio/translations", gatewayhandler.AudioTranslations(gwBase))
+	gate.POST("/audio/speech", gatewayhandler.AudioSpeech(gwBase))
+	respDeps := gwBase
+	gate.POST("/responses", gatewayhandler.ResponsesCreate(respDeps))
+	gate.GET("/responses/:response_id", gatewayhandler.ResponsesGet(respDeps))
+	gate.DELETE("/responses/:response_id", gatewayhandler.ResponsesDelete(respDeps))
+	gate.POST("/responses/:response_id/cancel", gatewayhandler.ResponsesCancel(respDeps))
+	rtDeps := gwBase
+	rtDeps.RTCall = gatewayhandler.RealtimeCallGatewayConfig{
+		MappingEnabled:   opt.Config.Site.RealtimeCallMappingEnabled,
+		MappingTTLSec:    opt.Config.Site.RealtimeCallMappingTTLSec,
+		BillRejectHangup: opt.Config.Site.RealtimeCallControlBillRejectHangup,
+	}
+	gate.POST("/realtime/sessions", gatewayhandler.RealtimeSessions(rtDeps))
+	gate.POST("/realtime/transcription_sessions", gatewayhandler.RealtimeTranscriptionSessions(rtDeps))
+	gate.POST("/realtime/calls", gatewayhandler.RealtimeCallsWebRTC(rtDeps))
+	gate.POST("/realtime/calls/:call_id/accept", gatewayhandler.RealtimeCallAccept(rtDeps))
+	gate.POST("/realtime/calls/:call_id/reject", gatewayhandler.RealtimeCallReject(rtDeps))
+	gate.POST("/realtime/calls/:call_id/hangup", gatewayhandler.RealtimeCallHangup(rtDeps))
+	gate.POST("/realtime/calls/:call_id/refer", gatewayhandler.RealtimeCallRefer(rtDeps))
+	gate.POST("/realtime/client_secrets", gatewayhandler.RealtimeClientSecrets(rtDeps))
+	gate.GET("/realtime", gatewayhandler.RealtimeWebSocket(rtDeps))
+	gate.GET("/realtime/*realtimePath", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))
+	gate.GET("/models/:model_id", gatewayhandler.ModelsGet(opt.Client))
+
+	gate.POST("/files", gatewayhandler.OpenAIFilesCreate(respDeps))
+	gate.GET("/files", gatewayhandler.OpenAIFilesList(respDeps))
+	gate.GET("/files/:file_id/content", gatewayhandler.OpenAIFilesContent(respDeps))
+	gate.GET("/files/:file_id", gatewayhandler.OpenAIFilesRetrieve(respDeps))
+	gate.DELETE("/files/:file_id", gatewayhandler.OpenAIFilesDelete(respDeps))
+
+	gate.POST("/batches", gatewayhandler.OpenAIBatchesCreate(respDeps))
+	gate.GET("/batches", gatewayhandler.OpenAIBatchesList(respDeps))
+	gate.POST("/batches/:batch_id/cancel", gatewayhandler.OpenAIBatchesCancel(respDeps))
+	gate.GET("/batches/:batch_id", gatewayhandler.OpenAIBatchesRetrieve(respDeps))
+
+	gate.POST("/fine_tuning/jobs", gatewayhandler.OpenAIFineTuningJobsCreate(respDeps))
+	gate.GET("/fine_tuning/jobs/:job_id/events", gatewayhandler.OpenAIFineTuningJobEvents(respDeps))
+	gate.GET("/fine_tuning/jobs/:job_id/checkpoints/:checkpoint_id", gatewayhandler.OpenAIFineTuningJobCheckpointRetrieve(respDeps))
+	gate.GET("/fine_tuning/jobs/:job_id/checkpoints", gatewayhandler.OpenAIFineTuningJobCheckpoints(respDeps))
+	gate.POST("/fine_tuning/jobs/:job_id/cancel", gatewayhandler.OpenAIFineTuningJobCancel(respDeps))
+	gate.GET("/fine_tuning/jobs/:job_id", gatewayhandler.OpenAIFineTuningJobRetrieve(respDeps))
+	gate.GET("/fine_tuning/jobs", gatewayhandler.OpenAIFineTuningJobsList(respDeps))
+
+	// OpenAI Assistants / Threads / Runs / Vector stores（透传上游；选路：JSON model 或 ?model= / X-TraceHub-Model）
+	gate.POST("/assistants", gatewayhandler.OpenAIAssistantsCreate(respDeps))
+	gate.GET("/assistants", gatewayhandler.OpenAIAssistantsList(respDeps))
+	gate.GET("/assistants/:assistant_id", gatewayhandler.OpenAIAssistantsRetrieve(respDeps))
+	gate.POST("/assistants/:assistant_id", gatewayhandler.OpenAIAssistantsModify(respDeps))
+	gate.DELETE("/assistants/:assistant_id", gatewayhandler.OpenAIAssistantsDelete(respDeps))
+
+	gate.POST("/threads", gatewayhandler.OpenAIThreadsCreate(respDeps))
+	gate.GET("/threads/:thread_id", gatewayhandler.OpenAIThreadsRetrieve(respDeps))
+	gate.POST("/threads/:thread_id", gatewayhandler.OpenAIThreadsModify(respDeps))
+	gate.DELETE("/threads/:thread_id", gatewayhandler.OpenAIThreadsDelete(respDeps))
+
+	gate.POST("/threads/:thread_id/messages", gatewayhandler.OpenAIThreadMessagesCreate(respDeps))
+	gate.GET("/threads/:thread_id/messages", gatewayhandler.OpenAIThreadMessagesList(respDeps))
+	gate.GET("/threads/:thread_id/messages/:message_id", gatewayhandler.OpenAIThreadMessagesRetrieve(respDeps))
+	gate.POST("/threads/:thread_id/messages/:message_id", gatewayhandler.OpenAIThreadMessagesModify(respDeps))
+
+	gate.POST("/threads/:thread_id/runs/:run_id/submit_tool_outputs", gatewayhandler.OpenAIThreadRunsSubmitToolOutputs(respDeps))
+	gate.POST("/threads/:thread_id/runs/:run_id/cancel", gatewayhandler.OpenAIThreadRunsCancel(respDeps))
+	gate.GET("/threads/:thread_id/runs/:run_id/steps/:step_id", gatewayhandler.OpenAIThreadRunStepsRetrieve(respDeps))
+	gate.GET("/threads/:thread_id/runs/:run_id/steps", gatewayhandler.OpenAIThreadRunStepsList(respDeps))
+	gate.POST("/threads/:thread_id/runs/:run_id", gatewayhandler.OpenAIThreadRunsModify(respDeps))
+	gate.GET("/threads/:thread_id/runs/:run_id", gatewayhandler.OpenAIThreadRunsRetrieve(respDeps))
+	gate.POST("/threads/:thread_id/runs", gatewayhandler.OpenAIThreadRunsCreate(respDeps))
+	gate.GET("/threads/:thread_id/runs", gatewayhandler.OpenAIThreadRunsList(respDeps))
+
+	gate.POST("/vector_stores", gatewayhandler.OpenAIVectorStoresCreate(respDeps))
+	gate.GET("/vector_stores", gatewayhandler.OpenAIVectorStoresList(respDeps))
+	gate.GET("/vector_stores/:vector_store_id/file_batches/:batch_id/files/:file_id", gatewayhandler.OpenAIVectorStoreFileBatchFilesRetrieve(respDeps))
+	gate.GET("/vector_stores/:vector_store_id/file_batches/:batch_id/files", gatewayhandler.OpenAIVectorStoreFileBatchFilesList(respDeps))
+	gate.POST("/vector_stores/:vector_store_id/file_batches/:batch_id/cancel", gatewayhandler.OpenAIVectorStoreFileBatchesCancel(respDeps))
+	gate.GET("/vector_stores/:vector_store_id/file_batches/:batch_id", gatewayhandler.OpenAIVectorStoreFileBatchesRetrieve(respDeps))
+	gate.POST("/vector_stores/:vector_store_id/file_batches", gatewayhandler.OpenAIVectorStoreFileBatchesCreate(respDeps))
+	gate.DELETE("/vector_stores/:vector_store_id/files/:file_id", gatewayhandler.OpenAIVectorStoreFilesDelete(respDeps))
+	gate.GET("/vector_stores/:vector_store_id/files/:file_id", gatewayhandler.OpenAIVectorStoreFilesRetrieve(respDeps))
+	gate.POST("/vector_stores/:vector_store_id/files", gatewayhandler.OpenAIVectorStoreFilesCreate(respDeps))
+	gate.GET("/vector_stores/:vector_store_id/files", gatewayhandler.OpenAIVectorStoreFilesList(respDeps))
+	gate.GET("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresRetrieve(respDeps))
+	gate.POST("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresModify(respDeps))
+	gate.DELETE("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresDelete(respDeps))
+
+	if opt.Config.Site.OpenAIPassthrough.Enabled {
+		gate.Any("/*gwOpenAICatchAll", gatewayhandler.OpenAIV1Passthrough(gwBase))
+	}
 
 	u := r.Group("/api/user")
 	u.POST("/register", userhandler.Register(opt.Client, opt.Config))
@@ -113,6 +219,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/channels", adminhandler.CreateChannel(chAdmin))
 	a.PUT("/channels/:id", adminhandler.UpdateChannel(chAdmin))
 	a.DELETE("/channels/:id", adminhandler.DeleteChannel(opt.Client))
+	a.GET("/channel-model-presets", adminhandler.ChannelModelPresets(opt.Client))
+	a.POST("/channel-models/fetch-upstream", adminhandler.FetchUpstreamModelList())
 	a.GET("/groups", adminhandler.ListGroups(opt.Client))
 	a.POST("/groups", adminhandler.CreateGroup(opt.Client))
 	a.PUT("/groups/:id", adminhandler.UpdateGroup(opt.Client))

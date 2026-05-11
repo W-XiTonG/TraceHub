@@ -10,6 +10,7 @@ import (
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/modelcatalogentry"
+	"tracehub/internal/service/billing"
 )
 
 // Item 与 OpenAI /v1/models 单项字段对齐（控制台展示用）。
@@ -35,6 +36,8 @@ func inferOwnedBy(id string) string {
 }
 
 // ListForGroup 汇总分组下可用渠道中的模型 ID（含别名），与网关 GET /v1/models 一致。
+// 列表用于发现模型：不要求渠道 health=健康（路由时仍会过滤异常渠道）。
+// 若渠道未配置任何模型，则合并「模型市场」可见条目，再回退到内置默认定价表模型 ID，避免 /v1/models 返回空数组导致下游工具无法拉模。
 func ListForGroup(ctx context.Context, client *ent.Client, groupID int) ([]Item, error) {
 	if groupID <= 0 {
 		return []Item{}, nil
@@ -43,7 +46,6 @@ func ListForGroup(ctx context.Context, client *ent.Client, groupID int) ([]Item,
 		Where(
 			channel.Enabled(true),
 			channel.Schedulable(true),
-			channel.HealthStatusEQ(1),
 			channel.HasGroupWith(group.IDEQ(groupID)),
 		).
 		All(ctx)
@@ -53,10 +55,36 @@ func ListForGroup(ctx context.Context, client *ent.Client, groupID int) ([]Item,
 	set := map[string]struct{}{}
 	for _, ch := range channels {
 		for _, m := range ch.Models {
-			set[m] = struct{}{}
+			if strings.TrimSpace(m) != "" {
+				set[m] = struct{}{}
+			}
 		}
 		for alias := range ch.ModelAlias {
-			set[alias] = struct{}{}
+			if strings.TrimSpace(alias) != "" {
+				set[alias] = struct{}{}
+			}
+		}
+	}
+	if len(set) == 0 {
+		rows, err := client.ModelCatalogEntry.Query().
+			Where(
+				modelcatalogentry.Visible(true),
+				modelcatalogentry.Enabled(true),
+			).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			id := strings.TrimSpace(row.ModelID)
+			if id != "" {
+				set[id] = struct{}{}
+			}
+		}
+	}
+	if len(set) == 0 {
+		for _, id := range billing.DefaultModelIDs() {
+			set[id] = struct{}{}
 		}
 	}
 	ids := make([]string, 0, len(set))
