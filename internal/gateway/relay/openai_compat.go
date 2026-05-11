@@ -132,11 +132,23 @@ func ForwardOpenAISpeech(ctx context.Context, baseURL, apiKey string, body []byt
 }
 
 // ForwardOpenAIHTTP 向 OpenAI 兼容根路径（…/v1）下子路径发起任意方法的请求（如 GET/DELETE 资源、POST cancel）。
-// body 非空时设置 Content-Type: application/json；passthrough 不覆盖 Authorization。
-func ForwardOpenAIHTTP(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, passthrough http.Header) (*http.Response, error) {
+// body 非空时设置 Content-Type: application/json；rawQuery 非空时附加到 URL（不含前导 ?）；passthrough 不覆盖 Authorization。
+func ForwardOpenAIHTTP(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
+	return forwardOpenAIHTTPClient(ctx, httpUpstream, baseURL, apiKey, method, relativePath, body, rawQuery, passthrough)
+}
+
+// ForwardOpenAIHTTPLong 与 ForwardOpenAIHTTP 相同，使用较长超时（与音频/大文件一致），适用于 Files 下载、Batch 轮询等。
+func ForwardOpenAIHTTPLong(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
+	return forwardOpenAIHTTPClient(ctx, httpAudioUpstream, baseURL, apiKey, method, relativePath, body, rawQuery, passthrough)
+}
+
+func forwardOpenAIHTTPClient(ctx context.Context, hc *http.Client, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
 	base := strings.TrimRight(baseURL, "/")
 	rel := strings.Trim(strings.TrimSpace(relativePath), "/")
 	fullURL := base + "/" + rel
+	if strings.TrimSpace(rawQuery) != "" {
+		fullURL = fullURL + "?" + rawQuery
+	}
 	var r io.Reader = http.NoBody
 	if len(body) > 0 {
 		r = bytes.NewReader(body)
@@ -151,7 +163,7 @@ func ForwardOpenAIHTTP(ctx context.Context, baseURL, apiKey, method, relativePat
 		req.ContentLength = int64(len(body))
 	}
 	applyPassthroughHeaders(req, passthrough)
-	return httpUpstream.Do(req)
+	return hc.Do(req)
 }
 
 func DrainBody(rc io.ReadCloser) {
