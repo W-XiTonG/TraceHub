@@ -114,6 +114,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}
+	gate.POST("/realtime/sessions", gatewayhandler.RealtimeSessions(rtDeps))
+	gate.POST("/realtime/transcription_sessions", gatewayhandler.RealtimeTranscriptionSessions(rtDeps))
 	gate.GET("/realtime", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/realtime/*realtimePath", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))

@@ -69,6 +69,11 @@ func ForwardOpenAIImageGenerations(ctx context.Context, baseURL, apiKey string, 
 
 // ForwardOpenAIPost 向 OpenAI 兼容根路径（…/v1）下子路径发起 POST，例如 embeddings、completions、moderations。
 func ForwardOpenAIPost(ctx context.Context, baseURL, apiKey, relativePath string, body []byte) (*http.Response, error) {
+	return ForwardOpenAIPostWithHeaders(ctx, baseURL, apiKey, relativePath, body, nil)
+}
+
+// ForwardOpenAIPostWithHeaders 同 ForwardOpenAIPost，可额外透传 OpenAI 官方头（如 OpenAI-Beta）。
+func ForwardOpenAIPostWithHeaders(ctx context.Context, baseURL, apiKey, relativePath string, body []byte, passthrough http.Header) (*http.Response, error) {
 	base := strings.TrimRight(baseURL, "/")
 	rel := strings.Trim(strings.TrimSpace(relativePath), "/")
 	url := base + "/" + rel
@@ -78,6 +83,8 @@ func ForwardOpenAIPost(ctx context.Context, baseURL, apiKey, relativePath string
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.ContentLength = int64(len(body))
+	applyPassthroughHeaders(req, passthrough)
 	return httpUpstream.Do(req)
 }
 

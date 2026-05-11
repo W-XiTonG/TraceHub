@@ -33,7 +33,7 @@ func Embeddings(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或 input 无效")
 			return
 		}
-		openAIForwardJSON(c, d, body, model, est, 0, "embeddings")
+		openAIForwardJSONCustomPatch(c, d, body, model, est, 0, "embeddings", router.PatchModelInBody)
 	}
 }
 
@@ -50,7 +50,7 @@ func Completions(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或 prompt 无效")
 			return
 		}
-		openAIForwardJSON(c, d, body, model, promptText, maxOut, "completions")
+		openAIForwardJSONCustomPatch(c, d, body, model, promptText, maxOut, "completions", router.PatchModelInBody)
 	}
 }
 
@@ -67,11 +67,12 @@ func Moderations(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或 input 无效")
 			return
 		}
-		openAIForwardJSON(c, d, body, model, est, 0, "moderations")
+		openAIForwardJSONCustomPatch(c, d, body, model, est, 0, "moderations", router.PatchModelInBody)
 	}
 }
 
-func openAIForwardJSON(c *gin.Context, d ChatDeps, body []byte, model, promptEst string, maxCompFallback int, subpath string) {
+// openAIForwardJSONCustomPatch 将 JSON POST 转发至上游；patch 负责把请求体中的模型名替换为上游名（可为 router.PatchModelInBody 或 Realtime 专用补丁）。
+func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model, promptEst string, maxCompFallback int, subpath string, patch func([]byte, string) ([]byte, error)) {
 	uAny, _ := c.Get(middleware.CtxGateUserKey)
 	kAny, _ := c.Get(middleware.CtxGateAPIKeyKey)
 	u := uAny.(*ent.User)
@@ -138,7 +139,7 @@ func openAIForwardJSON(c *gin.Context, d ChatDeps, body []byte, model, promptEst
 		middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
 		return
 	}
-	patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
+	patched, err := patch(body, sel.UpstreamModel)
 	if err != nil {
 		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
 		return
@@ -148,7 +149,7 @@ func openAIForwardJSON(c *gin.Context, d ChatDeps, body []byte, model, promptEst
 	rid, _ := reqID.(string)
 	start := time.Now()
 
-	resp, err := relay.ForwardOpenAIPost(c.Request.Context(), baseURL, secret, subpath, patched)
+	resp, err := relay.ForwardOpenAIPostWithHeaders(c.Request.Context(), baseURL, secret, subpath, patched, openAIPassthroughHeaders(c))
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
 		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
@@ -164,7 +165,7 @@ func openAIForwardJSON(c *gin.Context, d ChatDeps, body []byte, model, promptEst
 		c.Data(resp.StatusCode, "application/json", raw)
 		return
 	}
-	pt2, ct2 := parseUsageFromOpenAIResponse(raw)
+	pt2, ct2 := parseUsageFlexible(raw)
 	if pt2 == 0 {
 		pt2 = promptToks
 	}
