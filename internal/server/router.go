@@ -108,6 +108,14 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}))
+	rtDeps := gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}
+	gate.GET("/realtime", gatewayhandler.RealtimeWebSocket(rtDeps))
+	gate.GET("/realtime/*realtimePath", gatewayhandler.RealtimeWebSocket(rtDeps))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))
 
 	u := r.Group("/api/user")

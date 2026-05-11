@@ -82,7 +82,8 @@ func ForwardOpenAIPost(ctx context.Context, baseURL, apiKey, relativePath string
 }
 
 // ForwardOpenAIMultipart 转发 OpenAI 兼容的 multipart 音频接口（transcriptions / translations）。
-func ForwardOpenAIMultipart(ctx context.Context, baseURL, apiKey, relativePath, contentType string, body []byte, passthrough http.Header) (*http.Response, error) {
+// accept 非空时设置 Accept（流式转写建议 text/event-stream）。
+func ForwardOpenAIMultipart(ctx context.Context, baseURL, apiKey, relativePath, contentType string, body []byte, passthrough http.Header, accept string) (*http.Response, error) {
 	base := strings.TrimRight(baseURL, "/")
 	rel := strings.Trim(strings.TrimSpace(relativePath), "/")
 	url := base + "/" + rel
@@ -93,6 +94,9 @@ func ForwardOpenAIMultipart(ctx context.Context, baseURL, apiKey, relativePath, 
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	if strings.TrimSpace(accept) != "" {
+		req.Header.Set("Accept", accept)
 	}
 	req.ContentLength = int64(len(body))
 	applyPassthroughHeaders(req, passthrough)

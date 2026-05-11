@@ -154,17 +154,23 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		rid, _ := reqID.(string)
 		start := time.Now()
 
-		resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, upstreamRelPath, contentType, body, openAIPassthroughHeaders(c))
+		acceptHdr := ""
+		if multipartFormWantsStream(form) {
+			acceptHdr = "text/event-stream"
+		}
+		resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, upstreamRelPath, contentType, body, openAIPassthroughHeaders(c), acceptHdr)
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
 			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 			return
 		}
 		defer relay.DrainBody(resp.Body)
-		metrics.GatewayLatency.WithLabelValues(chType).Observe(time.Since(start).Seconds())
+		defer func() {
+			metrics.GatewayLatency.WithLabelValues(chType).Observe(time.Since(start).Seconds())
+		}()
 
-		raw, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode >= 400 {
+			raw, _ := io.ReadAll(resp.Body)
 			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(resp.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
 			outCT := resp.Header.Get("Content-Type")
@@ -175,6 +181,28 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			return
 		}
 
+		// OpenAI：multipart 中 stream=true 时返回 SSE，需边读边写客户端，不能整包缓冲。
+		if multipartFormWantsStream(form) {
+			for _, k := range []string{"Content-Type", "Cache-Control"} {
+				if v := resp.Header.Get(k); v != "" {
+					c.Writer.Header().Set(k, v)
+				}
+			}
+			c.Writer.WriteHeader(resp.StatusCode)
+			if f, ok := c.Writer.(http.Flusher); ok {
+				f.Flush()
+			}
+			_, _ = io.Copy(c.Writer, resp.Body)
+			pt := promptToks
+			comp := maxComp
+			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			return
+		}
+
+		raw, _ := io.ReadAll(resp.Body)
 		pt2, ct2 := parseUsageFlexible(raw)
 		if pt2 == 0 {
 			pt2 = promptToks
@@ -333,6 +361,17 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		}
 		c.Data(resp.StatusCode, outCT, raw)
 	}
+}
+
+// multipartFormWantsStream 与 OpenAI 文档一致：form 字段 stream=true 时返回 transcription 的 SSE。
+func multipartFormWantsStream(form *multipart.Form) bool {
+	for _, v := range form.Value["stream"] {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "true", "1", "yes", "on":
+			return true
+		}
+	}
+	return false
 }
 
 func sortedFormValueKeys(m map[string][]string) []string {
