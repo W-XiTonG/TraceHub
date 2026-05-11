@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import axios from 'axios'
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+
+const { t } = useI18n()
 
 type GroupRow = {
   id: number
@@ -54,14 +57,14 @@ function httpErr(e: unknown): string {
     const d = e.response.data as { message?: string }
     if (typeof d.message === 'string' && d.message.trim()) return d.message.trim()
   }
-  return e instanceof Error ? e.message : '请求失败'
+  return e instanceof Error ? e.message : t('adminCommon.requestFail')
 }
 
 async function load() {
   msg.value = ''
   try {
     const { data } = await http.get<Envelope<{ items: GroupRow[] }>>('/api/admin/groups')
-    if (data.code !== 0) throw new Error(data.message || '加载失败')
+    if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     groups.value = data.data.items || []
   } catch (e: unknown) {
     msg.value = httpErr(e)
@@ -71,7 +74,7 @@ async function load() {
 async function createGroup() {
   msg.value = ''
   if (!createForm.name.trim()) {
-    msg.value = '请输入分组名称'
+    msg.value = t('adminGroups.nameRequired')
     return
   }
   try {
@@ -90,7 +93,7 @@ async function createGroup() {
     createForm.default_model = ''
     createForm.enabled = true
     await load()
-    msg.value = '分组已创建'
+    msg.value = t('adminGroups.created')
   } catch (e: unknown) {
     msg.value = httpErr(e)
   }
@@ -120,25 +123,20 @@ async function saveEdit() {
     })
     editOpen.value = false
     await load()
-    msg.value = '已保存'
+    msg.value = t('adminGroups.saved')
   } catch (e: unknown) {
     msg.value = httpErr(e)
   }
 }
 
 async function remove(g: GroupRow) {
-  if (
-    !confirm(
-      `确定删除分组「${g.name}」？若仍有用户或渠道挂在该分组下，删除将失败。`,
-    )
-  )
-    return
+  if (!confirm(t('adminGroups.confirmDelete', { name: g.name }))) return
   msg.value = ''
   try {
     await http.delete(`/api/admin/groups/${g.id}`)
     await load()
     if (expandedId.value === g.id) expandedId.value = null
-    msg.value = '已删除'
+    msg.value = t('adminGroups.deleted')
   } catch (e: unknown) {
     msg.value = httpErr(e)
   }
@@ -146,7 +144,7 @@ async function remove(g: GroupRow) {
 
 async function reloadRatesDraft(gid: number) {
   const { data } = await http.get<Envelope<{ items: RateRow[] }>>(`/api/admin/groups/${gid}/model-rates`)
-  if (data.code !== 0) throw new Error(data.message || '加载倍率失败')
+  if (data.code !== 0) throw new Error(data.message || t('adminGroups.loadRatesFail'))
   const list = data.data.items || []
   ratesByGroup.value[gid] = list
   ratesDraft.value = list.map((r) => ({ ...r }))
@@ -193,7 +191,7 @@ async function saveRates(gid: number) {
   try {
     await http.put(`/api/admin/groups/${gid}/model-rates`, { rates })
     await reloadRatesDraft(gid)
-    msg.value = '模型倍率已保存'
+    msg.value = t('adminGroups.ratesSaved')
   } catch (e: unknown) {
     msg.value = httpErr(e)
   }
@@ -205,29 +203,26 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl space-y-10 pb-10">
     <header class="border-b border-slate-800/80 pb-6">
-      <h1 class="text-2xl font-bold tracking-tight text-white">分组管理</h1>
-      <p class="mt-1 text-sm text-slate-500">
-        用户与渠道按分组隔离费率与路由池；新建渠道、注册用户时需指定分组。
-      </p>
+      <h1 class="text-2xl font-bold tracking-tight text-white">{{ t('adminGroups.title') }}</h1>
+      <p class="mt-1 text-sm text-slate-500">{{ t('adminGroups.intro') }}</p>
     </header>
 
     <p v-if="msg" class="rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">{{ msg }}</p>
 
-    <!-- 新建 -->
     <section class="rounded-2xl border border-slate-800/90 bg-gradient-to-b from-slate-900/90 to-slate-950 p-6 shadow-xl ring-1 ring-white/5">
-      <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">新建分组</h2>
+      <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">{{ t('adminGroups.createSection') }}</h2>
       <div class="grid max-w-3xl gap-4 text-sm">
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="flex flex-col gap-1.5">
-            <span class="text-xs font-medium text-slate-400">名称 <span class="text-red-400">*</span></span>
+            <span class="text-xs font-medium text-slate-400">{{ t('adminGroups.lblName') }} <span class="text-red-400">{{ t('adminGroups.nameRequiredMark') }}</span></span>
             <input
               v-model="createForm.name"
               class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
-              placeholder="例如：基础分组、VIP"
+              :placeholder="t('adminGroups.namePh')"
             />
           </label>
           <label class="flex flex-col gap-1.5">
-            <span class="text-xs font-medium text-slate-400">默认模型（可选）</span>
+            <span class="text-xs font-medium text-slate-400">{{ t('adminGroups.defModelOpt') }}</span>
             <input
               v-model="createForm.default_model"
               class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
@@ -235,7 +230,7 @@ onMounted(load)
           </label>
         </div>
         <label class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium text-slate-400">描述</span>
+          <span class="text-xs font-medium text-slate-400">{{ t('adminGroups.lblDesc') }}</span>
           <input
             v-model="createForm.description"
             class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
@@ -243,7 +238,7 @@ onMounted(load)
         </label>
         <div class="grid gap-4 sm:grid-cols-3">
           <label class="flex flex-col gap-1.5">
-            <span class="text-xs font-medium text-slate-400">分组倍率</span>
+            <span class="text-xs font-medium text-slate-400">{{ t('adminGroups.lblRateMul') }}</span>
             <input
               v-model.number="createForm.rate_multiplier"
               type="number"
@@ -253,7 +248,7 @@ onMounted(load)
             />
           </label>
           <label class="flex flex-col gap-1.5">
-            <span class="text-xs font-medium text-slate-400">RPM 上限（0=不限制）</span>
+            <span class="text-xs font-medium text-slate-400">{{ t('adminGroups.lblRpm') }}</span>
             <input
               v-model.number="createForm.rpm_limit"
               type="number"
@@ -263,7 +258,7 @@ onMounted(load)
           </label>
           <label class="flex items-end gap-2 pb-2">
             <input id="cg-en" v-model="createForm.enabled" type="checkbox" class="rounded border-slate-600" />
-            <label for="cg-en" class="text-xs text-slate-400">启用</label>
+            <label for="cg-en" class="text-xs text-slate-400">{{ t('adminCommon.enabled') }}</label>
           </label>
         </div>
         <button
@@ -271,29 +266,28 @@ onMounted(load)
           class="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-sm font-semibold text-slate-950 shadow-lg hover:from-amber-400 hover:to-amber-500 sm:w-auto"
           @click="createGroup"
         >
-          创建分组
+          {{ t('adminGroups.createBtn') }}
         </button>
       </div>
     </section>
 
-    <!-- 列表 -->
     <section>
       <div class="mb-4 flex items-end justify-between border-b border-slate-800/80 pb-4">
         <div>
-          <h2 class="text-xl font-semibold text-white">分组列表</h2>
-          <p class="mt-1 text-sm text-slate-500">共 {{ groups.length }} 个</p>
+          <h2 class="text-xl font-semibold text-white">{{ t('adminGroups.listTitle') }}</h2>
+          <p class="mt-1 text-sm text-slate-500">{{ t('adminGroups.listCount', { n: groups.length }) }}</p>
         </div>
         <button
           type="button"
           class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:border-slate-600 hover:text-slate-300"
           @click="load"
         >
-          刷新
+          {{ t('adminCommon.refresh') }}
         </button>
       </div>
 
       <div v-if="groups.length === 0" class="rounded-2xl border border-dashed border-slate-700 py-16 text-center text-slate-500">
-        暂无分组，请在上方创建。
+        {{ t('adminGroups.empty') }}
       </div>
 
       <div v-else class="space-y-4">
@@ -310,22 +304,22 @@ onMounted(load)
                   v-if="g.enabled === false"
                   class="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] text-slate-400"
                 >
-                  已禁用
+                  {{ t('adminCommon.disabled') }}
                 </span>
                 <span
                   v-else
                   class="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/25"
                 >
-                  启用
+                  {{ t('adminCommon.enabled') }}
                 </span>
               </div>
               <p v-if="g.description" class="mt-2 text-sm text-slate-400">{{ g.description }}</p>
               <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500">
                 <div>ID <span class="font-mono text-slate-400">{{ g.id }}</span></div>
-                <div>倍率 <span class="font-mono text-slate-300">{{ g.rate_multiplier }}×</span></div>
-                <div>RPM <span class="font-mono text-slate-300">{{ g.rpm_limit || '不限' }}</span></div>
+                <div>{{ t('adminGroups.cardMul') }} <span class="font-mono text-slate-300">{{ g.rate_multiplier }}×</span></div>
+                <div>{{ t('adminGroups.cardRpm') }} <span class="font-mono text-slate-300">{{ g.rpm_limit || t('adminGroups.rpmUnlimited') }}</span></div>
                 <div v-if="g.default_model">
-                  默认模型 <span class="font-mono text-slate-400">{{ g.default_model }}</span>
+                  {{ t('adminGroups.cardDef') }} <span class="font-mono text-slate-400">{{ g.default_model }}</span>
                 </div>
               </dl>
             </div>
@@ -335,39 +329,37 @@ onMounted(load)
                 class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
                 @click="toggleExpand(g.id)"
               >
-                {{ expandedId === g.id ? '收起倍率' : '模型倍率' }}
+                {{ expandedId === g.id ? t('adminGroups.collapseRates') : t('adminGroups.expandRates') }}
               </button>
               <button
                 type="button"
                 class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-amber-400 hover:bg-slate-800"
                 @click="openEdit(g)"
               >
-                编辑
+                {{ t('adminGroups.edit') }}
               </button>
               <button
                 type="button"
                 class="rounded-lg px-3 py-1.5 text-xs text-red-400 hover:bg-red-950/40"
                 @click="remove(g)"
               >
-                删除
+                {{ t('adminCommon.delete') }}
               </button>
             </div>
           </div>
 
           <div v-if="expandedId === g.id" class="border-t border-slate-800/80 bg-slate-950/40 px-5 py-4">
-            <p v-if="ratesLoading" class="text-sm text-slate-500">加载中…</p>
+            <p v-if="ratesLoading" class="text-sm text-slate-500">{{ t('adminGroups.loading') }}</p>
             <template v-else>
-              <p class="mb-3 text-xs text-slate-500">
-                按模型覆盖输入/输出倍率；保存后与分组全局倍率叠加参与计费。
-              </p>
+              <p class="mb-3 text-xs text-slate-500">{{ t('adminGroups.ratesHint') }}</p>
               <div class="overflow-x-auto rounded-xl border border-slate-800">
                 <table class="w-full text-left text-xs">
                   <thead class="bg-slate-900 text-slate-500">
                     <tr>
-                      <th class="px-3 py-2">模型 ID</th>
-                      <th class="px-3 py-2">输入倍率</th>
-                      <th class="px-3 py-2">输出倍率</th>
-                      <th class="px-3 py-2">启用</th>
+                      <th class="px-3 py-2">{{ t('adminGroups.thModelId') }}</th>
+                      <th class="px-3 py-2">{{ t('adminGroups.thIn') }}</th>
+                      <th class="px-3 py-2">{{ t('adminGroups.thOut') }}</th>
+                      <th class="px-3 py-2">{{ t('adminGroups.thEn') }}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-800">
@@ -407,14 +399,14 @@ onMounted(load)
                   class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
                   @click="addRateDraft"
                 >
-                  添加一行
+                  {{ t('adminGroups.addRow') }}
                 </button>
                 <button
                   type="button"
                   class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400"
                   @click="saveRates(g.id)"
                 >
-                  保存倍率
+                  {{ t('adminGroups.saveRatesBtn') }}
                 </button>
               </div>
             </template>
@@ -423,7 +415,6 @@ onMounted(load)
       </div>
     </section>
 
-    <!-- 编辑弹层 -->
     <Teleport to="body">
       <div
         v-if="editOpen"
@@ -435,45 +426,45 @@ onMounted(load)
           role="dialog"
           aria-modal="true"
         >
-          <h3 class="mb-4 text-lg font-semibold text-white">编辑分组</h3>
+          <h3 class="mb-4 text-lg font-semibold text-white">{{ t('adminGroups.editModalTitle') }}</h3>
           <div class="space-y-4 text-sm">
             <label class="flex flex-col gap-1">
-              <span class="text-xs text-slate-400">名称</span>
+              <span class="text-xs text-slate-400">{{ t('adminGroups.lblName') }}</span>
               <input v-model="editForm.name" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-xs text-slate-400">描述</span>
+              <span class="text-xs text-slate-400">{{ t('adminGroups.lblDesc') }}</span>
               <input v-model="editForm.description" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-xs text-slate-400">默认模型</span>
+              <span class="text-xs text-slate-400">{{ t('adminGroups.lblDefModel') }}</span>
               <input v-model="editForm.default_model" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" />
             </label>
             <div class="grid grid-cols-2 gap-4">
               <label class="flex flex-col gap-1">
-                <span class="text-xs text-slate-400">分组倍率</span>
+                <span class="text-xs text-slate-400">{{ t('adminGroups.lblRateMul') }}</span>
                 <input v-model.number="editForm.rate_multiplier" type="number" step="0.01" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
               </label>
               <label class="flex flex-col gap-1">
-                <span class="text-xs text-slate-400">RPM</span>
+                <span class="text-xs text-slate-400">{{ t('adminGroups.lblRpmShort') }}</span>
                 <input v-model.number="editForm.rpm_limit" type="number" min="0" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
               </label>
             </div>
             <label class="flex items-center gap-2">
               <input v-model="editForm.enabled" type="checkbox" />
-              <span class="text-xs text-slate-400">启用</span>
+              <span class="text-xs text-slate-400">{{ t('adminCommon.enabled') }}</span>
             </label>
           </div>
           <div class="mt-6 flex justify-end gap-2">
             <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400 hover:bg-slate-800" @click="editOpen = false">
-              取消
+              {{ t('adminCommon.cancel') }}
             </button>
             <button
               type="button"
               class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400"
               @click="saveEdit"
             >
-              保存
+              {{ t('adminCommon.save') }}
             </button>
           </div>
         </div>

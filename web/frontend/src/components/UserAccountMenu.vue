@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+
+const { t } = useI18n()
 
 const menu = ref<HTMLDetailsElement | null>(null)
 
@@ -19,7 +22,7 @@ const props = withDefaults(
 const auth = useAuthStore()
 const router = useRouter()
 
-const display = computed(() => auth.accountDisplay.trim() || '账号')
+const display = computed(() => auth.accountDisplay.trim() || t('userMenu.accountFallback'))
 
 const subline = computed(() => {
   const u = auth.user
@@ -88,21 +91,21 @@ function logout() {
         class="block px-4 py-2.5 text-sm text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
         @click="closeMenu"
       >
-        用户控制台
+        {{ t('userMenu.console') }}
       </RouterLink>
       <RouterLink
         to="/console/settings"
         class="block px-4 py-2.5 text-sm text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
         @click="closeMenu"
       >
-        账户设置
+        {{ t('userMenu.settings') }}
       </RouterLink>
       <RouterLink
         to="/docs"
         class="block px-4 py-2.5 text-sm text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
         @click="closeMenu"
       >
-        使用与 API 文档
+        {{ t('userMenu.docs') }}
       </RouterLink>
       <RouterLink
         v-if="auth.role === 'admin' || auth.role === 'superadmin'"
@@ -110,17 +113,17 @@ function logout() {
         class="block px-4 py-2.5 text-sm font-medium text-amber-400/95 transition hover:bg-amber-500/10 hover:text-amber-300"
         @click="closeMenu"
       >
-        管理后台
+        {{ t('userMenu.admin') }}
       </RouterLink>
       <RouterLink to="/" class="block px-4 py-2.5 text-sm text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-300" @click="closeMenu">
-        返回首页
+        {{ t('userMenu.home') }}
       </RouterLink>
       <button
         type="button"
         class="mt-1 w-full border-t border-white/[0.06] px-4 py-2.5 text-left text-sm text-rose-400/90 transition hover:bg-rose-500/10"
         @click="logout()"
       >
-        退出登录
+        {{ t('userMenu.logout') }}
       </button>
     </div>
   </details>

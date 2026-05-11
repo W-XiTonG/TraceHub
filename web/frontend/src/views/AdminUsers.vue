@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+
+const { t } = useI18n()
 
 type Row = { id: number; email: string; balance: number; status: number; group_name?: string }
 
@@ -26,15 +29,15 @@ onMounted(load)
 
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold">用户管理</h1>
+    <h1 class="mb-6 text-2xl font-bold">{{ t('adminUsers.title') }}</h1>
     <table class="w-full text-left text-sm">
       <thead class="text-slate-500">
         <tr>
-          <th class="pb-2">ID</th>
-          <th class="pb-2">邮箱</th>
-          <th class="pb-2">分组</th>
-          <th class="pb-2">余额</th>
-          <th class="pb-2">调整额度</th>
+          <th class="pb-2">{{ t('adminUsers.thId') }}</th>
+          <th class="pb-2">{{ t('adminUsers.thEmail') }}</th>
+          <th class="pb-2">{{ t('adminUsers.thGroup') }}</th>
+          <th class="pb-2">{{ t('adminUsers.thBalance') }}</th>
+          <th class="pb-2">{{ t('adminUsers.thDelta') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-800">
@@ -44,8 +47,8 @@ onMounted(load)
           <td class="py-2">{{ u.group_name }}</td>
           <td class="py-2">{{ u.balance }}</td>
           <td class="py-2">
-            <input v-model="deltaByUser[u.id]" type="number" placeholder="±额度" class="mr-2 w-28 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs" />
-            <button type="button" class="text-cyan-400 hover:underline" @click="adjust(u.id)">应用</button>
+            <input v-model="deltaByUser[u.id]" type="number" :placeholder="t('adminUsers.deltaPh')" class="mr-2 w-28 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs" />
+            <button type="button" class="text-cyan-400 hover:underline" @click="adjust(u.id)">{{ t('adminUsers.apply') }}</button>
           </td>
         </tr>
       </tbody>

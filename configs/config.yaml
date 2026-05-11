@@ -3,7 +3,7 @@ server:
   mode: debug
 
 database:
-  dsn: "postgres://tracehub:tracehub@10.117.57.171:15432/tracehub?sslmode=disable"
+  dsn: "postgres://tracehub:tracehub@localhost:5432/tracehub?sslmode=disable"
 
 redis:
   addr: "localhost:6379"

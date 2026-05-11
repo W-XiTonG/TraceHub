@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
+
+const { t } = useI18n()
 
 /** 邮箱或用户名（与后端 JSON 字段 email 兼容） */
 const account = ref('')
@@ -28,7 +31,7 @@ async function submit() {
     const redir = (route.query.redirect as string) || '/console'
     router.push(redir)
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : '登录失败'
+    err.value = e instanceof Error ? e.message : t('login.fail')
   } finally {
     loading.value = false
   }
@@ -45,40 +48,40 @@ async function submit() {
         <div class="mb-8 flex justify-center">
           <div class="th-logo-mark th-logo-mark--lg">TH</div>
         </div>
-        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">欢迎回来</h1>
-        <p class="mb-1 text-center text-sm text-slate-500">登录 TraceHub 控制台</p>
+        <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">{{ t('login.title') }}</h1>
+        <p class="mb-1 text-center text-sm text-slate-500">{{ t('login.subtitle') }}</p>
         <p class="mb-8 text-center text-[11px] leading-relaxed text-slate-600">
-          会话令牌由服务端签发；请在可信网络环境下访问，并妥善保管密码。
+          {{ t('login.hint') }}
         </p>
         <p
           v-if="redirectLabel"
           class="mb-5 rounded-lg border border-cyan-500/15 bg-cyan-950/25 px-3 py-2 text-center text-[11px] leading-relaxed text-cyan-200/85"
         >
-          登录成功后将前往
+          {{ t('login.redirectPrefix') }}
           <code class="mx-0.5 rounded bg-black/35 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/90">{{ redirectLabel }}</code>
         </p>
         <form class="space-y-5" @submit.prevent="submit">
           <div>
-            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">邮箱或用户名</label>
-            <input v-model="account" type="text" required class="th-input" autocomplete="username" placeholder="例如 admin 或 your@email.com" />
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('login.accountLabel') }}</label>
+            <input v-model="account" type="text" required class="th-input" autocomplete="username" :placeholder="t('login.accountPlaceholder')" />
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">密码</label>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('login.password') }}</label>
             <input v-model="password" type="password" required class="th-input" autocomplete="current-password" />
           </div>
           <p v-if="err" class="rounded-lg border border-red-500/20 bg-red-950/40 px-3 py-2 text-sm text-red-300">{{ err }}</p>
           <button type="submit" :disabled="loading" class="th-btn-primary w-full py-3">
-            {{ loading ? '登录中…' : '登录' }}
+            {{ loading ? t('common.loggingIn') : t('login.submit') }}
           </button>
         </form>
         <p class="mt-8 text-center text-sm text-slate-500">
-          没有账号？
-          <RouterLink to="/register" class="th-link-accent font-medium">注册</RouterLink>
+          {{ t('login.noAccount') }}
+          <RouterLink to="/register" class="th-link-accent font-medium">{{ t('nav.register') }}</RouterLink>
         </p>
         <p class="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-sm">
-          <RouterLink to="/" class="text-slate-600 transition hover:text-slate-400">返回首页</RouterLink>
+          <RouterLink to="/" class="text-slate-600 transition hover:text-slate-400">{{ t('nav.backHome') }}</RouterLink>
           <span class="text-slate-700" aria-hidden="true">·</span>
-          <RouterLink to="/docs" class="text-slate-600 transition hover:text-slate-400">使用与 API 文档</RouterLink>
+          <RouterLink to="/docs" class="text-slate-600 transition hover:text-slate-400">{{ t('nav.docsLong') }}</RouterLink>
         </p>
       </div>
       </div>

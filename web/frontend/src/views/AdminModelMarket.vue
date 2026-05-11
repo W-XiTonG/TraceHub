@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+
+const { t } = useI18n()
 
 type Source = {
   id: number
@@ -61,10 +64,6 @@ const editForm = reactive({
   enabled: true,
 })
 
-const internalHint = computed(
-  () => '此页不面向终端用户开放，仅管理员可访问；请勿将管理后台地址公开到公网文档。',
-)
-
 async function loadSources() {
   const { data } = await http.get<Envelope<{ items: Source[] }>>('/api/admin/model-catalog/sources')
   if (data.code === 0) sources.value = data.data.items
@@ -100,11 +99,11 @@ async function createSource() {
       channel_id: sourceForm.credential_mode === 'channel' ? sourceForm.channel_id : 0,
       enabled: sourceForm.enabled,
     })
-    msg.value = '同步源已保存'
+    msg.value = t('adminMarket.sourceSaved')
     sourceForm.api_key = ''
     await loadSources()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : '保存失败'
+    err.value = e instanceof Error ? e.message : t('adminMarket.saveFail')
   }
 }
 
@@ -116,15 +115,15 @@ async function syncSource(id: number) {
       `/api/admin/model-catalog/sources/${id}/sync`,
     )
     if (data.code !== 0) throw new Error(data.message)
-    msg.value = `同步完成：新增 ${data.data.inserted}，更新 ${data.data.updated}`
+    msg.value = t('adminMarket.syncDone', { ins: data.data.inserted, upd: data.data.updated })
     await Promise.all([loadSources(), loadEntries()])
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : '同步失败'
+    err.value = e instanceof Error ? e.message : t('adminMarket.syncFail')
   }
 }
 
 async function removeSource(id: number) {
-  if (!confirm('删除该同步源及其关联的目录记录？')) return
+  if (!confirm(t('adminMarket.confirmDelSource'))) return
   await http.delete(`/api/admin/model-catalog/sources/${id}`)
   await Promise.all([loadSources(), loadEntries()])
 }
@@ -150,7 +149,7 @@ async function saveEntry() {
 }
 
 async function removeEntry(id: number) {
-  if (!confirm('从模型市场移除该条？')) return
+  if (!confirm(t('adminMarket.confirmDelEntry'))) return
   await http.delete(`/api/admin/model-catalog/entries/${id}`)
   await loadEntries()
 }
@@ -163,52 +162,51 @@ onMounted(async () => {
 <template>
   <div class="space-y-10 text-sm">
     <div>
-      <h1 class="mb-1 text-2xl font-bold text-amber-400">模型市场（内部）</h1>
-      <p class="text-xs text-slate-500">{{ internalHint }}</p>
+      <h1 class="mb-1 text-2xl font-bold text-amber-400">{{ t('adminMarket.pageTitle') }}</h1>
+      <p class="text-xs text-slate-500">{{ t('adminMarket.internalHint') }}</p>
     </div>
 
     <p v-if="msg" class="rounded border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-emerald-300">{{ msg }}</p>
     <p v-if="err" class="rounded border border-red-900 bg-red-950/30 px-3 py-2 text-red-300">{{ err }}</p>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-      <h2 class="mb-4 text-lg font-semibold text-slate-200">第三方 / 官方列表 API</h2>
+      <h2 class="mb-4 text-lg font-semibold text-slate-200">{{ t('adminMarket.apiSectionTitle') }}</h2>
       <p class="mb-4 text-xs text-slate-500">
-        配置可访问的「模型列表」HTTP 接口（默认 OpenAI 兼容 <code class="text-amber-600">GET /v1/models</code>）。凭证支持：无认证、静态
-        Key（加密存储）、或复用已有渠道的 Key 与 Base URL。
+        {{ t('adminMarket.apiSectionDesc') }}
       </p>
       <div class="grid max-w-2xl gap-3">
         <label class="flex flex-col gap-1">
-          <span class="text-slate-500">名称</span>
-          <input v-model="sourceForm.name" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" placeholder="如 OpenAI 官方模型列表" />
+          <span class="text-slate-500">{{ t('adminMarket.lblName') }}</span>
+          <input v-model="sourceForm.name" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" :placeholder="t('adminMarket.namePh')" />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-slate-500">提供方标识</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblProvider') }}</span>
           <input v-model="sourceForm.provider_slug" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-slate-500">Base URL</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblBase') }}</span>
           <input v-model="sourceForm.base_url" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-slate-500">模型列表路径</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblModelsPath') }}</span>
           <input v-model="sourceForm.models_path" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
         </label>
         <label class="flex flex-col gap-1">
-          <span class="text-slate-500">凭证模式</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblCredMode') }}</span>
           <select v-model="sourceForm.credential_mode" class="rounded border border-slate-700 bg-slate-950 px-2 py-1">
-            <option value="none">none（公开列表）</option>
-            <option value="static">static（下方填写 API Key）</option>
-            <option value="channel">channel（复用渠道）</option>
+            <option value="none">{{ t('adminMarket.credNone') }}</option>
+            <option value="static">{{ t('adminMarket.credStatic') }}</option>
+            <option value="channel">{{ t('adminMarket.credChannel') }}</option>
           </select>
         </label>
         <label v-if="sourceForm.credential_mode === 'static'" class="flex flex-col gap-1">
-          <span class="text-slate-500">API Key（仅保存时上传，加密存储）</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblApiKey') }}</span>
           <input v-model="sourceForm.api_key" type="password" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
         </label>
         <label v-if="sourceForm.credential_mode === 'channel'" class="flex flex-col gap-1">
-          <span class="text-slate-500">渠道</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblChannel') }}</span>
           <select v-model.number="sourceForm.channel_id" class="rounded border border-slate-700 bg-slate-950 px-2 py-1">
-            <option :value="0">请选择</option>
+            <option :value="0">{{ t('adminMarket.pickChannel') }}</option>
             <option v-for="ch in channels" :key="ch.id" :value="ch.id">
               #{{ ch.id }} {{ ch.channel_name || ch.channel_type }}
             </option>
@@ -216,27 +214,27 @@ onMounted(async () => {
         </label>
         <label class="flex items-center gap-2 text-slate-400">
           <input v-model="sourceForm.enabled" type="checkbox" class="rounded border-slate-600" />
-          启用
+          {{ t('adminCommon.enabled') }}
         </label>
         <button
           type="button"
           class="max-w-xs rounded-lg bg-amber-500 py-2 font-semibold text-slate-950 hover:bg-amber-400"
           @click="createSource"
         >
-          保存同步源
+          {{ t('adminMarket.saveSource') }}
         </button>
       </div>
 
-      <h3 class="mb-2 mt-8 font-medium text-slate-300">已配置源</h3>
+      <h3 class="mb-2 mt-8 font-medium text-slate-300">{{ t('adminMarket.sourcesConfigured') }}</h3>
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead class="text-slate-500">
             <tr>
-              <th class="pb-2 pr-3">ID</th>
-              <th class="pb-2 pr-3">名称</th>
-              <th class="pb-2 pr-3">Base</th>
-              <th class="pb-2 pr-3">凭证</th>
-              <th class="pb-2 pr-3">上次同步</th>
+              <th class="pb-2 pr-3">{{ t('adminUsers.thId') }}</th>
+              <th class="pb-2 pr-3">{{ t('adminMarket.lblName') }}</th>
+              <th class="pb-2 pr-3">{{ t('adminMarket.thBase') }}</th>
+              <th class="pb-2 pr-3">{{ t('adminMarket.thCred') }}</th>
+              <th class="pb-2 pr-3">{{ t('adminMarket.thLastSync') }}</th>
               <th class="pb-2"></th>
             </tr>
           </thead>
@@ -248,11 +246,11 @@ onMounted(async () => {
               <td class="py-2 pr-3 text-xs">{{ s.credential_mode }}{{ s.channel_id ? ' #' + s.channel_id : '' }}</td>
               <td class="py-2 pr-3 text-xs">
                 <span v-if="s.last_sync_at">{{ s.last_sync_ok ? '✓' : '✗' }} {{ s.last_sync_message }}</span>
-                <span v-else class="text-slate-600">未同步</span>
+                <span v-else class="text-slate-600">{{ t('adminMarket.neverSynced') }}</span>
               </td>
               <td class="space-x-2 py-2">
-                <button type="button" class="text-amber-400 hover:underline" @click="syncSource(s.id)">拉取模型</button>
-                <button type="button" class="text-red-400 hover:underline" @click="removeSource(s.id)">删除</button>
+                <button type="button" class="text-amber-400 hover:underline" @click="syncSource(s.id)">{{ t('adminMarket.pullModels') }}</button>
+                <button type="button" class="text-red-400 hover:underline" @click="removeSource(s.id)">{{ t('adminCommon.delete') }}</button>
               </td>
             </tr>
           </tbody>
@@ -261,11 +259,11 @@ onMounted(async () => {
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-      <h2 class="mb-4 text-lg font-semibold text-slate-200">模型目录</h2>
+      <h2 class="mb-4 text-lg font-semibold text-slate-200">{{ t('adminMarket.catalogTitle') }}</h2>
       <div class="mb-4 flex flex-wrap items-end gap-3">
         <label class="flex flex-col gap-1">
-          <span class="text-slate-500">搜索</span>
-          <input v-model="q" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" placeholder="model id / 名称" />
+          <span class="text-slate-500">{{ t('adminMarket.search') }}</span>
+          <input v-model="q" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" :placeholder="t('adminMarket.searchPh')" />
         </label>
         <button
           type="button"
@@ -275,18 +273,18 @@ onMounted(async () => {
             loadEntries()
           "
         >
-          查询
+          {{ t('adminCommon.query') }}
         </button>
-        <span class="text-slate-500">共 {{ entryTotal }} 条</span>
+        <span class="text-slate-500">{{ t('adminMarket.totalCount', { n: entryTotal }) }}</span>
       </div>
       <table class="w-full text-left">
         <thead class="text-slate-500">
           <tr>
-            <th class="pb-2">模型 ID</th>
-            <th class="pb-2">显示名</th>
-            <th class="pb-2">提供方</th>
-            <th class="pb-2">展示</th>
-            <th class="pb-2">启用</th>
+            <th class="pb-2">{{ t('adminMarket.thModelId') }}</th>
+            <th class="pb-2">{{ t('adminMarket.thDisplay') }}</th>
+            <th class="pb-2">{{ t('adminMarket.thProvider') }}</th>
+            <th class="pb-2">{{ t('adminMarket.thVisible') }}</th>
+            <th class="pb-2">{{ t('adminMarket.thEnabled') }}</th>
             <th class="pb-2"></th>
           </tr>
         </thead>
@@ -295,11 +293,11 @@ onMounted(async () => {
             <td class="py-2 font-mono text-xs">{{ e.model_id }}</td>
             <td class="py-2">{{ e.display_name }}</td>
             <td class="py-2 text-xs text-slate-400">{{ e.provider_slug }}</td>
-            <td class="py-2">{{ e.visible ? '是' : '否' }}</td>
-            <td class="py-2">{{ e.enabled ? '是' : '否' }}</td>
+            <td class="py-2">{{ e.visible ? t('adminCommon.yes') : t('adminCommon.no') }}</td>
+            <td class="py-2">{{ e.enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</td>
             <td class="space-x-2 py-2">
-              <button type="button" class="text-amber-400 hover:underline" @click="openEdit(e)">编辑</button>
-              <button type="button" class="text-red-400 hover:underline" @click="removeEntry(e.id)">删除</button>
+              <button type="button" class="text-amber-400 hover:underline" @click="openEdit(e)">{{ t('adminMarket.editEntry') }}</button>
+              <button type="button" class="text-red-400 hover:underline" @click="removeEntry(e.id)">{{ t('adminCommon.delete') }}</button>
             </td>
           </tr>
         </tbody>
@@ -314,7 +312,7 @@ onMounted(async () => {
             loadEntries()
           "
         >
-          上一页
+          {{ t('adminCommon.prevPage') }}
         </button>
         <button
           type="button"
@@ -325,7 +323,7 @@ onMounted(async () => {
             loadEntries()
           "
         >
-          下一页
+          {{ t('adminCommon.nextPage') }}
         </button>
       </div>
     </section>
@@ -334,24 +332,24 @@ onMounted(async () => {
       <div v-if="editingEntry" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60" aria-hidden="true" @click="editingEntry = null" />
         <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
-        <h3 class="mb-3 font-semibold">编辑 {{ editingEntry.model_id }}</h3>
+        <h3 class="mb-3 font-semibold">{{ t('adminMarket.editTitle', { id: editingEntry.model_id }) }}</h3>
         <label class="mb-3 flex flex-col gap-1">
-          <span class="text-slate-500">显示名</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblDisplayName') }}</span>
           <input v-model="editForm.display_name" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
         </label>
         <label class="mb-3 flex flex-col gap-1">
-          <span class="text-slate-500">说明</span>
+          <span class="text-slate-500">{{ t('adminMarket.lblDesc') }}</span>
           <textarea v-model="editForm.description" rows="3" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
         </label>
         <label class="mb-3 flex items-center gap-2">
-          <input v-model="editForm.visible" type="checkbox" /> 在内部市场中展示
+          <input v-model="editForm.visible" type="checkbox" /> {{ t('adminMarket.chkVisible') }}
         </label>
         <label class="mb-4 flex items-center gap-2">
-          <input v-model="editForm.enabled" type="checkbox" /> 启用
+          <input v-model="editForm.enabled" type="checkbox" /> {{ t('adminCommon.enabled') }}
         </label>
         <div class="flex justify-end gap-2">
-          <button type="button" class="rounded border border-slate-600 px-3 py-1" @click="editingEntry = null">取消</button>
-          <button type="button" class="rounded bg-amber-500 px-3 py-1 font-medium text-slate-950" @click="saveEntry">保存</button>
+          <button type="button" class="rounded border border-slate-600 px-3 py-1" @click="editingEntry = null">{{ t('adminCommon.cancel') }}</button>
+          <button type="button" class="rounded bg-amber-500 px-3 py-1 font-medium text-slate-950" @click="saveEntry">{{ t('adminCommon.save') }}</button>
         </div>
         </div>
       </div>

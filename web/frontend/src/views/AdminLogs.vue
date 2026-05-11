@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+
+const { t } = useI18n()
 
 type Log = {
   id: number
@@ -24,16 +27,16 @@ onMounted(load)
 
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold">调用日志</h1>
-    <button type="button" class="mb-4 text-sm text-cyan-400 hover:underline" @click="load">刷新</button>
+    <h1 class="mb-6 text-2xl font-bold">{{ t('adminLogs.listHeading') }}</h1>
+    <button type="button" class="mb-4 text-sm text-cyan-400 hover:underline" @click="load">{{ t('adminLogs.refresh') }}</button>
     <table class="w-full text-left text-xs">
       <thead class="text-slate-500">
         <tr>
-          <th class="pb-2">时间</th>
-          <th class="pb-2">模型</th>
-          <th class="pb-2">Token</th>
-          <th class="pb-2">费用</th>
-          <th class="pb-2">状态</th>
+          <th class="pb-2">{{ t('adminLogs.thTime') }}</th>
+          <th class="pb-2">{{ t('adminLogs.thModel') }}</th>
+          <th class="pb-2">{{ t('adminLogs.thToken') }}</th>
+          <th class="pb-2">{{ t('adminLogs.thCost') }}</th>
+          <th class="pb-2">{{ t('adminLogs.thStatus') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-800">

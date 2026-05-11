@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import ThemePicker from './components/ThemePicker.vue'
+import LanguageSwitcher from './components/LanguageSwitcher.vue'
 
 const route = useRoute()
 
@@ -21,4 +22,5 @@ const shellKey = computed(() => {
     </Transition>
   </RouterView>
   <ThemePicker />
+  <LanguageSwitcher />
 </template>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '../stores/theme'
 import type { ThemeId } from '../theme-sync'
+
+const { t } = useI18n()
 
 const theme = useThemeStore()
 const open = ref(false)
@@ -58,26 +61,26 @@ onBeforeUnmount(() => {
         v-show="open"
         class="pointer-events-auto w-[min(18rem,calc(100vw-2.5rem))] rounded-xl border border-white/[0.1] bg-slate-950/95 p-2 shadow-2xl shadow-black/50 backdrop-blur-xl"
         role="listbox"
-        aria-label="选择界面主题"
+        :aria-label="t('theme.pickAria')"
       >
-        <p class="px-2.5 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">主题</p>
+        <p class="px-2.5 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ t('theme.themeWord') }}</p>
         <ul class="space-y-0.5">
-          <li v-for="t in theme.themes" :key="t.id">
+          <li v-for="th in theme.themes" :key="th.id">
             <button
               type="button"
               class="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-slate-200 transition hover:bg-white/[0.06]"
-              :class="{ 'bg-white/[0.07]': theme.themeId === t.id }"
+              :class="{ 'bg-white/[0.07]': theme.themeId === th.id }"
               role="option"
-              :aria-selected="theme.themeId === t.id"
-              @click="pick(t.id)"
+              :aria-selected="theme.themeId === th.id"
+              @click="pick(th.id)"
             >
               <span
                 class="h-8 w-8 shrink-0 rounded-lg border border-white/10 shadow-inner"
-                :style="{ background: swatches[t.id] }"
+                :style="{ background: swatches[th.id] }"
                 aria-hidden="true"
               />
-              <span class="min-w-0 flex-1 font-medium">{{ t.label }}</span>
-              <span v-if="theme.themeId === t.id" class="shrink-0 text-xs text-slate-500">当前</span>
+              <span class="min-w-0 flex-1 font-medium">{{ t(`theme.${th.id}`) }}</span>
+              <span v-if="theme.themeId === th.id" class="shrink-0 text-xs text-slate-500">{{ t('theme.current') }}</span>
             </button>
           </li>
         </ul>
@@ -89,7 +92,7 @@ onBeforeUnmount(() => {
       class="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.1] bg-slate-950/90 text-slate-200 shadow-lg shadow-black/40 backdrop-blur-md transition hover:border-white/[0.16] hover:bg-slate-900/95 hover:text-white"
       :aria-expanded="open"
       aria-haspopup="listbox"
-      aria-label="打开主题选择"
+      :aria-label="t('theme.openAria')"
       @click.stop="toggle"
     >
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">

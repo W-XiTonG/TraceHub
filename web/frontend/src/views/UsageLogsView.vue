@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+
+const { t } = useI18n()
 
 type LogRow = {
   id: number
@@ -42,11 +45,11 @@ async function load() {
         end_time: filters.end_time || undefined,
       },
     })
-    if (data.code !== 0) throw new Error(data.message || '加载失败')
+    if (data.code !== 0) throw new Error(data.message || t('modelsPage.loadFail'))
     items.value = data.data.items
     total.value = data.data.total
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : '加载失败'
+    err.value = e instanceof Error ? e.message : t('modelsPage.loadFail')
   }
 }
 
@@ -55,33 +58,41 @@ function applyFilters() {
   load()
 }
 
+function resetFilters() {
+  filters.model = ''
+  filters.status_code = ''
+  filters.start_time = ''
+  filters.end_time = ''
+  applyFilters()
+}
+
 onMounted(load)
 </script>
 
 <template>
   <div>
-    <h1 class="mb-2 text-2xl font-bold">调用日志</h1>
-    <p class="mb-6 text-sm text-slate-500">按时间、模型、状态码筛选您的 API 调用记录（与用量导出数据同源）。</p>
+    <h1 class="mb-2 text-2xl font-bold">{{ t('logsPage.title') }}</h1>
+    <p class="mb-6 text-sm text-slate-500">{{ t('logsPage.desc') }}</p>
 
     <div class="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
       <label class="flex flex-col gap-1 text-xs">
-        <span class="text-slate-500">模型</span>
-        <input v-model="filters.model" placeholder="如 gpt-4o" class="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm" />
+        <span class="text-slate-500">{{ t('logsPage.model') }}</span>
+        <input v-model="filters.model" :placeholder="t('logsPage.modelPh')" class="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm" />
       </label>
       <label class="flex flex-col gap-1 text-xs">
-        <span class="text-slate-500">HTTP 状态</span>
-        <input v-model="filters.status_code" placeholder="200" class="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm" />
+        <span class="text-slate-500">{{ t('logsPage.status') }}</span>
+        <input v-model="filters.status_code" :placeholder="t('logsPage.statusPh')" class="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm" />
       </label>
       <label class="flex flex-col gap-1 text-xs">
-        <span class="text-slate-500">开始 (RFC3339)</span>
+        <span class="text-slate-500">{{ t('logsPage.start') }}</span>
         <input v-model="filters.start_time" class="w-44 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm" />
       </label>
       <label class="flex flex-col gap-1 text-xs">
-        <span class="text-slate-500">结束</span>
+        <span class="text-slate-500">{{ t('logsPage.end') }}</span>
         <input v-model="filters.end_time" class="w-44 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm" />
       </label>
-      <button type="button" class="rounded-lg bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500" @click="applyFilters">筛选</button>
-      <button type="button" class="rounded-lg border border-slate-600 px-3 py-1.5 text-sm hover:bg-slate-800" @click="filters.model = ''; filters.status_code = ''; filters.start_time = ''; filters.end_time = ''; applyFilters()">重置</button>
+      <button type="button" class="rounded-lg bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500" @click="applyFilters">{{ t('logsPage.filterBtn') }}</button>
+      <button type="button" class="rounded-lg border border-slate-600 px-3 py-1.5 text-sm hover:bg-slate-800" @click="resetFilters">{{ t('logsPage.resetBtn') }}</button>
     </div>
 
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
@@ -90,12 +101,12 @@ onMounted(load)
       <table class="w-full min-w-[800px] text-left text-sm">
         <thead class="bg-slate-900 text-slate-500">
           <tr>
-            <th class="px-3 py-2">时间</th>
-            <th class="px-3 py-2">模型</th>
-            <th class="px-3 py-2">Token</th>
-            <th class="px-3 py-2">额度消耗</th>
-            <th class="px-3 py-2">状态</th>
-            <th class="px-3 py-2">耗时 ms</th>
+            <th class="px-3 py-2">{{ t('logsPage.thTime') }}</th>
+            <th class="px-3 py-2">{{ t('logsPage.model') }}</th>
+            <th class="px-3 py-2">{{ t('logsPage.thTokCol') }}</th>
+            <th class="px-3 py-2">{{ t('logsPage.thCost') }}</th>
+            <th class="px-3 py-2">{{ t('logsPage.thStatus') }}</th>
+            <th class="px-3 py-2">{{ t('logsPage.thLatency') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800 bg-slate-950/50">
@@ -104,11 +115,11 @@ onMounted(load)
             <td class="px-3 py-2 font-mono text-xs">{{ row.model }}</td>
             <td class="px-3 py-2 text-xs">{{ row.total_tokens }}</td>
             <td class="px-3 py-2 text-xs">{{ row.total_cost }}</td>
-            <td class="px-3 py-2 text-xs">{{ row.status_code ?? '—' }}</td>
-            <td class="px-3 py-2 text-xs">{{ row.response_time_ms ?? '—' }}</td>
+            <td class="px-3 py-2 text-xs">{{ row.status_code ?? t('modelsPage.dash') }}</td>
+            <td class="px-3 py-2 text-xs">{{ row.response_time_ms ?? t('modelsPage.dash') }}</td>
           </tr>
           <tr v-if="!items.length">
-            <td colspan="6" class="px-3 py-8 text-center text-slate-500">暂无记录</td>
+            <td colspan="6" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
           </tr>
         </tbody>
       </table>
@@ -124,9 +135,9 @@ onMounted(load)
           load()
         "
       >
-        上一页
+        {{ t('logsPage.prev') }}
       </button>
-      <span>第 {{ page }} 页 · 共 {{ total }} 条</span>
+      <span>{{ t('logsPage.pageInfo', { page, total }) }}</span>
       <button
         type="button"
         class="rounded border border-slate-700 px-2 py-1 disabled:opacity-40"
@@ -136,7 +147,7 @@ onMounted(load)
           load()
         "
       >
-        下一页
+        {{ t('logsPage.next') }}
       </button>
     </div>
   </div>
