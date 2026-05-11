@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import axios from 'axios'
 import { onMounted, reactive, ref } from 'vue'
 import { http, type Envelope } from '../api/http'
 
@@ -23,6 +24,96 @@ const form = reactive({
   api_base_url: '',
   modelsStr: 'gpt-4o,gpt-4o-mini',
 })
+
+const presetLoading = ref(false)
+const fetchLoading = ref(false)
+const presetHint = ref('')
+
+function currentIds(): string[] {
+  return form.modelsStr
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function setIds(ids: string[]) {
+  const merged = [...new Set([...currentIds(), ...ids])].sort()
+  form.modelsStr = merged.join(',')
+}
+
+/** 内置推荐 + 模型目录（与当前渠道类型匹配） */
+async function applyPresets(mode: 'merged' | 'built_in' | 'catalog') {
+  presetHint.value = ''
+  presetLoading.value = true
+  try {
+    const { data } = await http.get<Envelope<{ built_in: string[]; catalog: string[]; merged: string[] }>>(
+      '/api/admin/channel-model-presets',
+      { params: { channel_type: form.channel_type } },
+    )
+    if (data.code !== 0) throw new Error(data.message || '加载失败')
+    const d = data.data
+    let pick: string[] = []
+    if (mode === 'merged') pick = d.merged
+    else if (mode === 'built_in') pick = d.built_in
+    else pick = d.catalog
+    if (pick.length === 0) {
+      presetHint.value = '当前无推荐项，可尝试「从上游拉取」或手动填写'
+      return
+    }
+    setIds(pick)
+    presetHint.value = `已合并 ${pick.length} 个模型 ID（与已有列表去重）`
+  } catch (e: unknown) {
+    presetHint.value = httpErrMessage(e)
+  } finally {
+    presetLoading.value = false
+  }
+}
+
+function httpErrMessage(e: unknown): string {
+  if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
+    const d = e.response.data as { message?: string }
+    if (typeof d.message === 'string' && d.message.trim()) {
+      return d.message.trim()
+    }
+  }
+  return e instanceof Error ? e.message : '请求失败'
+}
+
+/** 使用下方 API Key / Base URL 调用上游 GET /v1/models */
+async function fetchFromUpstream() {
+  presetHint.value = ''
+  if (!form.api_key.trim()) {
+    presetHint.value = '请先在上方填写 API Key，再拉取上游模型列表'
+    return
+  }
+  fetchLoading.value = true
+  try {
+    const { data } = await http.post<Envelope<{ model_ids: string[]; count: number }>>(
+      '/api/admin/channel-models/fetch-upstream',
+      {
+        api_key: form.api_key,
+        api_base_url: form.api_base_url || undefined,
+      },
+    )
+    if (data.code !== 0) throw new Error(data.message || '拉取失败')
+    const ids = data.data.model_ids || []
+    if (ids.length === 0) {
+      presetHint.value = '上游返回的模型列表为空'
+      return
+    }
+    setIds(ids)
+    presetHint.value = `已从上游合并 ${ids.length} 个模型 ID`
+  } catch (e: unknown) {
+    presetHint.value = httpErrMessage(e)
+  } finally {
+    fetchLoading.value = false
+  }
+}
+
+function clearModels() {
+  form.modelsStr = ''
+  presetHint.value = '已清空模型列表'
+}
 
 async function load() {
   const [c, g] = await Promise.all([
@@ -94,12 +185,60 @@ onMounted(load)
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-slate-500">Base URL（可空）</span>
-          <input v-model="form.api_base_url" placeholder="默认官方地址" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
+          <input
+            v-model="form.api_base_url"
+            placeholder="留空=官方；也可填 https://api.openai.com 仅域名"
+            class="rounded border border-slate-700 bg-slate-950 px-2 py-1"
+          />
+          <span class="text-xs text-slate-600">「从上游拉取」会自动补全为 …/v1 并请求 …/v1/models</span>
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-slate-500">模型列表（逗号分隔）</span>
-          <input v-model="form.modelsStr" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
+          <textarea
+            v-model="form.modelsStr"
+            rows="3"
+            class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs"
+            placeholder="gpt-4o,gpt-4o-mini"
+          />
         </label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            :disabled="presetLoading"
+            class="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50"
+            title="内置默认定价表 + 模型目录（可见且启用，provider 匹配或通用）"
+            @click="applyPresets('merged')"
+          >
+            {{ presetLoading ? '…' : '合并推荐' }}
+          </button>
+          <button
+            type="button"
+            :disabled="presetLoading"
+            class="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50"
+            @click="applyPresets('built_in')"
+          >
+            仅内置
+          </button>
+          <button
+            type="button"
+            :disabled="presetLoading"
+            class="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50"
+            @click="applyPresets('catalog')"
+          >
+            仅目录
+          </button>
+          <button
+            type="button"
+            :disabled="fetchLoading"
+            class="rounded border border-cyan-700 px-2 py-1 text-xs text-cyan-300 hover:bg-slate-800 disabled:opacity-50"
+            title="调用上游 OpenAI 兼容 GET /v1/models"
+            @click="fetchFromUpstream"
+          >
+            {{ fetchLoading ? '拉取中…' : '从上游拉取' }}
+          </button>
+          <button type="button" class="rounded border border-slate-600 px-2 py-1 text-xs text-slate-500 hover:bg-slate-800" @click="clearModels">清空</button>
+        </div>
+        <p v-if="presetHint" class="text-xs text-slate-400">{{ presetHint }}</p>
         <button type="button" class="rounded-lg bg-amber-500 py-2 font-semibold text-slate-950 hover:bg-amber-400" @click="createCh">保存渠道</button>
       </div>
     </div>
