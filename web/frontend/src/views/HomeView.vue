@@ -112,7 +112,7 @@ const features = computed<
     tag: t('home.f4tag'),
     title: t('home.f4title'),
     desc: t('home.f4desc'),
-    to: '/console/billing',
+    to: '/console',
     cta: t('home.f4cta'),
     accent: 'amber',
   },
@@ -191,7 +191,7 @@ function featureLink(to: string) {
       <div class="th-home-radial-vignette" />
     </div>
 
-    <header class="th-site-header">
+    <header class="th-site-header th-home-header-enter">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <div class="flex items-center gap-3">
           <div class="th-logo-mark th-logo-mark--sm shrink-0">TH</div>
@@ -205,7 +205,6 @@ function featureLink(to: string) {
           <a href="#features" class="th-site-nav-link">{{ t('nav.features') }}</a>
           <a href="#integration" class="th-site-nav-link hidden sm:inline">{{ t('nav.integration') }}</a>
           <a href="#models" class="th-site-nav-link">{{ t('nav.models') }}</a>
-          <a href="#pricing" class="th-site-nav-link">{{ t('nav.pricing') }}</a>
           <a href="#faq" class="th-site-nav-link">{{ t('nav.faq') }}</a>
           <RouterLink to="/docs" class="th-site-nav-link">{{ t('nav.docs') }}</RouterLink>
           <template v-if="!auth.isLoggedIn">
@@ -236,11 +235,13 @@ function featureLink(to: string) {
           >
             {{ auth.isLoggedIn ? t('home.ctaConsole') : t('home.ctaStart') }}
           </RouterLink>
-          <a href="#pricing" class="th-btn-secondary px-8 py-3.5 text-base sm:px-10">{{ t('home.ctaPricing') }}</a>
+          <RouterLink to="/docs#doc-console" class="th-btn-secondary px-8 py-3.5 text-base sm:px-10">{{
+            t('home.ctaDocs')
+          }}</RouterLink>
           <a href="#integration" class="th-btn-secondary px-8 py-3.5 text-base sm:px-10">{{ t('home.ctaIntegration') }}</a>
         </div>
         <ul
-          class="relative mx-auto mt-14 flex max-w-4xl flex-wrap justify-center gap-2 md:gap-3"
+          class="th-stagger-trust relative mx-auto mt-14 flex max-w-4xl flex-wrap justify-center gap-2 md:gap-3"
           :aria-label="t('home.trustAria')"
         >
           <li
@@ -286,12 +287,12 @@ function featureLink(to: string) {
           <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500">
             {{ t('home.featuresDesc') }}
           </p>
-          <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="th-reveal-stagger mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <RouterLink
               v-for="f in features"
               :key="f.title"
               :to="featureLink(f.to)"
-              class="group th-glass flex flex-col rounded-[var(--th-radius-xl)] p-6 no-underline transition duration-300 hover:bg-white/[0.04] hover:shadow-lg"
+              class="group th-glass th-home-feature-card flex flex-col rounded-[var(--th-radius-xl)] p-6 no-underline transition duration-300 hover:-translate-y-1 hover:bg-white/[0.04] hover:shadow-lg"
               :class="accentRing[f.accent]"
             >
               <div class="flex items-start justify-between gap-3">
@@ -321,7 +322,7 @@ function featureLink(to: string) {
         class="th-reveal relative border-y border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-transparent py-20"
       >
         <div class="mx-auto max-w-6xl px-5">
-          <div class="grid gap-10 lg:grid-cols-2 lg:items-center">
+          <div class="th-reveal-stagger th-reveal-stagger--integration grid gap-10 lg:grid-cols-2 lg:items-center">
             <div>
               <p class="th-kicker mb-2"><span class="th-kicker-accent">{{ t('home.integrationKicker') }}</span></p>
               <h2 class="text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.integrationTitle') }}</h2>
@@ -375,7 +376,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
           <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
             {{ t('home.modelsNote') }}
           </p>
-          <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+          <div class="th-reveal-stagger th-reveal-stagger--tight mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
             <RouterLink
               to="/docs#doc-gateway"
               class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
@@ -389,7 +390,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
               {{ t('home.modelsLinkConsole') }}
             </RouterLink>
           </div>
-          <div class="mt-10 flex flex-col items-center gap-3">
+          <div class="th-reveal-stagger th-reveal-stagger--tight mt-10 flex flex-col items-center gap-3">
             <span
               class="rounded-full border border-amber-500/25 bg-amber-950/25 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-200/90"
             >
@@ -405,56 +406,32 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
         </div>
       </section>
 
-      <section id="pricing" class="th-reveal mx-auto max-w-6xl px-5 py-20">
-        <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.pricingTitle') }}</h2>
-        <p class="mx-auto mt-3 max-w-lg text-center text-sm leading-relaxed text-slate-500">
-          {{ t('home.pricingDesc') }}
-        </p>
-        <p class="mx-auto mt-4 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
-          {{ t('home.pricingSampleLead') }}
-        </p>
-        <div class="th-table-wrap mt-10 overflow-hidden">
-          <table class="w-full text-left text-sm">
-            <thead>
-              <tr class="border-b border-white/[0.06] bg-slate-950/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                <th class="px-5 py-3.5">{{ t('home.thModel') }}</th>
-                <th class="px-5 py-3.5">{{ t('home.thIn') }}</th>
-                <th class="px-5 py-3.5">{{ t('home.thOut') }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/[0.05] text-slate-300">
-              <tr class="transition hover:bg-white/[0.02]">
-                <td class="px-5 py-4 font-mono text-xs text-slate-200">gpt-4o</td>
-                <td class="px-5 py-4">300</td>
-                <td class="px-5 py-4">1200</td>
-              </tr>
-              <tr class="transition hover:bg-white/[0.02]">
-                <td class="px-5 py-4 font-mono text-xs text-slate-200">claude-3-5-sonnet</td>
-                <td class="px-5 py-4">300</td>
-                <td class="px-5 py-4">1500</td>
-              </tr>
-              <tr class="transition hover:bg-white/[0.02]">
-                <td class="px-5 py-4 font-mono text-xs text-slate-200">gemini-2.0-flash</td>
-                <td class="px-5 py-4">50</td>
-                <td class="px-5 py-4">200</td>
-              </tr>
-              <tr class="transition hover:bg-white/[0.02]">
-                <td class="px-5 py-4 font-mono text-xs text-slate-200">deepseek-chat</td>
-                <td class="px-5 py-4">40</td>
-                <td class="px-5 py-4">120</td>
-              </tr>
-            </tbody>
-          </table>
+      <section id="pricing" class="th-reveal mx-auto max-w-6xl px-5 py-16 md:py-20">
+        <div class="th-glass--subtle mx-auto max-w-2xl rounded-[var(--th-radius-xl)] px-6 py-8 text-center md:px-10 md:py-10">
+          <h2 class="text-lg font-semibold tracking-tight text-slate-200 md:text-xl">{{ t('home.usageNoteTitle') }}</h2>
+          <p class="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-500">
+            {{ t('home.usageNoteBody') }}
+          </p>
+          <RouterLink
+            to="/docs#doc-console"
+            class="mt-6 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/25 px-4 py-2.5 text-sm font-medium text-cyan-200/95 transition hover:border-cyan-400/35 hover:bg-cyan-900/30"
+          >
+            {{ t('home.usageNoteCta') }}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </RouterLink>
         </div>
-        <p class="mt-6 text-center text-xs leading-relaxed text-slate-600">
-          {{ t('home.pricingFoot') }}
-        </p>
       </section>
 
       <section id="faq" class="th-reveal border-t border-white/[0.06] py-20">
         <div class="mx-auto max-w-3xl px-5">
           <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.faqTitle') }}</h2>
-          <div class="mt-10 space-y-3">
+          <div class="th-reveal-stagger th-reveal-stagger--faq mt-10 space-y-3">
             <div v-for="(f, i) in faqs" :key="i" class="th-glass th-faq-item rounded-[var(--th-radius-lg)] p-6">
               <p class="text-[15px] font-medium leading-snug text-slate-200">{{ f.q }}</p>
               <p class="mt-3 text-sm leading-relaxed text-slate-500">{{ f.a }}</p>
@@ -464,7 +441,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
       </section>
     </main>
 
-    <footer class="relative z-[1] border-t border-white/[0.06] py-14">
+    <footer class="th-reveal relative z-[1] border-t border-white/[0.06] py-14">
       <div class="mx-auto flex max-w-6xl flex-col gap-10 px-5 md:flex-row md:justify-between md:gap-12">
         <div class="max-w-sm">
           <div class="flex items-center gap-2">
@@ -482,7 +459,9 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
               <li><a href="#features" class="transition hover:text-cyan-400/90">{{ t('home.footerFeat') }}</a></li>
               <li><a href="#integration" class="transition hover:text-cyan-400/90">{{ t('home.footerInteg') }}</a></li>
               <li><a href="#models" class="transition hover:text-cyan-400/90">{{ t('home.footerModels') }}</a></li>
-              <li><a href="#pricing" class="transition hover:text-cyan-400/90">{{ t('home.footerPrice') }}</a></li>
+              <li>
+                <RouterLink to="/docs#doc-console" class="transition hover:text-cyan-400/90">{{ t('home.footerDocsConsole') }}</RouterLink>
+              </li>
             </ul>
           </div>
           <div>
