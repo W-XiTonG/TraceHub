@@ -111,6 +111,7 @@ const faqs = [
           <a href="#models" class="th-site-nav-link">模型</a>
           <a href="#pricing" class="th-site-nav-link">价格</a>
           <a href="#faq" class="th-site-nav-link">FAQ</a>
+          <RouterLink to="/docs" class="th-site-nav-link">文档</RouterLink>
           <template v-if="!auth.isLoggedIn">
             <RouterLink to="/login" class="th-site-nav-link text-slate-300">登录</RouterLink>
             <RouterLink to="/register" class="th-btn-primary !px-4 !py-2 text-sm">注册</RouterLink>

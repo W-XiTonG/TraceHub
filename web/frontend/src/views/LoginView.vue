@@ -58,8 +58,10 @@ async function submit() {
           没有账号？
           <RouterLink to="/register" class="th-link-accent font-medium">注册</RouterLink>
         </p>
-        <p class="mt-6 text-center">
-          <RouterLink to="/" class="text-sm text-slate-600 transition hover:text-slate-400">返回首页</RouterLink>
+        <p class="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-sm">
+          <RouterLink to="/" class="text-slate-600 transition hover:text-slate-400">返回首页</RouterLink>
+          <span class="text-slate-700" aria-hidden="true">·</span>
+          <RouterLink to="/docs" class="text-slate-600 transition hover:text-slate-400">使用与 API 文档</RouterLink>
         </p>
       </div>
     </div>

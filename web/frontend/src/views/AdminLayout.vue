@@ -25,6 +25,7 @@ const route = useRoute()
         <RouterLink to="/admin/channels" class="th-nav-link th-nav-link--amber">渠道</RouterLink>
         <RouterLink to="/admin/logs" class="th-nav-link th-nav-link--amber">调用日志</RouterLink>
         <RouterLink to="/admin/model-market" class="th-nav-link th-nav-link--amber">模型市场</RouterLink>
+        <RouterLink to="/docs" class="th-nav-link th-nav-link--amber border-t border-white/[0.06] pt-3 mt-2">使用与 API 文档</RouterLink>
       </nav>
       <div class="mt-4 flex flex-col gap-1">
         <RouterLink

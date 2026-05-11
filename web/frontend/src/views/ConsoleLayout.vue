@@ -42,6 +42,7 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         <RouterLink to="/console/billing" class="th-nav-link">充值中心</RouterLink>
         <RouterLink to="/console/redeem" class="th-nav-link">兑换码</RouterLink>
         <RouterLink to="/console/settings" class="th-nav-link">账户设置</RouterLink>
+        <RouterLink to="/docs" class="th-nav-link">使用与 API 文档</RouterLink>
         <RouterLink v-if="canAccessAdmin" to="/admin" class="th-nav-link border-t border-white/[0.06] pt-3 mt-2">管理后台</RouterLink>
       </nav>
       <RouterLink
@@ -61,15 +62,26 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
             <p class="th-topbar-title">控制台</p>
             <p class="mt-0.5 text-[11px] text-slate-600">用量、密钥与账户安全</p>
           </div>
-          <RouterLink
-            to="/"
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-slate-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 opacity-90" aria-hidden="true">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 101.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-            </svg>
-            官网首页
-          </RouterLink>
+          <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <RouterLink
+              to="/docs"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-cyan-500/25 hover:bg-cyan-950/25 hover:text-cyan-200/90"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 opacity-90" aria-hidden="true">
+                <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+              </svg>
+              文档
+            </RouterLink>
+            <RouterLink
+              to="/"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-slate-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 opacity-90" aria-hidden="true">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 101.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+              </svg>
+              官网首页
+            </RouterLink>
+          </div>
         </div>
         <UserAccountMenu accent="cyan" />
       </header>

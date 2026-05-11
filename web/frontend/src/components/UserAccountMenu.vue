@@ -98,6 +98,13 @@ function logout() {
         账户设置
       </RouterLink>
       <RouterLink
+        to="/docs"
+        class="block px-4 py-2.5 text-sm text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
+        @click="closeMenu"
+      >
+        使用与 API 文档
+      </RouterLink>
+      <RouterLink
         v-if="auth.role === 'admin' || auth.role === 'superadmin'"
         to="/admin"
         class="block px-4 py-2.5 text-sm font-medium text-amber-400/95 transition hover:bg-amber-500/10 hover:text-amber-300"
