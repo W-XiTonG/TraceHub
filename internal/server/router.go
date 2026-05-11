@@ -90,6 +90,24 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		AESKey:  aesKey,
 		Billing: billingEngine,
 	}))
+	gate.POST("/audio/transcriptions", gatewayhandler.AudioTranscriptions(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
+	gate.POST("/audio/translations", gatewayhandler.AudioTranslations(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
+	gate.POST("/audio/speech", gatewayhandler.AudioSpeech(gatewayhandler.ChatDeps{
+		Client:  opt.Client,
+		RDB:     opt.Redis,
+		AESKey:  aesKey,
+		Billing: billingEngine,
+	}))
 	gate.GET("/models", gatewayhandler.ModelsList(opt.Client))
 
 	u := r.Group("/api/user")

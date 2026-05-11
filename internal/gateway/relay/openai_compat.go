@@ -9,12 +9,32 @@ import (
 	"time"
 )
 
+func applyPassthroughHeaders(req *http.Request, passthrough http.Header) {
+	if passthrough == nil {
+		return
+	}
+	for k, vals := range passthrough {
+		k = http.CanonicalHeaderKey(k)
+		if k == "Authorization" || k == "Content-Type" || k == "Content-Length" {
+			continue
+		}
+		for _, v := range vals {
+			req.Header.Add(k, v)
+		}
+	}
+}
+
 var httpUpstream = &http.Client{
 	Timeout: 120 * time.Second,
 }
 
 // 文生图 / 图生图耗时更长，单独放宽超时。
 var httpImageUpstream = &http.Client{
+	Timeout: 600 * time.Second,
+}
+
+// 音频：大文件转写、长 TTS。
+var httpAudioUpstream = &http.Client{
 	Timeout: 600 * time.Second,
 }
 
@@ -59,6 +79,42 @@ func ForwardOpenAIPost(ctx context.Context, baseURL, apiKey, relativePath string
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	return httpUpstream.Do(req)
+}
+
+// ForwardOpenAIMultipart 转发 OpenAI 兼容的 multipart 音频接口（transcriptions / translations）。
+func ForwardOpenAIMultipart(ctx context.Context, baseURL, apiKey, relativePath, contentType string, body []byte, passthrough http.Header) (*http.Response, error) {
+	base := strings.TrimRight(baseURL, "/")
+	rel := strings.Trim(strings.TrimSpace(relativePath), "/")
+	url := base + "/" + rel
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	req.ContentLength = int64(len(body))
+	applyPassthroughHeaders(req, passthrough)
+	return httpAudioUpstream.Do(req)
+}
+
+// ForwardOpenAISpeech 转发 POST /v1/audio/speech（JSON 请求体，响应多为音频二进制）。
+func ForwardOpenAISpeech(ctx context.Context, baseURL, apiKey string, body []byte, accept string, passthrough http.Header) (*http.Response, error) {
+	base := strings.TrimRight(baseURL, "/")
+	url := base + "/audio/speech"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	if strings.TrimSpace(accept) != "" {
+		req.Header.Set("Accept", accept)
+	}
+	req.ContentLength = int64(len(body))
+	applyPassthroughHeaders(req, passthrough)
+	return httpAudioUpstream.Do(req)
 }
 
 func DrainBody(rc io.ReadCloser) {
