@@ -15,6 +15,7 @@ import (
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
+	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelsecret"
 
@@ -91,6 +92,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		baseURL := strings.TrimSpace(ch.APIBaseURL)
 		if baseURL == "" {
 			baseURL = router.DefaultBaseURL(ch.ChannelType)
+		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
+			baseURL = nb
 		}
 		var secret string
 		switch ch.AuthType {
@@ -152,6 +155,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			raw, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode >= 400 {
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
+				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
 				c.Data(resp.StatusCode, "application/json", raw)
 				return
 			}

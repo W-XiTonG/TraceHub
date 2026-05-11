@@ -1,0 +1,56 @@
+package openaicompat
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+)
+
+// NormalizeOpenAIAPIRoot 将渠道配置的 api_base_url 规范为「OpenAI 兼容根路径」…/v1，
+// 去掉误粘贴的 /chat/completions、/images/generations 等后缀，避免拼出 …/chat/completions/images/generations 之类 404。
+func NormalizeOpenAIAPIRoot(raw string) (string, error) {
+	raw = strings.TrimSpace(strings.TrimRight(raw, "/"))
+	if raw == "" {
+		return "", fmt.Errorf("empty api_base_url")
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return "", fmt.Errorf("invalid api_base_url")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("api_base_url 仅支持 http/https")
+	}
+	p := strings.TrimSuffix(u.Path, "/")
+	for {
+		changed := false
+		for _, suf := range []string{
+			"/v1/chat/completions",
+			"/v1/images/generations",
+			"/v1/completions",
+			"/v1/embeddings",
+			"/chat/completions",
+			"/images/generations",
+			"/completions",
+			"/models",
+		} {
+			if strings.HasSuffix(p, suf) {
+				p = strings.TrimSuffix(p, suf)
+				p = strings.TrimSuffix(p, "/")
+				changed = true
+				break
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	if p == "" || p == "/" {
+		p = "/v1"
+	} else if !strings.HasSuffix(p, "/v1") {
+		p = p + "/v1"
+	}
+	u.Path = p
+	u.RawQuery = ""
+	u.Fragment = ""
+	return strings.TrimRight(u.String(), "/"), nil
+}
