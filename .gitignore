@@ -39,3 +39,5 @@ Desktop.ini
 
 # Air（Go 热重载）
 tmp/
+
+configs/config.yaml
