@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import AuthFeatureAside from '../components/AuthFeatureAside.vue'
 
 const email = ref('')
 const password = ref('')
@@ -29,8 +30,10 @@ async function submit() {
 </script>
 
 <template>
-  <div class="th-page-shell th-auth-canvas flex min-h-screen items-center justify-center px-4 py-16">
-    <div class="relative z-[1] w-full max-w-[400px]">
+  <div class="th-page-shell th-auth-canvas flex min-h-screen flex-col justify-center px-4 py-12 lg:px-8 lg:py-16">
+    <div class="relative z-[1] mx-auto flex w-full max-w-5xl flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
+      <AuthFeatureAside class="hidden lg:block lg:flex-1" />
+      <div class="w-full shrink-0 lg:w-[min(100%,26rem)]">
       <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
         <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
         <div class="mb-6 flex justify-center">
@@ -64,7 +67,12 @@ async function submit() {
           已有账号？
           <RouterLink to="/login" class="th-link-accent font-medium">登录</RouterLink>
         </p>
+        <p class="mt-6 text-center">
+          <RouterLink to="/" class="text-sm text-slate-600 transition hover:text-slate-400">返回首页</RouterLink>
+        </p>
       </div>
+      </div>
+      <AuthFeatureAside class="lg:hidden" compact />
     </div>
   </div>
 </template>
