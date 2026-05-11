@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 
@@ -28,7 +28,7 @@ type G = { id: number; name: string }
 const channels = ref<Ch[]>([])
 const groups = ref<G[]>([])
 const form = reactive({
-  group_id: 1,
+  group_id: 0,
   channel_type: 'openai',
   channel_name: '',
   api_key: '',
@@ -39,6 +39,50 @@ const form = reactive({
 const presetLoading = ref(false)
 const fetchLoading = ref(false)
 const presetHint = ref('')
+
+/** 分组下拉用字符串 v-model，避免动态 option 与 v-model.number 在部分浏览器下不同步 */
+const groupIdStr = ref('')
+
+function normalizeGroupRows(raw: unknown): G[] {
+  if (!Array.isArray(raw)) return []
+  const out: G[] = []
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue
+    const o = x as Record<string, unknown>
+    const id = Number(o.id)
+    if (!Number.isFinite(id)) continue
+    const name = typeof o.name === 'string' ? o.name : String(o.name ?? '')
+    out.push({ id, name })
+  }
+  return out
+}
+
+function syncGroupPickToForm() {
+  const gs = groups.value
+  if (!gs.length) {
+    groupIdStr.value = ''
+    return
+  }
+  const ids = new Set(gs.map((x) => x.id))
+  if (!ids.has(form.group_id)) {
+    form.group_id = gs[0].id
+  }
+  groupIdStr.value = String(form.group_id)
+}
+
+watch(
+  () => groups.value.map((x) => x.id).join(','),
+  () => {
+    syncGroupPickToForm()
+  },
+)
+
+watch(groupIdStr, (s) => {
+  const n = Number(s)
+  if (!Number.isFinite(n) || s === '') return
+  const ids = new Set(groups.value.map((x) => x.id))
+  if (ids.has(n)) form.group_id = n
+})
 
 function currentIds(): string[] {
   return form.modelsStr
@@ -60,12 +104,13 @@ async function applyPresets(mode: 'merged' | 'built_in' | 'catalog') {
       '/api/admin/channel-model-presets',
       { params: { channel_type: form.channel_type } },
     )
-    if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
-    const d = data.data
+    if (!envelopeOk(data)) throw new Error(data.message || t('adminCommon.loadFail'))
+    const d = pickEnvelopeData<{ merged?: unknown; built_in?: unknown; catalog?: unknown }>(data)
+    if (!d) throw new Error(t('adminCommon.loadFail'))
     let pick: string[] = []
-    if (mode === 'merged') pick = d.merged
-    else if (mode === 'built_in') pick = d.built_in
-    else pick = d.catalog
+    if (mode === 'merged') pick = coerceStringList(d.merged)
+    else if (mode === 'built_in') pick = coerceStringList(d.built_in)
+    else pick = coerceStringList(d.catalog)
     if (pick.length === 0) {
       presetHint.value = t('adminChannels.presetEmpty')
       return
@@ -89,6 +134,47 @@ function httpErrMessage(e: unknown): string {
   return e instanceof Error ? e.message : t('adminCommon.requestFail')
 }
 
+/** 网关偶发把 code 打成字符串；兼容 Number(code)===0 */
+function envelopeOk(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false
+  const c = Number((body as Record<string, unknown>).code)
+  return c === 0
+}
+
+/** 优先 data.items，兼容少数代理把 items 顶在响应根上 */
+function pickListItems(body: unknown): unknown[] {
+  if (!body || typeof body !== 'object') return []
+  const o = body as Record<string, unknown>
+  const inner = o.data
+  if (inner && typeof inner === 'object') {
+    const items = (inner as Record<string, unknown>).items
+    if (Array.isArray(items)) return items
+  }
+  if (Array.isArray(o.items)) return o.items
+  return []
+}
+
+function pickEnvelopeData<T extends Record<string, unknown>>(body: unknown): T | null {
+  if (!body || typeof body !== 'object') return null
+  const d = (body as Record<string, unknown>).data
+  if (d && typeof d === 'object') return d as T
+  return null
+}
+
+function coerceStringList(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  const out: string[] = []
+  for (const x of v) {
+    if (typeof x === 'string') {
+      const s = x.trim()
+      if (s) out.push(s)
+    } else if (typeof x === 'number' && Number.isFinite(x)) {
+      out.push(String(x))
+    }
+  }
+  return out
+}
+
 async function fetchFromUpstream() {
   presetHint.value = ''
   if (!form.api_key.trim()) {
@@ -104,8 +190,10 @@ async function fetchFromUpstream() {
         api_base_url: form.api_base_url || undefined,
       },
     )
-    if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
-    const ids = data.data.model_ids || []
+    if (!envelopeOk(data)) throw new Error(data.message || t('adminCommon.loadFail'))
+    const inner = pickEnvelopeData<{ model_ids?: unknown }>(data)
+    const rawIds = inner?.model_ids ?? (data as Record<string, unknown>).model_ids
+    const ids = coerceStringList(rawIds)
     if (ids.length === 0) {
       presetHint.value = t('adminChannels.upstreamEmpty')
       return
@@ -125,14 +213,25 @@ function clearModels() {
 }
 
 async function load() {
-  const [c, g] = await Promise.all([
+  const [cRes, gRes] = await Promise.allSettled([
     http.get<Envelope<{ items: Ch[] }>>('/api/admin/channels'),
-    http.get<Envelope<{ items: G[] }>>('/api/admin/groups'),
+    http.get<Envelope<{ items: unknown[] }>>('/api/admin/groups'),
   ])
-  if (c.data.code === 0) channels.value = c.data.data.items
-  if (g.data.code === 0) {
-    groups.value = g.data.data.items as G[]
-    if (groups.value.length && !form.group_id) form.group_id = groups.value[0].id
+
+  if (cRes.status === 'fulfilled') {
+    const body = cRes.value.data
+    if (envelopeOk(body)) {
+      const items = pickListItems(body) as Ch[]
+      channels.value = Array.isArray(items) ? items : []
+    }
+  }
+
+  if (gRes.status === 'fulfilled') {
+    const body = gRes.value.data
+    if (envelopeOk(body)) {
+      groups.value = normalizeGroupRows(pickListItems(body))
+      syncGroupPickToForm()
+    }
   }
 }
 
@@ -208,19 +307,24 @@ function truncateUrl(u: string, max = 42): string {
         <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">{{ t('adminChannels.formNewTitle') }}</h2>
         <div class="grid max-w-2xl gap-4 text-sm">
           <div class="grid gap-4 sm:grid-cols-2">
-            <label class="flex flex-col gap-1.5">
-              <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblGroup') }}</span>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400" id="admin-ch-group-lbl">{{ t('adminChannels.lblGroup') }}</span>
               <select
-                v-model.number="form.group_id"
+                id="admin-ch-group"
+                v-model="groupIdStr"
+                aria-labelledby="admin-ch-group-lbl"
                 class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none ring-amber-500/0 transition focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+                :key="`grp-${groups.map((x) => x.id).join('-')}`"
               >
-                <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }} (#{{ g.id }})</option>
+                <option v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }} (#{{ g.id }})</option>
               </select>
-            </label>
-            <label class="flex flex-col gap-1.5">
-              <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblType') }}</span>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400" id="admin-ch-type-lbl">{{ t('adminChannels.lblType') }}</span>
               <select
+                id="admin-ch-type"
                 v-model="form.channel_type"
+                aria-labelledby="admin-ch-type-lbl"
                 class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
               >
                 <option value="openai">openai</option>
@@ -228,7 +332,7 @@ function truncateUrl(u: string, max = 42): string {
                 <option value="claude">claude</option>
                 <option value="gemini">gemini</option>
               </select>
-            </label>
+            </div>
           </div>
           <label class="flex flex-col gap-1.5">
             <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblChannelName') }}</span>
