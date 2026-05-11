@@ -624,43 +624,44 @@ onMounted(() => {
       </p>
     </div>
 
-    <Transition name="th-drawer">
-      <div
-        v-if="createOpen"
-        class="fixed inset-0 z-40 flex justify-end"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-key-drawer-title"
-      >
+    <Teleport to="body">
+      <Transition name="th-modal">
         <div
-          class="absolute inset-0 cursor-pointer bg-black/60 backdrop-blur-[2px]"
-          aria-hidden="true"
-          @click="closeCreateModal"
-        />
-        <aside
-          class="th-drawer-panel relative z-10 flex h-full w-full max-w-md flex-col border-l border-slate-700/90 bg-slate-900 shadow-2xl shadow-black/40"
+          v-if="createOpen"
+          class="fixed inset-0 z-[130] flex items-center justify-center p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+1rem))] sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-key-modal-title"
         >
-          <header class="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
-            <div class="min-w-0">
-              <h2 id="create-key-drawer-title" class="text-lg font-semibold tracking-tight text-slate-100">
-                {{ t('apiKeys.createTitle') }}
-              </h2>
-              <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('apiKeys.createDrawerSubtitle') }}</p>
-            </div>
-            <button
-              type="button"
-              class="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
-              :aria-label="t('apiKeys.closeDrawer')"
-              @click="closeCreateModal"
-            >
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </header>
+          <div
+            class="absolute inset-0 cursor-pointer bg-black/65 backdrop-blur-[2px]"
+            aria-hidden="true"
+            @click="closeCreateModal"
+          />
+          <div
+            class="th-modal-surface relative z-10 flex max-h-[min(92dvh,52rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700/90 bg-slate-900 shadow-2xl shadow-black/50"
+          >
+            <header class="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div class="min-w-0">
+                <h2 id="create-key-modal-title" class="text-lg font-semibold tracking-tight text-slate-100">
+                  {{ t('apiKeys.createTitle') }}
+                </h2>
+                <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('apiKeys.createDrawerSubtitle') }}</p>
+              </div>
+              <button
+                type="button"
+                class="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+                :aria-label="t('apiKeys.closeDrawer')"
+                @click="closeCreateModal"
+              >
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </header>
 
-          <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-            <div class="space-y-5">
+            <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-5">
+              <div class="space-y-5">
               <section class="rounded-xl border border-white/[0.06] bg-black/25 p-4">
                 <div class="mb-4 flex gap-3">
                   <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/20">
@@ -792,35 +793,39 @@ onMounted(() => {
                   </span>
                 </label>
               </section>
+              </div>
+
+              <p v-if="createErr" class="mt-5 rounded-lg border border-red-500/25 bg-red-950/35 px-3 py-2 text-sm text-red-300">{{ createErr }}</p>
             </div>
 
-            <p v-if="createErr" class="mt-5 rounded-lg border border-red-500/25 bg-red-950/35 px-3 py-2 text-sm text-red-300">{{ createErr }}</p>
-          </div>
-
-          <footer class="flex shrink-0 justify-end gap-2 border-t border-white/10 bg-slate-900/95 px-5 py-4">
-            <button type="button" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-white/5" @click="closeCreateModal">
-              {{ t('apiKeys.cancel') }}
-            </button>
-            <button
-              type="button"
-              :disabled="loading"
-              class="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
-              @click="submitCreateKey"
+            <footer
+              class="flex shrink-0 justify-end gap-2 border-t border-white/10 bg-slate-950/95 px-5 py-4 shadow-[0_-8px_24px_-8px_rgba(0,0,0,0.45)] backdrop-blur-sm"
             >
-              <svg class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              {{ loading ? t('apiKeys.creating') : t('apiKeys.submitCreate') }}
-            </button>
-          </footer>
-        </aside>
-      </div>
-    </Transition>
+              <button type="button" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-white/5" @click="closeCreateModal">
+                {{ t('apiKeys.cancel') }}
+              </button>
+              <button
+                type="button"
+                :disabled="loading"
+                class="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+                @click="submitCreateKey"
+              >
+                <svg class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                {{ loading ? t('apiKeys.creating') : t('apiKeys.submitCreate') }}
+              </button>
+            </footer>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
-    <Transition name="th-modal">
-      <div v-if="editOpen" class="fixed inset-0 z-40 flex items-center justify-center p-4">
-        <div class="absolute inset-0 cursor-pointer bg-black/60" aria-hidden="true" @click="editOpen = false" />
-        <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+    <Teleport to="body">
+      <Transition name="th-modal">
+        <div v-if="editOpen" class="fixed inset-0 z-[130] flex items-center justify-center p-4 sm:p-6">
+          <div class="absolute inset-0 cursor-pointer bg-black/65 backdrop-blur-[2px]" aria-hidden="true" @click="editOpen = false" />
+          <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
           <h3 class="mb-4 font-semibold">{{ t('apiKeys.editTitle') }}</h3>
           <label class="mb-3 block text-sm">
             <span class="text-slate-500">{{ t('apiKeys.labelName') }}</span>
@@ -841,8 +846,9 @@ onMounted(() => {
             <button type="button" class="rounded border border-slate-600 px-3 py-1.5 text-sm" @click="editOpen = false">{{ t('apiKeys.cancel') }}</button>
             <button type="button" class="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white" @click="saveEdit">{{ t('apiKeys.save') }}</button>
           </div>
+          </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
