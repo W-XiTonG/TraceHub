@@ -30,6 +30,7 @@ const router = createRouter({
         { path: '', name: 'admin-dash', component: () => import('../views/AdminDashboard.vue') },
         { path: 'users', name: 'admin-users', component: () => import('../views/AdminUsers.vue') },
         { path: 'channels', name: 'admin-channels', component: () => import('../views/AdminChannels.vue') },
+        { path: 'groups', name: 'admin-groups', component: () => import('../views/AdminGroups.vue') },
         { path: 'logs', name: 'admin-logs', component: () => import('../views/AdminLogs.vue') },
         { path: 'model-market', name: 'admin-model-market', component: () => import('../views/AdminModelMarket.vue') },
       ],

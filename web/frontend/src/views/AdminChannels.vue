@@ -10,6 +10,14 @@ type Ch = {
   channel_name: string
   models: string[]
   enabled: boolean
+  api_base_url?: string
+  auth_type?: string
+  health_status?: number
+  priority?: number
+  weight?: number
+  concurrency?: number
+  schedulable?: boolean
+  has_api_secret?: boolean
 }
 
 type G = { id: number; name: string }
@@ -153,119 +161,299 @@ async function remove(id: number) {
 }
 
 onMounted(load)
+
+function groupLabel(gid: number): string {
+  const g = groups.value.find((x) => x.id === gid)
+  return g ? g.name : `分组 #${gid}`
+}
+
+function typeBadgeClass(t: string): string {
+  const m: Record<string, string> = {
+    openai: 'bg-emerald-500/15 text-emerald-400 ring-emerald-500/30',
+    deepseek: 'bg-sky-500/15 text-sky-400 ring-sky-500/30',
+    claude: 'bg-orange-500/15 text-orange-400 ring-orange-500/30',
+    gemini: 'bg-blue-500/15 text-blue-400 ring-blue-500/30',
+  }
+  return m[t?.toLowerCase()] ?? 'bg-slate-500/15 text-slate-400 ring-slate-500/30'
+}
+
+function healthLabel(status?: number): { text: string; cls: string } {
+  switch (status) {
+    case 1:
+      return { text: '健康', cls: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/25' }
+    case 2:
+      return { text: '异常', cls: 'bg-red-500/10 text-red-400 ring-red-500/25' }
+    case 3:
+      return { text: '临时禁用', cls: 'bg-amber-500/10 text-amber-400 ring-amber-500/25' }
+    default:
+      return { text: '未知', cls: 'bg-slate-500/10 text-slate-400 ring-slate-500/20' }
+  }
+}
+
+function truncateUrl(u: string, max = 42): string {
+  if (!u || u.length <= max) return u || '—'
+  return u.slice(0, max - 1) + '…'
+}
 </script>
 
 <template>
-  <div class="space-y-10">
-    <div>
-      <h1 class="mb-4 text-2xl font-bold">新增渠道</h1>
-      <div class="grid max-w-xl gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 text-sm">
-        <label class="flex flex-col gap-1">
-          <span class="text-slate-500">分组</span>
-          <select v-model.number="form.group_id" class="rounded border border-slate-700 bg-slate-950 px-2 py-1">
-            <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }} (#{{ g.id }})</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-slate-500">类型</span>
-          <select v-model="form.channel_type" class="rounded border border-slate-700 bg-slate-950 px-2 py-1">
-            <option value="openai">openai</option>
-            <option value="deepseek">deepseek</option>
-            <option value="claude">claude</option>
-            <option value="gemini">gemini</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-slate-500">名称</span>
-          <input v-model="form.channel_name" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-slate-500">API Key（加密存储）</span>
-          <input v-model="form.api_key" type="password" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-slate-500">Base URL（可空）</span>
-          <input
-            v-model="form.api_base_url"
-            placeholder="留空=官方；也可填 https://api.openai.com 仅域名"
-            class="rounded border border-slate-700 bg-slate-950 px-2 py-1"
-          />
-          <span class="text-xs text-slate-600">「从上游拉取」会自动补全为 …/v1 并请求 …/v1/models</span>
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="text-slate-500">模型列表（逗号分隔）</span>
-          <textarea
-            v-model="form.modelsStr"
-            rows="3"
-            class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs"
-            placeholder="gpt-4o,gpt-4o-mini"
-          />
-        </label>
-        <div class="flex flex-wrap gap-2">
-          <button
-            type="button"
-            :disabled="presetLoading"
-            class="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50"
-            title="内置默认定价表 + 模型目录（可见且启用，provider 匹配或通用）"
-            @click="applyPresets('merged')"
-          >
-            {{ presetLoading ? '…' : '合并推荐' }}
-          </button>
-          <button
-            type="button"
-            :disabled="presetLoading"
-            class="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50"
-            @click="applyPresets('built_in')"
-          >
-            仅内置
-          </button>
-          <button
-            type="button"
-            :disabled="presetLoading"
-            class="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50"
-            @click="applyPresets('catalog')"
-          >
-            仅目录
-          </button>
-          <button
-            type="button"
-            :disabled="fetchLoading"
-            class="rounded border border-cyan-700 px-2 py-1 text-xs text-cyan-300 hover:bg-slate-800 disabled:opacity-50"
-            title="调用上游 OpenAI 兼容 GET /v1/models"
-            @click="fetchFromUpstream"
-          >
-            {{ fetchLoading ? '拉取中…' : '从上游拉取' }}
-          </button>
-          <button type="button" class="rounded border border-slate-600 px-2 py-1 text-xs text-slate-500 hover:bg-slate-800" @click="clearModels">清空</button>
-        </div>
-        <p v-if="presetHint" class="text-xs text-slate-400">{{ presetHint }}</p>
-        <button type="button" class="rounded-lg bg-amber-500 py-2 font-semibold text-slate-950 hover:bg-amber-400" @click="createCh">保存渠道</button>
+  <div class="mx-auto max-w-6xl space-y-10 pb-10">
+    <!-- 新增表单 -->
+    <section>
+      <div class="mb-6 flex flex-col gap-1 border-b border-slate-800/80 pb-4">
+        <h1 class="text-2xl font-bold tracking-tight text-white">上游渠道</h1>
+        <p class="text-sm text-slate-500">新增后将参与路由；密钥加密存储，列表中不展示明文。</p>
       </div>
-    </div>
-    <div>
-      <h2 class="mb-4 text-xl font-semibold">渠道列表</h2>
-      <table class="w-full text-left text-sm">
-        <thead class="text-slate-500">
-          <tr>
-            <th class="pb-2">ID</th>
-            <th class="pb-2">类型</th>
-            <th class="pb-2">名称</th>
-            <th class="pb-2">模型</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-800">
-          <tr v-for="ch in channels" :key="ch.id">
-            <td class="py-2">{{ ch.id }}</td>
-            <td class="py-2">{{ ch.channel_type }}</td>
-            <td class="py-2">{{ ch.channel_name }}</td>
-            <td class="py-2 font-mono text-xs">{{ ch.models?.join(', ') }}</td>
-            <td class="py-2 text-right">
-              <button type="button" class="text-red-400 hover:underline" @click="remove(ch.id)">删除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <div class="rounded-2xl border border-slate-800/90 bg-gradient-to-b from-slate-900/90 to-slate-950 p-6 shadow-xl shadow-black/20 ring-1 ring-white/5">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">新建渠道</h2>
+        <div class="grid max-w-2xl gap-4 text-sm">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400">分组</span>
+              <select
+                v-model.number="form.group_id"
+                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none ring-amber-500/0 transition focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              >
+                <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }} (#{{ g.id }})</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400">类型</span>
+              <select
+                v-model="form.channel_type"
+                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              >
+                <option value="openai">openai</option>
+                <option value="deepseek">deepseek</option>
+                <option value="claude">claude</option>
+                <option value="gemini">gemini</option>
+              </select>
+            </label>
+          </div>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs font-medium text-slate-400">名称</span>
+            <input
+              v-model="form.channel_name"
+              class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-600 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              placeholder="例如：SiliconFlow 主线路"
+            />
+          </label>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400">API Key（加密存储）</span>
+              <input
+                v-model="form.api_key"
+                type="password"
+                autocomplete="off"
+                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              />
+            </label>
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400">Base URL（可空）</span>
+              <input
+                v-model="form.api_base_url"
+                placeholder="https://api.openai.com 或仅域名"
+                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              />
+              <span class="text-xs text-slate-600">「从上游拉取」将规范为 …/v1 并请求 …/v1/models</span>
+            </label>
+          </div>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs font-medium text-slate-400">模型列表（逗号分隔）</span>
+            <textarea
+              v-model="form.modelsStr"
+              rows="4"
+              class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs leading-relaxed text-slate-200 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+              placeholder="gpt-4o, gpt-4o-mini …"
+            />
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              :disabled="presetLoading"
+              class="rounded-lg border border-slate-600 bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-800 disabled:opacity-40"
+              title="内置默认定价表 + 模型目录"
+              @click="applyPresets('merged')"
+            >
+              {{ presetLoading ? '…' : '合并推荐' }}
+            </button>
+            <button
+              type="button"
+              :disabled="presetLoading"
+              class="rounded-lg border border-slate-600 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+              @click="applyPresets('built_in')"
+            >
+              仅内置
+            </button>
+            <button
+              type="button"
+              :disabled="presetLoading"
+              class="rounded-lg border border-slate-600 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+              @click="applyPresets('catalog')"
+            >
+              仅目录
+            </button>
+            <button
+              type="button"
+              :disabled="fetchLoading"
+              class="rounded-lg border border-cyan-600/50 bg-cyan-950/40 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-950/70 disabled:opacity-40"
+              @click="fetchFromUpstream"
+            >
+              {{ fetchLoading ? '拉取中…' : '从上游拉取' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-800/80"
+              @click="clearModels"
+            >
+              清空
+            </button>
+          </div>
+          <p v-if="presetHint" class="rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">{{ presetHint }}</p>
+          <button
+            type="button"
+            class="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:from-amber-400 hover:to-amber-500 sm:w-auto"
+            @click="createCh"
+          >
+            保存渠道
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 渠道列表 -->
+    <section>
+      <div class="mb-6 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-4 sm:flex-row sm:items-end">
+        <div>
+          <h2 class="text-xl font-semibold text-white">渠道列表</h2>
+          <p class="mt-1 text-sm text-slate-500">共 {{ channels.length }} 条 · 卡片展示模型与调度参数</p>
+        </div>
+        <button
+          type="button"
+          class="self-start rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:border-slate-600 hover:text-slate-300"
+          @click="load"
+        >
+          刷新
+        </button>
+      </div>
+
+      <div
+        v-if="channels.length === 0"
+        class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 px-8 py-16 text-center"
+      >
+        <div class="mb-3 rounded-full bg-slate-800 p-3 ring-1 ring-slate-700">
+          <svg class="h-8 w-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        </div>
+        <p class="text-sm font-medium text-slate-400">暂无渠道</p>
+        <p class="mt-1 max-w-sm text-xs text-slate-600">在上方填写 Key 与模型后保存，即可在此查看与管理。</p>
+      </div>
+
+      <div v-else class="grid gap-4 lg:grid-cols-2">
+        <article
+          v-for="ch in channels"
+          :key="ch.id"
+          class="group flex flex-col overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/60 shadow-lg shadow-black/25 ring-1 ring-white/[0.04] transition hover:border-slate-700 hover:ring-amber-500/10"
+        >
+          <div class="flex items-start justify-between gap-3 border-b border-slate-800/80 bg-slate-950/40 px-5 py-4">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="truncate text-lg font-semibold text-white">
+                  {{ ch.channel_name || `渠道 #${ch.id}` }}
+                </h3>
+                <span
+                  class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset"
+                  :class="typeBadgeClass(ch.channel_type)"
+                >
+                  {{ ch.channel_type }}
+                </span>
+                <span
+                  v-if="ch.enabled === false"
+                  class="inline-flex shrink-0 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-slate-400"
+                >
+                  已禁用
+                </span>
+                <span
+                  v-else
+                  class="inline-flex shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/25"
+                >
+                  启用
+                </span>
+              </div>
+              <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span>ID <span class="font-mono text-slate-400">{{ ch.id }}</span></span>
+                <span class="text-slate-700">·</span>
+                <span>{{ groupLabel(ch.group_id) }}</span>
+                <span v-if="ch.auth_type" class="text-slate-600">· {{ ch.auth_type }}</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              class="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 opacity-80 transition hover:bg-red-950/50 hover:opacity-100"
+              @click="remove(ch.id)"
+            >
+              删除
+            </button>
+          </div>
+
+          <div class="flex flex-1 flex-col gap-4 px-5 py-4">
+            <div class="flex flex-wrap gap-3 text-xs">
+              <div v-if="ch.priority != null" class="rounded-md bg-slate-950/80 px-2.5 py-1 ring-1 ring-slate-800">
+                <span class="text-slate-500">优先级</span>
+                <span class="ml-1 font-mono text-slate-300">{{ ch.priority }}</span>
+              </div>
+              <div v-if="ch.weight != null" class="rounded-md bg-slate-950/80 px-2.5 py-1 ring-1 ring-slate-800">
+                <span class="text-slate-500">权重</span>
+                <span class="ml-1 font-mono text-slate-300">{{ ch.weight }}</span>
+              </div>
+              <div v-if="ch.concurrency != null" class="rounded-md bg-slate-950/80 px-2.5 py-1 ring-1 ring-slate-800">
+                <span class="text-slate-500">并发</span>
+                <span class="ml-1 font-mono text-slate-300">{{ ch.concurrency }}</span>
+              </div>
+              <div
+                class="rounded-md px-2.5 py-1 ring-1 ring-inset"
+                :class="healthLabel(ch.health_status).cls"
+              >
+                {{ healthLabel(ch.health_status).text }}
+              </div>
+              <div
+                v-if="ch.has_api_secret === false"
+                class="rounded-md bg-amber-950/40 px-2.5 py-1 text-amber-400 ring-1 ring-amber-900/40"
+              >
+                未配置密钥
+              </div>
+            </div>
+
+            <div v-if="ch.api_base_url" class="text-xs">
+              <span class="text-slate-500">Base URL</span>
+              <p class="mt-1 break-all font-mono text-[11px] leading-relaxed text-cyan-400/90" :title="ch.api_base_url">
+                {{ truncateUrl(ch.api_base_url, 56) }}
+              </p>
+            </div>
+            <div v-else class="text-xs text-slate-600">Base URL：默认官方端点</div>
+
+            <div>
+              <span class="text-xs font-medium text-slate-500">模型 · {{ ch.models?.length ?? 0 }}</span>
+              <div
+                class="mt-2 max-h-28 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/50 p-2"
+              >
+                <div v-if="!ch.models?.length" class="py-2 text-center text-xs text-slate-600">未配置模型 ID</div>
+                <div v-else class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="m in ch.models"
+                    :key="m"
+                    class="inline-flex max-w-full truncate rounded-md bg-slate-800/90 px-2 py-0.5 font-mono text-[11px] text-slate-300 ring-1 ring-slate-700/80"
+                    :title="m"
+                  >
+                    {{ m }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 </template>

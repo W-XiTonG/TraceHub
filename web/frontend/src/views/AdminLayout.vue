@@ -23,6 +23,7 @@ const route = useRoute()
         <RouterLink :to="{ name: 'admin-dash' }" class="th-nav-link th-nav-link--amber">概览</RouterLink>
         <RouterLink to="/admin/users" class="th-nav-link th-nav-link--amber">用户</RouterLink>
         <RouterLink to="/admin/channels" class="th-nav-link th-nav-link--amber">渠道</RouterLink>
+        <RouterLink :to="{ name: 'admin-groups' }" class="th-nav-link th-nav-link--amber">分组</RouterLink>
         <RouterLink to="/admin/logs" class="th-nav-link th-nav-link--amber">调用日志</RouterLink>
         <RouterLink to="/admin/model-market" class="th-nav-link th-nav-link--amber">模型市场</RouterLink>
       </nav>
