@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"strings"
+	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/apikey"
@@ -49,6 +50,11 @@ func GatewayAPIKeyAuth(client *ent.Client) gin.HandlerFunc {
 		}
 		if !ipcheck.Allowed(clientIP, u.IPWhitelist) {
 			WriteOpenAIError(c, 403, "permission_error", "IP 不在账户白名单内")
+			c.Abort()
+			return
+		}
+		if !k.ExpiresAt.IsZero() && time.Now().After(k.ExpiresAt) {
+			WriteOpenAIError(c, 401, "authentication_error", "API Key 已过期")
 			c.Abort()
 			return
 		}

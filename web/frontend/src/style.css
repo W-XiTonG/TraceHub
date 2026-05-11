@@ -997,6 +997,27 @@
   transform: translateY(16px) scale(0.96);
 }
 
+/* 控制台抽屉（如新建 API Key）：自右侧滑入 */
+.th-drawer-enter-active,
+.th-drawer-leave-active {
+  transition: opacity 0.2s ease-out;
+}
+
+.th-drawer-enter-from,
+.th-drawer-leave-to {
+  opacity: 0;
+}
+
+.th-drawer-enter-active .th-drawer-panel,
+.th-drawer-leave-active .th-drawer-panel {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.th-drawer-enter-from .th-drawer-panel,
+.th-drawer-leave-to .th-drawer-panel {
+  transform: translateX(100%);
+}
+
 @keyframes th-dropdown-open {
   from {
     opacity: 0;
@@ -1056,6 +1077,10 @@
   .th-modal-leave-active,
   .th-modal-enter-active .th-modal-surface,
   .th-modal-leave-active .th-modal-surface,
+  .th-drawer-enter-active,
+  .th-drawer-leave-active,
+  .th-drawer-enter-active .th-drawer-panel,
+  .th-drawer-leave-active .th-drawer-panel,
   .th-fade-enter-active,
   .th-fade-leave-active,
   .th-subpage-enter-active,
@@ -1069,6 +1094,8 @@
   .th-modal-leave-to,
   .th-modal-enter-from .th-modal-surface,
   .th-modal-leave-to .th-modal-surface,
+  .th-drawer-enter-from .th-drawer-panel,
+  .th-drawer-leave-to .th-drawer-panel,
   .th-subpage-enter-from,
   .th-subpage-leave-to {
     transform: none !important;
