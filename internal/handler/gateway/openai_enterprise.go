@@ -266,11 +266,14 @@ func enterpriseForwardStream(
 			c.Writer.Header().Set(key, v)
 		}
 	}
+	if c.Writer.Header().Get("X-Accel-Buffering") == "" {
+		c.Writer.Header().Set("X-Accel-Buffering", "no")
+	}
 	c.Writer.WriteHeader(resp.StatusCode)
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	_, _ = io.Copy(c.Writer, resp.Body)
+	_, _ = copyStreamFlushing(c.Writer, resp.Body)
 
 	pt := prePrompt
 	comp := preComp
@@ -335,11 +338,14 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 			c.Writer.Header().Set(key, v)
 		}
 	}
+	if c.Writer.Header().Get("X-Accel-Buffering") == "" {
+		c.Writer.Header().Set("X-Accel-Buffering", "no")
+	}
 	c.Writer.WriteHeader(resp.StatusCode)
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	_, _ = io.Copy(c.Writer, resp.Body)
+	_, _ = copyStreamFlushing(c.Writer, resp.Body)
 
 	pt := prePrompt
 	comp := preComp

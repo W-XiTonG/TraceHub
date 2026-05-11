@@ -146,11 +146,14 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if h != "" {
 					c.Writer.Header().Set("Content-Type", h)
 				}
+				if c.Writer.Header().Get("X-Accel-Buffering") == "" {
+					c.Writer.Header().Set("X-Accel-Buffering", "no")
+				}
 				c.Writer.WriteHeader(resp.StatusCode)
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
 				}
-				_, _ = io.Copy(c.Writer, resp.Body)
+				_, _ = copyStreamFlushing(c.Writer, resp.Body)
 				pt := promptToks
 				comp := maxOut
 				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
