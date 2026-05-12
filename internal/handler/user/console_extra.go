@@ -10,6 +10,8 @@ import (
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/alertconfig"
+	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/service/availmodels"
 
@@ -17,7 +19,7 @@ import (
 )
 
 // Me 返回当前用户资料（不含敏感字段），供控制台账户设置等使用。
-func Me(client *ent.Client) gin.HandlerFunc {
+func Me(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		ctx := c.Request.Context()
@@ -30,6 +32,10 @@ func Me(client *ent.Client) gin.HandlerFunc {
 		if fu.Edges.Group != nil {
 			gn = fu.Edges.Group.Name
 		}
+		unit := cfg.Site.CurrencyQuotaPerYuan
+		if unit <= 0 {
+			unit = 10000
+		}
 		httpx.OK(c, gin.H{
 			"id":                        fu.ID,
 			"email":                     fu.Email,
@@ -39,8 +45,10 @@ func Me(client *ent.Client) gin.HandlerFunc {
 			"webhook_url":               fu.WebhookURL,
 			"ip_whitelist":              fu.IPWhitelist,
 			"balance_alert_threshold":   fu.BalanceAlertThreshold,
+			"custom_alert_config":       alertconfig.PublicView(fu.CustomAlertConfig),
 			"rate_multiplier":           fu.RateMultiplier,
 			"balance":                   fu.Balance,
+			"currency_quota_per_yuan":   unit,
 		})
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/pkg/alertconfig"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -15927,6 +15928,7 @@ type UserMutation struct {
 	webhook_url                  *string
 	balance_alert_threshold      *int64
 	addbalance_alert_threshold   *int64
+	custom_alert_config          *alertconfig.Stored
 	last_login_at                *time.Time
 	created_at                   *time.Time
 	updated_at                   *time.Time
@@ -16781,6 +16783,55 @@ func (m *UserMutation) ResetBalanceAlertThreshold() {
 	m.addbalance_alert_threshold = nil
 }
 
+// SetCustomAlertConfig sets the "custom_alert_config" field.
+func (m *UserMutation) SetCustomAlertConfig(a alertconfig.Stored) {
+	m.custom_alert_config = &a
+}
+
+// CustomAlertConfig returns the value of the "custom_alert_config" field in the mutation.
+func (m *UserMutation) CustomAlertConfig() (r alertconfig.Stored, exists bool) {
+	v := m.custom_alert_config
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCustomAlertConfig returns the old "custom_alert_config" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldCustomAlertConfig(ctx context.Context) (v alertconfig.Stored, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCustomAlertConfig is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCustomAlertConfig requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCustomAlertConfig: %w", err)
+	}
+	return oldValue.CustomAlertConfig, nil
+}
+
+// ClearCustomAlertConfig clears the value of the "custom_alert_config" field.
+func (m *UserMutation) ClearCustomAlertConfig() {
+	m.custom_alert_config = nil
+	m.clearedFields[user.FieldCustomAlertConfig] = struct{}{}
+}
+
+// CustomAlertConfigCleared returns if the "custom_alert_config" field was cleared in this mutation.
+func (m *UserMutation) CustomAlertConfigCleared() bool {
+	_, ok := m.clearedFields[user.FieldCustomAlertConfig]
+	return ok
+}
+
+// ResetCustomAlertConfig resets all changes to the "custom_alert_config" field.
+func (m *UserMutation) ResetCustomAlertConfig() {
+	m.custom_alert_config = nil
+	delete(m.clearedFields, user.FieldCustomAlertConfig)
+}
+
 // SetLastLoginAt sets the "last_login_at" field.
 func (m *UserMutation) SetLastLoginAt(t time.Time) {
 	m.last_login_at = &t
@@ -17287,7 +17338,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.group != nil {
 		fields = append(fields, user.FieldGroupID)
 	}
@@ -17329,6 +17380,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.balance_alert_threshold != nil {
 		fields = append(fields, user.FieldBalanceAlertThreshold)
+	}
+	if m.custom_alert_config != nil {
+		fields = append(fields, user.FieldCustomAlertConfig)
 	}
 	if m.last_login_at != nil {
 		fields = append(fields, user.FieldLastLoginAt)
@@ -17375,6 +17429,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.WebhookURL()
 	case user.FieldBalanceAlertThreshold:
 		return m.BalanceAlertThreshold()
+	case user.FieldCustomAlertConfig:
+		return m.CustomAlertConfig()
 	case user.FieldLastLoginAt:
 		return m.LastLoginAt()
 	case user.FieldCreatedAt:
@@ -17418,6 +17474,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldWebhookURL(ctx)
 	case user.FieldBalanceAlertThreshold:
 		return m.OldBalanceAlertThreshold(ctx)
+	case user.FieldCustomAlertConfig:
+		return m.OldCustomAlertConfig(ctx)
 	case user.FieldLastLoginAt:
 		return m.OldLastLoginAt(ctx)
 	case user.FieldCreatedAt:
@@ -17530,6 +17588,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBalanceAlertThreshold(v)
+		return nil
+	case user.FieldCustomAlertConfig:
+		v, ok := value.(alertconfig.Stored)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCustomAlertConfig(v)
 		return nil
 	case user.FieldLastLoginAt:
 		v, ok := value.(time.Time)
@@ -17666,6 +17731,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldWebhookURL) {
 		fields = append(fields, user.FieldWebhookURL)
 	}
+	if m.FieldCleared(user.FieldCustomAlertConfig) {
+		fields = append(fields, user.FieldCustomAlertConfig)
+	}
 	if m.FieldCleared(user.FieldLastLoginAt) {
 		fields = append(fields, user.FieldLastLoginAt)
 	}
@@ -17703,6 +17771,9 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldWebhookURL:
 		m.ClearWebhookURL()
+		return nil
+	case user.FieldCustomAlertConfig:
+		m.ClearCustomAlertConfig()
 		return nil
 	case user.FieldLastLoginAt:
 		m.ClearLastLoginAt()
@@ -17756,6 +17827,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldBalanceAlertThreshold:
 		m.ResetBalanceAlertThreshold()
+		return nil
+	case user.FieldCustomAlertConfig:
+		m.ResetCustomAlertConfig()
 		return nil
 	case user.FieldLastLoginAt:
 		m.ResetLastLoginAt()

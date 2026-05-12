@@ -810,6 +810,16 @@ func BalanceAlertThresholdLTE(v int64) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldBalanceAlertThreshold, v))
 }
 
+// CustomAlertConfigIsNil applies the IsNil predicate on the "custom_alert_config" field.
+func CustomAlertConfigIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldCustomAlertConfig))
+}
+
+// CustomAlertConfigNotNil applies the NotNil predicate on the "custom_alert_config" field.
+func CustomAlertConfigNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldCustomAlertConfig))
+}
+
 // LastLoginAtEQ applies the EQ predicate on the "last_login_at" field.
 func LastLoginAtEQ(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldLastLoginAt, v))

@@ -12,6 +12,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
+	"tracehub/internal/service/balancealert"
 	"tracehub/internal/service/billing"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	r.GET("/ready", health.Readiness(opt.Client, opt.Redis, op))
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	billingEngine := &billing.Engine{Client: opt.Client}
+	balAlerts := balancealert.New(opt.Config, opt.Log)
+	billingEngine := &billing.Engine{Client: opt.Client, Alerts: balAlerts}
 
 	gate := r.Group("/v1")
 	gate.Use(middleware.GatewayAPIKeyAuth(opt.Client))
@@ -186,7 +188,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 
 	authUser := u.Group("")
 	authUser.Use(middleware.JWTAuth(jwtSecret, opt.Client))
-	authUser.GET("/me", userhandler.Me(opt.Client))
+	authUser.GET("/me", userhandler.Me(opt.Client, opt.Config))
 	authUser.GET("/balance", userhandler.Balance(opt.Client, opt.Config))
 	authUser.GET("/usage-logs", userhandler.UsageLogs(opt.Client))
 	authUser.GET("/group", userhandler.MyGroup(opt.Client))

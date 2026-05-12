@@ -22,6 +22,7 @@ import (
 	"tracehub/internal/ent/user"
 	"tracehub/internal/handler/health"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/alertconfig"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
@@ -65,6 +66,7 @@ func GetUser(client *ent.Client) gin.HandlerFunc {
 			"concurrency":             u.Concurrency,
 			"rate_multiplier":         u.RateMultiplier,
 			"balance_alert_threshold": u.BalanceAlertThreshold,
+			"custom_alert_config":     alertconfig.PublicView(u.CustomAlertConfig),
 			"webhook_url":             u.WebhookURL,
 			"ip_whitelist":            u.IPWhitelist,
 			"ip_blacklist":            u.IPBlacklist,

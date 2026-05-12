@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { http, type Envelope } from '../api/http'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import AnnouncementBell from '../components/AnnouncementBell.vue'
 
@@ -13,6 +14,38 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const showAdminDenied = computed(() => route.query.denied === 'admin')
+
+type MeLite = { balance?: number; balance_alert_threshold?: number }
+
+const meForAlert = ref<MeLite | null>(null)
+
+const showLowBalanceBanner = computed(() => {
+  const m = meForAlert.value
+  if (m == null || m.balance == null || m.balance_alert_threshold == null) return false
+  const thr = Math.trunc(Number(m.balance_alert_threshold))
+  if (thr <= 0) return false
+  return Math.trunc(Number(m.balance)) <= thr
+})
+
+async function loadMeForBanner() {
+  try {
+    const { data } = await http.get<Envelope<MeLite>>('/api/user/me')
+    if (data.code === 0 && data.data) meForAlert.value = data.data
+  } catch {
+    /* ignore */
+  }
+}
+
+onMounted(() => {
+  void loadMeForBanner()
+})
+
+watch(
+  () => route.path,
+  (p) => {
+    if (p === '/console' || p.startsWith('/console/')) void loadMeForBanner()
+  },
+)
 
 function dismissAdminDenied() {
   const q = { ...route.query } as Record<string, string | string[]>
@@ -42,7 +75,6 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
       <nav class="flex flex-1 flex-col gap-0.5 text-sm">
         <RouterLink :to="{ name: 'console' }" class="th-nav-link">{{ t('layout.navOverview') }}</RouterLink>
         <RouterLink :to="{ name: 'console-models' }" class="th-nav-link">{{ t('layout.navModels') }}</RouterLink>
-        <RouterLink :to="{ name: 'console-playground' }" class="th-nav-link">{{ t('layout.navPlayground') }}</RouterLink>
         <RouterLink to="/console/keys" class="th-nav-link">{{ t('layout.navKeys') }}</RouterLink>
         <RouterLink to="/console/logs" class="th-nav-link">{{ t('layout.navLogs') }}</RouterLink>
         <RouterLink to="/console/group" class="th-nav-link">{{ t('layout.navGroup') }}</RouterLink>
@@ -50,7 +82,10 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         <RouterLink to="/console/redeem" class="th-nav-link">{{ t('layout.navRedeem') }}</RouterLink>
         <RouterLink to="/console/settings" class="th-nav-link">{{ t('layout.navSettings') }}</RouterLink>
         <RouterLink to="/docs" class="th-nav-link">{{ t('layout.navDocs') }}</RouterLink>
-        <RouterLink v-if="canAccessAdmin" to="/admin" class="th-nav-link border-t border-white/[0.06] pt-3 mt-2">{{ t('layout.navAdmin') }}</RouterLink>
+        <div class="mt-2 flex flex-col gap-0.5 border-t border-white/[0.06] pt-3">
+          <RouterLink :to="{ name: 'console-playground' }" class="th-nav-link">{{ t('layout.navPlayground') }}</RouterLink>
+          <RouterLink v-if="canAccessAdmin" to="/admin" class="th-nav-link">{{ t('layout.navAdmin') }}</RouterLink>
+        </div>
       </nav>
       <RouterLink
         to="/"
@@ -112,6 +147,21 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
               }}
             </p>
             <button type="button" class="shrink-0 rounded-lg px-2 py-1 text-xs text-amber-200/80 hover:bg-white/10" @click="dismissAdminDenied">{{ t('common.close') }}</button>
+          </div>
+        </Transition>
+        <Transition name="th-fade">
+          <div
+            v-if="showLowBalanceBanner"
+            class="mb-6 flex shrink-0 flex-wrap items-start justify-between gap-4 rounded-xl border border-rose-500/30 bg-rose-950/40 px-4 py-3 text-sm text-rose-100/95"
+            role="status"
+          >
+            <p class="min-w-0 flex-1">{{ t('layout.lowBalanceBanner') }}</p>
+            <RouterLink
+              to="/console/settings"
+              class="shrink-0 rounded-lg border border-rose-400/35 bg-rose-900/40 px-3 py-1.5 text-xs font-medium text-rose-100/95 hover:bg-rose-900/55"
+            >
+              {{ t('layout.lowBalanceSettings') }}
+            </RouterLink>
           </div>
         </Transition>
         <div class="th-main-inner flex min-h-0 min-w-0 flex-1 flex-col">

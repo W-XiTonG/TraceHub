@@ -9,6 +9,7 @@ import (
 	"time"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/pkg/alertconfig"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -47,6 +48,8 @@ type User struct {
 	WebhookURL string `json:"webhook_url,omitempty"`
 	// BalanceAlertThreshold holds the value of the "balance_alert_threshold" field.
 	BalanceAlertThreshold int64 `json:"balance_alert_threshold,omitempty"`
+	// CustomAlertConfig holds the value of the "custom_alert_config" field.
+	CustomAlertConfig alertconfig.Stored `json:"custom_alert_config,omitempty"`
 	// LastLoginAt holds the value of the "last_login_at" field.
 	LastLoginAt time.Time `json:"last_login_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -150,7 +153,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldIPWhitelist, user.FieldIPBlacklist:
+		case user.FieldIPWhitelist, user.FieldIPBlacklist, user.FieldCustomAlertConfig:
 			values[i] = new([]byte)
 		case user.FieldRateMultiplier:
 			values[i] = new(sql.NullFloat64)
@@ -268,6 +271,14 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field balance_alert_threshold", values[i])
 			} else if value.Valid {
 				_m.BalanceAlertThreshold = value.Int64
+			}
+		case user.FieldCustomAlertConfig:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field custom_alert_config", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.CustomAlertConfig); err != nil {
+					return fmt.Errorf("unmarshal field custom_alert_config: %w", err)
+				}
 			}
 		case user.FieldLastLoginAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -397,6 +408,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("balance_alert_threshold=")
 	builder.WriteString(fmt.Sprintf("%v", _m.BalanceAlertThreshold))
+	builder.WriteString(", ")
+	builder.WriteString("custom_alert_config=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CustomAlertConfig))
 	builder.WriteString(", ")
 	builder.WriteString("last_login_at=")
 	builder.WriteString(_m.LastLoginAt.Format(time.ANSIC))

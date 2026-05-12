@@ -3,6 +3,8 @@ package schema
 import (
 	"time"
 
+	"tracehub/internal/pkg/alertconfig"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -29,6 +31,7 @@ func (User) Fields() []ent.Field {
 		field.String("totp_secret").Optional().MaxLen(255).Sensitive(),
 		field.String("webhook_url").Optional().MaxLen(500),
 		field.Int64("balance_alert_threshold").Default(0),
+		field.JSON("custom_alert_config", alertconfig.Stored{}).Optional(),
 		field.Time("last_login_at").Optional(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),

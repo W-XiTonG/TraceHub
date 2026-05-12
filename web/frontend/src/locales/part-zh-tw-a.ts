@@ -119,7 +119,7 @@ export default {
     consoleBackTitle: '返回 TraceHub 官网首頁',
     navOverview: '概览',
     navModels: '可用模型',
-    navPlayground: '操練場',
+    navPlayground: 'API 試玩',
     navKeys: 'API Key',
     navLogs: '呼叫日誌',
     navGroup: '我的分組',
@@ -145,6 +145,8 @@ export default {
     adminTopHint: '渠道、用戶与模型目錄',
     adminConsoleShort: '切换到用戶控制台',
     adminHomeShort: '返回官网首頁',
+    lowBalanceBanner: '目前餘額已不高於您設定的告警閾值；請儘快充值或兌換額度，以免 API 因餘額不足失敗。',
+    lowBalanceSettings: '告警設定',
   },
   userMenu: {
     accountFallback: '帳号',

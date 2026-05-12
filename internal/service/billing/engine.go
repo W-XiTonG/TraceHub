@@ -7,12 +7,14 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/service/balancealert"
 
 	"github.com/pkoukk/tiktoken-go"
 )
 
 type Engine struct {
 	Client *ent.Client
+	Alerts *balancealert.Notifier
 }
 
 func (e *Engine) multipliers(ctx context.Context, u *ent.User, model string) (groupMul, userMul, inRate, outRate float64, err error) {
@@ -72,9 +74,21 @@ func (e *Engine) UserBalance(ctx context.Context, userID int) (int64, error) {
 }
 
 func (e *Engine) DeductBalance(ctx context.Context, userID int64, amount int64) error {
-	return e.Client.User.UpdateOneID(int(userID)).
+	u, err := e.Client.User.Get(ctx, int(userID))
+	if err != nil {
+		return err
+	}
+	oldBal := u.Balance
+	if err := e.Client.User.UpdateOneID(int(userID)).
 		AddBalance(-amount).
-		Exec(ctx)
+		Exec(ctx); err != nil {
+		return err
+	}
+	newBal := oldBal - amount
+	if e.Alerts != nil {
+		e.Alerts.MaybeNotifyCrossBelow(ctx, u, oldBal, newBal)
+	}
+	return nil
 }
 
 func (e *Engine) LoadUserWithGroup(ctx context.Context, userID int) (*ent.User, error) {

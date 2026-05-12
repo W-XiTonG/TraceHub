@@ -115,7 +115,7 @@ export default {
     consoleBackTitle: 'Back to TraceHub homepage',
     navOverview: 'Overview',
     navModels: 'Models',
-    navPlayground: 'Playground',
+    navPlayground: 'Try API',
     navKeys: 'API Key',
     navLogs: 'Request logs',
     navGroup: 'My group',
@@ -141,6 +141,8 @@ export default {
     adminTopHint: 'Channels, users & model catalog',
     adminConsoleShort: 'User console',
     adminHomeShort: 'Homepage',
+    lowBalanceBanner: 'Your balance is at or below the alert threshold you set. Top up soon to avoid failed API calls.',
+    lowBalanceSettings: 'Alert settings',
   },
   userMenu: {
     accountFallback: 'Account',

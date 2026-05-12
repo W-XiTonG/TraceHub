@@ -561,6 +561,7 @@ var (
 		{Name: "totp_secret", Type: field.TypeString, Nullable: true, Size: 255},
 		{Name: "webhook_url", Type: field.TypeString, Nullable: true, Size: 500},
 		{Name: "balance_alert_threshold", Type: field.TypeInt64, Default: 0},
+		{Name: "custom_alert_config", Type: field.TypeJSON, Nullable: true},
 		{Name: "last_login_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -574,7 +575,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_groups_users",
-				Columns:    []*schema.Column{UsersColumns[17]},
+				Columns:    []*schema.Column{UsersColumns[18]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -588,7 +589,7 @@ var (
 			{
 				Name:    "user_group_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsersColumns[17]},
+				Columns: []*schema.Column{UsersColumns[18]},
 			},
 			{
 				Name:    "user_status",

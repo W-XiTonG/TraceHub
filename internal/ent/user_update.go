@@ -15,6 +15,7 @@ import (
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/pkg/alertconfig"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -301,6 +302,26 @@ func (_u *UserUpdate) SetNillableBalanceAlertThreshold(v *int64) *UserUpdate {
 // AddBalanceAlertThreshold adds value to the "balance_alert_threshold" field.
 func (_u *UserUpdate) AddBalanceAlertThreshold(v int64) *UserUpdate {
 	_u.mutation.AddBalanceAlertThreshold(v)
+	return _u
+}
+
+// SetCustomAlertConfig sets the "custom_alert_config" field.
+func (_u *UserUpdate) SetCustomAlertConfig(v alertconfig.Stored) *UserUpdate {
+	_u.mutation.SetCustomAlertConfig(v)
+	return _u
+}
+
+// SetNillableCustomAlertConfig sets the "custom_alert_config" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableCustomAlertConfig(v *alertconfig.Stored) *UserUpdate {
+	if v != nil {
+		_u.SetCustomAlertConfig(*v)
+	}
+	return _u
+}
+
+// ClearCustomAlertConfig clears the value of the "custom_alert_config" field.
+func (_u *UserUpdate) ClearCustomAlertConfig() *UserUpdate {
+	_u.mutation.ClearCustomAlertConfig()
 	return _u
 }
 
@@ -726,6 +747,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedBalanceAlertThreshold(); ok {
 		_spec.AddField(user.FieldBalanceAlertThreshold, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.CustomAlertConfig(); ok {
+		_spec.SetField(user.FieldCustomAlertConfig, field.TypeJSON, value)
+	}
+	if _u.mutation.CustomAlertConfigCleared() {
+		_spec.ClearField(user.FieldCustomAlertConfig, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.LastLoginAt(); ok {
 		_spec.SetField(user.FieldLastLoginAt, field.TypeTime, value)
@@ -1324,6 +1351,26 @@ func (_u *UserUpdateOne) AddBalanceAlertThreshold(v int64) *UserUpdateOne {
 	return _u
 }
 
+// SetCustomAlertConfig sets the "custom_alert_config" field.
+func (_u *UserUpdateOne) SetCustomAlertConfig(v alertconfig.Stored) *UserUpdateOne {
+	_u.mutation.SetCustomAlertConfig(v)
+	return _u
+}
+
+// SetNillableCustomAlertConfig sets the "custom_alert_config" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableCustomAlertConfig(v *alertconfig.Stored) *UserUpdateOne {
+	if v != nil {
+		_u.SetCustomAlertConfig(*v)
+	}
+	return _u
+}
+
+// ClearCustomAlertConfig clears the value of the "custom_alert_config" field.
+func (_u *UserUpdateOne) ClearCustomAlertConfig() *UserUpdateOne {
+	_u.mutation.ClearCustomAlertConfig()
+	return _u
+}
+
 // SetLastLoginAt sets the "last_login_at" field.
 func (_u *UserUpdateOne) SetLastLoginAt(v time.Time) *UserUpdateOne {
 	_u.mutation.SetLastLoginAt(v)
@@ -1776,6 +1823,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.AddedBalanceAlertThreshold(); ok {
 		_spec.AddField(user.FieldBalanceAlertThreshold, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.CustomAlertConfig(); ok {
+		_spec.SetField(user.FieldCustomAlertConfig, field.TypeJSON, value)
+	}
+	if _u.mutation.CustomAlertConfigCleared() {
+		_spec.ClearField(user.FieldCustomAlertConfig, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.LastLoginAt(); ok {
 		_spec.SetField(user.FieldLastLoginAt, field.TypeTime, value)

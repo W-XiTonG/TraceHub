@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import * as pgw from '../api/playgroundGateway'
@@ -26,6 +26,72 @@ const models = ref<string[]>([])
 const model = ref('')
 const modelsErr = ref('')
 const modelsLoading = ref(false)
+
+const modelPickerOpen = ref(false)
+const modelPickerWrap = ref<HTMLElement | null>(null)
+const modelPickerPanel = ref<HTMLElement | null>(null)
+const modelPickerPanelStyle = ref<Record<string, string>>({})
+
+function closeModelPicker() {
+  modelPickerOpen.value = false
+}
+
+function updateModelPanelPosition() {
+  const wrap = modelPickerWrap.value
+  if (!wrap) return
+  const rect = wrap.getBoundingClientRect()
+  const gap = 6
+  const pad = 12
+  const vh = window.innerHeight
+  const spaceBelow = vh - rect.bottom - gap - pad
+  const spaceAbove = rect.top - gap - pad
+  const preferBelow = spaceBelow >= 120 || spaceBelow >= spaceAbove
+  const maxH = Math.min(288, Math.max(100, preferBelow ? spaceBelow : spaceAbove))
+  if (preferBelow) {
+    modelPickerPanelStyle.value = {
+      position: 'fixed',
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      top: `${rect.bottom + gap}px`,
+      maxHeight: `${maxH}px`,
+    }
+  } else {
+    modelPickerPanelStyle.value = {
+      position: 'fixed',
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      bottom: `${vh - rect.top + gap}px`,
+      maxHeight: `${maxH}px`,
+    }
+  }
+}
+
+function toggleModelPicker() {
+  if (!models.value.length) return
+  modelPickerOpen.value = !modelPickerOpen.value
+}
+
+function pickModel(m: string) {
+  model.value = m
+  closeModelPicker()
+}
+
+function onDocMousedown(ev: MouseEvent) {
+  if (!modelPickerOpen.value) return
+  const t = ev.target as Node
+  const wrap = modelPickerWrap.value
+  const panel = modelPickerPanel.value
+  if (wrap?.contains(t) || panel?.contains(t)) return
+  closeModelPicker()
+}
+
+function onDocKeydown(ev: KeyboardEvent) {
+  if (ev.key === 'Escape' && modelPickerOpen.value) closeModelPicker()
+}
+
+function onWinReposition() {
+  if (modelPickerOpen.value) updateModelPanelPosition()
+}
 
 const systemPrompt = ref('')
 const customBody = ref(false)
@@ -93,6 +159,15 @@ onMounted(() => {
     /* ignore */
   }
   if (apiKey.value) void refreshModels()
+  document.addEventListener('mousedown', onDocMousedown)
+  document.addEventListener('keydown', onDocKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onDocMousedown)
+  document.removeEventListener('keydown', onDocKeydown)
+  window.removeEventListener('resize', onWinReposition)
+  window.removeEventListener('scroll', onWinReposition, true)
 })
 
 watch(apiKey, (v) => {
@@ -101,6 +176,25 @@ watch(apiKey, (v) => {
     else sessionStorage.removeItem(SS_KEY)
   } catch {
     /* ignore */
+  }
+})
+
+watch(
+  () => models.value.length,
+  (n) => {
+    if (n === 0) closeModelPicker()
+  },
+)
+
+watch(modelPickerOpen, async (open) => {
+  if (open) {
+    await nextTick()
+    updateModelPanelPosition()
+    window.addEventListener('resize', onWinReposition)
+    window.addEventListener('scroll', onWinReposition, true)
+  } else {
+    window.removeEventListener('resize', onWinReposition)
+    window.removeEventListener('scroll', onWinReposition, true)
   }
 })
 
@@ -701,10 +795,60 @@ function fmtNum(n: number) {
         <template v-if="!customBody">
           <div>
             <label class="text-xs text-slate-500">{{ t('playground.model') }}</label>
-            <select v-model="model" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-2 text-sm">
-              <option v-if="!models.length" value="">{{ t('playground.modelEmpty') }}</option>
-              <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
-            </select>
+            <div ref="modelPickerWrap" class="th-pg-model-picker mt-1">
+              <button
+                id="pg-model-picker-trigger"
+                type="button"
+                class="th-pg-model-picker__trigger"
+                :disabled="!models.length"
+                :aria-expanded="modelPickerOpen"
+                aria-haspopup="listbox"
+                aria-controls="pg-model-picker-listbox"
+                @click="toggleModelPicker"
+              >
+                <span class="th-pg-model-picker__value min-w-0 flex-1 truncate text-left font-mono text-[11px] leading-snug">{{
+                  models.length ? model || models[0] : t('playground.modelEmpty')
+                }}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  class="th-pg-model-picker__chev"
+                  :class="{ 'th-pg-model-picker__chev--open': modelPickerOpen }"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+            <Teleport to="body">
+              <div
+                v-show="modelPickerOpen"
+                ref="modelPickerPanel"
+                id="pg-model-picker-listbox"
+                class="th-pg-model-picker__panel thin-scrollbar"
+                role="listbox"
+                aria-labelledby="pg-model-picker-trigger"
+                :style="modelPickerPanelStyle"
+              >
+                <button
+                  v-for="m in models"
+                  :key="m"
+                  type="button"
+                  role="option"
+                  :aria-selected="model === m"
+                  class="th-pg-model-picker__option"
+                  :class="{ 'th-pg-model-picker__option--active': model === m }"
+                  @click="pickModel(m)"
+                >
+                  {{ m }}
+                </button>
+              </div>
+            </Teleport>
           </div>
 
           <div>

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/alertconfig"
 	"tracehub/internal/pkg/apikeyhash"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
@@ -713,16 +715,29 @@ func BindProfile(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			Username   *string `json:"username"`
-			WebhookURL *string `json:"webhook_url"`
+			Username              *string          `json:"username"`
+			WebhookURL            *string          `json:"webhook_url"`
+			BalanceAlertThreshold *int64           `json:"balance_alert_threshold"`
+			CustomAlertConfig     *json.RawMessage `json:"custom_alert_config"`
+			CustomAlertSecrets    *json.RawMessage `json:"custom_alert_secrets"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
 			return
 		}
 		ctx := c.Request.Context()
+		fu, err := client.User.Get(ctx, u.ID)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+
 		up := client.User.UpdateOneID(u.ID)
 		changed := false
+
+		nextAlerts := fu.CustomAlertConfig
+		customTouched := false
+
 		if req.Username != nil {
 			up.SetUsername(strings.TrimSpace(*req.Username))
 			changed = true
@@ -736,8 +751,72 @@ func BindProfile(client *ent.Client) gin.HandlerFunc {
 			}
 			changed = true
 		}
+		if req.BalanceAlertThreshold != nil {
+			if *req.BalanceAlertThreshold < 0 {
+				httpx.BadRequest(c, "余额告警阈值不能为负数")
+				return
+			}
+			up.SetBalanceAlertThreshold(*req.BalanceAlertThreshold)
+			changed = true
+		}
+
+		if req.CustomAlertConfig != nil {
+			customTouched = true
+			raw := strings.TrimSpace(string(*req.CustomAlertConfig))
+			if raw == "" || raw == "null" {
+				nextAlerts = alertconfig.Stored{}
+			} else {
+				var st alertconfig.Stored
+				if err := json.Unmarshal(*req.CustomAlertConfig, &st); err != nil {
+					httpx.BadRequest(c, "custom_alert_config 不是合法 JSON")
+					return
+				}
+				alertconfig.StripSecretsForWire(&st)
+				out, err := alertconfig.NormalizeAndValidate(st)
+				if err != nil {
+					httpx.BadRequest(c, err.Error())
+					return
+				}
+				if out.Empty() {
+					nextAlerts = alertconfig.Stored{}
+				} else {
+					nextAlerts = alertconfig.MergeChannelFields(fu.CustomAlertConfig, out)
+				}
+			}
+		}
+
+		if req.CustomAlertSecrets != nil {
+			secRaw := strings.TrimSpace(string(*req.CustomAlertSecrets))
+			if secRaw != "" && secRaw != "null" {
+				var e error
+				nextAlerts, e = alertconfig.ApplySecretPatch(nextAlerts, []byte(secRaw))
+				if e != nil {
+					httpx.BadRequest(c, e.Error())
+					return
+				}
+				customTouched = true
+			}
+		}
+
+		if customTouched {
+			wh := strings.TrimSpace(fu.WebhookURL)
+			if req.WebhookURL != nil {
+				wh = strings.TrimSpace(*req.WebhookURL)
+			}
+			if err := alertconfig.ValidateSignSecretsWithChannels(nextAlerts, wh); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+			if nextAlerts.ReallyEmpty() {
+				up.ClearCustomAlertConfig()
+			} else {
+				up.SetCustomAlertConfig(nextAlerts)
+			}
+			changed = true
+		}
+
 		if !changed {
-			httpx.BadRequest(c, "请提供 username 或 webhook_url")
+			httpx.BadRequest(c, "请提供至少一项可更新字段（username、webhook_url、balance_alert_threshold、custom_alert_config、custom_alert_secrets）")
 			return
 		}
 		if err := up.Exec(ctx); err != nil {

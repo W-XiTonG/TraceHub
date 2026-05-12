@@ -14,6 +14,7 @@ import (
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/pkg/alertconfig"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -194,6 +195,20 @@ func (_c *UserCreate) SetBalanceAlertThreshold(v int64) *UserCreate {
 func (_c *UserCreate) SetNillableBalanceAlertThreshold(v *int64) *UserCreate {
 	if v != nil {
 		_c.SetBalanceAlertThreshold(*v)
+	}
+	return _c
+}
+
+// SetCustomAlertConfig sets the "custom_alert_config" field.
+func (_c *UserCreate) SetCustomAlertConfig(v alertconfig.Stored) *UserCreate {
+	_c.mutation.SetCustomAlertConfig(v)
+	return _c
+}
+
+// SetNillableCustomAlertConfig sets the "custom_alert_config" field if the given value is not nil.
+func (_c *UserCreate) SetNillableCustomAlertConfig(v *alertconfig.Stored) *UserCreate {
+	if v != nil {
+		_c.SetCustomAlertConfig(*v)
 	}
 	return _c
 }
@@ -540,6 +555,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.BalanceAlertThreshold(); ok {
 		_spec.SetField(user.FieldBalanceAlertThreshold, field.TypeInt64, value)
 		_node.BalanceAlertThreshold = value
+	}
+	if value, ok := _c.mutation.CustomAlertConfig(); ok {
+		_spec.SetField(user.FieldCustomAlertConfig, field.TypeJSON, value)
+		_node.CustomAlertConfig = value
 	}
 	if value, ok := _c.mutation.LastLoginAt(); ok {
 		_spec.SetField(user.FieldLastLoginAt, field.TypeTime, value)

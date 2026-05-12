@@ -42,6 +42,8 @@ const (
 	FieldWebhookURL = "webhook_url"
 	// FieldBalanceAlertThreshold holds the string denoting the balance_alert_threshold field in the database.
 	FieldBalanceAlertThreshold = "balance_alert_threshold"
+	// FieldCustomAlertConfig holds the string denoting the custom_alert_config field in the database.
+	FieldCustomAlertConfig = "custom_alert_config"
 	// FieldLastLoginAt holds the string denoting the last_login_at field in the database.
 	FieldLastLoginAt = "last_login_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -132,6 +134,7 @@ var Columns = []string{
 	FieldTotpSecret,
 	FieldWebhookURL,
 	FieldBalanceAlertThreshold,
+	FieldCustomAlertConfig,
 	FieldLastLoginAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
