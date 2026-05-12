@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
+import { homeModelVendors } from '../data/homeModelVendors'
 import { useAuthStore } from '../stores/auth'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 
@@ -338,27 +339,29 @@ function featureLink(to: string) {
               <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('home.step1Desc') }}</p>
               <div class="th-home-step-mock mt-6 w-full max-w-[15rem]">
                 <div
-                  class="rounded-xl border border-white/[0.08] bg-[#050a14] p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  class="th-home-step-mock-card rounded-xl border border-white/[0.08] bg-[#050a14] p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                   aria-hidden="true"
                 >
-                  <div class="mb-3 flex gap-1 rounded-lg border border-white/8 bg-black/25 p-0.5">
+                  <div class="th-home-step-mock-tabs mb-3 flex gap-1 rounded-lg border border-white/8 bg-black/25 p-0.5">
                     <span
-                      class="flex-1 rounded-md bg-white/10 px-2 py-1.5 text-center text-[10px] font-medium text-slate-100 shadow-sm"
+                      class="th-home-step-mock-tab th-home-step-mock-tab--active flex-1 rounded-md bg-white/10 px-2 py-1.5 text-center text-[10px] font-medium text-slate-100 shadow-sm"
                     >
                       {{ t('login.modePassword') }}
                     </span>
-                    <span class="flex-1 rounded-md px-2 py-1.5 text-center text-[10px] font-medium text-slate-500">
+                    <span
+                      class="th-home-step-mock-tab flex-1 rounded-md px-2 py-1.5 text-center text-[10px] font-medium text-slate-500"
+                    >
                       {{ t('login.modeCode') }}
                     </span>
                   </div>
                   <div class="space-y-2.5">
                     <div>
                       <div class="mb-1 text-[10px] text-slate-500">{{ t('login.accountLabel') }}</div>
-                      <div class="h-2 rounded bg-slate-700/55" />
+                      <div class="th-home-step-mock-skeleton h-2 rounded" />
                     </div>
                     <div>
                       <div class="mb-1 text-[10px] text-slate-500">{{ t('login.password') }}</div>
-                      <div class="h-2 w-[88%] rounded bg-slate-700/55" />
+                      <div class="th-home-step-mock-skeleton h-2 w-[88%] rounded" />
                     </div>
                   </div>
                 </div>
@@ -372,17 +375,22 @@ function featureLink(to: string) {
               <span class="th-home-step-num" aria-hidden="true">2</span>
               <h3 class="mt-4 text-base font-semibold text-slate-100">{{ t('home.step2Title') }}</h3>
               <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('home.step2Desc') }}</p>
-              <div class="th-home-step-mock mt-6 w-full max-w-[15rem] space-y-2.5 px-1">
-                <div class="h-2 w-full rounded-full bg-slate-700/50">
-                  <div class="h-full w-[72%] rounded-full bg-gradient-to-r from-violet-500/70 to-cyan-500/60" />
+              <div class="th-home-step-mock mt-6 w-full max-w-[15rem] px-1">
+                <div
+                  class="th-home-step-mock-card th-home-step-mock-card--bars space-y-2.5 rounded-xl border border-white/[0.08] bg-[#050a14] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  aria-hidden="true"
+                >
+                  <div class="th-home-step-mock-track h-2 w-full rounded-full">
+                    <div class="h-full w-[72%] rounded-full bg-gradient-to-r from-violet-500/70 to-cyan-500/60" />
+                  </div>
+                  <div class="th-home-step-mock-track h-2 w-full rounded-full">
+                    <div class="h-full w-[48%] rounded-full bg-slate-500/45" />
+                  </div>
+                  <div class="th-home-step-mock-track h-2 w-full rounded-full">
+                    <div class="h-full w-[88%] rounded-full bg-emerald-500/35" />
+                  </div>
+                  <p class="pt-1 text-center text-[11px] text-slate-600">{{ t('home.step2MockHint') }}</p>
                 </div>
-                <div class="h-2 w-full rounded-full bg-slate-700/50">
-                  <div class="h-full w-[48%] rounded-full bg-slate-500/45" />
-                </div>
-                <div class="h-2 w-full rounded-full bg-slate-700/50">
-                  <div class="h-full w-[88%] rounded-full bg-emerald-500/35" />
-                </div>
-                <p class="pt-1 text-center text-[11px] text-slate-600">{{ t('home.step2MockHint') }}</p>
               </div>
             </div>
             <div class="hidden items-center justify-center px-1 text-slate-600 lg:flex" aria-hidden="true">
@@ -394,13 +402,13 @@ function featureLink(to: string) {
               <p class="mt-1 text-[13px] leading-relaxed text-slate-500">{{ t('home.step3Desc') }}</p>
               <div class="th-home-step-mock mt-6 w-full max-w-[15rem] space-y-3">
                 <div
-                  class="rounded-lg border border-white/[0.08] bg-[#050a14] px-3 py-2.5 text-left font-mono text-[11px] text-slate-400"
+                  class="th-home-step-mock-card th-home-step-mock-key rounded-lg border border-white/[0.08] bg-[#050a14] px-3 py-2.5 text-left font-mono text-[11px] text-slate-400"
                 >
                   sk-th-••••••••••••
                 </div>
                 <div class="flex justify-center">
                   <span
-                    class="rounded-full border border-violet-500/25 bg-violet-950/40 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-violet-200/95"
+                    class="th-home-step-mock-badge rounded-full border border-violet-500/25 bg-violet-950/40 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-violet-200/95"
                   >
                     {{ t('home.step3Badge') }}
                   </span>
@@ -545,6 +553,38 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
           <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
             {{ t('home.modelsNote') }}
           </p>
+          <p
+            class="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-slate-400"
+            role="note"
+          >
+            {{ t('home.vendorsCaption') }}
+          </p>
+          <ul
+            class="th-reveal-stagger th-reveal-stagger--tight th-home-vendor-strip mx-auto mt-5 flex max-w-5xl flex-wrap items-center justify-center gap-3 sm:gap-4"
+            :aria-label="t('home.vendorsAria')"
+          >
+            <li v-for="v in homeModelVendors" :key="v.labelKey" class="th-home-vendor-tile">
+              <div class="th-home-vendor-tile-inner" :title="t(v.labelKey)">
+                <svg class="th-home-vendor-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path fill="currentColor" :d="v.path" />
+                </svg>
+                <span class="th-home-vendor-name">{{ t(v.labelKey) }}</span>
+              </div>
+            </li>
+            <li class="th-home-vendor-tile th-home-vendor-tile--more">
+              <div class="th-home-vendor-tile-inner th-home-vendor-tile-inner--more" :title="t('home.vendorsAndMore')">
+                <span class="th-home-vendor-more-dots" aria-hidden="true">
+                  <span class="th-home-vendor-more-dot" />
+                  <span class="th-home-vendor-more-dot" />
+                  <span class="th-home-vendor-more-dot" />
+                </span>
+                <span class="th-home-vendor-name">{{ t('home.vendorsAndMore') }}</span>
+              </div>
+            </li>
+          </ul>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600/90">
+            {{ t('home.vendorsMark') }}
+          </p>
           <div class="th-reveal-stagger th-reveal-stagger--tight mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
             <RouterLink
               to="/docs#doc-gateway"
@@ -583,7 +623,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
           </p>
           <RouterLink
             to="/docs#doc-console"
-            class="mt-6 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/25 px-4 py-2.5 text-sm font-medium text-cyan-200/95 transition hover:border-cyan-400/35 hover:bg-cyan-900/30"
+            class="th-home-usage-note-cta mt-6 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/25 px-4 py-2.5 text-sm font-medium text-cyan-200/95 transition hover:border-cyan-400/35 hover:bg-cyan-900/30"
           >
             {{ t('home.usageNoteCta') }}
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4" aria-hidden="true">
