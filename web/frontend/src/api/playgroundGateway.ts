@@ -2,8 +2,21 @@
 
 const STICKY_HDR = 'X-TraceHub-Session'
 
-export async function fetchModelIds(apiKey: string, sticky: string): Promise<string[]> {
-  const res = await fetch('/v1/models', {
+export type PlaygroundRouterHealth = 'healthy' | 'unhealthy' | 'catalog_only'
+
+export type PlaygroundModelRow = {
+  id: string
+  routerHealth?: PlaygroundRouterHealth
+}
+
+function parseRouterHealth(v: unknown): PlaygroundRouterHealth | undefined {
+  if (v === 'healthy' || v === 'unhealthy' || v === 'catalog_only') return v
+  return undefined
+}
+
+/** GET /v1/models，带路由健康扩展字段（与网关选路 health_status 一致，非实时探测上游）。 */
+export async function fetchPlaygroundModels(apiKey: string, sticky: string): Promise<PlaygroundModelRow[]> {
+  const res = await fetch('/v1/models?tracehub_include_router_health=1', {
     headers: {
       Authorization: `Bearer ${apiKey.trim()}`,
       [STICKY_HDR]: sticky,
@@ -13,9 +26,17 @@ export async function fetchModelIds(apiKey: string, sticky: string): Promise<str
     const text = await res.text()
     throw new Error(parseOpenAIError(text) || `${res.status} ${res.statusText}`)
   }
-  const data = (await res.json()) as { data?: Array<{ id?: string }> }
-  const ids = (data.data || []).map((m) => m.id).filter(Boolean) as string[]
-  return ids.sort()
+  const data = (await res.json()) as {
+    data?: Array<{ id?: string; tracehub?: { router_health?: string } }>
+  }
+  const rows: PlaygroundModelRow[] = []
+  for (const m of data.data || []) {
+    const id = typeof m.id === 'string' ? m.id : ''
+    if (!id) continue
+    rows.push({ id, routerHealth: parseRouterHealth(m.tracehub?.router_health) })
+  }
+  rows.sort((a, b) => a.id.localeCompare(b.id))
+  return rows
 }
 
 function parseOpenAIError(text: string): string {

@@ -371,6 +371,13 @@ export default {
     badCustomJson: '自訂 JSON 無法解析',
     importFail: '匯入失敗：檔案格式無效',
     model: '模型',
+    routerHealthHint:
+      '狀態來自分組內渠道健康位（與閘道選路一致）：可路由表示有可派單的健康渠道；渠道異常表示僅有異常渠道聲明；僅目錄表示來自市場／預設列表，分組渠道未聲明。',
+    routerHealth: {
+      healthy: '可路由',
+      unhealthy: '渠道異常',
+      catalog_only: '僅目錄',
+    },
     modelEmpty: '先填 Key 並重新整理',
     system: '系統提示詞',
     systemPh: '可選，每次請求置於 messages 最前',

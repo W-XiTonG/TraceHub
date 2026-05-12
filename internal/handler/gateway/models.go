@@ -20,19 +20,41 @@ func ModelsList(client *ent.Client) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组")
 			return
 		}
-		items, err := availmodels.ListForGroup(c.Request.Context(), client, gid)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 500, "api_error", "读取模型列表失败")
-			return
+		includeRH := strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_router_health")), "1") ||
+			strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_router_health")), "true")
+
+		var items []availmodels.Item
+		var channelAll map[string]struct{}
+		var channelHealthy map[string]struct{}
+		var err error
+		if includeRH {
+			items, channelAll, channelHealthy, err = availmodels.ListForGroupWithChannelHealthKeys(c.Request.Context(), client, gid)
+			if err != nil {
+				middleware.WriteOpenAIError(c, 500, "api_error", "读取模型列表失败")
+				return
+			}
+		} else {
+			items, err = availmodels.ListForGroup(c.Request.Context(), client, gid)
+			if err != nil {
+				middleware.WriteOpenAIError(c, 500, "api_error", "读取模型列表失败")
+				return
+			}
 		}
+
 		data := make([]gin.H, 0, len(items))
 		for _, it := range items {
-			data = append(data, gin.H{
+			row := gin.H{
 				"id":        it.ID,
 				"object":    it.Object,
 				"created":   it.Created,
 				"owned_by":  it.OwnedBy,
-			})
+			}
+			if includeRH {
+				row["tracehub"] = gin.H{
+					"router_health": availmodels.RouterHealthLabel(channelAll, channelHealthy, it.ID),
+				}
+			}
+			data = append(data, row)
 		}
 		c.JSON(200, gin.H{"object": "list", "data": data})
 	}

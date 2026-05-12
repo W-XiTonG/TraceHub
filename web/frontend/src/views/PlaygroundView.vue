@@ -5,6 +5,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import * as pgw from '../api/playgroundGateway'
+import type { PlaygroundModelRow } from '../api/playgroundGateway'
 
 marked.use({
   async: false,
@@ -22,7 +23,7 @@ type ChatMsg = { id: string; role: 'user' | 'assistant'; content: string; imageU
 
 const apiKey = ref('')
 const stickySession = ref('')
-const models = ref<string[]>([])
+const models = ref<PlaygroundModelRow[]>([])
 const model = ref('')
 const modelsErr = ref('')
 const modelsLoading = ref(false)
@@ -71,8 +72,8 @@ function toggleModelPicker() {
   modelPickerOpen.value = !modelPickerOpen.value
 }
 
-function pickModel(m: string) {
-  model.value = m
+function pickModel(id: string) {
+  model.value = id
   closeModelPicker()
 }
 
@@ -92,6 +93,12 @@ function onDocKeydown(ev: KeyboardEvent) {
 function onWinReposition() {
   if (modelPickerOpen.value) updateModelPanelPosition()
 }
+
+const selectedModelRow = computed(() => {
+  const rows = models.value
+  if (!rows.length) return null
+  return rows.find((r) => r.id === model.value) ?? rows[0]
+})
 
 const systemPrompt = ref('')
 const customBody = ref(false)
@@ -287,8 +294,9 @@ async function refreshModels() {
   modelsErr.value = ''
   modelsLoading.value = true
   try {
-    const ids = await pgw.fetchModelIds(k, stickySession.value)
-    models.value = ids
+    const rows = await pgw.fetchPlaygroundModels(k, stickySession.value)
+    models.value = rows
+    const ids = rows.map((r) => r.id)
     if (!model.value && ids.length) model.value = ids[0]
     if (model.value && !ids.includes(model.value) && ids.length) model.value = ids[0]
   } catch (e: unknown) {
@@ -795,6 +803,7 @@ function fmtNum(n: number) {
         <template v-if="!customBody">
           <div>
             <label class="text-xs text-slate-500">{{ t('playground.model') }}</label>
+            <p class="mt-0.5 text-[10px] leading-snug th-pg-muted">{{ t('playground.routerHealthHint') }}</p>
             <div ref="modelPickerWrap" class="th-pg-model-picker mt-1">
               <button
                 id="pg-model-picker-trigger"
@@ -806,8 +815,14 @@ function fmtNum(n: number) {
                 aria-controls="pg-model-picker-listbox"
                 @click="toggleModelPicker"
               >
+                <span
+                  v-if="selectedModelRow?.routerHealth"
+                  class="th-pg-model-picker__health-dot"
+                  :class="`th-pg-model-picker__health-dot--${selectedModelRow.routerHealth}`"
+                  aria-hidden="true"
+                />
                 <span class="th-pg-model-picker__value min-w-0 flex-1 truncate text-left font-mono text-[11px] leading-snug">{{
-                  models.length ? model || models[0] : t('playground.modelEmpty')
+                  models.length ? model || models[0].id : t('playground.modelEmpty')
                 }}</span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -837,15 +852,22 @@ function fmtNum(n: number) {
               >
                 <button
                   v-for="m in models"
-                  :key="m"
+                  :key="m.id"
                   type="button"
                   role="option"
-                  :aria-selected="model === m"
+                  :aria-selected="model === m.id"
                   class="th-pg-model-picker__option"
-                  :class="{ 'th-pg-model-picker__option--active': model === m }"
-                  @click="pickModel(m)"
+                  :class="{ 'th-pg-model-picker__option--active': model === m.id }"
+                  @click="pickModel(m.id)"
                 >
-                  {{ m }}
+                  <span class="th-pg-model-picker__opt-id">{{ m.id }}</span>
+                  <span
+                    v-if="m.routerHealth"
+                    class="th-pg-model-picker__health"
+                    :class="`th-pg-model-picker__health--${m.routerHealth}`"
+                  >
+                    {{ t(`playground.routerHealth.${m.routerHealth}`) }}
+                  </span>
                 </button>
               </div>
             </Teleport>

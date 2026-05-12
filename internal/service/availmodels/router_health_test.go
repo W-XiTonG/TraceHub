@@ -1,0 +1,45 @@
+package availmodels
+
+import (
+	"testing"
+
+	"tracehub/internal/ent"
+)
+
+func TestRouterHealthLabel(t *testing.T) {
+	all := map[string]struct{}{"a": {}, "b": {}}
+	healthy := map[string]struct{}{"a": {}}
+	if g := RouterHealthLabel(all, healthy, "a"); g != "healthy" {
+		t.Fatalf("a want healthy got %q", g)
+	}
+	if g := RouterHealthLabel(all, healthy, "b"); g != "unhealthy" {
+		t.Fatalf("b want unhealthy got %q", g)
+	}
+	if g := RouterHealthLabel(all, healthy, "c"); g != "catalog_only" {
+		t.Fatalf("c want catalog_only got %q", g)
+	}
+	if g := RouterHealthLabel(map[string]struct{}{}, map[string]struct{}{}, "x"); g != "catalog_only" {
+		t.Fatalf("empty channel sets want catalog_only got %q", g)
+	}
+}
+
+func TestCollectChannelModelKeys(t *testing.T) {
+	chs := []*ent.Channel{
+		{Models: []string{"m1", " m2 "}, HealthStatus: 1, ModelAlias: map[string]string{"alias1": "m1"}},
+		{Models: []string{"m3"}, HealthStatus: 0},
+	}
+	all, h := collectChannelModelKeys(chs)
+	for _, id := range []string{"m1", "m2", "alias1", "m3"} {
+		if _, ok := all[id]; !ok {
+			t.Fatalf("missing in all: %q", id)
+		}
+	}
+	for _, id := range []string{"m1", "m2", "alias1"} {
+		if _, ok := h[id]; !ok {
+			t.Fatalf("missing in healthy: %q", id)
+		}
+	}
+	if _, ok := h["m3"]; ok {
+		t.Fatal("m3 should not be healthy")
+	}
+}

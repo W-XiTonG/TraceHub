@@ -370,6 +370,13 @@ export default {
     badCustomJson: 'Invalid custom JSON',
     importFail: 'Import failed: invalid file',
     model: 'Model',
+    routerHealthHint:
+      'From channel health in your group (same as gateway routing): Routable means a healthy channel can serve the model; Channel down means only unhealthy channels list it; Catalog only means it comes from the catalog/defaults, not from your channels.',
+    routerHealth: {
+      healthy: 'Routable',
+      unhealthy: 'Channel down',
+      catalog_only: 'Catalog only',
+    },
     modelEmpty: 'Enter key & refresh',
     system: 'System prompt',
     systemPh: 'Optional; prepended to every request',
