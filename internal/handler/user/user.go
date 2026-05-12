@@ -224,27 +224,95 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 			httpx.ServerError(c, "查询失败")
 			return
 		}
+		unit := cfg.Site.CurrencyQuotaPerYuan
+		if unit <= 0 {
+			unit = 10000
+		}
 		var totalReq, totalTok int
 		var totalCost int64
-		byDay := map[string]struct{ reqs int; cost int64 }{}
+		byDay := map[string]struct{ reqs int; cost int64; tokens int }{}
 		byModel := map[string]struct{ reqs int; cost int64 }{}
+		var minT, maxT time.Time
+		now := time.Now()
+		endHour := now.Truncate(time.Hour)
+		firstHour := endHour.Add(-23 * time.Hour)
+		hourly := map[int64]struct{ reqs int; cost int64; tokens int }{}
 		for _, l := range logs {
 			totalReq++
 			totalTok += l.TotalTokens
 			totalCost += l.TotalCost
+			if minT.IsZero() || l.RequestTime.Before(minT) {
+				minT = l.RequestTime
+			}
+			if maxT.IsZero() || l.RequestTime.After(maxT) {
+				maxT = l.RequestTime
+			}
 			d := l.RequestTime.In(time.Local).Format("2006-01-02")
 			bd := byDay[d]
 			bd.reqs++
 			bd.cost += l.TotalCost
+			bd.tokens += l.TotalTokens
 			byDay[d] = bd
 			bm := byModel[l.Model]
 			bm.reqs++
 			bm.cost += l.TotalCost
 			byModel[l.Model] = bm
+			if !l.RequestTime.Before(firstHour) {
+				hk := l.RequestTime.Truncate(time.Hour).Unix()
+				hh := hourly[hk]
+				hh.reqs++
+				hh.cost += l.TotalCost
+				hh.tokens += l.TotalTokens
+				hourly[hk] = hh
+			}
 		}
-		unit := cfg.Site.CurrencyQuotaPerYuan
-		if unit <= 0 {
-			unit = 10000
+		var hourlyBreakdown []gin.H
+		for i := 0; i < 24; i++ {
+			h := firstHour.Add(time.Duration(i) * time.Hour)
+			v := hourly[h.Unix()]
+			hourlyBreakdown = append(hourlyBreakdown, gin.H{
+				"at":       h,
+				"label":    h.In(time.Local).Format("01-02 15:00"),
+				"requests": v.reqs,
+				"cost":     float64(v.cost) / float64(unit),
+				"tokens":   v.tokens,
+			})
+		}
+		spanMin := 1.0
+		if !minT.IsZero() && !maxT.IsZero() && totalReq > 0 {
+			spanMin = maxT.Sub(minT).Minutes()
+			if spanMin < 1 {
+				spanMin = 1
+			}
+		}
+		var avgRPM, avgTPM float64
+		if totalReq > 0 {
+			avgRPM = float64(totalReq) / spanMin
+			avgTPM = float64(totalTok) / spanMin
+		}
+		var lifeTotalReq int
+		var lifeTotalTok int64
+		var lifeTotalCost int64
+		var lifeRows []struct {
+			Cnt            int     `json:"count"`
+			SumTotalCost   *int64  `json:"sum_total_cost"`
+			SumTotalTokens *int64  `json:"sum_total_tokens"`
+		}
+		if scanErr := client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID)).
+			Aggregate(
+				ent.As(ent.Count(), "count"),
+				ent.As(ent.Sum(usagelog.FieldTotalCost), "sum_total_cost"),
+				ent.As(ent.Sum(usagelog.FieldTotalTokens), "sum_total_tokens"),
+			).
+			Scan(ctx, &lifeRows); scanErr == nil && len(lifeRows) > 0 {
+			r0 := lifeRows[0]
+			lifeTotalReq = r0.Cnt
+			if r0.SumTotalCost != nil {
+				lifeTotalCost = *r0.SumTotalCost
+			}
+			if r0.SumTotalTokens != nil {
+				lifeTotalTok = *r0.SumTotalTokens
+			}
 		}
 		var dailyBreakdown []gin.H
 		for d, v := range byDay {
@@ -252,6 +320,7 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 				"date":     d,
 				"requests": v.reqs,
 				"cost":     float64(v.cost) / float64(unit),
+				"tokens":   v.tokens,
 			})
 		}
 		sort.Slice(dailyBreakdown, func(i, j int) bool {
@@ -268,13 +337,23 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		sort.Slice(modelBreakdown, func(i, j int) bool {
 			return modelBreakdown[i]["cost"].(float64) > modelBreakdown[j]["cost"].(float64)
 		})
+		round2 := func(x float64) float64 { return float64(int(x*100+0.5)) / 100 }
 		httpx.OK(c, gin.H{
-			"period":            period,
-			"total_requests":    totalReq,
-			"total_tokens":      totalTok,
-			"total_cost":        float64(totalCost) / float64(unit),
-			"daily_breakdown":   dailyBreakdown,
-			"model_breakdown":   modelBreakdown,
+			"period":             period,
+			"total_requests":     totalReq,
+			"total_tokens":       totalTok,
+			"total_cost":         float64(totalCost) / float64(unit),
+			"daily_breakdown":    dailyBreakdown,
+			"model_breakdown":    modelBreakdown,
+			"hourly_breakdown":   hourlyBreakdown,
+			"avg_rpm":            round2(avgRPM),
+			"avg_tpm":            round2(avgTPM),
+			"unique_models":      len(byModel),
+			"lifetime": gin.H{
+				"total_requests": lifeTotalReq,
+				"total_tokens":   lifeTotalTok,
+				"total_cost":     float64(lifeTotalCost) / float64(unit),
+			},
 		})
 	}
 }

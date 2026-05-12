@@ -10,7 +10,7 @@ const { t } = useI18n()
 
 <template>
   <div class="th-page-shell th-page-shell--admin flex h-[100dvh] min-h-0 overflow-hidden text-slate-100">
-    <aside class="th-sidebar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
+    <aside class="th-sidebar thin-scrollbar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
       <RouterLink
         to="/"
         :title="t('layout.adminBackTitle')"
@@ -90,7 +90,7 @@ const { t } = useI18n()
           <UserAccountMenu accent="amber" />
         </div>
       </header>
-      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
+      <main class="thin-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <div class="th-main-inner">
           <RouterView v-slot="{ Component }">
             <Transition name="th-subpage" mode="out-in">

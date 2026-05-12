@@ -52,6 +52,15 @@
   --th-home-vignette-mid: rgba(3, 7, 18, 0.55);
   --th-home-vignette-edge: rgba(3, 7, 18, 0.92);
   --th-selection-fg: #f8fafc;
+  /* 概览 API 信息 / HTTP 提示（浅色主题在 themes-light.css 中覆写） */
+  --th-dash-api-bg: rgba(0, 0, 0, 0.22);
+  --th-dash-api-border: rgba(255, 255, 255, 0.07);
+  --th-dash-code-bg: rgba(0, 0, 0, 0.32);
+  --th-dash-code-border: rgba(255, 255, 255, 0.1);
+  --th-dash-code-fg: rgba(165, 243, 252, 0.92);
+  --th-dash-http-bg: rgba(2, 6, 23, 0.5);
+  --th-dash-http-border: rgba(255, 255, 255, 0.08);
+  --th-dash-http-fg: rgba(226, 232, 240, 0.92);
 }
 
 @layer base {
@@ -809,6 +818,33 @@
   z-index: 0;
   background: radial-gradient(ellipse 70% 45% at 50% 0%, var(--th-auth-grad-mid), transparent 65%);
   pointer-events: none;
+}
+
+/* 概览：API 基址卡片、行内 code、末段 HTTP 提示（衬底随 --th-dash-* 适配深浅色） */
+.th-dash-api-callout {
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-dash-api-border);
+  background: var(--th-dash-api-bg);
+}
+
+.th-dash-code-inline {
+  border-radius: 0.25rem;
+  border: 1px solid var(--th-dash-code-border);
+  background: var(--th-dash-code-bg);
+  font-family: var(--th-font-mono);
+  color: var(--th-dash-code-fg);
+}
+
+.th-dash-code-mono {
+  font-family: var(--th-font-mono);
+  color: var(--th-dash-code-fg);
+}
+
+.th-dash-http-hint {
+  border-radius: var(--th-radius-lg);
+  border: 1px solid var(--th-dash-http-border);
+  background: var(--th-dash-http-bg);
+  color: var(--th-dash-http-fg);
 }
 
 /* 玻璃卡片：边框略清晰、阴影更收敛 */

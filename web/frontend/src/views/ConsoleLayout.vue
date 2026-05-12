@@ -25,7 +25,7 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
 
 <template>
   <div class="th-page-shell flex h-[100dvh] min-h-0 overflow-hidden text-slate-100">
-    <aside class="th-sidebar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
+    <aside class="th-sidebar thin-scrollbar flex w-60 shrink-0 flex-col overflow-y-auto px-4 py-6">
       <RouterLink
         to="/"
         :title="t('layout.consoleBackTitle')"
@@ -93,7 +93,7 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
           <UserAccountMenu accent="cyan" />
         </div>
       </header>
-      <main class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
+      <main class="thin-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <Transition name="th-fade">
           <div
             v-if="showAdminDenied"

@@ -50,6 +50,15 @@ html[data-th-theme="paper"] {
   --color-fuchsia-400: oklch(48% 0.16 320);
   --color-rose-300: oklch(42% 0.12 15);
   --color-rose-400: oklch(48% 0.14 15);
+  /* 概览 API 卡片 / HTTP 提示：避免 bg-black / bg-slate-950 在浅色玻璃上发乌 */
+  --th-dash-api-bg: rgba(15, 23, 42, 0.04);
+  --th-dash-api-border: rgba(15, 23, 42, 0.1);
+  --th-dash-code-bg: rgba(14, 165, 233, 0.09);
+  --th-dash-code-border: rgba(14, 165, 233, 0.22);
+  --th-dash-code-fg: #0369a1;
+  --th-dash-http-bg: rgba(255, 255, 255, 0.78);
+  --th-dash-http-border: rgba(15, 23, 42, 0.11);
+  --th-dash-http-fg: #475569;
 }
 
 html[data-th-theme="dawn"] {
@@ -140,6 +149,10 @@ html[data-th-theme="paper"] {
   --th-mesh-stop-3: rgba(59, 130, 246, 0.08);
   --th-home-vignette-mid: rgba(236, 241, 248, 0.58);
   --th-home-vignette-edge: rgba(220, 230, 242, 0.94);
+  /* paper：行内 code 用主色蓝，与 dawn 的青区分 */
+  --th-dash-code-bg: rgba(37, 99, 235, 0.08);
+  --th-dash-code-border: rgba(37, 99, 235, 0.22);
+  --th-dash-code-fg: #1d4ed8;
 }
 
 html[data-th-theme="dawn"] .th-page-shell::before,
