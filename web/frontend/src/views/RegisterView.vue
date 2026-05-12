@@ -5,7 +5,7 @@ import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore, type RegisterEmailCodeMeta } from '../stores/auth'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const email = ref('')
 const password = ref('')
@@ -65,7 +65,7 @@ async function sendCode() {
   }
   sendLoading.value = true
   try {
-    const next = await auth.sendRegisterCode(em)
+    const next = await auth.sendRegisterCode(em, locale.value)
     startCooldown(typeof next === 'number' && next > 0 ? next : 60)
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : t('register.sendCodeFail')

@@ -19,6 +19,7 @@ site:
   default_new_user_balance: 100000
   cors_origins:
     - "*"
+  operator_display_name: "循迹未来"
 
 email:
   enabled: false
@@ -29,11 +30,12 @@ email:
   from: ""
   starttls: true
   insecure_skip_verify: false
-  login_code_subject: "TraceHub 登录验证码"
-  register_code_subject: "TraceHub 注册验证码"
+  login_code_subject: "循迹未来 · TraceHub 登录验证码"
+  register_code_subject: "循迹未来 · TraceHub 注册验证码"
   login_code_ttl_minutes: 10
   login_code_resend_seconds: 60
   login_code_max_per_hour: 8
+  code_email_trilingual: false
 
 bootstrap:
   admin_email: "admin@example.com"

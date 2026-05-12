@@ -12,6 +12,7 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/groupmodelrate"
@@ -23,6 +24,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/pkg/jwtx"
 
 	"github.com/gin-gonic/gin"
 	redis "github.com/redis/go-redis/v9"
@@ -96,6 +98,64 @@ func UnbanUser(client *ent.Client) gin.HandlerFunc {
 		}
 		auditLog(client, adm.ID, "user.unban", "user", strconv.Itoa(id), nil, c)
 		httpx.OKMsg(c, "已启用", nil)
+	}
+}
+
+func DeleteUser(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		cl := c.MustGet(middleware.CtxClaimsKey).(*jwtx.Claims)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		if id == adm.ID {
+			httpx.BadRequest(c, "不能删除当前登录账号")
+			return
+		}
+		ctx := c.Request.Context()
+		target, err := client.User.Get(ctx, id)
+		if err != nil {
+			httpx.BadRequest(c, "用户不存在")
+			return
+		}
+		if target.Role == "admin" || target.Role == "superadmin" {
+			if cl.Role != "superadmin" {
+				httpx.Forbidden(c, "仅超级管理员可删除管理员账号")
+				return
+			}
+		}
+		tx, err := client.Tx(ctx)
+		if err != nil {
+			httpx.ServerError(c, "操作失败")
+			return
+		}
+		rollback := true
+		defer func() {
+			if rollback {
+				_ = tx.Rollback()
+			}
+		}()
+		if _, err := tx.AdminAuditLog.Delete().Where(adminauditlog.AdminIDEQ(id)).Exec(ctx); err != nil {
+			httpx.ServerError(c, "删除失败")
+			return
+		}
+		if _, err := tx.APIKey.Delete().Where(apikey.UserIDEQ(id)).Exec(ctx); err != nil {
+			httpx.ServerError(c, "删除失败")
+			return
+		}
+		if err := tx.User.DeleteOneID(id).Exec(ctx); err != nil {
+			httpx.ServerError(c, "删除失败")
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			httpx.ServerError(c, "删除失败")
+			return
+		}
+		rollback = false
+		auditLog(client, adm.ID, "user.delete", "user", strconv.Itoa(id), map[string]any{"email": target.Email}, c)
+		httpx.OKMsg(c, "已删除", nil)
 	}
 }
 

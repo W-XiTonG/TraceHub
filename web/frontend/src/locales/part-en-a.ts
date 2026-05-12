@@ -34,6 +34,7 @@ export default {
     loggingIn: 'Signing in…',
     sending: 'Sending…',
     confirmDelete: 'Delete this item?',
+    documentTitle: 'TraceHub — AI API Gateway · 循迹未来 (Xunji Future)',
   },
   announcement: {
     aria: 'Announcements',
@@ -105,6 +106,7 @@ export default {
     i1d: 'Searchable logs; CSV / JSON export',
     i2t: 'Groups & policy',
     i2d: 'Rates, routing and account tools',
+    company: '循迹未来 · Xunji Future',
   },
   layout: {
     consoleTitle: 'Console',

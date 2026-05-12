@@ -35,22 +35,28 @@ site:
   #   allow_prefixes: [] # 必填白名单，如 ["experimental/foo"]；未命中则 404
   #   deny_prefixes: []
   #   patch_model_in_json: true
+  #
+  # 可选：非空时写入 /health、/ready JSON 的 operator 字段，便于监控或对外展示运营方
+  operator_display_name: "循迹未来"
 
-# 邮箱验证码登录（可选）：enabled 为 true 时需可连 Redis，并配置 SMTP；465 为 implicit TLS，587 常用 STARTTLS
 email:
   enabled: false
   smtp_host: ""
   smtp_port: 587
   smtp_user: ""
   smtp_password: ""
-  from: "" # 例: "TraceHub <noreply@example.com>"
+  from: "" # 例: "循迹未来 TraceHub <noreply@example.com>"
   starttls: true
   insecure_skip_verify: false
-  login_code_subject: "TraceHub 登录验证码"
-  register_code_subject: "TraceHub 注册验证码"
+  # 仅当「非三语邮件」且界面/请求为简中（zh-CN）时用作邮件主题；留空则用内置「{operator} · TraceHub 登录验证码」
+  login_code_subject: "循迹未来 · TraceHub 登录验证码"
+  # 同上，注册验证码；留空则用内置简中主题
+  register_code_subject: "循迹未来 · TraceHub 注册验证码"
   login_code_ttl_minutes: 10
   login_code_resend_seconds: 60
   login_code_max_per_hour: 8
+  # true：验证码邮件正文固定包含简中、繁中、English 三段（忽略请求的 locale）；false：按请求 locale（zh-CN/zh-TW/en）或 Accept-Language 发送单一语言
+  code_email_trilingual: false
 
 bootstrap:
   admin_email: "admin@example.com"

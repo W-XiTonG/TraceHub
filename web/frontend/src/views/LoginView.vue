@@ -5,7 +5,7 @@ import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 type LoginMode = 'password' | 'code'
 const mode = ref<LoginMode>('password')
@@ -61,7 +61,7 @@ async function sendCode() {
   }
   sendLoading.value = true
   try {
-    const next = await auth.sendLoginCode(em)
+    const next = await auth.sendLoginCode(em, locale.value)
     startCooldown(typeof next === 'number' && next > 0 ? next : 60)
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : t('login.sendCodeFail')

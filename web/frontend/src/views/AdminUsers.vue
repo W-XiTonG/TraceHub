@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n()
+const auth = useAuthStore()
 
 type Row = { id: number; email: string; balance: number; status: number; group_name?: string }
 
@@ -76,6 +78,18 @@ async function adjust(id: number) {
   try {
     await http.post(`/api/admin/users/${id}/balance`, { delta })
     deltaByUser.value[id] = ''
+    await load()
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('adminCommon.requestFail')
+  }
+}
+
+async function removeUser(u: Row) {
+  if (!confirm(t('adminUsers.confirmDelete', { email: u.email }))) return
+  err.value = ''
+  try {
+    const { data } = await http.delete<Envelope<unknown>>(`/api/admin/users/${u.id}`)
+    if (data.code !== 0) throw new Error(data.message || t('adminCommon.requestFail'))
     await load()
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : t('adminCommon.requestFail')
@@ -183,6 +197,7 @@ onMounted(() => {
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('adminUsers.thGroup') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('adminUsers.thBalance') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('adminUsers.thDelta') }}</th>
+            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('adminUsers.thActions') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800/90">
@@ -215,12 +230,22 @@ onMounted(() => {
                 <button type="button" class="text-[11px] text-cyan-400 hover:underline" @click="adjust(u.id)">{{ t('adminUsers.apply') }}</button>
               </div>
             </td>
+            <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
+              <button
+                type="button"
+                class="text-[11px] text-rose-300/90 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="auth.user?.id === u.id"
+                @click="removeUser(u)"
+              >
+                {{ t('adminCommon.delete') }}
+              </button>
+            </td>
           </tr>
           <tr v-if="items.length && !filteredItems.length">
-            <td colspan="7" class="px-3 py-8 text-center text-slate-500">{{ t('adminUsers.noMatch') }}</td>
+            <td colspan="8" class="px-3 py-8 text-center text-slate-500">{{ t('adminUsers.noMatch') }}</td>
           </tr>
           <tr v-if="!items.length">
-            <td colspan="7" class="px-3 py-8 text-center text-slate-500">{{ t('adminCommon.dash') }}</td>
+            <td colspan="8" class="px-3 py-8 text-center text-slate-500">{{ t('adminCommon.dash') }}</td>
           </tr>
         </tbody>
       </table>

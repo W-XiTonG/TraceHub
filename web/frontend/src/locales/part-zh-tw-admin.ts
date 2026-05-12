@@ -165,8 +165,10 @@ export default {
     thGroup: '分組',
     thBalance: '餘額',
     thDelta: '調整額度',
+    thActions: '操作',
     deltaPh: '±額度',
     apply: '套用',
+    confirmDelete: '確定永久刪除使用者「{email}」？將刪除其全部 API Key，且無法復原。',
   },
   adminChannels: {
     title: '渠道管理',

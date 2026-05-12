@@ -17,14 +17,18 @@ const Version = "1.0.0"
 
 var serverStarted = time.Now()
 
-func Liveness() gin.HandlerFunc {
+func Liveness(operator string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+		body := gin.H{
 			"status":     "ok",
 			"version":    Version,
 			"go_version": runtime.Version(),
 			"uptime":     UptimeSeconds(),
-		})
+		}
+		if operator != "" {
+			body["operator"] = operator
+		}
+		c.JSON(http.StatusOK, body)
 	}
 }
 
@@ -33,27 +37,38 @@ func UptimeSeconds() int64 {
 	return int64(time.Since(serverStarted).Seconds())
 }
 
-func Readiness(client *ent.Client, rdb *redis.Client) gin.HandlerFunc {
+func Readiness(client *ent.Client, rdb *redis.Client, operator string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 		defer cancel()
 		checks := gin.H{}
+		fail := func() {
+			body := gin.H{"status": "not_ready", "checks": checks}
+			if operator != "" {
+				body["operator"] = operator
+			}
+			c.JSON(http.StatusServiceUnavailable, body)
+		}
 		if _, err := client.User.Query().Limit(1).Count(ctx); err != nil {
 			checks["database"] = "error: " + err.Error()
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "checks": checks})
+			fail()
 			return
 		}
 		checks["database"] = "ok"
 		if rdb != nil {
 			if err := rdb.Ping(ctx).Err(); err != nil {
 				checks["redis"] = "error: " + err.Error()
-				c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "checks": checks})
+				fail()
 				return
 			}
 			checks["redis"] = "ok"
 		} else {
 			checks["redis"] = "skipped"
 		}
-		c.JSON(http.StatusOK, gin.H{"status": "ready", "checks": checks})
+		body := gin.H{"status": "ready", "checks": checks}
+		if operator != "" {
+			body["operator"] = operator
+		}
+		c.JSON(http.StatusOK, body)
 	}
 }

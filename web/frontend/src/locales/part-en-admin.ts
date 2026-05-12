@@ -166,8 +166,10 @@ export default {
     thGroup: 'Group',
     thBalance: 'Balance',
     thDelta: 'Adjust quota',
+    thActions: 'Actions',
     deltaPh: '±quota',
     apply: 'Apply',
+    confirmDelete: 'Permanently delete user "{email}"? All API keys will be removed. This cannot be undone.',
   },
   adminChannels: {
     title: 'Channels',

@@ -38,6 +38,7 @@ export default {
     loggingIn: '登入中…',
     sending: '發送中…',
     confirmDelete: '确定刪除？',
+    documentTitle: 'TraceHub — AI API 網關 · 循跡未來',
   },
   announcement: {
     aria: '站內公告',
@@ -109,6 +110,7 @@ export default {
     i1d: '日誌可查，CSV / JSON 匯出',
     i2t: '分組与策略',
     i2d: '倍率、路由与帳户能力可配置',
+    company: '由 循跡未來 呈現',
   },
   layout: {
     consoleTitle: '控制台',

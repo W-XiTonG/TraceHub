@@ -152,11 +152,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /** 发送登录邮箱验证码（需后端启用 email 且 Redis 可用） */
-  async function sendLoginCode(email: string): Promise<number | undefined> {
+  async function sendLoginCode(email: string, locale?: string): Promise<number | undefined> {
     try {
       const { data } = await http.post<Envelope<{ next_resend_sec?: number }>>(
         '/api/user/login-code/send',
-        { email: email.trim() },
+        { email: email.trim(), ...(locale ? { locale } : {}) },
       )
       if (data.code !== 0) throw new Error(data.message || '发送失败')
       return data.data?.next_resend_sec
@@ -189,11 +189,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function sendRegisterCode(email: string): Promise<number | undefined> {
+  async function sendRegisterCode(email: string, locale?: string): Promise<number | undefined> {
     try {
       const { data } = await http.post<Envelope<{ next_resend_sec?: number }>>(
         '/api/user/register/email-code/send',
-        { email: email.trim() },
+        { email: email.trim(), ...(locale ? { locale } : {}) },
       )
       if (data.code !== 0) throw new Error(data.message || '发送失败')
       return data.data?.next_resend_sec

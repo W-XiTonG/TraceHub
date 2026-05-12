@@ -52,8 +52,9 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	r.Use(middleware.ZapLogger(opt.Log))
 	r.Use(middleware.CORS(opt.Config.Site.CORSOrigins))
 
-	r.GET("/health", health.Liveness())
-	r.GET("/ready", health.Readiness(opt.Client, opt.Redis))
+	op := strings.TrimSpace(opt.Config.Site.OperatorDisplayName)
+	r.GET("/health", health.Liveness(op))
+	r.GET("/ready", health.Readiness(opt.Client, opt.Redis, op))
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	billingEngine := &billing.Engine{Client: opt.Client}
@@ -225,6 +226,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/users/:id/balance", adminhandler.AdjustBalance(opt.Client))
 	a.POST("/users/:id/ban", adminhandler.BanUser(opt.Client))
 	a.POST("/users/:id/unban", adminhandler.UnbanUser(opt.Client))
+	a.DELETE("/users/:id", adminhandler.DeleteUser(opt.Client))
 	a.GET("/channels", adminhandler.ListChannels(opt.Client))
 	a.POST("/channels", adminhandler.CreateChannel(chAdmin))
 	a.PUT("/channels/:id", adminhandler.UpdateChannel(chAdmin))

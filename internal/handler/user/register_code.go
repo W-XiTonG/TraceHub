@@ -62,7 +62,8 @@ func SendRegisterCode(client *ent.Client, cfg *config.Config, rdb *redis.Client)
 		}
 
 		var req struct {
-			Email string `json:"email"`
+			Email  string `json:"email"`
+			Locale string `json:"locale"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -137,11 +138,12 @@ func SendRegisterCode(client *ent.Client, cfg *config.Config, rdb *redis.Client)
 		_ = rdb.Set(ctx, cdKey, "1", time.Duration(resend)*time.Second).Err()
 		_ = rdb.Del(ctx, tryKey).Err()
 
-		subj := cfg.Email.RegisterCodeSubject
-		if subj == "" {
-			subj = "TraceHub 注册验证码"
+		localeRaw := strings.TrimSpace(req.Locale)
+		if localeRaw == "" {
+			localeRaw = mail.PickLocaleFromAcceptLanguage(c.GetHeader("Accept-Language"))
 		}
-		body := fmt.Sprintf("您的注册验证码为：%s\n\n%d 分钟内有效。如非本人操作请忽略本邮件。\n", code, ttlMin)
+		loc := mail.ParseCodeLocale(localeRaw, cfg.Email.CodeEmailTrilingual)
+		subj, body := mail.RegisterCodeEmail(loc, cfg.Site.OperatorDisplayName, code, ttlMin, cfg.Email.RegisterCodeSubject)
 		if err := mail.SendPlain(&cfg.Email, []string{email}, subj, body); err != nil {
 			_, _ = rdb.Del(ctx, codeKey, cdKey).Result()
 			_, _ = rdb.Decr(ctx, hourKey).Result()

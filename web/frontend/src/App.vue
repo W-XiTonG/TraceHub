@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import ThemePicker from './components/ThemePicker.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
 
 const route = useRoute()
+const { t, locale } = useI18n()
+
+watch(
+  [locale, () => t('common.documentTitle')],
+  () => {
+    document.title = t('common.documentTitle')
+  },
+  { immediate: true },
+)
 
 /** 与「壳」 layout 绑定，避免 /console/*、/admin/* 子路由切换时整页 remount（只应由内层 RouterView 换右侧内容） */
 const shellKey = computed(() => {

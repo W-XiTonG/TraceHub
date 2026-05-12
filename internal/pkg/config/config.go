@@ -31,6 +31,8 @@ type EmailConfig struct {
 	LoginCodeTTLMin     int    `mapstructure:"login_code_ttl_minutes"`
 	LoginCodeResendSec  int    `mapstructure:"login_code_resend_seconds"`
 	LoginCodeMaxHour    int    `mapstructure:"login_code_max_per_hour"`
+	// CodeEmailTrilingual 为 true 时，验证码邮件正文固定包含简中、繁中、英文三段（忽略请求 locale）。
+	CodeEmailTrilingual bool `mapstructure:"code_email_trilingual"`
 }
 
 type ServerConfig struct {
@@ -58,6 +60,8 @@ type SiteConfig struct {
 	CurrencyQuotaPerYuan  int64    `mapstructure:"currency_quota_per_yuan"`
 	DefaultNewUserBalance int64    `mapstructure:"default_new_user_balance"`
 	CORSOrigins           []string `mapstructure:"cors_origins"`
+	// OperatorDisplayName 非空时写入 /health、/ready 的 JSON 字段 operator，便于运维与对外展示运营方。
+	OperatorDisplayName string `mapstructure:"operator_display_name"`
 	// Realtime 通话子资源：call_id → 渠道映射（需 Redis）；未命中时要求 Query / X-TraceHub-Model / JSON model。
 	RealtimeCallMappingEnabled bool `mapstructure:"realtime_call_mapping_enabled"`
 	RealtimeCallMappingTTLSec  int  `mapstructure:"realtime_call_mapping_ttl_sec"`
@@ -117,6 +121,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("email.login_code_ttl_minutes", 10)
 	v.SetDefault("email.login_code_resend_seconds", 60)
 	v.SetDefault("email.login_code_max_per_hour", 8)
+	v.SetDefault("email.code_email_trilingual", false)
 	v.SetDefault("email.login_code_subject", "TraceHub 登录验证码")
 	v.SetDefault("email.register_code_subject", "TraceHub 注册验证码")
 
