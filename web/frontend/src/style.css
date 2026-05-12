@@ -1884,6 +1884,15 @@
     0 24px 48px -36px rgba(0, 0, 0, 0.55);
 }
 
+/* 长表：在控制台 flex 主区内纵向滚动（覆盖默认 overflow:hidden，避免只显示首屏几行） */
+.th-table-wrap.th-table-wrap--scrollable {
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
 /* 分段切换 */
 .th-pill {
   cursor: pointer;
