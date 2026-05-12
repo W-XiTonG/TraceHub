@@ -11,6 +11,7 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
@@ -18,8 +19,10 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/pkg/jwtx"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func auditLog(client *ent.Client, adminID int, action, resource, rid string, detail map[string]any, c *gin.Context) {
@@ -98,6 +101,7 @@ func ListUsers(client *ent.Client) gin.HandlerFunc {
 				"id":              u.ID,
 				"email":           u.Email,
 				"username":        u.Username,
+				"role":            u.Role,
 				"group_name":      gn,
 				"balance":         u.Balance,
 				"status":          u.Status,
@@ -110,20 +114,35 @@ func ListUsers(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
+func adminElevatedRole(r string) bool {
+	return r == "admin" || r == "superadmin"
+}
+
 func UpdateUser(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		cl := c.MustGet(middleware.CtxClaimsKey).(*jwtx.Claims)
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			httpx.BadRequest(c, "无效 id")
 			return
 		}
 		var req struct {
-			Status          *int     `json:"status"`
-			GroupID         *int     `json:"group_id"`
-			RateMultiplier  *float64 `json:"rate_multiplier"`
-			BalanceAlert    *int64   `json:"balance_alert_threshold"`
-			IPWhitelist     []string `json:"ip_whitelist"`
+			Status          *int       `json:"status"`
+			GroupID         *int       `json:"group_id"`
+			NoGroup         *bool      `json:"no_group"`
+			RateMultiplier  *float64   `json:"rate_multiplier"`
+			BalanceAlert    *int64     `json:"balance_alert_threshold"`
+			IPWhitelist     *[]string  `json:"ip_whitelist"`
+			IPBlacklist     *[]string  `json:"ip_blacklist"`
+			Email           *string    `json:"email"`
+			Username        *string    `json:"username"`
+			NewPassword     *string    `json:"new_password"`
+			ClearTotp       *bool      `json:"clear_totp"`
+			Balance         *int64     `json:"balance"`
+			Role            *string    `json:"role"`
+			Concurrency     *int       `json:"concurrency"`
+			WebhookURL      *string    `json:"webhook_url"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -135,27 +154,167 @@ func UpdateUser(client *ent.Client) gin.HandlerFunc {
 			httpx.BadRequest(c, "用户不存在")
 			return
 		}
-		up := client.User.UpdateOne(u)
-		if req.Status != nil {
-			up.SetStatus(*req.Status)
+		if adminElevatedRole(u.Role) && cl.Role != "superadmin" {
+			httpx.Forbidden(c, "仅超级管理员可修改管理员账号")
+			return
 		}
-		if req.GroupID != nil {
+		up := client.User.UpdateOne(u)
+		changed := false
+
+		if req.Email != nil {
+			em := strings.TrimSpace(*req.Email)
+			if em == "" || !strings.Contains(em, "@") {
+				httpx.BadRequest(c, "邮箱无效")
+				return
+			}
+			if em != u.Email {
+				taken, err := client.User.Query().Where(user.EmailEQ(em), user.IDNEQ(id)).Exist(ctx)
+				if err != nil {
+					httpx.ServerError(c, "查询失败")
+					return
+				}
+				if taken {
+					httpx.BadRequest(c, "邮箱已被占用")
+					return
+				}
+			}
+			up.SetEmail(em)
+			changed = true
+		}
+		if req.Username != nil {
+			un := strings.TrimSpace(*req.Username)
+			if un == "" {
+				up.ClearUsername()
+			} else {
+				up.SetUsername(un)
+			}
+			changed = true
+		}
+		if req.NewPassword != nil {
+			pw := strings.TrimSpace(*req.NewPassword)
+			if pw != "" {
+				if len(pw) < 6 {
+					httpx.BadRequest(c, "新密码至少 6 位")
+					return
+				}
+				hash, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+				if err != nil {
+					httpx.ServerError(c, "密码处理失败")
+					return
+				}
+				up.SetPasswordHash(string(hash))
+				changed = true
+			}
+		}
+		if req.ClearTotp != nil && *req.ClearTotp {
+			up.ClearTotpSecret()
+			changed = true
+		}
+		if req.Balance != nil {
+			up.SetBalance(*req.Balance)
+			changed = true
+		}
+		if req.Status != nil {
+			if *req.Status != 1 && *req.Status != 2 {
+				httpx.BadRequest(c, "状态无效")
+				return
+			}
+			up.SetStatus(*req.Status)
+			changed = true
+		}
+		if req.Role != nil {
+			r := strings.TrimSpace(*req.Role)
+			if r != "user" && r != "admin" && r != "superadmin" {
+				httpx.BadRequest(c, "角色无效")
+				return
+			}
+			if adminElevatedRole(r) || adminElevatedRole(u.Role) {
+				if cl.Role != "superadmin" {
+					httpx.Forbidden(c, "仅超级管理员可调整管理员角色")
+					return
+				}
+			}
+			if id == adm.ID && adminElevatedRole(u.Role) && !adminElevatedRole(r) {
+				httpx.BadRequest(c, "不可将当前登录账号降级为普通用户")
+				return
+			}
+			up.SetRole(r)
+			changed = true
+		}
+		if req.NoGroup != nil && *req.NoGroup {
+			up.ClearGroupID()
+			changed = true
+		} else if req.GroupID != nil {
+			if *req.GroupID <= 0 {
+				httpx.BadRequest(c, "分组 id 无效")
+				return
+			}
+			_, err := client.Group.Query().Where(group.IDEQ(*req.GroupID)).Only(ctx)
+			if err != nil {
+				if ent.IsNotFound(err) {
+					httpx.BadRequest(c, "分组不存在")
+					return
+				}
+				httpx.ServerError(c, "查询失败")
+				return
+			}
 			up.SetGroupID(*req.GroupID)
+			changed = true
 		}
 		if req.RateMultiplier != nil {
+			if *req.RateMultiplier <= 0 {
+				httpx.BadRequest(c, "倍率须大于 0")
+				return
+			}
 			up.SetRateMultiplier(*req.RateMultiplier)
+			changed = true
 		}
 		if req.BalanceAlert != nil {
 			up.SetBalanceAlertThreshold(*req.BalanceAlert)
+			changed = true
+		}
+		if req.Concurrency != nil {
+			if *req.Concurrency < 0 {
+				httpx.BadRequest(c, "并发不能为负")
+				return
+			}
+			up.SetConcurrency(*req.Concurrency)
+			changed = true
+		}
+		if req.WebhookURL != nil {
+			w := strings.TrimSpace(*req.WebhookURL)
+			if w == "" {
+				up.ClearWebhookURL()
+			} else {
+				up.SetWebhookURL(w)
+			}
+			changed = true
 		}
 		if req.IPWhitelist != nil {
-			up.SetIPWhitelist(req.IPWhitelist)
+			up.SetIPWhitelist(*req.IPWhitelist)
+			changed = true
+		}
+		if req.IPBlacklist != nil {
+			up.SetIPBlacklist(*req.IPBlacklist)
+			changed = true
+		}
+		if !changed {
+			httpx.BadRequest(c, "无更新字段")
+			return
 		}
 		if err := up.Exec(ctx); err != nil {
 			httpx.ServerError(c, "更新失败")
 			return
 		}
-		auditLog(client, adm.ID, "user.update", "user", strconv.Itoa(id), map[string]any{"body": req}, c)
+		pwSet := req.NewPassword != nil && strings.TrimSpace(*req.NewPassword) != ""
+		auditDetail := map[string]any{
+			"status": req.Status, "group_id": req.GroupID, "no_group": req.NoGroup,
+			"rate_multiplier": req.RateMultiplier, "balance_alert_threshold": req.BalanceAlert,
+			"ip_whitelist": req.IPWhitelist != nil, "ip_blacklist": req.IPBlacklist != nil,
+			"email": req.Email, "username": req.Username, "password_reset": pwSet,
+			"clear_totp": req.ClearTotp, "balance": req.Balance, "role": req.Role, "concurrency": req.Concurrency, "webhook_touched": req.WebhookURL != nil,
+		}
+		auditLog(client, adm.ID, "user.update", "user", strconv.Itoa(id), auditDetail, c)
 		httpx.OKMsg(c, "已更新", nil)
 	}
 }

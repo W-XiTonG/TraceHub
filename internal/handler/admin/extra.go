@@ -43,24 +43,35 @@ func GetUser(client *ent.Client) gin.HandlerFunc {
 			httpx.BadRequest(c, "用户不存在")
 			return
 		}
+		cl := c.MustGet(middleware.CtxClaimsKey).(*jwtx.Claims)
+		if adminElevatedRole(u.Role) && cl.Role != "superadmin" {
+			httpx.Forbidden(c, "仅超级管理员可查看管理员详情")
+			return
+		}
 		totalReq, _ := client.UsageLog.Query().Where(usagelog.UserIDEQ(id)).Count(ctx)
 		gn := ""
 		if u.Edges.Group != nil {
 			gn = u.Edges.Group.Name
 		}
 		httpx.OK(c, gin.H{
-			"id":               u.ID,
-			"email":            u.Email,
-			"username":         u.Username,
-			"group_name":       gn,
-			"balance":          u.Balance,
-			"status":           u.Status,
-			"total_requests":   totalReq,
-			"created_at":       u.CreatedAt,
-			"last_login_at":    u.LastLoginAt,
-			"ip_whitelist":     u.IPWhitelist,
-			"rate_multiplier":  u.RateMultiplier,
-			"webhook_url":      u.WebhookURL,
+			"id":                      u.ID,
+			"email":                   u.Email,
+			"username":                u.Username,
+			"group_id":                u.GroupID,
+			"group_name":              gn,
+			"balance":                 u.Balance,
+			"status":                  u.Status,
+			"role":                    u.Role,
+			"concurrency":             u.Concurrency,
+			"rate_multiplier":         u.RateMultiplier,
+			"balance_alert_threshold": u.BalanceAlertThreshold,
+			"webhook_url":             u.WebhookURL,
+			"ip_whitelist":            u.IPWhitelist,
+			"ip_blacklist":            u.IPBlacklist,
+			"totp_enabled":            u.TotpSecret != "",
+			"total_requests":          totalReq,
+			"created_at":              u.CreatedAt,
+			"last_login_at":           u.LastLoginAt,
 		})
 	}
 }

@@ -1,13 +1,42 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia'
 import { http, type Envelope } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n()
 const auth = useAuthStore()
+const { role: authRole } = storeToRefs(auth)
 
-type Row = { id: number; email: string; balance: number; status: number; group_name?: string }
+type Row = {
+  id: number
+  email: string
+  balance: number
+  status: number
+  group_name?: string
+  role?: string
+}
+
+type GroupOpt = { id: number; name: string }
+
+type UserDetail = {
+  id: number
+  email: string
+  username?: string
+  group_id: number
+  group_name?: string
+  balance: number
+  status: number
+  role: string
+  concurrency: number
+  rate_multiplier: number
+  balance_alert_threshold: number
+  webhook_url?: string
+  ip_whitelist?: string[]
+  ip_blacklist?: string[]
+  totp_enabled: boolean
+}
 
 const items = ref<Row[]>([])
 const deltaByUser = ref<Record<number, string>>({})
@@ -16,6 +45,35 @@ const compact = ref(false)
 const selectedIds = ref<number[]>([])
 const flash = ref('')
 const err = ref('')
+
+const groups = ref<GroupOpt[]>([])
+const editOpen = ref(false)
+const editLoading = ref(false)
+const editSaving = ref(false)
+const editForm = reactive({
+  id: 0,
+  email: '',
+  username: '',
+  groupIdStr: '' as string,
+  balance: 0,
+  status: 1,
+  role: 'user',
+  concurrency: 0,
+  rateMultiplier: 1,
+  balanceAlert: 0,
+  webhookUrl: '',
+  ipWhitelistText: '',
+  ipBlacklistText: '',
+  newPassword: '',
+  clearTotp: false,
+  totpEnabled: false,
+})
+
+const canManageAdmins = computed(() => authRole.value === 'superadmin')
+
+function rowIsElevated(u: Row) {
+  return u.role === 'admin' || u.role === 'superadmin'
+}
 
 const filteredItems = computed(() => {
   const q = filterText.value.trim().toLowerCase()
@@ -93,6 +151,106 @@ async function removeUser(u: Row) {
     await load()
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : t('adminCommon.requestFail')
+  }
+}
+
+function joinLines(arr: string[] | undefined | null) {
+  return (arr || []).join('\n')
+}
+
+function parseIpLines(s: string): string[] {
+  return s
+    .split(/[\n,]+/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+}
+
+async function openEdit(u: Row) {
+  err.value = ''
+  editOpen.value = true
+  editLoading.value = true
+  editForm.newPassword = ''
+  editForm.clearTotp = false
+  try {
+    if (!groups.value.length) {
+      const { data: gd } = await http.get<Envelope<{ items: GroupOpt[] }>>('/api/admin/groups')
+      if (gd.code !== 0) throw new Error(gd.message || t('adminCommon.loadFail'))
+      groups.value = gd.data?.items || []
+    }
+    const { data } = await http.get<Envelope<UserDetail>>(`/api/admin/users/${u.id}`)
+    if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
+    const d = data.data
+    editForm.id = d.id
+    editForm.email = d.email || ''
+    editForm.username = d.username || ''
+    editForm.groupIdStr = d.group_id ? String(d.group_id) : ''
+    editForm.balance = Number(d.balance)
+    editForm.status = d.status
+    editForm.role = d.role || 'user'
+    editForm.concurrency = d.concurrency ?? 0
+    editForm.rateMultiplier = d.rate_multiplier ?? 1
+    editForm.balanceAlert = Number(d.balance_alert_threshold ?? 0)
+    editForm.webhookUrl = d.webhook_url || ''
+    editForm.ipWhitelistText = joinLines(d.ip_whitelist)
+    editForm.ipBlacklistText = joinLines(d.ip_blacklist)
+    editForm.totpEnabled = !!d.totp_enabled
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('adminCommon.loadFail')
+    editOpen.value = false
+  } finally {
+    editLoading.value = false
+  }
+}
+
+function closeEdit() {
+  editOpen.value = false
+}
+
+async function saveEdit() {
+  err.value = ''
+  editSaving.value = true
+  try {
+    const body: Record<string, unknown> = {
+      email: editForm.email.trim(),
+      username: editForm.username.trim(),
+      balance: Math.trunc(editForm.balance),
+      status: editForm.status,
+      role: editForm.role,
+      concurrency: Math.trunc(editForm.concurrency),
+      rate_multiplier: editForm.rateMultiplier,
+      balance_alert_threshold: Math.trunc(editForm.balanceAlert),
+      webhook_url: editForm.webhookUrl.trim(),
+      ip_whitelist: parseIpLines(editForm.ipWhitelistText),
+      ip_blacklist: parseIpLines(editForm.ipBlacklistText),
+    }
+    if (editForm.groupIdStr === '') {
+      body.no_group = true
+    } else {
+      const gid = parseInt(editForm.groupIdStr, 10)
+      if (Number.isNaN(gid) || gid <= 0) {
+        err.value = t('adminUsers.invalidGroup')
+        return
+      }
+      body.group_id = gid
+    }
+    if (editForm.newPassword.trim()) {
+      body.new_password = editForm.newPassword.trim()
+    }
+    if (editForm.clearTotp) {
+      body.clear_totp = true
+    }
+    const { data } = await http.put<Envelope<unknown>>(`/api/admin/users/${editForm.id}`, body)
+    if (data.code !== 0) throw new Error(data.message || t('adminCommon.requestFail'))
+    flash.value = t('adminUsers.editSaved')
+    window.setTimeout(() => {
+      if (flash.value === t('adminUsers.editSaved')) flash.value = ''
+    }, 2200)
+    closeEdit()
+    await load()
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('adminCommon.requestFail')
+  } finally {
+    editSaving.value = false
   }
 }
 
@@ -231,14 +389,24 @@ onMounted(() => {
               </div>
             </td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
-              <button
-                type="button"
-                class="text-[11px] text-rose-300/90 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="auth.user?.id === u.id"
-                @click="removeUser(u)"
-              >
-                {{ t('adminCommon.delete') }}
-              </button>
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <button
+                  type="button"
+                  class="text-[11px] text-cyan-400 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="rowIsElevated(u) && !canManageAdmins"
+                  @click="openEdit(u)"
+                >
+                  {{ t('adminUsers.edit') }}
+                </button>
+                <button
+                  type="button"
+                  class="text-[11px] text-rose-300/90 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="auth.user?.id === u.id"
+                  @click="removeUser(u)"
+                >
+                  {{ t('adminCommon.delete') }}
+                </button>
+              </div>
             </td>
           </tr>
           <tr v-if="items.length && !filteredItems.length">
@@ -250,5 +418,122 @@ onMounted(() => {
         </tbody>
       </table>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="editOpen"
+        class="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        @click.self="closeEdit"
+      >
+        <div
+          class="max-h-[90vh] w-full max-w-2xl cursor-default overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+        >
+          <h3 class="mb-1 text-lg font-semibold text-white">{{ t('adminUsers.editModalTitle') }}</h3>
+          <p class="mb-4 text-xs text-slate-500">{{ t('adminUsers.editModalHint') }}</p>
+          <p v-if="editLoading" class="py-8 text-center text-sm text-slate-400">{{ t('adminUsers.editLoading') }}</p>
+          <template v-else>
+            <div class="grid gap-4 text-sm sm:grid-cols-2">
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblEmail') }}</span>
+                <input v-model="editForm.email" type="email" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+              </label>
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblUsername') }}</span>
+                <input v-model="editForm.username" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblGroup') }}</span>
+                <select v-model="editForm.groupIdStr" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+                  <option value="">{{ t('adminUsers.noGroup') }}</option>
+                  <option v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }}</option>
+                </select>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblStatus') }}</span>
+                <select v-model.number="editForm.status" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+                  <option :value="1">{{ t('adminUsers.statusActive') }}</option>
+                  <option :value="2">{{ t('adminUsers.statusInactive') }}</option>
+                </select>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblRole') }}</span>
+                <select v-model="editForm.role" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+                  <option value="user">{{ t('adminUsers.roleUser') }}</option>
+                  <option value="admin">{{ t('adminUsers.roleAdmin') }}</option>
+                  <option v-if="canManageAdmins" value="superadmin">{{ t('adminUsers.roleSuper') }}</option>
+                </select>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblBalance') }}</span>
+                <input v-model.number="editForm.balance" type="number" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblConcurrency') }}</span>
+                <input v-model.number="editForm.concurrency" type="number" min="0" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblRateMul') }}</span>
+                <input v-model.number="editForm.rateMultiplier" type="number" step="0.01" min="0.01" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblBalAlert') }}</span>
+                <input v-model.number="editForm.balanceAlert" type="number" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
+              </label>
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblWebhook') }}</span>
+                <input v-model="editForm.webhookUrl" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" />
+              </label>
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblIpWhite') }}</span>
+                <textarea
+                  v-model="editForm.ipWhitelistText"
+                  rows="3"
+                  class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  :placeholder="t('adminUsers.ipListPh')"
+                />
+              </label>
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblIpBlack') }}</span>
+                <textarea
+                  v-model="editForm.ipBlacklistText"
+                  rows="3"
+                  class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  :placeholder="t('adminUsers.ipListPh')"
+                />
+              </label>
+              <label class="flex flex-col gap-1 sm:col-span-2">
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblNewPwd') }}</span>
+                <input
+                  v-model="editForm.newPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  :placeholder="t('adminUsers.newPwdPh')"
+                />
+              </label>
+              <label v-if="editForm.totpEnabled" class="flex items-center gap-2 sm:col-span-2">
+                <input v-model="editForm.clearTotp" type="checkbox" class="rounded border-slate-600" />
+                <span class="text-xs text-slate-400">{{ t('adminUsers.lblClearTotp') }}</span>
+              </label>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+              <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400 hover:bg-slate-800" :disabled="editSaving" @click="closeEdit">
+                {{ t('adminCommon.cancel') }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+                :disabled="editSaving"
+                @click="saveEdit"
+              >
+                {{ t('adminCommon.save') }}
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
