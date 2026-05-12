@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
+import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t } = useI18n()
 </script>
@@ -29,6 +30,9 @@ const { t } = useI18n()
         <span class="mt-0.5 text-amber-500">!</span>
         <p class="text-sm text-slate-500">{{ t('billingPage.note') }}</p>
       </div>
+    </div>
+    <div class="mt-8 border-t border-white/[0.06] pt-6">
+      <ContactCardDisclosure align="start" summary-key="home.contactHintBilling" />
     </div>
   </div>
 </template>

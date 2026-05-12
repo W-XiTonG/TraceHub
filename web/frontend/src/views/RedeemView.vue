@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t } = useI18n()
 
@@ -30,5 +31,8 @@ async function redeem() {
     <button type="button" class="th-btn-primary-flat w-full py-2.5 text-sm" @click="redeem">{{ t('redeemPage.submit') }}</button>
     <p class="mt-4 text-sm text-slate-400">{{ msg }}</p>
     <pre v-if="result" class="mt-4 overflow-auto rounded-lg bg-slate-900 p-4 text-xs">{{ JSON.stringify(result, null, 2) }}</pre>
+    <div class="mt-8 border-t border-white/[0.06] pt-6">
+      <ContactCardDisclosure align="start" compact summary-key="home.contactHintRedeem" />
+    </div>
   </div>
 </template>

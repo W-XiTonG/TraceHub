@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
+import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -385,6 +386,9 @@ onUnmounted(() => {
               <dt>{{ t('docs.fq4q') }}</dt>
               <dd>{{ t('docs.fq4a') }}</dd>
             </dl>
+            <div class="mt-6 border-t border-white/[0.06] pt-6">
+              <ContactCardDisclosure align="start" summary-key="home.contactHintDocsFaq" />
+            </div>
           </section>
 
           <section class="th-glass--subtle rounded-[var(--th-radius-lg)] p-5 text-xs leading-relaxed text-slate-500">

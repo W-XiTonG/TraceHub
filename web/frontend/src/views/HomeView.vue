@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 import { homeModelVendors } from '../data/homeModelVendors'
 import { useAuthStore } from '../stores/auth'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
+import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -648,6 +649,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
               <p class="mt-3 text-sm leading-relaxed text-slate-500">{{ f.a }}</p>
             </div>
           </div>
+          <ContactCardDisclosure class="mt-10" summary-key="home.contactHintHomeFaq" />
         </div>
       </section>
     </main>

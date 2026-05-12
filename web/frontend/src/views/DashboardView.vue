@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { http, type Envelope } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t, tm } = useI18n()
 
@@ -779,6 +780,7 @@ onMounted(loadAll)
             <p v-show="openFaq === idx" class="border-t border-white/[0.05] px-3 pb-3 pt-2 text-xs leading-relaxed text-slate-500">{{ item.a }}</p>
           </div>
         </div>
+        <ContactCardDisclosure align="start" compact class="mt-5 border-t border-white/[0.06] pt-4" summary-key="home.contactHintDashboardFaq" />
       </div>
 
       <section class="th-glass shrink-0 p-5 md:p-6 lg:col-span-2">
