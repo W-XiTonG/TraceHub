@@ -16,6 +16,8 @@ type Tx struct {
 	APIKey *APIKeyClient
 	// AdminAuditLog is the client for interacting with the AdminAuditLog builders.
 	AdminAuditLog *AdminAuditLogClient
+	// Announcement is the client for interacting with the Announcement builders.
+	Announcement *AnnouncementClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
 	// DashboardAggregation is the client for interacting with the DashboardAggregation builders.
@@ -169,6 +171,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.APIKey = NewAPIKeyClient(tx.config)
 	tx.AdminAuditLog = NewAdminAuditLogClient(tx.config)
+	tx.Announcement = NewAnnouncementClient(tx.config)
 	tx.Channel = NewChannelClient(tx.config)
 	tx.DashboardAggregation = NewDashboardAggregationClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)

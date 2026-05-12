@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/redeemcode"
@@ -319,6 +320,21 @@ func (_c *UserCreate) AddAdminAuditLogs(v ...*AdminAuditLog) *UserCreate {
 	return _c.AddAdminAuditLogIDs(ids...)
 }
 
+// AddCreatedAnnouncementIDs adds the "created_announcements" edge to the Announcement entity by IDs.
+func (_c *UserCreate) AddCreatedAnnouncementIDs(ids ...int) *UserCreate {
+	_c.mutation.AddCreatedAnnouncementIDs(ids...)
+	return _c
+}
+
+// AddCreatedAnnouncements adds the "created_announcements" edges to the Announcement entity.
+func (_c *UserCreate) AddCreatedAnnouncements(v ...*Announcement) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCreatedAnnouncementIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -627,6 +643,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(adminauditlog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CreatedAnnouncementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
+import AnnouncementBell from '../components/AnnouncementBell.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -28,6 +29,7 @@ const { t } = useI18n()
         <RouterLink :to="{ name: 'admin-groups' }" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavGroups') }}</RouterLink>
         <RouterLink to="/admin/logs" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavLogs') }}</RouterLink>
         <RouterLink to="/admin/model-market" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavMarket') }}</RouterLink>
+        <RouterLink to="/admin/announcements" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavAnnouncements') }}</RouterLink>
         <RouterLink to="/docs" class="th-nav-link th-nav-link--amber border-t border-white/[0.06] pt-3 mt-2">{{ t('layout.navDocs') }}</RouterLink>
       </nav>
       <div class="mt-4 flex flex-col gap-2 border-t border-white/[0.06] pt-4">
@@ -83,7 +85,10 @@ const { t } = useI18n()
             </RouterLink>
           </div>
         </div>
-        <UserAccountMenu accent="amber" />
+        <div class="flex shrink-0 items-center gap-2">
+          <AnnouncementBell accent="amber" />
+          <UserAccountMenu accent="amber" />
+        </div>
       </header>
       <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <div class="th-main-inner">

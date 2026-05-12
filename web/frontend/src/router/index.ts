@@ -35,6 +35,7 @@ const router = createRouter({
         { path: 'groups', name: 'admin-groups', component: () => import('../views/AdminGroups.vue') },
         { path: 'logs', name: 'admin-logs', component: () => import('../views/AdminLogs.vue') },
         { path: 'model-market', name: 'admin-model-market', component: () => import('../views/AdminModelMarket.vue') },
+        { path: 'announcements', name: 'admin-announcements', component: () => import('../views/AdminAnnouncements.vue') },
       ],
     },
   ],

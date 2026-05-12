@@ -39,6 +39,13 @@ export default {
     sending: '發送中…',
     confirmDelete: '确定刪除？',
   },
+  announcement: {
+    aria: '站內公告',
+    panelTitle: '公告',
+    empty: '暫無公告',
+    recent: '更多公告',
+    loadFail: '載入公告失敗',
+  },
   login: {
     title: '欢迎回来',
     subtitle: '登入 TraceHub 控制台',
@@ -130,6 +137,7 @@ export default {
     adminNavGroups: '分組',
     adminNavLogs: '呼叫日誌',
     adminNavMarket: '模型市场',
+    adminNavAnnouncements: '公告',
     adminConsoleTitle: '切换到用戶控制台（用量、API Key、充值等）',
     adminTopSubtitle: '管理端',
     adminTopHint: '渠道、用戶与模型目錄',

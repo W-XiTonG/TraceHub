@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/predicate"
@@ -24,16 +25,17 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx                    *QueryContext
-	order                  []user.OrderOption
-	inters                 []Interceptor
-	predicates             []predicate.User
-	withGroup              *GroupQuery
-	withAPIKeys            *APIKeyQuery
-	withUsageLogs          *UsageLogQuery
-	withRedeemedCodes      *RedeemCodeQuery
-	withCreatedRedeemCodes *RedeemCodeQuery
-	withAdminAuditLogs     *AdminAuditLogQuery
+	ctx                      *QueryContext
+	order                    []user.OrderOption
+	inters                   []Interceptor
+	predicates               []predicate.User
+	withGroup                *GroupQuery
+	withAPIKeys              *APIKeyQuery
+	withUsageLogs            *UsageLogQuery
+	withRedeemedCodes        *RedeemCodeQuery
+	withCreatedRedeemCodes   *RedeemCodeQuery
+	withAdminAuditLogs       *AdminAuditLogQuery
+	withCreatedAnnouncements *AnnouncementQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -195,6 +197,28 @@ func (_q *UserQuery) QueryAdminAuditLogs() *AdminAuditLogQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(adminauditlog.Table, adminauditlog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.AdminAuditLogsTable, user.AdminAuditLogsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryCreatedAnnouncements chains the current query on the "created_announcements" edge.
+func (_q *UserQuery) QueryCreatedAnnouncements() *AnnouncementQuery {
+	query := (&AnnouncementClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(announcement.Table, announcement.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.CreatedAnnouncementsTable, user.CreatedAnnouncementsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -389,17 +413,18 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:                 _q.config,
-		ctx:                    _q.ctx.Clone(),
-		order:                  append([]user.OrderOption{}, _q.order...),
-		inters:                 append([]Interceptor{}, _q.inters...),
-		predicates:             append([]predicate.User{}, _q.predicates...),
-		withGroup:              _q.withGroup.Clone(),
-		withAPIKeys:            _q.withAPIKeys.Clone(),
-		withUsageLogs:          _q.withUsageLogs.Clone(),
-		withRedeemedCodes:      _q.withRedeemedCodes.Clone(),
-		withCreatedRedeemCodes: _q.withCreatedRedeemCodes.Clone(),
-		withAdminAuditLogs:     _q.withAdminAuditLogs.Clone(),
+		config:                   _q.config,
+		ctx:                      _q.ctx.Clone(),
+		order:                    append([]user.OrderOption{}, _q.order...),
+		inters:                   append([]Interceptor{}, _q.inters...),
+		predicates:               append([]predicate.User{}, _q.predicates...),
+		withGroup:                _q.withGroup.Clone(),
+		withAPIKeys:              _q.withAPIKeys.Clone(),
+		withUsageLogs:            _q.withUsageLogs.Clone(),
+		withRedeemedCodes:        _q.withRedeemedCodes.Clone(),
+		withCreatedRedeemCodes:   _q.withCreatedRedeemCodes.Clone(),
+		withAdminAuditLogs:       _q.withAdminAuditLogs.Clone(),
+		withCreatedAnnouncements: _q.withCreatedAnnouncements.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -469,6 +494,17 @@ func (_q *UserQuery) WithAdminAuditLogs(opts ...func(*AdminAuditLogQuery)) *User
 		opt(query)
 	}
 	_q.withAdminAuditLogs = query
+	return _q
+}
+
+// WithCreatedAnnouncements tells the query-builder to eager-load the nodes that are connected to
+// the "created_announcements" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithCreatedAnnouncements(opts ...func(*AnnouncementQuery)) *UserQuery {
+	query := (&AnnouncementClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withCreatedAnnouncements = query
 	return _q
 }
 
@@ -550,13 +586,14 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [7]bool{
 			_q.withGroup != nil,
 			_q.withAPIKeys != nil,
 			_q.withUsageLogs != nil,
 			_q.withRedeemedCodes != nil,
 			_q.withCreatedRedeemCodes != nil,
 			_q.withAdminAuditLogs != nil,
+			_q.withCreatedAnnouncements != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -615,6 +652,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadAdminAuditLogs(ctx, query, nodes,
 			func(n *User) { n.Edges.AdminAuditLogs = []*AdminAuditLog{} },
 			func(n *User, e *AdminAuditLog) { n.Edges.AdminAuditLogs = append(n.Edges.AdminAuditLogs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withCreatedAnnouncements; query != nil {
+		if err := _q.loadCreatedAnnouncements(ctx, query, nodes,
+			func(n *User) { n.Edges.CreatedAnnouncements = []*Announcement{} },
+			func(n *User, e *Announcement) { n.Edges.CreatedAnnouncements = append(n.Edges.CreatedAnnouncements, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -795,6 +839,36 @@ func (_q *UserQuery) loadAdminAuditLogs(ctx context.Context, query *AdminAuditLo
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "admin_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadCreatedAnnouncements(ctx context.Context, query *AnnouncementQuery, nodes []*User, init func(*User), assign func(*User, *Announcement)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(announcement.FieldCreatedBy)
+	}
+	query.Where(predicate.Announcement(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.CreatedAnnouncementsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CreatedBy
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "created_by" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

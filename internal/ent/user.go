@@ -73,9 +73,11 @@ type UserEdges struct {
 	CreatedRedeemCodes []*RedeemCode `json:"created_redeem_codes,omitempty"`
 	// AdminAuditLogs holds the value of the admin_audit_logs edge.
 	AdminAuditLogs []*AdminAuditLog `json:"admin_audit_logs,omitempty"`
+	// CreatedAnnouncements holds the value of the created_announcements edge.
+	CreatedAnnouncements []*Announcement `json:"created_announcements,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [7]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -132,6 +134,15 @@ func (e UserEdges) AdminAuditLogsOrErr() ([]*AdminAuditLog, error) {
 		return e.AdminAuditLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "admin_audit_logs"}
+}
+
+// CreatedAnnouncementsOrErr returns the CreatedAnnouncements value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) CreatedAnnouncementsOrErr() ([]*Announcement, error) {
+	if e.loadedTypes[6] {
+		return e.CreatedAnnouncements, nil
+	}
+	return nil, &NotLoadedError{edge: "created_announcements"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -317,6 +328,11 @@ func (_m *User) QueryCreatedRedeemCodes() *RedeemCodeQuery {
 // QueryAdminAuditLogs queries the "admin_audit_logs" edge of the User entity.
 func (_m *User) QueryAdminAuditLogs() *AdminAuditLogQuery {
 	return NewUserClient(_m.config).QueryAdminAuditLogs(_m)
+}
+
+// QueryCreatedAnnouncements queries the "created_announcements" edge of the User entity.
+func (_m *User) QueryCreatedAnnouncements() *AnnouncementQuery {
+	return NewUserClient(_m.config).QueryCreatedAnnouncements(_m)
 }
 
 // Update returns a builder for updating this User.

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/predicate"
@@ -409,6 +410,21 @@ func (_u *UserUpdate) AddAdminAuditLogs(v ...*AdminAuditLog) *UserUpdate {
 	return _u.AddAdminAuditLogIDs(ids...)
 }
 
+// AddCreatedAnnouncementIDs adds the "created_announcements" edge to the Announcement entity by IDs.
+func (_u *UserUpdate) AddCreatedAnnouncementIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddCreatedAnnouncementIDs(ids...)
+	return _u
+}
+
+// AddCreatedAnnouncements adds the "created_announcements" edges to the Announcement entity.
+func (_u *UserUpdate) AddCreatedAnnouncements(v ...*Announcement) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCreatedAnnouncementIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -523,6 +539,27 @@ func (_u *UserUpdate) RemoveAdminAuditLogs(v ...*AdminAuditLog) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAdminAuditLogIDs(ids...)
+}
+
+// ClearCreatedAnnouncements clears all "created_announcements" edges to the Announcement entity.
+func (_u *UserUpdate) ClearCreatedAnnouncements() *UserUpdate {
+	_u.mutation.ClearCreatedAnnouncements()
+	return _u
+}
+
+// RemoveCreatedAnnouncementIDs removes the "created_announcements" edge to Announcement entities by IDs.
+func (_u *UserUpdate) RemoveCreatedAnnouncementIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveCreatedAnnouncementIDs(ids...)
+	return _u
+}
+
+// RemoveCreatedAnnouncements removes "created_announcements" edges to Announcement entities.
+func (_u *UserUpdate) RemoveCreatedAnnouncements(v ...*Announcement) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCreatedAnnouncementIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -953,6 +990,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.CreatedAnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCreatedAnnouncementsIDs(); len(nodes) > 0 && !_u.mutation.CreatedAnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CreatedAnnouncementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1348,6 +1430,21 @@ func (_u *UserUpdateOne) AddAdminAuditLogs(v ...*AdminAuditLog) *UserUpdateOne {
 	return _u.AddAdminAuditLogIDs(ids...)
 }
 
+// AddCreatedAnnouncementIDs adds the "created_announcements" edge to the Announcement entity by IDs.
+func (_u *UserUpdateOne) AddCreatedAnnouncementIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddCreatedAnnouncementIDs(ids...)
+	return _u
+}
+
+// AddCreatedAnnouncements adds the "created_announcements" edges to the Announcement entity.
+func (_u *UserUpdateOne) AddCreatedAnnouncements(v ...*Announcement) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCreatedAnnouncementIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -1462,6 +1559,27 @@ func (_u *UserUpdateOne) RemoveAdminAuditLogs(v ...*AdminAuditLog) *UserUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAdminAuditLogIDs(ids...)
+}
+
+// ClearCreatedAnnouncements clears all "created_announcements" edges to the Announcement entity.
+func (_u *UserUpdateOne) ClearCreatedAnnouncements() *UserUpdateOne {
+	_u.mutation.ClearCreatedAnnouncements()
+	return _u
+}
+
+// RemoveCreatedAnnouncementIDs removes the "created_announcements" edge to Announcement entities by IDs.
+func (_u *UserUpdateOne) RemoveCreatedAnnouncementIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveCreatedAnnouncementIDs(ids...)
+	return _u
+}
+
+// RemoveCreatedAnnouncements removes "created_announcements" edges to Announcement entities.
+func (_u *UserUpdateOne) RemoveCreatedAnnouncements(v ...*Announcement) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCreatedAnnouncementIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -1915,6 +2033,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(adminauditlog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CreatedAnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCreatedAnnouncementsIDs(); len(nodes) > 0 && !_u.mutation.CreatedAnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CreatedAnnouncementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CreatedAnnouncementsTable,
+			Columns: []string{user.CreatedAnnouncementsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -35,6 +35,13 @@ export default {
     sending: 'Sending…',
     confirmDelete: 'Delete this item?',
   },
+  announcement: {
+    aria: 'Announcements',
+    panelTitle: 'Announcements',
+    empty: 'No announcements yet',
+    recent: 'More',
+    loadFail: 'Failed to load announcements',
+  },
   login: {
     title: 'Welcome back',
     subtitle: 'Sign in to TraceHub',
@@ -126,6 +133,7 @@ export default {
     adminNavGroups: 'Groups',
     adminNavLogs: 'Logs',
     adminNavMarket: 'Model market',
+    adminNavAnnouncements: 'Announcements',
     adminConsoleTitle: 'Switch to user console (usage, API keys, billing)',
     adminTopSubtitle: 'Admin',
     adminTopHint: 'Channels, users & model catalog',

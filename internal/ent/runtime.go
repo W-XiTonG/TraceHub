@@ -5,6 +5,7 @@ package ent
 import (
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
@@ -141,6 +142,44 @@ func init() {
 	adminauditlogDescCreatedAt := adminauditlogFields[7].Descriptor()
 	// adminauditlog.DefaultCreatedAt holds the default value on creation for the created_at field.
 	adminauditlog.DefaultCreatedAt = adminauditlogDescCreatedAt.Default.(func() time.Time)
+	announcementFields := schema.Announcement{}.Fields()
+	_ = announcementFields
+	// announcementDescTitle is the schema descriptor for title field.
+	announcementDescTitle := announcementFields[0].Descriptor()
+	// announcement.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	announcement.TitleValidator = func() func(string) error {
+		validators := announcementDescTitle.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(title string) error {
+			for _, fn := range fns {
+				if err := fn(title); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// announcementDescContent is the schema descriptor for content field.
+	announcementDescContent := announcementFields[1].Descriptor()
+	// announcement.ContentValidator is a validator for the "content" field. It is called by the builders before save.
+	announcement.ContentValidator = announcementDescContent.Validators[0].(func(string) error)
+	// announcementDescPublished is the schema descriptor for published field.
+	announcementDescPublished := announcementFields[2].Descriptor()
+	// announcement.DefaultPublished holds the default value on creation for the published field.
+	announcement.DefaultPublished = announcementDescPublished.Default.(bool)
+	// announcementDescCreatedAt is the schema descriptor for created_at field.
+	announcementDescCreatedAt := announcementFields[5].Descriptor()
+	// announcement.DefaultCreatedAt holds the default value on creation for the created_at field.
+	announcement.DefaultCreatedAt = announcementDescCreatedAt.Default.(func() time.Time)
+	// announcementDescUpdatedAt is the schema descriptor for updated_at field.
+	announcementDescUpdatedAt := announcementFields[6].Descriptor()
+	// announcement.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	announcement.DefaultUpdatedAt = announcementDescUpdatedAt.Default.(func() time.Time)
+	// announcement.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	announcement.UpdateDefaultUpdatedAt = announcementDescUpdatedAt.UpdateDefault.(func() time.Time)
 	channelFields := schema.Channel{}.Fields()
 	_ = channelFields
 	// channelDescChannelType is the schema descriptor for channel_type field.

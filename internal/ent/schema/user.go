@@ -46,6 +46,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("redeemed_codes", RedeemCode.Type),
 		edge.To("created_redeem_codes", RedeemCode.Type),
 		edge.To("admin_audit_logs", AdminAuditLog.Type),
+		edge.To("created_announcements", Announcement.Type),
 	}
 }
 

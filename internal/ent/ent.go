@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
@@ -86,6 +87,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:               apikey.ValidColumn,
 			adminauditlog.Table:        adminauditlog.ValidColumn,
+			announcement.Table:         announcement.ValidColumn,
 			channel.Table:              channel.ValidColumn,
 			dashboardaggregation.Table: dashboardaggregation.ValidColumn,
 			group.Table:                group.ValidColumn,

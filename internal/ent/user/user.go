@@ -60,6 +60,8 @@ const (
 	EdgeCreatedRedeemCodes = "created_redeem_codes"
 	// EdgeAdminAuditLogs holds the string denoting the admin_audit_logs edge name in mutations.
 	EdgeAdminAuditLogs = "admin_audit_logs"
+	// EdgeCreatedAnnouncements holds the string denoting the created_announcements edge name in mutations.
+	EdgeCreatedAnnouncements = "created_announcements"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table that holds the group relation/edge.
@@ -104,6 +106,13 @@ const (
 	AdminAuditLogsInverseTable = "admin_audit_logs"
 	// AdminAuditLogsColumn is the table column denoting the admin_audit_logs relation/edge.
 	AdminAuditLogsColumn = "admin_id"
+	// CreatedAnnouncementsTable is the table that holds the created_announcements relation/edge.
+	CreatedAnnouncementsTable = "announcements"
+	// CreatedAnnouncementsInverseTable is the table name for the Announcement entity.
+	// It exists in this package in order to avoid circular dependency with the "announcement" package.
+	CreatedAnnouncementsInverseTable = "announcements"
+	// CreatedAnnouncementsColumn is the table column denoting the created_announcements relation/edge.
+	CreatedAnnouncementsColumn = "created_by"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -330,6 +339,20 @@ func ByAdminAuditLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newAdminAuditLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByCreatedAnnouncementsCount orders the results by created_announcements count.
+func ByCreatedAnnouncementsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCreatedAnnouncementsStep(), opts...)
+	}
+}
+
+// ByCreatedAnnouncements orders the results by created_announcements terms.
+func ByCreatedAnnouncements(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCreatedAnnouncementsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -370,5 +393,12 @@ func newAdminAuditLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AdminAuditLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, AdminAuditLogsTable, AdminAuditLogsColumn),
+	)
+}
+func newCreatedAnnouncementsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CreatedAnnouncementsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, CreatedAnnouncementsTable, CreatedAnnouncementsColumn),
 	)
 }

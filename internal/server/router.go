@@ -202,6 +202,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	authUser.PUT("/password", userhandler.ChangePassword(opt.Client))
 	authUser.PUT("/bind", userhandler.BindProfile(opt.Client))
 	authUser.PUT("/ip_whitelist", userhandler.SetIPWhitelist(opt.Client))
+	authUser.GET("/announcements/latest", userhandler.LatestAnnouncement(opt.Client))
+	authUser.GET("/announcements", userhandler.ListPublishedAnnouncements(opt.Client))
 
 	chAdmin := adminhandler.ChannelDeps{Client: opt.Client, AESKey: aesKey}
 	mcAdmin := adminhandler.ModelCatalogDeps{Client: opt.Client, AESKey: aesKey}
@@ -249,6 +251,12 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/model-catalog/entries", adminhandler.ListModelCatalogEntries(opt.Client))
 	a.PUT("/model-catalog/entries/:id", adminhandler.UpdateModelCatalogEntry(opt.Client))
 	a.DELETE("/model-catalog/entries/:id", adminhandler.DeleteModelCatalogEntry(opt.Client))
+	a.GET("/announcements", adminhandler.ListAnnouncements(opt.Client))
+	a.POST("/announcements", adminhandler.CreateAnnouncement(opt.Client))
+	a.PUT("/announcements/:id", adminhandler.UpdateAnnouncement(opt.Client))
+	a.DELETE("/announcements/:id", adminhandler.DeleteAnnouncement(opt.Client))
+	a.POST("/announcements/:id/publish", adminhandler.PublishAnnouncement(opt.Client))
+	a.POST("/announcements/:id/unpublish", adminhandler.UnpublishAnnouncement(opt.Client))
 
 	registerSPA(r)
 	return r, nil

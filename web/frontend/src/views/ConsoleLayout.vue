@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
+import AnnouncementBell from '../components/AnnouncementBell.vue'
 
 const { t } = useI18n()
 
@@ -87,7 +88,10 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
             </RouterLink>
           </div>
         </div>
-        <UserAccountMenu accent="cyan" />
+        <div class="flex shrink-0 items-center gap-2">
+          <AnnouncementBell accent="cyan" />
+          <UserAccountMenu accent="cyan" />
+        </div>
       </header>
       <main class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-6 md:px-10 md:pb-10 md:pt-8">
         <Transition name="th-fade">

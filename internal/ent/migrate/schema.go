@@ -111,6 +111,43 @@ var (
 			},
 		},
 	}
+	// AnnouncementsColumns holds the columns for the "announcements" table.
+	AnnouncementsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "title", Type: field.TypeString, Size: 500},
+		{Name: "content", Type: field.TypeString, Size: 2147483647},
+		{Name: "published", Type: field.TypeBool, Default: false},
+		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_by", Type: field.TypeInt, Nullable: true},
+	}
+	// AnnouncementsTable holds the schema information for the "announcements" table.
+	AnnouncementsTable = &schema.Table{
+		Name:       "announcements",
+		Columns:    AnnouncementsColumns,
+		PrimaryKey: []*schema.Column{AnnouncementsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "announcements_users_created_announcements",
+				Columns:    []*schema.Column{AnnouncementsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "announcement_published",
+				Unique:  false,
+				Columns: []*schema.Column{AnnouncementsColumns[3]},
+			},
+			{
+				Name:    "announcement_published_at",
+				Unique:  false,
+				Columns: []*schema.Column{AnnouncementsColumns[4]},
+			},
+		},
+	}
 	// ChannelsColumns holds the columns for the "channels" table.
 	ChannelsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -564,6 +601,7 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		AdminAuditLogsTable,
+		AnnouncementsTable,
 		ChannelsTable,
 		DashboardAggregationsTable,
 		GroupsTable,
@@ -581,6 +619,7 @@ func init() {
 	APIKeysTable.ForeignKeys[0].RefTable = GroupsTable
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
 	AdminAuditLogsTable.ForeignKeys[0].RefTable = UsersTable
+	AnnouncementsTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelsTable.ForeignKeys[0].RefTable = GroupsTable
 	GroupModelRatesTable.ForeignKeys[0].RefTable = GroupsTable
 	ModelCatalogEntriesTable.ForeignKeys[0].RefTable = ModelCatalogSourcesTable
