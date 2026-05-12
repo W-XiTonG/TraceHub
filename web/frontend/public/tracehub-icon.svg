@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>TraceHub</title>
+  <defs>
+    <linearGradient id="thMarkTile" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="thMarkAccent" x1="32" y1="28" x2="96" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7dd3fc"/>
+      <stop offset="0.45" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#thMarkTile)"/>
+  <g stroke="url(#thMarkAccent)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path stroke-width="14" d="M38 46 L62 70 L90 46"/>
+    <path stroke-width="14" d="M62 70 V102"/>
+  </g>
+  <circle cx="38" cy="46" r="12" fill="url(#thMarkAccent)"/>
+  <circle cx="90" cy="46" r="12" fill="url(#thMarkAccent)"/>
+  <circle cx="62" cy="70" r="14" fill="url(#thMarkAccent)"/>
+  <circle cx="62" cy="102" r="12" fill="url(#thMarkAccent)"/>
+</svg>

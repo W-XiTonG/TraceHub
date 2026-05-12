@@ -61,7 +61,9 @@ onUnmounted(() => {
     <header class="th-site-header docs-chrome-header sticky top-0 z-30 backdrop-blur-md">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
         <RouterLink to="/" class="flex min-w-0 items-center gap-3 transition hover:opacity-90">
-          <div class="th-logo-mark th-logo-mark--sm shrink-0">TH</div>
+          <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
+            <img src="/tracehub-icon.svg" alt="" width="36" height="36" decoding="async" />
+          </div>
           <div class="min-w-0">
             <span class="th-sidebar-brand block truncate text-lg font-semibold tracking-tight text-slate-100">TraceHub</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('docs.center') }}</span>

@@ -231,7 +231,9 @@ function featureLink(to: string) {
     <header class="th-site-header th-home-header-enter">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <div class="flex items-center gap-3">
-          <div class="th-logo-mark th-logo-mark--sm shrink-0">TH</div>
+          <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
+            <img src="/tracehub-icon.svg" alt="" width="36" height="36" decoding="async" />
+          </div>
           <div>
             <span class="th-sidebar-brand block text-lg font-semibold tracking-tight text-white">TraceHub</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('home.brandSub') }}</span>
@@ -654,7 +656,9 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
       <div class="mx-auto flex max-w-6xl flex-col gap-10 px-5 md:flex-row md:justify-between md:gap-12">
         <div class="max-w-sm">
           <div class="flex items-center gap-2">
-            <div class="th-logo-mark th-logo-mark--sm shrink-0">TH</div>
+            <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
+              <img src="/tracehub-icon.svg" alt="" width="36" height="36" decoding="async" />
+            </div>
             <span class="th-sidebar-brand text-base font-semibold text-slate-200">TraceHub</span>
           </div>
           <p class="mt-3 text-sm leading-relaxed text-slate-500">

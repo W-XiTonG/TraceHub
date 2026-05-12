@@ -97,7 +97,9 @@ async function submit() {
       <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
         <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
         <div class="mb-8 flex justify-center">
-          <div class="th-logo-mark th-logo-mark--lg">TH</div>
+          <div class="th-logo-mark th-logo-mark--lg th-logo-mark--image" role="img" aria-label="TraceHub">
+            <img src="/tracehub-icon.svg" alt="" width="48" height="48" decoding="async" />
+          </div>
         </div>
         <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">{{ t('login.title') }}</h1>
         <p class="mb-1 text-center text-sm text-slate-500">{{ t('login.subtitle') }}</p>
