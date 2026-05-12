@@ -91,12 +91,16 @@ func SendLoginCode(client *ent.Client, cfg *config.Config, rdb *redis.Client) gi
 		}
 
 		u, err := client.User.Query().Where(user.EmailEQ(email)).Only(ctx)
-		if ent.IsNotFound(err) {
-			httpx.OKMsg(c, "若该邮箱已注册账号，将收到验证码邮件", gin.H{"next_resend_sec": cfg.Email.LoginCodeResendSec})
+		if err != nil {
+			if ent.IsNotFound(err) {
+				httpx.BadRequest(c, "该邮箱未注册，请先注册后再使用验证码登录")
+				return
+			}
+			httpx.ServerError(c, "服务暂不可用")
 			return
 		}
-		if err != nil || u.Status != 1 {
-			httpx.OKMsg(c, "若该邮箱已注册账号，将收到验证码邮件", gin.H{"next_resend_sec": cfg.Email.LoginCodeResendSec})
+		if u.Status != 1 {
+			httpx.BadRequest(c, "账号已停用，无法使用验证码登录")
 			return
 		}
 
