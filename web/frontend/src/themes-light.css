@@ -184,6 +184,10 @@ html[data-th-theme="dawn"] {
   --th-mesh-stop-3: rgba(45, 212, 191, 0.08);
   --th-home-vignette-mid: rgba(241, 245, 249, 0.55);
   --th-home-vignette-edge: rgba(226, 232, 240, 0.92);
+  --th-home-facet-aurora: rgba(14, 165, 233, 0.09);
+  --th-home-facet-plane-1: rgba(2, 132, 199, 0.055);
+  --th-home-facet-plane-2: rgba(56, 189, 248, 0.045);
+  --th-home-facet-plane-3: rgba(186, 230, 253, 0.035);
 }
 
 html[data-th-theme="paper"] {
@@ -229,6 +233,10 @@ html[data-th-theme="paper"] {
   --th-mesh-stop-3: rgba(59, 130, 246, 0.08);
   --th-home-vignette-mid: rgba(236, 241, 248, 0.58);
   --th-home-vignette-edge: rgba(220, 230, 242, 0.94);
+  --th-home-facet-aurora: rgba(37, 99, 235, 0.085);
+  --th-home-facet-plane-1: rgba(29, 78, 216, 0.05);
+  --th-home-facet-plane-2: rgba(59, 130, 246, 0.045);
+  --th-home-facet-plane-3: rgba(191, 219, 254, 0.032);
   /* paper：行内 code 用主色蓝，与 dawn 的青区分 */
   --th-dash-code-bg: rgba(37, 99, 235, 0.08);
   --th-dash-code-border: rgba(37, 99, 235, 0.22);

@@ -202,6 +202,7 @@ function featureLink(to: string) {
       <div class="th-home-blob th-home-blob--1" />
       <div class="th-home-blob th-home-blob--2" />
       <div class="th-home-blob th-home-blob--3" />
+      <div class="th-home-facet-wash" />
       <svg
         class="th-home-mesh"
         xmlns="http://www.w3.org/2000/svg"
