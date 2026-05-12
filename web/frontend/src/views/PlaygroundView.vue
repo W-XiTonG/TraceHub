@@ -638,23 +638,23 @@ function fmtNum(n: number) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:gap-0 lg:items-stretch">
+  <div class="th-playground flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:gap-0 lg:items-stretch">
     <section
-      class="flex max-h-[min(52vh,26rem)] w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950/40 lg:max-h-none lg:max-w-[22rem] lg:self-stretch lg:rounded-r-none lg:border-r lg:border-white/[0.06]"
+      class="th-pg-sidebar flex max-h-[min(52vh,26rem)] w-full shrink-0 flex-col overflow-hidden rounded-2xl lg:max-h-none lg:max-w-[22rem] lg:self-stretch lg:rounded-r-none"
     >
-      <div class="shrink-0 border-b border-white/[0.06] px-4 py-3">
+      <div class="th-pg-sidebar-head px-4 py-3">
         <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ t('playground.configKicker') }}</p>
         <h1 class="text-lg font-semibold text-slate-100">{{ t('playground.title') }}</h1>
         <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('playground.desc') }}</p>
       </div>
 
       <div class="thin-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4">
-        <div class="rounded-xl border border-white/[0.06] bg-black/30 p-3">
-          <label class="flex cursor-pointer items-center justify-between gap-2 text-sm text-slate-300">
+        <div class="th-pg-card th-pg-card--emph p-3">
+          <label class="flex cursor-pointer items-center justify-between gap-2 text-sm th-pg-muted">
             <span>{{ t('playground.customBody') }}</span>
             <input v-model="customBody" type="checkbox" class="h-4 w-4 rounded border-slate-600 text-cyan-500" />
           </label>
-          <p class="mt-1 text-[11px] text-slate-600">{{ t('playground.customBodyHint') }}</p>
+          <p class="mt-1 text-[11px] th-pg-muted">{{ t('playground.customBodyHint') }}</p>
           <textarea
             v-if="customBody"
             v-model="customBodyJson"
@@ -673,7 +673,7 @@ function fmtNum(n: number) {
               :placeholder="t('playground.apiKeyPh')"
               class="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs"
             />
-            <button type="button" class="shrink-0 rounded-lg border border-slate-600 px-2 py-1 text-xs" @click="pasteKey">
+            <button type="button" class="th-pg-btn-ghost shrink-0 px-2 py-1" @click="pasteKey">
               {{ t('playground.paste') }}
             </button>
           </div>
@@ -685,13 +685,13 @@ function fmtNum(n: number) {
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            class="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+            class="th-pg-btn-primary th-pg-btn-primary--sm"
             :disabled="modelsLoading"
             @click="refreshModels"
           >
             {{ modelsLoading ? t('common.loading') : t('playground.refreshModels') }}
           </button>
-          <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+          <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
             <input v-model="useStream" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
             {{ t('playground.stream') }}
           </label>
@@ -717,8 +717,8 @@ function fmtNum(n: number) {
             />
           </div>
 
-          <div class="rounded-xl border border-white/[0.06] bg-black/25 p-3">
-            <label class="flex cursor-pointer items-center justify-between text-sm text-slate-300">
+          <div class="th-pg-card p-3">
+            <label class="flex cursor-pointer items-center justify-between text-sm th-pg-muted">
               <span>{{ t('playground.imageUrl') }}</span>
               <input v-model="useImage" type="checkbox" class="h-4 w-4 rounded border-slate-600 text-cyan-500" />
             </label>
@@ -729,17 +729,17 @@ function fmtNum(n: number) {
               class="mt-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-xs"
               :placeholder="t('playground.imagePh')"
             />
-            <p class="mt-1 text-[11px] text-slate-600">{{ t('playground.imageHint') }}</p>
+            <p class="mt-1 text-[11px] th-pg-muted">{{ t('playground.imageHint') }}</p>
           </div>
 
-          <div class="space-y-3 rounded-xl border border-white/[0.06] bg-black/25 p-3">
+          <div class="th-pg-card space-y-3 p-3">
             <div class="space-y-1">
               <div class="flex items-center justify-between gap-2">
-                <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+                <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
                   <input v-model="useTemp" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
                   <span>{{ t('playground.temp') }}</span>
                 </label>
-                <span class="font-mono text-[11px] text-cyan-200/90">{{ fmtNum(temperature) }}</span>
+                <span class="th-pg-accent-num">{{ fmtNum(temperature) }}</span>
               </div>
               <input
                 v-model.number="temperature"
@@ -753,11 +753,11 @@ function fmtNum(n: number) {
             </div>
             <div class="space-y-1">
               <div class="flex items-center justify-between gap-2">
-                <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+                <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
                   <input v-model="useTopP" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
                   <span>{{ t('playground.topP') }}</span>
                 </label>
-                <span class="font-mono text-[11px] text-cyan-200/90">{{ fmtNum(topP) }}</span>
+                <span class="th-pg-accent-num">{{ fmtNum(topP) }}</span>
               </div>
               <input
                 v-model.number="topP"
@@ -771,11 +771,11 @@ function fmtNum(n: number) {
             </div>
             <div class="space-y-1">
               <div class="flex items-center justify-between gap-2">
-                <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+                <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
                   <input v-model="useFreqPen" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
                   <span>{{ t('playground.freqPen') }}</span>
                 </label>
-                <span class="font-mono text-[11px] text-cyan-200/90">{{ fmtNum(freqPen) }}</span>
+                <span class="th-pg-accent-num">{{ fmtNum(freqPen) }}</span>
               </div>
               <input
                 v-model.number="freqPen"
@@ -789,11 +789,11 @@ function fmtNum(n: number) {
             </div>
             <div class="space-y-1">
               <div class="flex items-center justify-between gap-2">
-                <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+                <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
                   <input v-model="usePresPen" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
                   <span>{{ t('playground.presPen') }}</span>
                 </label>
-                <span class="font-mono text-[11px] text-cyan-200/90">{{ fmtNum(presPen) }}</span>
+                <span class="th-pg-accent-num">{{ fmtNum(presPen) }}</span>
               </div>
               <input
                 v-model.number="presPen"
@@ -807,8 +807,8 @@ function fmtNum(n: number) {
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-black/25 px-3 py-2">
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+          <div class="th-pg-card flex flex-wrap items-center gap-3 px-3 py-2">
+            <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
               <input v-model="useMaxTokens" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
               {{ t('playground.maxTokens') }}
             </label>
@@ -820,8 +820,8 @@ function fmtNum(n: number) {
             />
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-black/25 px-3 py-2">
-            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+          <div class="th-pg-card flex flex-wrap items-center gap-3 px-3 py-2">
+            <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
               <input v-model="useSeed" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
               {{ t('playground.seed') }}
             </label>
@@ -833,11 +833,11 @@ function fmtNum(n: number) {
           {{ t('playground.customBodyWarn') }}
         </div>
 
-        <div class="flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
-          <button type="button" class="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white" @click="exportSettings">
+        <div class="th-pg-divider-top flex flex-wrap gap-2 pt-3">
+          <button type="button" class="th-pg-btn-primary th-pg-btn-primary--sm" @click="exportSettings">
             {{ t('playground.export') }}
           </button>
-          <label class="cursor-pointer rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5">
+          <label class="th-pg-btn-ghost inline-flex cursor-pointer items-center px-3 py-1.5">
             {{ t('playground.import') }}
             <input type="file" accept="application/json" class="hidden" @change="importSettings" />
           </label>
@@ -846,9 +846,9 @@ function fmtNum(n: number) {
     </section>
 
     <section
-      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950/30 lg:min-h-0 lg:rounded-l-none lg:border-l-0"
+      class="th-pg-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl lg:min-h-0 lg:rounded-l-none"
     >
-      <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
+      <header class="th-pg-chat-head flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div>
           <p class="text-sm font-semibold text-slate-100">{{ t('playground.chatTitle') }}</p>
           <p class="text-[11px] text-slate-500">
@@ -857,18 +857,14 @@ function fmtNum(n: number) {
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <div
-            class="inline-flex rounded-lg border border-slate-600 p-0.5"
+            class="th-pg-seg"
             role="group"
             :aria-label="t('playground.renderModeGroup')"
           >
             <button
               type="button"
-              class="rounded-md px-2.5 py-1 text-xs font-medium transition"
-              :class="
-                !assistantMarkdown
-                  ? 'bg-slate-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
-              "
+              class="th-pg-seg__btn"
+              :class="{ 'th-pg-seg__btn--active': !assistantMarkdown }"
               :aria-pressed="!assistantMarkdown"
               @click="assistantMarkdown = false"
             >
@@ -876,12 +872,8 @@ function fmtNum(n: number) {
             </button>
             <button
               type="button"
-              class="rounded-md px-2.5 py-1 text-xs font-medium transition"
-              :class="
-                assistantMarkdown
-                  ? 'bg-slate-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
-              "
+              class="th-pg-seg__btn"
+              :class="{ 'th-pg-seg__btn--active': assistantMarkdown }"
               :aria-pressed="assistantMarkdown"
               @click="assistantMarkdown = true"
             >
@@ -890,18 +882,18 @@ function fmtNum(n: number) {
           </div>
           <button
             type="button"
-            class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+            class="th-pg-btn-ghost px-3 py-1.5"
             @click="showDebug = !showDebug"
           >
             {{ showDebug ? t('playground.hideDebug') : t('playground.showDebug') }}
           </button>
-          <button type="button" class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5" @click="exportConversation">
+          <button type="button" class="th-pg-btn-ghost px-3 py-1.5" @click="exportConversation">
             {{ t('playground.exportChat') }}
           </button>
         </div>
       </header>
 
-      <div v-if="showDebug" class="shrink-0 border-b border-white/[0.06] bg-black/40 px-4 py-2">
+      <div v-if="showDebug" class="th-pg-debug shrink-0 px-4 py-2">
         <p class="text-[10px] font-medium uppercase text-slate-500">{{ t('playground.debugReq') }}</p>
         <pre class="mt-1 max-h-32 overflow-auto font-mono text-[10px] text-slate-400">{{ lastRequest || '—' }}</pre>
         <p class="mt-2 text-[10px] font-medium uppercase text-slate-500">{{ t('playground.debugRes') }}</p>
@@ -965,7 +957,7 @@ function fmtNum(n: number) {
             >
               <button
                 type="button"
-                class="rounded-md p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-cyan-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40"
+                class="th-pg-icon-btn"
                 :title="t('playground.copy')"
                 :aria-label="t('playground.copy')"
                 @click="copyText(m.content)"
@@ -981,7 +973,7 @@ function fmtNum(n: number) {
               </button>
               <button
                 type="button"
-                class="rounded-md p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-cyan-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40"
+                class="th-pg-icon-btn"
                 :title="t('common.edit')"
                 :aria-label="t('common.edit')"
                 @click="startEdit(m)"
@@ -996,7 +988,7 @@ function fmtNum(n: number) {
               </button>
               <button
                 type="button"
-                class="rounded-md p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-red-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35"
+                class="th-pg-icon-btn th-pg-icon-btn--del"
                 :title="t('common.delete')"
                 :aria-label="t('common.delete')"
                 @click="removeMessage(m.id)"
@@ -1012,7 +1004,7 @@ function fmtNum(n: number) {
               <button
                 v-if="m.role === 'assistant'"
                 type="button"
-                class="rounded-md p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/35"
+                class="th-pg-icon-btn th-pg-icon-btn--regen"
                 :title="t('playground.regen')"
                 :aria-label="t('playground.regen')"
                 @click="regenerate"
@@ -1028,7 +1020,7 @@ function fmtNum(n: number) {
               <button
                 v-if="m.role === 'assistant'"
                 type="button"
-                class="rounded-md p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-violet-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/35"
+                class="th-pg-icon-btn th-pg-icon-btn--asuser"
                 :title="t('playground.asUser')"
                 :aria-label="t('playground.asUser')"
                 @click="switchToUser(m.id)"
@@ -1043,11 +1035,11 @@ function fmtNum(n: number) {
         </div>
       </div>
 
-      <footer class="shrink-0 border-t border-white/[0.06] bg-slate-950/95 p-4 shadow-[0_-12px_32px_-8px_rgba(0,0,0,0.45)] backdrop-blur-sm">
+      <footer class="th-pg-footer shrink-0 p-4">
         <div class="flex gap-2">
           <button
             type="button"
-            class="rounded-xl border border-slate-600 p-2 text-slate-400 hover:bg-red-950/40 hover:text-red-300"
+            class="th-pg-btn-ghost th-pg-btn-ghost--icon th-pg-btn-ghost--danger"
             :title="t('playground.clear')"
             @click="clearChat"
           >
@@ -1070,7 +1062,7 @@ function fmtNum(n: number) {
             <button
               v-if="sending && useStream"
               type="button"
-              class="rounded-xl border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs font-medium text-amber-200"
+              class="th-pg-btn-amber"
               @click="stopStream"
             >
               {{ t('playground.stop') }}
@@ -1078,7 +1070,7 @@ function fmtNum(n: number) {
             <button
               type="button"
               :disabled="!canSend || !input.trim()"
-              class="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-500 disabled:opacity-40"
+              class="th-pg-btn-primary th-pg-btn-primary--md w-full min-w-[5.5rem] justify-center rounded-xl"
               @click="sendMessage"
             >
               {{ sending ? t('playground.sending') : t('playground.send') }}
