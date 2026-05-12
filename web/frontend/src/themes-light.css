@@ -961,6 +961,14 @@ html[data-th-theme="paper"] .th-pg-model-picker__panel {
     0 0 0 1px rgba(15, 23, 42, 0.06),
     0 20px 48px -16px rgba(15, 23, 42, 0.22);
 }
+html[data-th-theme="dawn"] .th-pg-model-picker__search-wrap,
+html[data-th-theme="paper"] .th-pg-model-picker__search-wrap {
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+html[data-th-theme="dawn"] .th-pg-model-picker__search,
+html[data-th-theme="paper"] .th-pg-model-picker__search {
+  background: rgba(255, 255, 255, 0.95);
+}
 html[data-th-theme="dawn"] .th-pg-model-picker__option:hover,
 html[data-th-theme="dawn"] .th-pg-model-picker__option:focus-visible,
 html[data-th-theme="paper"] .th-pg-model-picker__option:hover,

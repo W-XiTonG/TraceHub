@@ -32,9 +32,12 @@ const modelPickerOpen = ref(false)
 const modelPickerWrap = ref<HTMLElement | null>(null)
 const modelPickerPanel = ref<HTMLElement | null>(null)
 const modelPickerPanelStyle = ref<Record<string, string>>({})
+const modelSearchQuery = ref('')
+const modelPickerSearchInput = ref<HTMLInputElement | null>(null)
 
 function closeModelPicker() {
   modelPickerOpen.value = false
+  modelSearchQuery.value = ''
 }
 
 function updateModelPanelPosition() {
@@ -46,7 +49,7 @@ function updateModelPanelPosition() {
   const vh = window.innerHeight
   const spaceBelow = vh - rect.bottom - gap - pad
   const spaceAbove = rect.top - gap - pad
-  const preferBelow = spaceBelow >= 120 || spaceBelow >= spaceAbove
+  const preferBelow = spaceBelow >= 148 || spaceBelow >= spaceAbove
   const maxH = Math.min(288, Math.max(100, preferBelow ? spaceBelow : spaceAbove))
   if (preferBelow) {
     modelPickerPanelStyle.value = {
@@ -100,6 +103,17 @@ const selectedModelRow = computed(() => {
   return rows.find((r) => r.id === model.value) ?? rows[0]
 })
 
+const filteredPlaygroundModels = computed(() => {
+  const rows = models.value
+  const raw = modelSearchQuery.value.trim().toLowerCase()
+  if (!raw) return rows
+  const parts = raw.split(/\s+/).filter(Boolean)
+  return rows.filter((r) => {
+    const id = r.id.toLowerCase()
+    return parts.every((p) => id.includes(p))
+  })
+})
+
 const systemPrompt = ref('')
 const customBody = ref(false)
 const customBodyJson = ref('{\n  "model": "gpt-4o-mini",\n  "messages": []\n}')
@@ -107,6 +121,12 @@ const customBodyJson = ref('{\n  "model": "gpt-4o-mini",\n  "messages": []\n}')
 const useStream = ref(true)
 const useImage = ref(false)
 const imageUrl = ref('')
+/** 本地上传错误提示（与 modelsErr 分离，避免混在模型区） */
+const imageUploadErr = ref('')
+const imageFileInputRef = ref<HTMLInputElement | null>(null)
+
+const PG_IMAGE_MAX_BYTES = 15 * 1024 * 1024
+const PG_IMAGE_ACCEPT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
 const useTemp = ref(true)
 const temperature = ref(0.7)
@@ -196,6 +216,7 @@ watch(
 watch(modelPickerOpen, async (open) => {
   if (open) {
     await nextTick()
+    modelPickerSearchInput.value?.focus()
     updateModelPanelPosition()
     window.addEventListener('resize', onWinReposition)
     window.addEventListener('scroll', onWinReposition, true)
@@ -206,6 +227,14 @@ watch(modelPickerOpen, async (open) => {
 })
 
 watch(messages, persistConversation, { deep: true })
+
+watch(useImage, (on) => {
+  if (!on) imageUploadErr.value = ''
+})
+
+watch(imageUrl, () => {
+  imageUploadErr.value = ''
+})
 
 function loadSettings() {
   try {
@@ -313,6 +342,43 @@ async function pasteKey() {
   } catch {
     /* ignore */
   }
+}
+
+function openPlaygroundImagePicker() {
+  imageUploadErr.value = ''
+  imageFileInputRef.value?.click()
+}
+
+function onPlaygroundImageFile(ev: Event) {
+  const el = ev.target as HTMLInputElement
+  const file = el.files?.[0]
+  el.value = ''
+  imageUploadErr.value = ''
+  if (!file) return
+  const extOk = /\.(jpe?g|png|gif|webp)$/i.test(file.name)
+  const typeOk = PG_IMAGE_ACCEPT_TYPES.has(file.type) || (file.type === '' && extOk)
+  if (!typeOk) {
+    imageUploadErr.value = t('playground.imageUploadType')
+    return
+  }
+  if (file.size > PG_IMAGE_MAX_BYTES) {
+    imageUploadErr.value = t('playground.imageUploadSize', { maxMb: Math.floor(PG_IMAGE_MAX_BYTES / 1024 / 1024) })
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    const data = String(reader.result || '')
+    if (!data.startsWith('data:image/')) {
+      imageUploadErr.value = t('playground.imageUploadReadFail')
+      return
+    }
+    useImage.value = true
+    imageUrl.value = data
+  }
+  reader.onerror = () => {
+    imageUploadErr.value = t('playground.imageUploadReadFail')
+  }
+  reader.readAsDataURL(file)
 }
 
 function buildOpenAIMessagesForHistory(): Array<Record<string, unknown>> {
@@ -844,31 +910,56 @@ function fmtNum(n: number) {
               <div
                 v-show="modelPickerOpen"
                 ref="modelPickerPanel"
-                id="pg-model-picker-listbox"
-                class="th-pg-model-picker__panel thin-scrollbar"
-                role="listbox"
-                aria-labelledby="pg-model-picker-trigger"
+                class="th-pg-model-picker__panel"
+                role="region"
+                :aria-label="t('playground.modelPickerRegion')"
                 :style="modelPickerPanelStyle"
               >
-                <button
-                  v-for="m in models"
-                  :key="m.id"
-                  type="button"
-                  role="option"
-                  :aria-selected="model === m.id"
-                  class="th-pg-model-picker__option"
-                  :class="{ 'th-pg-model-picker__option--active': model === m.id }"
-                  @click="pickModel(m.id)"
+                <div class="th-pg-model-picker__search-wrap">
+                  <input
+                    ref="modelPickerSearchInput"
+                    v-model="modelSearchQuery"
+                    type="search"
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    class="th-pg-model-picker__search"
+                    :placeholder="t('playground.modelSearchPh')"
+                    aria-controls="pg-model-picker-listbox"
+                  />
+                </div>
+                <div
+                  id="pg-model-picker-listbox"
+                  class="th-pg-model-picker__options thin-scrollbar"
+                  role="listbox"
+                  aria-labelledby="pg-model-picker-trigger"
                 >
-                  <span class="th-pg-model-picker__opt-id">{{ m.id }}</span>
-                  <span
-                    v-if="m.routerHealth"
-                    class="th-pg-model-picker__health"
-                    :class="`th-pg-model-picker__health--${m.routerHealth}`"
+                  <button
+                    v-for="m in filteredPlaygroundModels"
+                    :key="m.id"
+                    type="button"
+                    role="option"
+                    :aria-selected="model === m.id"
+                    class="th-pg-model-picker__option"
+                    :class="{ 'th-pg-model-picker__option--active': model === m.id }"
+                    @click="pickModel(m.id)"
                   >
-                    {{ t(`playground.routerHealth.${m.routerHealth}`) }}
-                  </span>
-                </button>
+                    <span class="th-pg-model-picker__opt-id">{{ m.id }}</span>
+                    <span
+                      v-if="m.routerHealth"
+                      class="th-pg-model-picker__health"
+                      :class="`th-pg-model-picker__health--${m.routerHealth}`"
+                    >
+                      {{ t(`playground.routerHealth.${m.routerHealth}`) }}
+                    </span>
+                  </button>
+                  <p
+                    v-if="!filteredPlaygroundModels.length"
+                    class="th-pg-model-picker__empty"
+                  >
+                    {{ t('playground.modelSearchEmpty') }}
+                  </p>
+                </div>
               </div>
             </Teleport>
           </div>
@@ -888,14 +979,32 @@ function fmtNum(n: number) {
               <span>{{ t('playground.imageUrl') }}</span>
               <input v-model="useImage" type="checkbox" class="h-4 w-4 rounded border-slate-600 text-cyan-500" />
             </label>
-            <input
-              v-if="useImage"
-              v-model="imageUrl"
-              type="url"
-              class="mt-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-xs"
-              :placeholder="t('playground.imagePh')"
-            />
-            <p class="mt-1 text-[11px] th-pg-muted">{{ t('playground.imageHint') }}</p>
+            <template v-if="useImage">
+              <input
+                ref="imageFileInputRef"
+                type="file"
+                class="sr-only"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                :aria-label="t('playground.imageUpload')"
+                @change="onPlaygroundImageFile"
+              />
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <button type="button" class="th-pg-btn-ghost px-2 py-1 text-xs" @click="openPlaygroundImagePicker">
+                  {{ t('playground.imageUpload') }}
+                </button>
+                <span class="text-[11px] th-pg-muted">{{ t('playground.imageOrUrl') }}</span>
+              </div>
+              <input
+                v-model="imageUrl"
+                type="text"
+                class="mt-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-xs"
+                :placeholder="t('playground.imagePh')"
+              />
+              <p v-if="imageUploadErr" class="mt-1 text-[11px] text-rose-400/95">{{ imageUploadErr }}</p>
+            </template>
+            <p class="mt-1 text-[11px] th-pg-muted">{{
+              t('playground.imageHint', { maxMb: Math.floor(PG_IMAGE_MAX_BYTES / 1024 / 1024) })
+            }}</p>
           </div>
 
           <div class="th-pg-card space-y-3 p-3">
