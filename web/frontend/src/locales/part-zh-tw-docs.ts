@@ -9,6 +9,7 @@ export default {
     pageSub:
       '面向最终用戶与集成方：說明产品能力、控制台操作、OpenAI 兼容网关及配套 REST 接口。部署细節与仓库内设計文件互为补充。',
     footerHome: '返回首頁',
+    footerCompany: '循跡未來',
     tocIntro: '产品简介',
     tocConcepts: '核心概念',
     tocQuick: '快速开始',

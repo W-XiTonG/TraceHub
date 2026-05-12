@@ -95,6 +95,7 @@ export default {
     footerDocLine2: ' 目录（随部署版本更新）。',
     footerLegal:
       '生产环境请配置 HTTPS、密钥轮换与观测告警；Prometheus 抓取 {metrics}，健康检查 {health}、{ready}。',
+    companyCredit: '循迹未来',
     faq0q: '如何查看用量与余额？',
     faq0a: '登录用户控制台可查看调用汇总、日志与账户信息；费率与额度规则由部署方配置，以控制台展示为准。',
     faq1q: '支持流式输出吗？',

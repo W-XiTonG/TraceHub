@@ -698,6 +698,9 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
       <p class="mx-auto mt-10 max-w-6xl border-t border-white/[0.05] px-5 pt-8 text-center text-xs leading-relaxed text-slate-600">
         {{ t('home.footerLegal', { metrics: '/metrics', health: '/health', ready: '/ready' }) }}
       </p>
+      <p class="mx-auto mt-2 max-w-6xl px-5 text-center text-[11px] tracking-wide text-slate-500">
+        {{ t('home.companyCredit') }}
+      </p>
     </footer>
   </div>
 </template>

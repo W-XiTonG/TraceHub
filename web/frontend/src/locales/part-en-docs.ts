@@ -8,6 +8,7 @@ export default {
     pageSub:
       'For end users and integrators: product capabilities, console workflows, OpenAI-compatible gateway and REST APIs. Deployment details complement the Markdown in the repository.',
     footerHome: 'Home',
+    footerCompany: '循迹未来 · Xunji Future',
     tocIntro: 'Overview',
     tocConcepts: 'Core concepts',
     tocQuick: 'Quick start',

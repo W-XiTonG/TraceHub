@@ -87,7 +87,7 @@ export default {
     rankRowTip: '{model} — {req} 次 · ¥{cost}',
     tailQuickTitle: '快捷入口',
     tailApiTitle: 'HTTP 调用提示',
-    footerNote: '© {year} TraceHub · 密钥、日志与充值等请使用左侧导航',
+    footerNote: '© {year} TraceHub · 循迹未来 · 密钥、日志与充值等请使用左侧导航',
   },
   ql: {
     models: '可用模型',

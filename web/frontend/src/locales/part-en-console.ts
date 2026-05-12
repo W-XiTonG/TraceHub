@@ -87,7 +87,7 @@ export default {
     rankRowTip: '{model} — {req} calls · ¥{cost}',
     tailQuickTitle: 'Shortcuts',
     tailApiTitle: 'HTTP call hint',
-    footerNote: '© {year} TraceHub · Keys, logs, and billing live in the sidebar',
+    footerNote: '© {year} TraceHub · 循迹未来 · Keys, logs, and billing live in the sidebar',
   },
   ql: {
     models: 'Models',

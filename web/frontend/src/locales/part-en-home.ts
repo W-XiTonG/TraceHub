@@ -95,6 +95,7 @@ export default {
     footerDocLine2: ' in the repository (versioned with each release).',
     footerLegal:
       'Use HTTPS, rotate keys and alerting in production; scrape {metrics} and probe {health} / {ready}.',
+    companyCredit: '循迹未来 · Xunji Future',
     faq0q: 'Where do I see usage and balance?',
     faq0a: 'After sign-in, the user console shows summaries and logs; rates and quota follow your operator’s configuration.',
     faq1q: 'Do you support streaming?',

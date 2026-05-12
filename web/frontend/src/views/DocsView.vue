@@ -394,6 +394,7 @@ onUnmounted(() => {
 
     <footer class="border-t border-white/[0.06] py-10 text-center">
       <RouterLink to="/" class="text-sm text-slate-500 transition hover:text-slate-400">{{ t('docs.footerHome') }}</RouterLink>
+      <p class="mt-3 text-[11px] text-slate-600">{{ t('docs.footerCompany') }}</p>
     </footer>
   </div>
 </template>
