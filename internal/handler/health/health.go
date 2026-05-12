@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"net/http"
+	"runtime"
 	"time"
 
 	"tracehub/internal/ent"
@@ -19,11 +20,17 @@ var serverStarted = time.Now()
 func Liveness() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
-			"version": Version,
-			"uptime":  int64(time.Since(serverStarted).Seconds()),
+			"status":     "ok",
+			"version":    Version,
+			"go_version": runtime.Version(),
+			"uptime":     UptimeSeconds(),
 		})
 	}
+}
+
+// UptimeSeconds 自进程启动以来的秒数（与 /health 的 uptime 一致）。
+func UptimeSeconds() int64 {
+	return int64(time.Since(serverStarted).Seconds())
 }
 
 func Readiness(client *ent.Client, rdb *redis.Client) gin.HandlerFunc {

@@ -126,16 +126,33 @@ function trendRowTime(row: DayRow & HourRow): Date | null {
   return null
 }
 
-/** 与折线点数对齐：稀疏显示，避免「今日」24 点长标签 flex-wrap 双行 */
-function trendAxisTickVisible(i: number, n: number, kind: 'hour' | 'day'): boolean {
-  if (n <= 0) return false
-  if (n === 1) return true
-  const maxTicks = kind === 'hour' ? 8 : 12
-  const step = Math.max(1, Math.ceil(n / maxTicks))
-  if (i % step === 0) return true
-  if (i === n - 1 && (n - 1) % step !== 0) return true
-  return false
-}
+/** 趋势图横轴刻度索引：按索引步进取样 + 末段过近时合并，与 AdminDashboard 用量趋势一致，避免末两日等挤在同一视觉区域 */
+const trendAxisTickIndices = computed(() => {
+  const { rows, kind } = trendSeries.value
+  const n = rows.length
+  if (n <= 0) return new Set<number>()
+  const maxLabels = kind === 'hour' ? 9 : 8
+  let idxs: number[]
+  if (n <= maxLabels) {
+    idxs = Array.from({ length: n }, (_, i) => i)
+  } else {
+    const step = Math.max(1, Math.ceil((n - 1) / (maxLabels - 1)))
+    idxs = []
+    for (let i = 0; i < n; i += step) {
+      idxs.push(i)
+    }
+    const last = n - 1
+    if (idxs[idxs.length - 1] !== last) {
+      const prev = idxs[idxs.length - 1]
+      if (last - prev < step) {
+        idxs[idxs.length - 1] = last
+      } else {
+        idxs.push(last)
+      }
+    }
+  }
+  return new Set(idxs)
+})
 
 function trendAxisShortLabel(row: DayRow & HourRow, kind: 'hour' | 'day'): string {
   if (kind === 'hour') {
@@ -600,9 +617,9 @@ onMounted(loadAll)
                 v-for="(r, i) in trendSeries.rows"
                 :key="i"
                 class="min-w-0 flex-1 truncate text-center"
-                :title="trendAxisTickVisible(i, trendSeries.rows.length, trendSeries.kind) ? trendRowLabel(r) : undefined"
+                :title="trendAxisTickIndices.has(i) ? trendRowLabel(r) : undefined"
               >
-                {{ trendAxisTickVisible(i, trendSeries.rows.length, trendSeries.kind) ? trendAxisShortLabel(r, trendSeries.kind) : '' }}
+                {{ trendAxisTickIndices.has(i) ? trendAxisShortLabel(r, trendSeries.kind) : '' }}
               </span>
             </div>
           </div>

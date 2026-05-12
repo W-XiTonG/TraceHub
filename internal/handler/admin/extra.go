@@ -1,22 +1,31 @@
 package adminhandler
 
 import (
+	"context"
 	"encoding/csv"
+	"math"
+	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"tracehub/internal/ent"
+	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/handler/health"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 
 	"github.com/gin-gonic/gin"
+	redis "github.com/redis/go-redis/v9"
 )
 
 func GetUser(client *ent.Client) gin.HandlerFunc {
@@ -492,16 +501,11 @@ func DashboardOverview(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		start := time.Now().Truncate(24 * time.Hour)
-		todayLogs, err := client.UsageLog.Query().Where(usagelog.RequestTimeGTE(start)).All(ctx)
+		tomorrow := start.Add(24 * time.Hour)
+		todayReq, todayTokens, todayCost, err := usageStatsRange(ctx, client, start, tomorrow)
 		if err != nil {
 			httpx.ServerError(c, "统计失败")
 			return
-		}
-		var todayTokens int64
-		var todayCost int64
-		for _, l := range todayLogs {
-			todayTokens += int64(l.TotalTokens)
-			todayCost += l.TotalCost
 		}
 		since24h := time.Now().Add(-24 * time.Hour)
 		activeIDs := map[int]struct{}{}
@@ -539,7 +543,7 @@ func DashboardOverview(client *ent.Client) gin.HandlerFunc {
 			hourly = append(hourly, n)
 		}
 		httpx.OK(c, gin.H{
-			"today_requests":    len(todayLogs),
+			"today_requests":    todayReq,
 			"today_tokens":      todayTokens,
 			"today_cost_quota":  todayCost,
 			"active_users_24h":  len(activeIDs),
@@ -612,5 +616,497 @@ func DashboardChannels(client *ent.Client) gin.HandlerFunc {
 			})
 		}
 		httpx.OK(c, gin.H{"items": items})
+	}
+}
+
+func topModelsInRange(ctx context.Context, client *ent.Client, start, end time.Time, limit int) ([]gin.H, error) {
+	var rows []struct {
+		Model          string `json:"model"`
+		Count          int    `json:"count"`
+		SumTotalTokens *int64 `json:"sum_total_tokens"`
+	}
+	err := client.UsageLog.Query().
+		Where(usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end)).
+		GroupBy(usagelog.FieldModel).
+		Aggregate(
+			ent.As(ent.Count(), "count"),
+			ent.As(ent.Sum(usagelog.FieldTotalTokens), "sum_total_tokens"),
+		).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].Count != rows[j].Count {
+			return rows[i].Count > rows[j].Count
+		}
+		return rows[i].Model < rows[j].Model
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	out := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		tok := int64(0)
+		if r.SumTotalTokens != nil {
+			tok = *r.SumTotalTokens
+		}
+		out = append(out, gin.H{
+			"model":    r.Model,
+			"requests": r.Count,
+			"tokens":   tok,
+		})
+	}
+	return out, nil
+}
+
+func channelUsageInRange(ctx context.Context, client *ent.Client, start, end time.Time) ([]gin.H, int64, error) {
+	var rows []struct {
+		ChannelID int `json:"channel_id"`
+		Count     int `json:"count"`
+	}
+	err := client.UsageLog.Query().
+		Where(
+			usagelog.RequestTimeGTE(start),
+			usagelog.RequestTimeLT(end),
+			usagelog.ChannelIDNotNil(),
+		).
+		GroupBy(usagelog.FieldChannelID).
+		Aggregate(ent.As(ent.Count(), "count")).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	var total int64
+	for _, r := range rows {
+		total += int64(r.Count)
+	}
+	ids := make([]int, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.ChannelID)
+	}
+	nameByID := map[int]string{}
+	if len(ids) > 0 {
+		chs, err := client.Channel.Query().Where(channel.IDIn(ids...)).All(ctx)
+		if err != nil {
+			return nil, 0, err
+		}
+		for _, ch := range chs {
+			nm := strings.TrimSpace(ch.ChannelName)
+			if nm == "" {
+				nm = ch.ChannelType
+			}
+			nameByID[ch.ID] = nm
+		}
+	}
+	out := make([]gin.H, 0, len(rows))
+	for _, r := range rows {
+		pct := 0.0
+		if total > 0 {
+			pct = math.Round(1000*float64(r.Count)/float64(total)) / 10
+		}
+		nm := nameByID[r.ChannelID]
+		if nm == "" {
+			nm = "#" + strconv.Itoa(r.ChannelID)
+		}
+		out = append(out, gin.H{
+			"channel_id":   r.ChannelID,
+			"channel_name": nm,
+			"requests":     r.Count,
+			"pct":          pct,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ai, _ := out[i]["requests"].(int)
+		aj, _ := out[j]["requests"].(int)
+		return ai > aj
+	})
+	return out, total, nil
+}
+
+// DashboardInsight 运营看板 P2：按日聚合时间序列、Top 模型、近 7 日渠道请求占比与渠道状态摘要。
+func DashboardInsight(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		days, _ := strconv.Atoi(c.DefaultQuery("days", "7"))
+		if days != 1 && days != 7 && days != 30 {
+			days = 7
+		}
+		ctx := c.Request.Context()
+		unit := int64(10000)
+		if cfg != nil && cfg.Site.CurrencyQuotaPerYuan > 0 {
+			unit = cfg.Site.CurrencyQuotaPerYuan
+		}
+		now := time.Now()
+		todayStart := now.Truncate(24 * time.Hour)
+		tomorrowStart := todayStart.Add(24 * time.Hour)
+		sevenStart := todayStart.AddDate(0, 0, -6)
+
+		var series []gin.H
+		timeseriesGranularity := "day"
+		if days == 1 {
+			timeseriesGranularity = "hour"
+			for h := 0; h < 24; h++ {
+				hourStart := todayStart.Add(time.Duration(h) * time.Hour)
+				hourEnd := hourStart.Add(time.Hour)
+				req, tok, cost, err := usageStatsRange(ctx, client, hourStart, hourEnd)
+				if err != nil {
+					httpx.ServerError(c, "统计失败")
+					return
+				}
+				yuan := math.Round(float64(cost)/float64(unit)*100) / 100
+				series = append(series, gin.H{
+					"date":       hourStart.Format(time.RFC3339),
+					"requests":   req,
+					"tokens":     tok,
+					"cost_quota": cost,
+					"cost_yuan":  yuan,
+				})
+			}
+		} else {
+			for i := days - 1; i >= 0; i-- {
+				dayStart := todayStart.AddDate(0, 0, -i)
+				dayEnd := dayStart.Add(24 * time.Hour)
+				req, tok, cost, err := usageStatsRange(ctx, client, dayStart, dayEnd)
+				if err != nil {
+					httpx.ServerError(c, "统计失败")
+					return
+				}
+				yuan := math.Round(float64(cost)/float64(unit)*100) / 100
+				series = append(series, gin.H{
+					"date":       dayStart.Format("2006-01-02"),
+					"requests":   req,
+					"tokens":     tok,
+					"cost_quota": cost,
+					"cost_yuan":  yuan,
+				})
+			}
+		}
+
+		topToday, err := topModelsInRange(ctx, client, todayStart, tomorrowStart, 10)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		top7d, err := topModelsInRange(ctx, client, sevenStart, tomorrowStart, 10)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		chUsage, _, err := channelUsageInRange(ctx, client, sevenStart, tomorrowStart)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+
+		chAll, err := client.Channel.Query().All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		var enabledN, disabledN, unhealthyN, schedOffN int
+		for _, ch := range chAll {
+			if !ch.Enabled {
+				disabledN++
+				continue
+			}
+			enabledN++
+			if ch.HealthStatus != 1 {
+				unhealthyN++
+			}
+			if !ch.Schedulable {
+				schedOffN++
+			}
+		}
+
+		httpx.OK(c, gin.H{
+			"window_days":              days,
+			"timeseries_granularity":   timeseriesGranularity,
+			"timeseries":               series,
+			"top_models_today": gin.H{
+				"window": "today",
+				"items":  topToday,
+			},
+			"top_models_7d": gin.H{
+				"window": "last_7d",
+				"items":  top7d,
+			},
+			"channels": gin.H{
+				"enabled":         enabledN,
+				"disabled":        disabledN,
+				"unhealthy":       unhealthyN,
+				"schedulable_off": schedOffN,
+				"usage_7d":        chUsage,
+			},
+		})
+	}
+}
+
+func httpErrorCounts(ctx context.Context, client *ent.Client, start, end time.Time) (total, n4xx, n5xx int, err error) {
+	total, err = client.UsageLog.Query().
+		Where(usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end)).
+		Count(ctx)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	n4xx, err = client.UsageLog.Query().
+		Where(
+			usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end),
+			usagelog.StatusCodeNotNil(),
+			usagelog.StatusCodeGTE(400), usagelog.StatusCodeLT(500),
+		).
+		Count(ctx)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	n5xx, err = client.UsageLog.Query().
+		Where(
+			usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end),
+			usagelog.StatusCodeNotNil(),
+			usagelog.StatusCodeGTE(500),
+		).
+		Count(ctx)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	return total, n4xx, n5xx, nil
+}
+
+func failPct(total, n4xx, n5xx int) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return math.Round(1000*float64(n4xx+n5xx)/float64(total)) / 10
+}
+
+// DashboardSnapshot 运营看板 P3：用户/分组摘要、HTTP 失败占比、最近用量与渠道/公告草稿。
+func DashboardSnapshot(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		now := time.Now()
+		todayStart := now.Truncate(24 * time.Hour)
+		tomorrowStart := todayStart.Add(24 * time.Hour)
+		sevenStart := todayStart.AddDate(0, 0, -6)
+
+		var dauRows []struct {
+			UserID int `json:"user_id"`
+			Cnt    int `json:"count"`
+		}
+		if err := client.UsageLog.Query().
+			Where(
+				usagelog.RequestTimeGTE(todayStart),
+				usagelog.RequestTimeLT(tomorrowStart),
+				usagelog.UserIDNotNil(),
+				usagelog.UserIDNEQ(0),
+			).
+			GroupBy(usagelog.FieldUserID).
+			Aggregate(ent.As(ent.Count(), "count")).
+			Scan(ctx, &dauRows); err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		dauToday := len(dauRows)
+
+		newToday, err := client.User.Query().
+			Where(user.CreatedAtGTE(todayStart), user.CreatedAtLT(tomorrowStart)).
+			Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		new7d, err := client.User.Query().
+			Where(user.CreatedAtGTE(sevenStart), user.CreatedAtLT(tomorrowStart)).
+			Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		groupsCount, err := client.Group.Query().Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		negBal, err := client.User.Query().Where(user.BalanceLT(0)).Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		zeroBal, err := client.User.Query().Where(user.BalanceEQ(0)).Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+
+		tTot, t4, t5, err := httpErrorCounts(ctx, client, todayStart, tomorrowStart)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		wTot, w4, w5, err := httpErrorCounts(ctx, client, sevenStart, tomorrowStart)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+
+		logs, err := client.UsageLog.Query().
+			Order(ent.Desc(usagelog.FieldRequestTime)).
+			Limit(12).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		var logItems []gin.H
+		for _, l := range logs {
+			logItems = append(logItems, gin.H{
+				"id":           l.ID,
+				"user_id":      l.UserID,
+				"model":        l.Model,
+				"status_code":  l.StatusCode,
+				"request_time": l.RequestTime,
+				"total_tokens": l.TotalTokens,
+			})
+		}
+
+		chs, err := client.Channel.Query().
+			Order(ent.Desc(channel.FieldUpdatedAt)).
+			Limit(6).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		var chItems []gin.H
+		for _, ch := range chs {
+			nm := strings.TrimSpace(ch.ChannelName)
+			if nm == "" {
+				nm = ch.ChannelType
+			}
+			chItems = append(chItems, gin.H{
+				"id":           ch.ID,
+				"channel_name": nm,
+				"channel_type": ch.ChannelType,
+				"enabled":      ch.Enabled,
+				"updated_at":   ch.UpdatedAt,
+			})
+		}
+
+		drafts, err := client.Announcement.Query().
+			Where(announcement.PublishedEQ(false)).
+			Order(ent.Desc(announcement.FieldID)).
+			Limit(5).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		var draftItems []gin.H
+		for _, a := range drafts {
+			draftItems = append(draftItems, announcementJSON(a))
+		}
+
+		httpx.OK(c, gin.H{
+			"users": gin.H{
+				"dau_today":        dauToday,
+				"new_users_today":  newToday,
+				"new_users_7d":     new7d,
+				"groups_count":     groupsCount,
+				"negative_balance": negBal,
+				"zero_balance":     zeroBal,
+			},
+			"http": gin.H{
+				"today": gin.H{
+					"total_requests": tTot,
+					"n_4xx":          t4,
+					"n_5xx":          t5,
+					"fail_pct":       failPct(tTot, t4, t5),
+				},
+				"last_7d": gin.H{
+					"total_requests": wTot,
+					"n_4xx":          w4,
+					"n_5xx":          w5,
+					"fail_pct":       failPct(wTot, w4, w5),
+				},
+			},
+			"recent_logs":         logItems,
+			"recent_channels":     chItems,
+			"draft_announcements": draftItems,
+		})
+	}
+}
+
+// DashboardOps 运营看板 P4：管理审计摘要、系统健康探测、非敏感配置摘要、外部告警占位说明。
+func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+		defer cancel()
+
+		logs, err := client.AdminAuditLog.Query().
+			WithAdmin().
+			Order(ent.Desc(adminauditlog.FieldCreatedAt)).
+			Limit(15).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "审计日志查询失败")
+			return
+		}
+		var auditItems []gin.H
+		for _, l := range logs {
+			email := ""
+			if l.Edges.Admin != nil {
+				email = l.Edges.Admin.Email
+			}
+			auditItems = append(auditItems, gin.H{
+				"id":          l.ID,
+				"created_at":  l.CreatedAt,
+				"admin_id":    l.AdminID,
+				"admin_email": email,
+				"action":      l.Action,
+				"resource":    l.Resource,
+				"resource_id": l.ResourceID,
+				"ip_address":  l.IPAddress,
+			})
+		}
+
+		checks := gin.H{}
+		if _, err := client.User.Query().Limit(1).Count(ctx); err != nil {
+			checks["database"] = "error: " + err.Error()
+		} else {
+			checks["database"] = "ok"
+		}
+		if rdb != nil {
+			if err := rdb.Ping(ctx).Err(); err != nil {
+				checks["redis"] = "error: " + err.Error()
+			} else {
+				checks["redis"] = "ok"
+			}
+		} else {
+			checks["redis"] = "skipped"
+		}
+
+		outline := gin.H{
+			"server_mode":               cfg.Server.Mode,
+			"currency_quota_per_yuan":   cfg.Site.CurrencyQuotaPerYuan,
+			"cors_origins_count":        len(cfg.Site.CORSOrigins),
+			"realtime_call_mapping":     cfg.Site.RealtimeCallMappingEnabled,
+			"email_login_enabled":       cfg.Email.Enabled,
+			"liveness_path":             "/health",
+			"readiness_path":            "/ready",
+		}
+
+		httpx.OK(c, gin.H{
+			"recent_audit": auditItems,
+			"health": gin.H{
+				"checks":       checks,
+				"app_version":  health.Version,
+				"go_version":   runtime.Version(),
+				"uptime_sec":   health.UptimeSeconds(),
+				"public_paths": gin.H{"liveness": "/health", "readiness": "/ready"},
+			},
+			"config_outline": outline,
+			"external_alerts": gin.H{
+				"status": "not_connected",
+				"scope":  []string{"disk", "queue", "upstream_account_balance"},
+			},
+		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 
@@ -602,7 +604,52 @@ func BatchRedeemCodes(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-func DashboardSummary(client *ent.Client) gin.HandlerFunc {
+// usageStatsRange 对 [start, end) 时间内的用量日志做 COUNT / SUM 聚合（避免全量拉取）。
+func usageStatsRange(ctx context.Context, client *ent.Client, start, end time.Time) (requests int64, tokens int64, cost int64, err error) {
+	var rows []struct {
+		Cnt            int    `json:"count"`
+		SumTotalCost   *int64 `json:"sum_total_cost"`
+		SumTotalTokens *int64 `json:"sum_total_tokens"`
+	}
+	err = client.UsageLog.Query().
+		Where(usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end)).
+		Aggregate(
+			ent.As(ent.Count(), "count"),
+			ent.As(ent.Sum(usagelog.FieldTotalCost), "sum_total_cost"),
+			ent.As(ent.Sum(usagelog.FieldTotalTokens), "sum_total_tokens"),
+		).
+		Scan(ctx, &rows)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if len(rows) == 0 {
+		return 0, 0, 0, nil
+	}
+	r := rows[0]
+	requests = int64(r.Cnt)
+	if r.SumTotalTokens != nil {
+		tokens = *r.SumTotalTokens
+	}
+	if r.SumTotalCost != nil {
+		cost = *r.SumTotalCost
+	}
+	return requests, tokens, cost, nil
+}
+
+func pctVsYesterday(curr, prev int64) *float64 {
+	if prev == 0 {
+		if curr == 0 {
+			z := 0.0
+			return &z
+		}
+		return nil
+	}
+	v := 100 * float64(curr-prev) / float64(prev)
+	v = math.Round(v*10) / 10
+	return &v
+}
+
+func DashboardSummary(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		users, err := client.User.Query().Count(ctx)
@@ -610,31 +657,65 @@ func DashboardSummary(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "统计失败")
 			return
 		}
-		start := time.Now().Truncate(24 * time.Hour)
-		todayLogs, err := client.UsageLog.Query().
-			Where(usagelog.RequestTimeGTE(start)).
-			All(ctx)
-		if err != nil {
-			httpx.ServerError(c, "统计失败")
-			return
-		}
-		var tokens int64
-		var cost int64
-		for _, l := range todayLogs {
-			tokens += int64(l.TotalTokens)
-			cost += l.TotalCost
-		}
 		channels, err := client.Channel.Query().Where(channel.Enabled(true)).Count(ctx)
 		if err != nil {
 			httpx.ServerError(c, "统计失败")
 			return
 		}
+		unit := int64(10000)
+		if cfg != nil && cfg.Site.CurrencyQuotaPerYuan > 0 {
+			unit = cfg.Site.CurrencyQuotaPerYuan
+		}
+		quotaToYuan := func(q int64) float64 {
+			x := float64(q) / float64(unit)
+			return math.Round(x*100) / 100
+		}
+
+		now := time.Now()
+		todayStart := now.Truncate(24 * time.Hour)
+		tomorrowStart := todayStart.Add(24 * time.Hour)
+		yesterdayStart := todayStart.Add(-24 * time.Hour)
+		// 自然日「近 7 日」含当日：从今日往前共 7 天
+		sevenDayStart := todayStart.AddDate(0, 0, -6)
+
+		todayReq, todayTok, todayCost, err := usageStatsRange(ctx, client, todayStart, tomorrowStart)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		yReq, yTok, yCost, err := usageStatsRange(ctx, client, yesterdayStart, todayStart)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+		d7Req, d7Tok, d7Cost, err := usageStatsRange(ctx, client, sevenDayStart, tomorrowStart)
+		if err != nil {
+			httpx.ServerError(c, "统计失败")
+			return
+		}
+
 		httpx.OK(c, gin.H{
-			"total_users":       users,
-			"enabled_channels":  channels,
-			"today_requests":    len(todayLogs),
-			"today_tokens":      tokens,
-			"today_cost_quota":  cost,
+			"total_users":              users,
+			"enabled_channels":         channels,
+			"today_requests":           todayReq,
+			"today_tokens":             todayTok,
+			"today_cost_quota":         todayCost,
+			"today_cost_yuan":          quotaToYuan(todayCost),
+			"currency_quota_per_yuan":  unit,
+
+			"yesterday_requests":    yReq,
+			"yesterday_tokens":      yTok,
+			"yesterday_cost_quota":  yCost,
+			"yesterday_cost_yuan":   quotaToYuan(yCost),
+
+			"last_7d_requests":    d7Req,
+			"last_7d_tokens":      d7Tok,
+			"last_7d_cost_quota":  d7Cost,
+			"last_7d_cost_yuan":   quotaToYuan(d7Cost),
+
+			"vs_yesterday_requests_pct": pctVsYesterday(todayReq, yReq),
+			"vs_yesterday_tokens_pct":   pctVsYesterday(todayTok, yTok),
+			"vs_yesterday_cost_pct":     pctVsYesterday(todayCost, yCost),
 		})
 	}
 }
