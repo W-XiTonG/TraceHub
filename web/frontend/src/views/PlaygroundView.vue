@@ -685,7 +685,7 @@ function fmtNum(n: number) {
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            class="th-pg-btn-primary th-pg-btn-primary--sm"
+            class="th-btn-primary-flat !px-3 !py-1.5 !text-xs"
             :disabled="modelsLoading"
             @click="refreshModels"
           >
@@ -834,7 +834,7 @@ function fmtNum(n: number) {
         </div>
 
         <div class="th-pg-divider-top flex flex-wrap gap-2 pt-3">
-          <button type="button" class="th-pg-btn-primary th-pg-btn-primary--sm" @click="exportSettings">
+          <button type="button" class="th-btn-primary-flat !px-3 !py-1.5 !text-xs" @click="exportSettings">
             {{ t('playground.export') }}
           </button>
           <label class="th-pg-btn-ghost inline-flex cursor-pointer items-center px-3 py-1.5">

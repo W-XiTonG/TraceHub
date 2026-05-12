@@ -61,6 +61,92 @@
   --th-dash-http-bg: rgba(2, 6, 23, 0.5);
   --th-dash-http-border: rgba(255, 255, 255, 0.08);
   --th-dash-http-fg: rgba(226, 232, 240, 0.92);
+  /* 用户控制台：筛选条、表单分组衬底（浅色在 themes-light.css 覆写） */
+  --th-console-muted-bg: rgba(0, 0, 0, 0.2);
+  --th-console-muted-border: rgba(255, 255, 255, 0.06);
+  --th-console-panel-bg: rgba(0, 0, 0, 0.25);
+  --th-console-panel-border: rgba(255, 255, 255, 0.06);
+  /* API Key 等用户页：浅色下勿用 bg-white / border-white（会随 --color-white 反相） */
+  --th-ghost-hover-bg: rgba(255, 255, 255, 0.06);
+  --th-surface-faint-border: rgba(255, 255, 255, 0.08);
+  --th-surface-faint-bg: rgba(255, 255, 255, 0.04);
+  --th-modal-divider: rgba(255, 255, 255, 0.1);
+  --th-modal-footer-bg: rgba(15, 23, 42, 0.96);
+  --th-modal-footer-shadow: 0 -8px 24px -8px rgba(0, 0, 0, 0.35);
+  --th-modal-card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+  --th-user-table-border: rgba(51, 65, 85, 0.55);
+  --th-user-table-head-bg: rgba(2, 6, 23, 0.5);
+  --th-user-table-row-hover: rgba(255, 255, 255, 0.03);
+  --th-user-table-line: rgba(148, 163, 184, 0.14);
+  --th-apikey-chip-idle-border: rgba(255, 255, 255, 0.08);
+  --th-apikey-chip-idle-bg: rgba(255, 255, 255, 0.04);
+  --th-apikey-chip-idle-fg: #94a3b8;
+  --th-apikey-chip-idle-border-hover: rgba(255, 255, 255, 0.12);
+  --th-apikey-chip-idle-bg-hover: rgba(255, 255, 255, 0.07);
+  --th-btn-flat-primary-fg: #ffffff;
+  --th-btn-flat-danger-border: rgba(239, 68, 68, 0.38);
+  --th-btn-flat-danger-bg: rgba(127, 29, 29, 0.22);
+  --th-btn-flat-danger-fg: #fecaca;
+  --th-btn-flat-danger-hover-bg: rgba(127, 29, 29, 0.38);
+  /* API Key 表格「状态」徽标：深浅色对比可控（勿依赖 Tailwind emerald 在浅色下的组合） */
+  --th-badge-enabled-fg: #a7f3d0;
+  --th-badge-enabled-bg: rgba(16, 185, 129, 0.16);
+  --th-badge-enabled-border: rgba(52, 211, 153, 0.38);
+  --th-badge-disabled-fg: #94a3b8;
+  --th-badge-disabled-bg: rgba(148, 163, 184, 0.1);
+  --th-badge-disabled-border: rgba(148, 163, 184, 0.3);
+  /* 调用日志：HTTP 状态码徽标（浅色勿用 emerald/amber 浅字 + 淡底） */
+  --th-badge-http-2xx-fg: #a7f3d0;
+  --th-badge-http-2xx-bg: rgba(16, 185, 129, 0.16);
+  --th-badge-http-2xx-border: rgba(52, 211, 153, 0.38);
+  --th-badge-http-4xx-fg: #fde68a;
+  --th-badge-http-4xx-bg: rgba(245, 158, 11, 0.14);
+  --th-badge-http-4xx-border: rgba(251, 191, 36, 0.35);
+  --th-badge-http-5xx-fg: #fecaca;
+  --th-badge-http-5xx-bg: rgba(239, 68, 68, 0.16);
+  --th-badge-http-5xx-border: rgba(248, 113, 113, 0.38);
+  /* 文档中心（DocsView scoped 使用，浅色在 themes-light 覆写） */
+  --th-docs-chrome-border: rgba(255, 255, 255, 0.08);
+  --th-docs-h2: #f1f5f9;
+  --th-docs-h3: #cbd5e1;
+  --th-docs-body: #94a3b8;
+  --th-docs-dt: #e2e8f0;
+  --th-docs-code-bg: rgba(0, 0, 0, 0.35);
+  --th-docs-code-border: rgba(255, 255, 255, 0.1);
+  --th-docs-code-fg: #a5f3fc;
+  --th-docs-pre-bg: rgba(2, 6, 23, 0.65);
+  --th-docs-pre-border: rgba(255, 255, 255, 0.08);
+  --th-docs-pre-fg: #cbd5e1;
+  --th-docs-endpoint-li-bg: rgba(0, 0, 0, 0.2);
+  --th-docs-endpoint-list-fg: #cbd5e1;
+  --th-docs-table-border: rgba(255, 255, 255, 0.08);
+  --th-docs-table-th-bg: rgba(255, 255, 255, 0.04);
+  --th-docs-table-th-fg: #cbd5e1;
+  --th-docs-toc-fg: #94a3b8;
+  --th-docs-toc-hover-fg: #e2e8f0;
+  --th-docs-toc-hover-bg: rgba(255, 255, 255, 0.05);
+  --th-docs-toc-active-fg: #a5f3fc;
+  --th-docs-toc-active-bg: rgba(6, 182, 212, 0.1);
+  --th-docs-mobile-toc-bg: rgba(255, 255, 255, 0.04);
+  --th-docs-mobile-toc-border: rgba(255, 255, 255, 0.1);
+  --th-docs-mobile-nav-bg: rgba(2, 6, 23, 0.9);
+  --th-docs-mobile-nav-border: rgba(255, 255, 255, 0.08);
+  --th-docs-mobile-toc-hover-bg: rgba(255, 255, 255, 0.06);
+  --th-docs-toc-rail-border: rgba(255, 255, 255, 0.08);
+  --th-docs-toc-active-border: rgba(34, 211, 238, 0.55);
+  /* 文档内管理员提示条 */
+  --th-docs-admin-border: rgba(245, 158, 11, 0.22);
+  --th-docs-admin-bg: rgba(120, 53, 15, 0.2);
+  --th-docs-admin-fg: #fde68a;
+  /* 管理端侧栏/顶栏「用户控制台」：勿用 bg-cyan-950（浅色未反相，会发乌） */
+  --th-admin-user-cta-bg: rgba(6, 47, 64, 0.52);
+  --th-admin-user-cta-border: rgba(34, 211, 238, 0.22);
+  --th-admin-user-cta-fg: #cffafe;
+  --th-admin-user-cta-hover-bg: rgba(6, 47, 64, 0.68);
+  --th-admin-user-cta-border-hover: rgba(103, 232, 249, 0.38);
+  --th-admin-user-cta-hover-fg: #ecfeff;
+  /* 管理端侧栏主标题（勿用 text-amber-50：浅色侧栏上几乎不可见） */
+  --th-admin-sidebar-title-fg: #fffbeb;
 }
 
 @layer base {
@@ -835,9 +921,231 @@
   color: var(--th-dash-code-fg);
 }
 
+/* 管理端：切换到用户控制台（侧栏 + 顶栏） */
+.th-admin-user-console-link {
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-admin-user-cta-border);
+  background: var(--th-admin-user-cta-bg);
+  color: var(--th-admin-user-cta-fg);
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+.th-admin-user-console-link:hover {
+  border-color: var(--th-admin-user-cta-border-hover);
+  background: var(--th-admin-user-cta-hover-bg);
+  color: var(--th-admin-user-cta-hover-fg);
+}
+
 .th-dash-code-mono {
   font-family: var(--th-font-mono);
   color: var(--th-dash-code-fg);
+}
+
+/* 控制台顶区筛选条、登录页模式切换条等：避免浅色主题下仍用纯黑半透明 */
+.th-console-muted-bar {
+  border-radius: var(--th-radius-xl);
+  border: 1px solid var(--th-console-muted-border);
+  background: var(--th-console-muted-bg);
+}
+
+.th-console-muted-bar--sm {
+  border-radius: 0.5rem;
+}
+
+.th-console-panel {
+  border-radius: var(--th-radius-xl);
+  border: 1px solid var(--th-console-panel-border);
+  background: var(--th-console-panel-bg);
+}
+
+/* 控制台页标题旁 / 弹窗分节：扁平线框图标，无衬底、无 ring、无阴影 */
+.th-console-section-icon {
+  flex-shrink: 0;
+  color: var(--th-accent);
+}
+
+.th-ghost-hover:hover {
+  background: var(--th-ghost-hover-bg);
+}
+
+.th-surface-faint {
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-surface-faint-border);
+  background: var(--th-surface-faint-bg);
+}
+
+.th-modal-divider-b {
+  border-bottom: 1px solid var(--th-modal-divider);
+}
+
+.th-modal-divider-t {
+  border-top: 1px solid var(--th-modal-divider);
+}
+
+.th-modal-footer-bar {
+  background: var(--th-modal-footer-bg);
+  box-shadow: var(--th-modal-footer-shadow);
+}
+
+.th-modal-card-flat {
+  box-shadow: var(--th-modal-card-shadow);
+}
+
+.th-user-keys-table-wrap {
+  border-radius: var(--th-radius-xl);
+  border: 1px solid var(--th-user-table-border);
+}
+
+.th-user-keys-table-wrap thead {
+  background: var(--th-user-table-head-bg);
+  border-bottom: 1px solid var(--th-user-table-line);
+}
+
+.th-user-keys-table-wrap tbody tr:hover {
+  background: var(--th-user-table-row-hover);
+}
+
+.th-user-keys-table-wrap tbody tr + tr {
+  border-top: 1px solid var(--th-user-table-line);
+}
+
+.th-apikey-chip-idle {
+  border: 1px solid var(--th-apikey-chip-idle-border);
+  background: var(--th-apikey-chip-idle-bg);
+  color: var(--th-apikey-chip-idle-fg);
+}
+
+.th-apikey-chip-idle:hover {
+  border-color: var(--th-apikey-chip-idle-border-hover);
+  background: var(--th-apikey-chip-idle-bg-hover);
+}
+
+/* 扁平主按钮（无渐变、无外发光） */
+.th-btn-primary-flat {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-family: var(--th-font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--th-btn-flat-primary-fg);
+  background: var(--th-accent);
+  box-shadow: none;
+  transition: filter 0.12s ease, opacity 0.12s ease;
+}
+
+.th-btn-primary-flat:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.th-btn-primary-flat:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 工具栏危险操作：扁平描边 + 浅底，浅色主题可读 */
+.th-btn-danger-soft {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-btn-flat-danger-border);
+  background: var(--th-btn-flat-danger-bg);
+  color: var(--th-btn-flat-danger-fg);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.th-btn-danger-soft:hover {
+  background: var(--th-btn-flat-danger-hover-bg);
+}
+
+/* 管理端表格内「删除」等：字色随 --th-btn-flat-danger-fg（浅色为深红） */
+.th-link-danger-plain {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--th-btn-flat-danger-fg);
+  transition: filter 0.12s ease;
+}
+.th-link-danger-plain:hover:not(:disabled) {
+  text-decoration: underline;
+  filter: brightness(0.92);
+}
+.th-link-danger-plain:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* API Key 列表：状态列扁平徽标 */
+.th-badge-apikey {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.th-badge-apikey--enabled {
+  border-color: var(--th-badge-enabled-border);
+  background: var(--th-badge-enabled-bg);
+  color: var(--th-badge-enabled-fg);
+}
+
+.th-badge-apikey--disabled {
+  border-color: var(--th-badge-disabled-border);
+  background: var(--th-badge-disabled-bg);
+  color: var(--th-badge-disabled-fg);
+}
+
+/* 调用日志：HTTP 状态扁平徽标（与 .th-badge-apikey 同形） */
+.th-badge-http {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.th-badge-http--2xx {
+  border-color: var(--th-badge-http-2xx-border);
+  background: var(--th-badge-http-2xx-bg);
+  color: var(--th-badge-http-2xx-fg);
+}
+
+.th-badge-http--4xx {
+  border-color: var(--th-badge-http-4xx-border);
+  background: var(--th-badge-http-4xx-bg);
+  color: var(--th-badge-http-4xx-fg);
+}
+
+.th-badge-http--5xx {
+  border-color: var(--th-badge-http-5xx-border);
+  background: var(--th-badge-http-5xx-bg);
+  color: var(--th-badge-http-5xx-fg);
+}
+
+.th-badge-http--neutral {
+  border-color: var(--th-badge-disabled-border);
+  background: var(--th-badge-disabled-bg);
+  color: var(--th-badge-disabled-fg);
 }
 
 .th-dash-http-hint {
@@ -929,6 +1237,10 @@
 .th-sidebar-brand {
   font-family: var(--th-font-display);
   letter-spacing: -0.03em;
+}
+
+.th-admin-sidebar-brand {
+  color: var(--th-admin-sidebar-title-fg);
 }
 
 /* Logo 方块（官网 / 侧栏复用气质） */
@@ -1404,10 +1716,21 @@
   background: rgba(255, 255, 255, 0.04);
 }
 .th-pill-active {
-  color: #020617;
-  background: linear-gradient(145deg, var(--th-pill-from) 0%, var(--th-pill-to) 100%);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  color: var(--th-btn-flat-primary-fg);
+  background: var(--th-accent);
+  border-color: color-mix(in srgb, var(--th-accent) 55%, transparent);
+  box-shadow: none;
+}
+
+/* 文档中心：顶栏底边与页脚顶边（与 th-border 解耦，浅色用墨色细线） */
+.th-site-header.docs-chrome-header {
+  border-bottom-color: var(--th-docs-chrome-border);
+}
+.docs-chrome-border-t {
+  border-top: 1px solid var(--th-docs-chrome-border);
+}
+.docs-toc-rail {
+  border-left: 1px solid var(--th-docs-toc-rail-border);
 }
 
 /* 官网顶栏 */

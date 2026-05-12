@@ -135,14 +135,14 @@ onMounted(load)
         <span class="text-slate-500">{{ t('settingsPage.webhook') }}</span>
         <input v-model="bind.webhook_url" type="url" :placeholder="t('settingsPage.webhookPh')" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
       </label>
-      <button type="button" class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500" @click="saveBind">{{ t('settingsPage.saveBind') }}</button>
+      <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="saveBind">{{ t('settingsPage.saveBind') }}</button>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
       <h2 class="mb-3 text-sm font-semibold text-slate-300">{{ t('settingsPage.secIp') }}</h2>
       <p class="mb-3 text-xs text-slate-500">{{ t('settingsPage.ipHint') }}</p>
       <textarea v-model="ipText" rows="5" class="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" :placeholder="t('settingsPage.ipPh')" />
-      <button type="button" class="mt-3 rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800" @click="saveIp">{{ t('settingsPage.saveIp') }}</button>
+      <button type="button" class="th-btn-primary-flat mt-3 px-4 py-2 text-sm" @click="saveIp">{{ t('settingsPage.saveIp') }}</button>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">

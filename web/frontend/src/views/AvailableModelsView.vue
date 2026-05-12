@@ -59,7 +59,7 @@ onMounted(load)
     <h1 class="text-3xl font-semibold tracking-tight text-slate-100">{{ t('modelsPage.title') }}</h1>
     <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
       {{ t('modelsPage.descBefore') }}<span class="text-slate-400">{{ t('modelsPage.gw') }}</span>{{ t('modelsPage.mid') }}
-      <code class="rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-xs text-sky-200/85">GET /v1/models</code>
+      <code class="th-dash-code-inline px-1.5 py-0.5 text-xs">GET /v1/models</code>
       {{ t('modelsPage.mid2') }}<span class="text-slate-400">{{ t('modelsPage.cat') }}</span>{{ t('modelsPage.after') }}
     </p>
 

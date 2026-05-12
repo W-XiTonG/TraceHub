@@ -482,7 +482,7 @@ onMounted(loadAll)
         <p class="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">{{ balance?.balance ?? '—' }}</p>
         <p class="mt-1 text-xs text-slate-500">{{ t('dashboard.cardYuanEquity', { yuan: fmtNum(balance?.balance_yuan, 2) }) }}</p>
         <div class="mt-4 flex flex-wrap items-center gap-2">
-          <RouterLink to="/console/billing" class="th-btn-primary !inline-flex !py-1.5 !text-xs no-underline">{{ t('dashboard.recharge') }}</RouterLink>
+          <RouterLink to="/console/billing" class="th-btn-primary-flat !inline-flex !px-3 !py-1.5 !text-xs no-underline">{{ t('dashboard.recharge') }}</RouterLink>
           <span class="text-xs text-slate-500">{{ t('dashboard.lifetimeSpend') }} ¥{{ fmtNum(usage?.lifetime?.total_cost, 2) }}</span>
         </div>
       </div>

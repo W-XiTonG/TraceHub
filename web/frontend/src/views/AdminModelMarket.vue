@@ -162,7 +162,7 @@ onMounted(async () => {
 <template>
   <div class="space-y-10 text-sm">
     <div>
-      <h1 class="mb-1 text-2xl font-bold text-amber-400">{{ t('adminMarket.pageTitle') }}</h1>
+      <h1 class="mb-1 text-2xl font-bold tracking-tight text-slate-100">{{ t('adminMarket.pageTitle') }}</h1>
       <p class="text-xs text-slate-500">{{ t('adminMarket.internalHint') }}</p>
     </div>
 
@@ -218,7 +218,7 @@ onMounted(async () => {
         </label>
         <button
           type="button"
-          class="max-w-xs rounded-lg bg-amber-500 py-2 font-semibold text-slate-950 hover:bg-amber-400"
+          class="th-btn-primary-flat max-w-xs px-4 py-2 text-sm"
           @click="createSource"
         >
           {{ t('adminMarket.saveSource') }}
@@ -249,8 +249,8 @@ onMounted(async () => {
                 <span v-else class="text-slate-600">{{ t('adminMarket.neverSynced') }}</span>
               </td>
               <td class="space-x-2 py-2">
-                <button type="button" class="text-amber-400 hover:underline" @click="syncSource(s.id)">{{ t('adminMarket.pullModels') }}</button>
-                <button type="button" class="text-red-400 hover:underline" @click="removeSource(s.id)">{{ t('adminCommon.delete') }}</button>
+                <button type="button" class="th-link-accent text-sm hover:underline" @click="syncSource(s.id)">{{ t('adminMarket.pullModels') }}</button>
+                <button type="button" class="th-link-danger-plain text-sm hover:underline" @click="removeSource(s.id)">{{ t('adminCommon.delete') }}</button>
               </td>
             </tr>
           </tbody>
@@ -267,7 +267,7 @@ onMounted(async () => {
         </label>
         <button
           type="button"
-          class="rounded-lg border border-slate-600 px-3 py-1 hover:bg-slate-800"
+          class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200"
           @click="
             page = 1;
             loadEntries()
@@ -296,8 +296,8 @@ onMounted(async () => {
             <td class="py-2">{{ e.visible ? t('adminCommon.yes') : t('adminCommon.no') }}</td>
             <td class="py-2">{{ e.enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</td>
             <td class="space-x-2 py-2">
-              <button type="button" class="text-amber-400 hover:underline" @click="openEdit(e)">{{ t('adminMarket.editEntry') }}</button>
-              <button type="button" class="text-red-400 hover:underline" @click="removeEntry(e.id)">{{ t('adminCommon.delete') }}</button>
+              <button type="button" class="th-link-accent text-sm hover:underline" @click="openEdit(e)">{{ t('adminMarket.editEntry') }}</button>
+              <button type="button" class="th-link-danger-plain text-sm hover:underline" @click="removeEntry(e.id)">{{ t('adminCommon.delete') }}</button>
             </td>
           </tr>
         </tbody>
@@ -348,8 +348,8 @@ onMounted(async () => {
           <input v-model="editForm.enabled" type="checkbox" /> {{ t('adminCommon.enabled') }}
         </label>
         <div class="flex justify-end gap-2">
-          <button type="button" class="rounded border border-slate-600 px-3 py-1" @click="editingEntry = null">{{ t('adminCommon.cancel') }}</button>
-          <button type="button" class="rounded bg-amber-500 px-3 py-1 font-medium text-slate-950" @click="saveEntry">{{ t('adminCommon.save') }}</button>
+          <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300" @click="editingEntry = null">{{ t('adminCommon.cancel') }}</button>
+          <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="saveEntry">{{ t('adminCommon.save') }}</button>
         </div>
         </div>
       </div>

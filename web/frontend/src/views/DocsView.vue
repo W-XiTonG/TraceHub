@@ -58,12 +58,12 @@ onUnmounted(() => {
 
 <template>
   <div class="th-page-shell min-h-screen text-slate-100">
-    <header class="th-site-header sticky top-0 z-30 border-b border-white/[0.06] backdrop-blur-md">
+    <header class="th-site-header docs-chrome-header sticky top-0 z-30 backdrop-blur-md">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
         <RouterLink to="/" class="flex min-w-0 items-center gap-3 transition hover:opacity-90">
           <div class="th-logo-mark th-logo-mark--sm shrink-0">TH</div>
           <div class="min-w-0">
-            <span class="th-sidebar-brand block truncate text-lg font-semibold tracking-tight text-white">TraceHub</span>
+            <span class="th-sidebar-brand block truncate text-lg font-semibold tracking-tight text-slate-100">TraceHub</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('docs.center') }}</span>
           </div>
         </RouterLink>
@@ -85,7 +85,7 @@ onUnmounted(() => {
       <div class="lg:hidden">
         <button
           type="button"
-          class="docs-mobile-toc-btn flex w-full items-center justify-between rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-3 text-left text-sm font-medium text-slate-200"
+          class="docs-mobile-toc-btn flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-medium"
           :aria-expanded="mobileTocOpen"
           @click="mobileTocOpen = !mobileTocOpen"
         >
@@ -94,7 +94,7 @@ onUnmounted(() => {
             <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
           </svg>
         </button>
-        <nav v-show="mobileTocOpen" class="mt-2 space-y-0.5 rounded-xl border border-white/[0.08] bg-slate-950/90 p-2">
+        <nav v-show="mobileTocOpen" class="docs-mobile-nav mt-2 space-y-0.5 rounded-xl p-2">
           <button
             v-for="item in toc"
             :key="item.id"
@@ -112,13 +112,13 @@ onUnmounted(() => {
       <aside class="docs-aside hidden lg:block">
         <div class="docs-aside-inner sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-1">
           <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">{{ t('docs.tocHeading') }}</p>
-          <nav class="space-y-0.5 border-l border-white/[0.08] pl-3">
+          <nav class="docs-toc-rail space-y-0.5 pl-3">
             <button
               v-for="item in toc"
               :key="item.id"
               type="button"
-              class="docs-toc-link -ml-px block w-full border-l-2 border-transparent py-1.5 pl-3 text-left text-xs leading-snug text-slate-500 transition hover:text-slate-300"
-              :class="{ 'docs-toc-link--active !border-cyan-500/70 !text-cyan-200/95': activeId === item.id }"
+              class="docs-toc-link -ml-px block w-full border-l-2 border-transparent py-1.5 pl-3 text-left text-xs leading-snug transition"
+              :class="{ 'docs-toc-link--active': activeId === item.id }"
               @click="scrollToSection(item.id)"
             >
               {{ item.label }}
@@ -198,8 +198,8 @@ onUnmounted(() => {
               <li><strong class="text-slate-200">{{ t('docs.cliBill') }}</strong>：{{ t('docs.cliBillD') }}</li>
               <li><strong class="text-slate-200">{{ t('docs.cliSet') }}</strong>：{{ t('docs.cliSetD') }}</li>
             </ul>
-            <p v-if="auth.role === 'admin' || auth.role === 'superadmin'" class="mt-4 rounded-lg border border-amber-500/20 bg-amber-950/25 px-4 py-3 text-sm text-amber-100/90">
-              {{ t('docs.adminNoteA') }}<RouterLink to="/admin" class="font-medium text-cyan-200 underline-offset-2 hover:underline">{{ t('layout.navAdmin') }}</RouterLink>{{ t('docs.adminNoteB') }}
+            <p v-if="auth.role === 'admin' || auth.role === 'superadmin'" class="docs-admin-note mt-4 rounded-lg border px-4 py-3 text-sm">
+              {{ t('docs.adminNoteA') }}<RouterLink to="/admin" class="th-link-accent font-medium underline-offset-2 hover:underline">{{ t('layout.navAdmin') }}</RouterLink>{{ t('docs.adminNoteB') }}
             </p>
           </section>
 
@@ -226,39 +226,39 @@ onUnmounted(() => {
             <p>{{ t('docs.gwIntro') }}</p>
 
             <h3 class="mt-6">{{ t('docs.catChat') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li>{{ t('docs.epChat1') }}</li>
               <li>{{ t('docs.epChat2') }}</li>
             </ul>
 
             <h3 class="mt-6">{{ t('docs.catEmb') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li><span class="text-emerald-400/90">POST</span> /v1/embeddings</li>
               <li><span class="text-emerald-400/90">POST</span> /v1/moderations</li>
             </ul>
 
             <h3 class="mt-6">{{ t('docs.catImg') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li><span class="text-emerald-400/90">POST</span> /v1/images/generations</li>
               <li><span class="text-emerald-400/90">POST</span> /v1/images/edits</li>
               <li><span class="text-emerald-400/90">POST</span> /v1/images/variations</li>
             </ul>
 
             <h3 class="mt-6">{{ t('docs.catAudio') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li><span class="text-emerald-400/90">POST</span> /v1/audio/transcriptions</li>
               <li><span class="text-emerald-400/90">POST</span> /v1/audio/translations</li>
               <li><span class="text-emerald-400/90">POST</span> /v1/audio/speech</li>
             </ul>
 
             <h3 class="mt-6">{{ t('docs.catModels') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li><span class="text-sky-400/90">GET</span> /v1/models</li>
               <li><span class="text-sky-400/90">GET</span> /v1/models/:model_id</li>
             </ul>
 
             <h3 class="mt-6">{{ t('docs.catResp') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li><span class="text-emerald-400/90">POST</span> /v1/responses</li>
               <li><span class="text-sky-400/90">GET</span> /v1/responses/:response_id</li>
               <li><span class="text-rose-400/90">DELETE</span> /v1/responses/:response_id</li>
@@ -269,7 +269,7 @@ onUnmounted(() => {
             <p class="text-sm text-slate-500">{{ t('docs.catRtP') }}</p>
 
             <h3 class="mt-6">{{ t('docs.catFiles') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li>{{ t('docs.epFiles1') }}</li>
               <li>{{ t('docs.epFiles2') }}</li>
               <li>{{ t('docs.epFiles3') }}</li>
@@ -351,7 +351,7 @@ onUnmounted(() => {
 
           <section id="doc-ops" class="docs-section th-glass rounded-[var(--th-radius-lg)] p-6 md:p-8">
             <h2>{{ t('docs.opsH2') }}</h2>
-            <ul class="docs-endpoint-list font-mono text-xs text-slate-300">
+            <ul class="docs-endpoint-list font-mono text-xs">
               <li>{{ t('docs.opHealth') }}</li>
               <li>{{ t('docs.opReady') }}</li>
               <li>{{ t('docs.opMetrics') }}</li>
@@ -392,7 +392,7 @@ onUnmounted(() => {
       </main>
     </div>
 
-    <footer class="border-t border-white/[0.06] py-10 text-center">
+    <footer class="docs-chrome-border-t py-10 text-center">
       <RouterLink to="/" class="text-sm text-slate-500 transition hover:text-slate-400">{{ t('docs.footerHome') }}</RouterLink>
       <p class="mt-3 text-[11px] text-slate-600">{{ t('docs.footerCompany') }}</p>
     </footer>
@@ -402,29 +402,29 @@ onUnmounted(() => {
 <style scoped>
 .docs-code {
   border-radius: 0.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--th-docs-code-border);
+  background: var(--th-docs-code-bg);
   padding: 0.1rem 0.4rem;
   font-family: var(--th-font-mono);
   font-size: 0.75rem;
-  color: rgb(165, 243, 252);
+  color: var(--th-docs-code-fg);
 }
 .docs-pre {
   overflow-x: auto;
   border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid var(--th-docs-pre-border);
+  background: var(--th-docs-pre-bg);
   padding: 0.875rem 1rem;
   font-family: var(--th-font-mono);
   font-size: 0.75rem;
   line-height: 1.55;
-  color: rgb(203, 213, 225);
+  color: var(--th-docs-pre-fg);
 }
 .docs-prose .docs-section h2 {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: rgb(241 245 249);
+  color: var(--th-docs-h2);
   letter-spacing: -0.02em;
 }
 .docs-prose .docs-section h3 {
@@ -432,13 +432,13 @@ onUnmounted(() => {
   margin-top: 1rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgb(203 213 225);
+  color: var(--th-docs-h3);
 }
 .docs-prose .docs-section p {
   margin-top: 0.75rem;
   font-size: 0.875rem;
   line-height: 1.65;
-  color: rgb(148 163 184);
+  color: var(--th-docs-body);
 }
 .docs-prose .docs-section p:first-of-type {
   margin-top: 1rem;
@@ -448,7 +448,7 @@ onUnmounted(() => {
   padding-left: 1.25rem;
   font-size: 0.875rem;
   line-height: 1.65;
-  color: rgb(148 163 184);
+  color: var(--th-docs-body);
 }
 .docs-ol li {
   margin-top: 0.5rem;
@@ -458,7 +458,7 @@ onUnmounted(() => {
   padding-left: 1.25rem;
   font-size: 0.875rem;
   line-height: 1.65;
-  color: rgb(148 163 184);
+  color: var(--th-docs-body);
 }
 .docs-ul li {
   margin-top: 0.35rem;
@@ -467,7 +467,7 @@ onUnmounted(() => {
   margin-top: 1rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(226 232 240);
+  color: var(--th-docs-dt);
 }
 .docs-dl dt:first-child {
   margin-top: 0;
@@ -476,23 +476,26 @@ onUnmounted(() => {
   margin-top: 0.35rem;
   font-size: 0.8125rem;
   line-height: 1.6;
-  color: rgb(148 163 184);
+  color: var(--th-docs-body);
 }
 .docs-callout {
   font-size: 0.8125rem;
   line-height: 1.6;
-  color: rgb(148 163 184);
+  color: var(--th-docs-body);
 }
 .docs-endpoint-list {
   margin-top: 0.5rem;
   list-style: none;
   padding: 0;
 }
+.docs-endpoint-list.font-mono {
+  color: var(--th-docs-endpoint-list-fg);
+}
 .docs-endpoint-list li {
   margin-top: 0.35rem;
   padding: 0.35rem 0.5rem;
   border-radius: 0.375rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--th-docs-endpoint-li-bg);
 }
 .docs-table {
   width: 100%;
@@ -501,30 +504,62 @@ onUnmounted(() => {
 }
 .docs-table th,
 .docs-table td {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--th-docs-table-border);
   padding: 0.5rem 0.65rem;
   vertical-align: top;
 }
+.docs-table td {
+  color: var(--th-docs-body);
+}
 .docs-table th {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgb(203 213 225);
+  background: var(--th-docs-table-th-bg);
+  color: var(--th-docs-table-th-fg);
   font-weight: 600;
   text-align: left;
 }
 .docs-toc-link {
   border-radius: 0.375rem;
-  color: rgb(148 163 184);
-  transition: color 0.15s, background 0.15s;
+  color: var(--th-docs-toc-fg);
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 }
 .docs-toc-link:hover {
-  color: rgb(226 232 240);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--th-docs-toc-hover-fg);
+  background: var(--th-docs-toc-hover-bg);
 }
 .docs-toc-link--active {
-  color: rgb(165 243 254);
-  background: rgba(6, 182, 212, 0.08);
+  color: var(--th-docs-toc-active-fg);
+  background: var(--th-docs-toc-active-bg);
+}
+.docs-aside .docs-toc-link {
+  color: var(--th-docs-toc-fg);
+}
+.docs-aside .docs-toc-link:hover {
+  color: var(--th-docs-toc-hover-fg);
+}
+.docs-aside .docs-toc-link--active {
+  border-left-color: var(--th-docs-toc-active-border);
+}
+.docs-mobile-nav {
+  border: 1px solid var(--th-docs-mobile-nav-border);
+  background: var(--th-docs-mobile-nav-bg);
+}
+.docs-mobile-toc-btn {
+  border: 1px solid var(--th-docs-mobile-toc-border);
+  background: var(--th-docs-mobile-toc-bg);
+  color: var(--th-text);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 .docs-mobile-toc-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--th-docs-mobile-toc-hover-bg);
+}
+.docs-admin-note {
+  border: 1px solid var(--th-docs-admin-border);
+  background: var(--th-docs-admin-bg);
+  color: var(--th-docs-admin-fg);
 }
 </style>

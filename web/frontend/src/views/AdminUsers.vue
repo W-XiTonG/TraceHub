@@ -255,9 +255,7 @@ async function saveEdit() {
 }
 
 function statusBadge(u: Row) {
-  return u.status === 1
-    ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-200'
-    : 'border-slate-500/35 bg-slate-500/10 text-slate-400'
+  return u.status === 1 ? 'th-badge-apikey th-badge-apikey--enabled' : 'th-badge-apikey th-badge-apikey--disabled'
 }
 
 function statusLabel(u: Row) {
@@ -309,27 +307,27 @@ onMounted(() => {
       </div>
       <button
         type="button"
-        class="shrink-0 self-start text-[13px] text-cyan-400/90 underline-offset-4 hover:text-cyan-300 hover:underline"
+        class="th-link-accent shrink-0 self-start text-[13px] underline-offset-4 hover:underline"
         @click="compact = !compact"
       >
         {{ compact ? t('adminUsers.standardList') : t('adminUsers.compactList') }}
       </button>
     </div>
 
-    <div class="mb-6 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <div class="th-console-muted-bar th-console-muted-bar--sm mb-6 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
       <input
         v-model="filterText"
         type="search"
         :placeholder="t('adminUsers.searchPh')"
-        class="min-w-[12rem] flex-1 rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 sm:max-w-xs"
+        class="th-input min-w-[12rem] flex-1 text-sm sm:max-w-xs"
       />
-      <button type="button" class="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-500" @click="load">
+      <button type="button" class="th-btn-primary-flat shrink-0 px-3 py-2 text-sm" @click="load">
         {{ t('adminCommon.query') }}
       </button>
-      <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400 hover:bg-white/5" @click="resetFilter">
+      <button type="button" class="th-ghost-hover shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="resetFilter">
         {{ t('adminUsers.resetFilter') }}
       </button>
-      <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-white/5" @click="copyEmails">
+      <button type="button" class="th-ghost-hover shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="copyEmails">
         {{ t('adminUsers.copyEmails') }}
       </button>
     </div>
@@ -337,9 +335,9 @@ onMounted(() => {
     <p v-if="flash" class="mb-3 text-sm text-emerald-400">{{ flash }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
 
-    <div class="overflow-x-auto rounded-xl border border-slate-800/80">
+    <div class="th-user-keys-table-wrap overflow-x-auto">
       <table class="w-full min-w-[640px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
-        <thead class="border-b border-slate-800 bg-slate-950/50 text-slate-500">
+        <thead class="text-slate-500">
           <tr>
             <th class="w-10 px-3 py-2.5" :class="compact ? 'py-1.5' : ''">
               <input
@@ -358,8 +356,8 @@ onMounted(() => {
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('adminUsers.thActions') }}</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/90">
-          <tr v-for="u in filteredItems" :key="u.id" class="hover:bg-white/[0.02]">
+        <tbody>
+          <tr v-for="u in filteredItems" :key="u.id">
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <input
                 type="checkbox"
@@ -371,7 +369,7 @@ onMounted(() => {
             <td class="px-3 font-mono text-slate-400" :class="compact ? 'py-1.5' : 'py-2.5'">{{ u.id }}</td>
             <td class="px-3 text-slate-200" :class="compact ? 'py-1.5' : 'py-2.5'">{{ u.email }}</td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
-              <span class="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium" :class="statusBadge(u)">
+              <span :class="statusBadge(u)">
                 {{ statusLabel(u) }}
               </span>
             </td>
@@ -383,16 +381,16 @@ onMounted(() => {
                   v-model="deltaByUser[u.id]"
                   type="number"
                   :placeholder="t('adminUsers.deltaPh')"
-                  class="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs"
+                  class="th-input !w-24 shrink-0 py-1.5 text-xs"
                 />
-                <button type="button" class="text-[11px] text-cyan-400 hover:underline" @click="adjust(u.id)">{{ t('adminUsers.apply') }}</button>
+                <button type="button" class="text-[11px] th-link-accent hover:underline" @click="adjust(u.id)">{{ t('adminUsers.apply') }}</button>
               </div>
             </td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <button
                   type="button"
-                  class="text-[11px] text-cyan-400 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                  class="text-[11px] th-link-accent hover:underline disabled:cursor-not-allowed disabled:opacity-40"
                   :disabled="rowIsElevated(u) && !canManageAdmins"
                   @click="openEdit(u)"
                 >
@@ -400,7 +398,7 @@ onMounted(() => {
                 </button>
                 <button
                   type="button"
-                  class="text-[11px] text-rose-300/90 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                  class="th-link-danger-plain text-[11px] font-medium disabled:cursor-not-allowed"
                   :disabled="auth.user?.id === u.id"
                   @click="removeUser(u)"
                 >
@@ -524,7 +522,7 @@ onMounted(() => {
               </button>
               <button
                 type="button"
-                class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+                class="th-btn-primary-flat px-4 py-2 text-sm disabled:opacity-50"
                 :disabled="editSaving"
                 @click="saveEdit"
               >

@@ -263,7 +263,7 @@ onMounted(load)
         </div>
         <button
           type="button"
-          class="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-sm font-semibold text-slate-950 shadow-lg hover:from-amber-400 hover:to-amber-500 sm:w-auto"
+          class="th-btn-primary-flat w-full max-w-xs px-4 py-2.5 text-sm sm:w-auto"
           @click="createGroup"
         >
           {{ t('adminGroups.createBtn') }}
@@ -302,13 +302,13 @@ onMounted(load)
                 <h3 class="text-lg font-semibold text-white">{{ g.name }}</h3>
                 <span
                   v-if="g.enabled === false"
-                  class="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] text-slate-400"
+                  class="th-badge-apikey th-badge-apikey--disabled"
                 >
                   {{ t('adminCommon.disabled') }}
                 </span>
                 <span
                   v-else
-                  class="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/25"
+                  class="th-badge-apikey th-badge-apikey--enabled"
                 >
                   {{ t('adminCommon.enabled') }}
                 </span>
@@ -326,21 +326,21 @@ onMounted(load)
             <div class="flex flex-wrap gap-2">
               <button
                 type="button"
-                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200"
                 @click="toggleExpand(g.id)"
               >
                 {{ expandedId === g.id ? t('adminGroups.collapseRates') : t('adminGroups.expandRates') }}
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-amber-400 hover:bg-slate-800"
+                class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200"
                 @click="openEdit(g)"
               >
                 {{ t('adminGroups.edit') }}
               </button>
               <button
                 type="button"
-                class="rounded-lg px-3 py-1.5 text-xs text-red-400 hover:bg-red-950/40"
+                class="th-link-danger-plain rounded-lg px-3 py-1.5 text-xs hover:bg-red-500/10"
                 @click="remove(g)"
               >
                 {{ t('adminCommon.delete') }}
@@ -403,7 +403,7 @@ onMounted(load)
                 </button>
                 <button
                   type="button"
-                  class="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-400"
+                  class="th-btn-primary-flat px-4 py-1.5 text-xs"
                   @click="saveRates(g.id)"
                 >
                   {{ t('adminGroups.saveRatesBtn') }}
@@ -461,7 +461,7 @@ onMounted(load)
             </button>
             <button
               type="button"
-              class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400"
+              class="th-btn-primary-flat px-4 py-2 text-sm"
               @click="saveEdit"
             >
               {{ t('adminCommon.save') }}

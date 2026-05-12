@@ -120,12 +120,13 @@ function resetFilters() {
   void load()
 }
 
-function statusBadgeClass(code?: number) {
-  if (code == null) return 'border-slate-500/30 bg-slate-500/10 text-slate-400'
-  if (code >= 200 && code < 300) return 'border-emerald-500/35 bg-emerald-500/12 text-emerald-200'
-  if (code >= 400 && code < 500) return 'border-amber-500/35 bg-amber-500/12 text-amber-200'
-  if (code >= 500) return 'border-red-500/35 bg-red-500/12 text-red-200'
-  return 'border-slate-500/30 bg-slate-500/10 text-slate-400'
+function statusBadgeClass(code?: number): string {
+  const base = 'th-badge-http'
+  if (code == null) return `${base} th-badge-http--neutral`
+  if (code >= 200 && code < 300) return `${base} th-badge-http--2xx`
+  if (code >= 400 && code < 500) return `${base} th-badge-http--4xx`
+  if (code >= 500) return `${base} th-badge-http--5xx`
+  return `${base} th-badge-http--neutral`
 }
 
 function rowToTsv(row: LogRow) {
@@ -204,14 +205,14 @@ onMounted(() => {
       </button>
     </div>
 
-    <div class="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3">
+    <div class="th-console-muted-bar mb-4 flex flex-col gap-3 px-4 py-3">
       <div class="flex flex-wrap items-end gap-3">
         <label class="flex flex-col gap-1 text-xs">
           <span class="text-slate-500">{{ t('logsPage.model') }}</span>
           <input
             v-model="filters.model"
             :placeholder="t('logsPage.modelPh')"
-            class="rounded-lg border border-slate-600/80 bg-slate-950/80 px-2 py-1.5 text-sm text-slate-100"
+            class="th-input text-sm"
           />
         </label>
         <label class="flex flex-col gap-1 text-xs">
@@ -219,28 +220,24 @@ onMounted(() => {
           <input
             v-model="filters.status_code"
             :placeholder="t('logsPage.statusPh')"
-            class="w-20 rounded-lg border border-slate-600/80 bg-slate-950/80 px-2 py-1.5 text-sm text-slate-100"
+            class="th-input !w-20 shrink-0 text-sm"
           />
         </label>
         <label class="flex flex-col gap-1 text-xs">
           <span class="text-slate-500">{{ t('logsPage.start') }}</span>
-          <input v-model="filters.start_time" class="w-44 rounded-lg border border-slate-600/80 bg-slate-950/80 px-2 py-1.5 text-sm text-slate-100" />
+          <input v-model="filters.start_time" class="th-input !w-44 shrink-0 text-sm" />
         </label>
         <label class="flex flex-col gap-1 text-xs">
           <span class="text-slate-500">{{ t('logsPage.end') }}</span>
-          <input v-model="filters.end_time" class="w-44 rounded-lg border border-slate-600/80 bg-slate-950/80 px-2 py-1.5 text-sm text-slate-100" />
+          <input v-model="filters.end_time" class="th-input !w-44 shrink-0 text-sm" />
         </label>
-        <button
-          type="button"
-          class="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-500"
-          @click="applyFilters"
-        >
+        <button type="button" class="th-btn-primary-flat px-3 py-2 text-sm" @click="applyFilters">
           {{ t('logsPage.filterBtn') }}
         </button>
-        <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300 hover:bg-white/5" @click="resetFilters">
+        <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300" @click="resetFilters">
           {{ t('logsPage.resetBtn') }}
         </button>
-        <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400 hover:bg-white/5" @click="load">
+        <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400" @click="load">
           {{ t('logsPage.query') }}
         </button>
       </div>
@@ -249,9 +246,9 @@ onMounted(() => {
           v-model="quickSearch"
           type="search"
           :placeholder="t('logsPage.toolbarSearchPh')"
-          class="min-w-[12rem] flex-1 rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 sm:max-w-md"
+          class="th-input min-w-[12rem] flex-1 !max-w-md"
         />
-        <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-white/5" @click="copySelectedTsv">
+        <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="copySelectedTsv">
           {{ t('logsPage.copySelected') }}
         </button>
       </div>
@@ -261,9 +258,9 @@ onMounted(() => {
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
     <p class="mb-4 text-[11px] text-slate-600">{{ t('logsPage.copyNote') }}</p>
 
-    <div class="overflow-x-auto rounded-xl border border-slate-800/80">
+    <div class="th-user-keys-table-wrap overflow-x-auto">
       <table class="w-full min-w-[880px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
-        <thead class="border-b border-slate-800 bg-slate-950/50 text-slate-500">
+        <thead class="text-slate-500">
           <tr>
             <th class="w-10 px-3 py-2.5" :class="compact ? 'py-1.5' : ''">
               <input
@@ -283,8 +280,8 @@ onMounted(() => {
             <th class="px-3 py-2.5 text-right font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thActions') }}</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/90">
-          <tr v-for="row in displayItems" :key="row.id" class="hover:bg-white/[0.02]">
+        <tbody>
+          <tr v-for="row in displayItems" :key="row.id">
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <input
                 type="checkbox"
@@ -306,10 +303,7 @@ onMounted(() => {
             <td class="px-3 text-xs" :class="compact ? 'py-1.5' : 'py-2.5'">{{ row.total_tokens }}</td>
             <td class="px-3 text-xs" :class="compact ? 'py-1.5' : 'py-2.5'">{{ row.total_cost }}</td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
-              <span
-                class="inline-flex rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium"
-                :class="statusBadgeClass(row.status_code)"
-              >
+              <span :class="statusBadgeClass(row.status_code)">
                 {{ row.status_code ?? t('modelsPage.dash') }}
               </span>
             </td>

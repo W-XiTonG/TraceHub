@@ -18,7 +18,7 @@ const { t } = useI18n()
       >
         <div class="th-logo-mark th-logo-mark--md th-logo-mark--amber shrink-0 transition group-hover:brightness-105">AD</div>
         <div class="min-w-0">
-          <p class="th-sidebar-brand text-sm font-semibold text-amber-50/95">{{ t('layout.adminTitle') }}</p>
+          <p class="th-sidebar-brand th-admin-sidebar-brand text-sm font-semibold">{{ t('layout.adminTitle') }}</p>
           <p class="text-[10px] uppercase tracking-[0.18em] text-slate-600">{{ t('layout.adminTag') }}</p>
         </div>
       </RouterLink>
@@ -36,7 +36,7 @@ const { t } = useI18n()
         <RouterLink
           to="/console"
           :title="t('layout.adminConsoleTitle')"
-          class="flex items-center gap-2 rounded-lg border border-cyan-500/25 bg-cyan-950/20 px-3 py-2 text-xs font-medium text-cyan-100/90 transition hover:border-cyan-400/40 hover:bg-cyan-950/35 hover:text-cyan-50"
+          class="th-admin-user-console-link flex items-center gap-2 px-3 py-2 text-xs font-medium"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden="true">
             <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
@@ -66,7 +66,7 @@ const { t } = useI18n()
             <RouterLink
               to="/console"
               :title="t('layout.adminConsoleTitle')"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/25 px-3 py-1.5 text-xs font-medium text-cyan-100/90 transition hover:border-cyan-400/40 hover:bg-cyan-950/40 hover:text-cyan-50"
+              class="th-admin-user-console-link inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 opacity-90" aria-hidden="true">
                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />

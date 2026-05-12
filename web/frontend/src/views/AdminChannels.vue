@@ -400,7 +400,7 @@ function truncateUrl(u: string, max = 42): string {
             <button
               type="button"
               :disabled="fetchLoading"
-              class="rounded-lg border border-cyan-600/50 bg-cyan-950/40 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-950/70 disabled:opacity-40"
+              class="th-admin-user-console-link inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium disabled:opacity-40"
               @click="fetchFromUpstream"
             >
               {{ fetchLoading ? t('adminChannels.fetching') : t('adminChannels.btnFetchUpstream') }}
@@ -416,7 +416,7 @@ function truncateUrl(u: string, max = 42): string {
           <p v-if="presetHint" class="rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">{{ presetHint }}</p>
           <button
             type="button"
-            class="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:from-amber-400 hover:to-amber-500 sm:w-auto"
+            class="th-btn-primary-flat w-full max-w-xs px-4 py-2.5 text-sm sm:w-auto"
             @click="createCh"
           >
             {{ t('adminChannels.saveChannel') }}

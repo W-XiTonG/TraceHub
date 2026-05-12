@@ -104,7 +104,7 @@ async function submit() {
         <p class="mb-5 text-center text-[11px] leading-relaxed text-slate-600">
           {{ mode === 'code' ? t('login.hintCode') : t('login.hint') }}
         </p>
-        <div class="mb-6 flex justify-center gap-1 rounded-lg border border-white/8 bg-black/20 p-1">
+        <div class="th-console-muted-bar th-console-muted-bar--sm mb-6 flex justify-center gap-1 p-1">
           <button
             type="button"
             class="flex-1 rounded-md px-3 py-2 text-xs font-medium transition"
@@ -127,7 +127,7 @@ async function submit() {
           class="mb-5 rounded-lg border border-cyan-500/15 bg-cyan-950/25 px-3 py-2 text-center text-[11px] leading-relaxed text-cyan-200/85"
         >
           {{ t('login.redirectPrefix') }}
-          <code class="mx-0.5 rounded bg-black/35 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/90">{{ redirectLabel }}</code>
+          <code class="th-dash-code-inline mx-0.5 px-1.5 py-0.5 text-[10px]">{{ redirectLabel }}</code>
         </p>
         <form class="space-y-5" @submit.prevent="submit">
           <div>

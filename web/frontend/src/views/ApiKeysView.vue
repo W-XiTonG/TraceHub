@@ -270,9 +270,7 @@ function expiresSummary(k: KeyRow) {
 }
 
 function statusBadgeClass(st: string) {
-  return st === 'enabled'
-    ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-200'
-    : 'border-slate-500/35 bg-slate-500/10 text-slate-400'
+  return st === 'enabled' ? 'th-badge-apikey th-badge-apikey--enabled' : 'th-badge-apikey th-badge-apikey--disabled'
 }
 
 async function loadGroup() {
@@ -287,8 +285,8 @@ async function loadGroup() {
 
 function chipCls(active: boolean) {
   return active
-    ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-    : 'border-white/[0.06] bg-white/[0.04] text-slate-400 hover:border-white/10 hover:bg-white/[0.06]'
+    ? 'border border-cyan-500/40 bg-cyan-500/15 text-cyan-100'
+    : 'th-apikey-chip-idle'
 }
 
 function openCreateModal() {
@@ -422,15 +420,22 @@ onMounted(() => {
   <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="flex min-w-0 items-start gap-3">
-        <span class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/12 text-cyan-300 ring-1 ring-cyan-500/25">
-          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H3.75v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
-            />
-          </svg>
-        </span>
+        <svg
+          class="th-console-section-icon mt-0.5 h-9 w-9 shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <!-- 简洁几何钥匙：避免 Heroicons 单路径弧线在小尺寸下显得抖动 -->
+          <circle cx="8.5" cy="12" r="3.25" />
+          <path d="M11.75 12H21" />
+          <path d="M17 12v3.5" />
+          <path d="M17 15.5h3.25" />
+        </svg>
         <div class="min-w-0">
           <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">{{ t('apiKeys.pageKicker') }}</p>
           <h1 class="text-2xl font-bold tracking-tight text-slate-100">{{ t('apiKeys.title') }}</h1>
@@ -446,25 +451,15 @@ onMounted(() => {
       </button>
     </div>
 
-    <div
-      class="mb-6 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
-    >
+    <div class="th-console-muted-bar mb-6 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
-          @click="openCreateModal"
-        >
+        <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="openCreateModal">
           {{ t('apiKeys.newKey') }}
         </button>
-        <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-white/5" @click="copySelectedPrefixes">
+        <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="copySelectedPrefixes">
           {{ t('apiKeys.copySelected') }}
         </button>
-        <button
-          type="button"
-          class="rounded-lg border border-red-500/40 bg-red-950/25 px-3 py-2 text-sm font-medium text-red-200 hover:bg-red-950/40"
-          @click="bulkRemove"
-        >
+        <button type="button" class="th-btn-danger-soft px-3 py-2" @click="bulkRemove">
           {{ t('apiKeys.bulkDelete') }}
         </button>
       </div>
@@ -473,19 +468,19 @@ onMounted(() => {
           v-model="filterName"
           type="search"
           :placeholder="t('apiKeys.toolbarSearchPh')"
-          class="w-full min-w-[10rem] rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 sm:max-w-[14rem]"
+          class="th-input w-full min-w-[10rem] sm:max-w-[14rem]"
         />
         <input
           v-model="filterPrefix"
           type="search"
           :placeholder="t('apiKeys.toolbarPrefixPh')"
-          class="w-full min-w-[8rem] rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 font-mono text-xs text-slate-100 placeholder:text-slate-600 sm:max-w-[12rem]"
+          class="th-input w-full min-w-[8rem] font-mono text-xs sm:max-w-[12rem]"
         />
         <div class="flex gap-2">
-          <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-white/5" @click="runQuery">
+          <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="runQuery">
             {{ t('apiKeys.query') }}
           </button>
-          <button type="button" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400 hover:bg-white/5" @click="resetFilters">
+          <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400" @click="resetFilters">
             {{ t('apiKeys.reset') }}
           </button>
         </div>
@@ -497,12 +492,12 @@ onMounted(() => {
     <p class="mb-4 text-[11px] text-slate-600">{{ t('apiKeys.copyPrefixNote') }}</p>
     <div v-if="createdKey" class="mb-6 rounded-xl border border-amber-600/50 bg-amber-950/40 p-4 text-sm">
       <p class="font-medium text-amber-400">{{ t('apiKeys.saveOnce') }}</p>
-      <code class="mt-2 block break-all text-cyan-300">{{ createdKey }}</code>
+      <code class="th-dash-code-inline mt-2 block break-all px-2 py-1.5 text-xs">{{ createdKey }}</code>
     </div>
 
-    <div class="overflow-x-auto rounded-xl border border-slate-800/80">
+    <div class="th-user-keys-table-wrap overflow-x-auto">
       <table class="w-full min-w-[56rem] text-left" :class="compact ? 'text-xs' : 'text-sm'">
-        <thead class="border-b border-slate-800 bg-slate-950/50 text-slate-500">
+        <thead class="text-slate-500">
           <tr>
             <th class="w-10 px-3 py-2.5" :class="compact ? 'py-1.5' : ''">
               <input
@@ -524,8 +519,8 @@ onMounted(() => {
             <th class="px-3 py-2.5 text-right font-medium" :class="compact ? 'py-1.5' : ''">{{ t('apiKeys.thActions') }}</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/90">
-          <tr v-for="k in filteredItems" :key="k.id" class="hover:bg-white/[0.02]">
+        <tbody>
+          <tr v-for="k in filteredItems" :key="k.id">
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <input
                 type="checkbox"
@@ -536,10 +531,7 @@ onMounted(() => {
             </td>
             <td class="px-3 font-medium text-slate-200" :class="compact ? 'py-1.5' : 'py-2.5'">{{ k.name || t('apiKeys.dash') }}</td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
-              <span
-                class="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium"
-                :class="statusBadgeClass(k.status)"
-              >
+              <span :class="statusBadgeClass(k.status)">
                 {{ k.status === 'enabled' ? t('apiKeys.statusEnabled') : t('apiKeys.statusDisabled') }}
               </span>
             </td>
@@ -556,7 +548,7 @@ onMounted(() => {
                   >{{ displayKeyCell(k) }}</code>
                   <button
                     type="button"
-                    class="shrink-0 rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-400 disabled:opacity-40"
+                    class="th-ghost-hover shrink-0 rounded p-1 text-slate-500 hover:text-cyan-400 disabled:opacity-40"
                     :title="t('apiKeys.copyFullKey')"
                     :disabled="revealBusyId === k.id"
                     @click="copyFullSecret(k)"
@@ -639,9 +631,9 @@ onMounted(() => {
             @click="closeCreateModal"
           />
           <div
-            class="th-modal-surface relative z-10 flex max-h-[min(92dvh,52rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700/90 bg-slate-900 shadow-2xl shadow-black/50"
+            class="th-modal-surface th-modal-card-flat relative z-10 flex max-h-[min(92dvh,52rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700/90 bg-slate-900"
           >
-            <header class="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+            <header class="th-modal-divider-b flex shrink-0 items-start justify-between gap-4 px-5 py-4">
               <div class="min-w-0">
                 <h2 id="create-key-modal-title" class="text-lg font-semibold tracking-tight text-slate-100">
                   {{ t('apiKeys.createTitle') }}
@@ -650,7 +642,7 @@ onMounted(() => {
               </div>
               <button
                 type="button"
-                class="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+                class="th-ghost-hover shrink-0 rounded-lg p-2 text-slate-400 transition hover:text-slate-200"
                 :aria-label="t('apiKeys.closeDrawer')"
                 @click="closeCreateModal"
               >
@@ -662,17 +654,23 @@ onMounted(() => {
 
             <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-5">
               <div class="space-y-5">
-              <section class="rounded-xl border border-white/[0.06] bg-black/25 p-4">
+              <section class="th-console-panel p-4">
                 <div class="mb-4 flex gap-3">
-                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/20">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H3.75v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
-                      />
-                    </svg>
-                  </span>
+                  <svg
+                    class="th-console-section-icon mt-0.5 h-8 w-8 shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="8.5" cy="12" r="3.25" />
+                    <path d="M11.75 12H21" />
+                    <path d="M17 12v3.5" />
+                    <path d="M17 15.5h3.25" />
+                  </svg>
                   <div class="min-w-0">
                     <h3 class="text-sm font-semibold text-slate-100">{{ t('apiKeys.sectionBasic') }}</h3>
                     <p class="mt-0.5 text-xs leading-relaxed text-slate-500">{{ t('apiKeys.sectionBasicDesc') }}</p>
@@ -689,12 +687,12 @@ onMounted(() => {
                     maxlength="128"
                     autocomplete="off"
                     :placeholder="t('apiKeys.namePh')"
-                    class="mt-1.5 w-full rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    class="th-input mt-1.5 w-full"
                     @keydown.enter.prevent="submitCreateKey"
                   />
                 </label>
 
-                <div class="mt-4 rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2.5">
+                <div class="th-surface-faint mt-4 px-3 py-2.5">
                   <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('apiKeys.routingGroup') }}</p>
                   <p v-if="myGroupName" class="mt-1 text-[13px] leading-relaxed text-slate-400">
                     {{ t('apiKeys.routingGroupHint', { name: myGroupName }) }}
@@ -705,19 +703,19 @@ onMounted(() => {
                 <div class="mt-4">
                   <p class="mb-2 text-[13px] text-slate-400">{{ t('apiKeys.expiryLabel') }}</p>
                   <div class="flex flex-wrap gap-2">
-                    <button type="button" :class="['rounded-lg border px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === 'never')]" @click="expiryPreset = 'never'">
+                    <button type="button" :class="['rounded-lg px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === 'never')]" @click="expiryPreset = 'never'">
                       {{ t('apiKeys.expiryNever') }}
                     </button>
-                    <button type="button" :class="['rounded-lg border px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === '1h')]" @click="expiryPreset = '1h'">
+                    <button type="button" :class="['rounded-lg px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === '1h')]" @click="expiryPreset = '1h'">
                       {{ t('apiKeys.expiry1h') }}
                     </button>
-                    <button type="button" :class="['rounded-lg border px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === '1d')]" @click="expiryPreset = '1d'">
+                    <button type="button" :class="['rounded-lg px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === '1d')]" @click="expiryPreset = '1d'">
                       {{ t('apiKeys.expiry1d') }}
                     </button>
-                    <button type="button" :class="['rounded-lg border px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === '30d')]" @click="expiryPreset = '30d'">
+                    <button type="button" :class="['rounded-lg px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === '30d')]" @click="expiryPreset = '30d'">
                       {{ t('apiKeys.expiry30d') }}
                     </button>
-                    <button type="button" :class="['rounded-lg border px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === 'custom')]" @click="expiryPreset = 'custom'">
+                    <button type="button" :class="['rounded-lg px-3 py-1.5 text-xs font-medium transition', chipCls(expiryPreset === 'custom')]" @click="expiryPreset = 'custom'">
                       {{ t('apiKeys.expiryCustom') }}
                     </button>
                   </div>
@@ -726,31 +724,36 @@ onMounted(() => {
                       v-model="expiryCustom"
                       type="datetime-local"
                       :min="minDatetimeLocal"
-                      class="w-full rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                      class="th-input w-full"
                     />
                     <p class="mt-1.5 text-[11px] text-slate-600">{{ t('apiKeys.expiryCustomHint') }}</p>
                   </div>
                 </div>
               </section>
 
-              <section class="rounded-xl border border-white/[0.06] bg-black/25 p-4">
+              <section class="th-console-panel p-4">
                 <div class="mb-4 flex gap-3">
-                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/20">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 01-2.25-2.25H15a3 3 0 10-6 0H5.25A2.25 2.25 0 003 12"
-                      />
-                    </svg>
-                  </span>
+                  <svg
+                    class="th-console-section-icon mt-0.5 h-8 w-8"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 01-2.25-2.25H15a3 3 0 10-6 0H5.25A2.25 2.25 0 003 12"
+                    />
+                  </svg>
                   <div class="min-w-0">
                     <h3 class="text-sm font-semibold text-slate-100">{{ t('apiKeys.sectionQuota') }}</h3>
                     <p class="mt-0.5 text-xs leading-relaxed text-slate-500">{{ t('apiKeys.sectionQuotaDesc') }}</p>
                   </div>
                 </div>
 
-                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent py-1 transition hover:border-white/[0.06]">
+                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent py-1 transition hover:border-slate-600/35">
                   <input v-model="dailyUnlimited" type="checkbox" class="mt-1 h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500/30" />
                   <span class="min-w-0">
                     <span class="block text-[13px] font-medium text-slate-200">{{ t('apiKeys.quotaUnlimited') }}</span>
@@ -767,20 +770,25 @@ onMounted(() => {
                       min="0"
                       step="1"
                       inputmode="numeric"
-                      class="mt-1.5 w-full rounded-lg border border-slate-600/80 bg-slate-950/80 px-3 py-2.5 font-mono text-sm text-slate-100 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                      class="th-input mt-1.5 w-full font-mono text-sm"
                     />
                   </label>
                 </div>
               </section>
 
-              <section class="rounded-xl border border-white/[0.06] bg-black/25 p-4">
+              <section class="th-console-panel p-4">
                 <div class="mb-3 flex gap-3">
-                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/20">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
+                  <svg
+                    class="th-console-section-icon mt-0.5 h-8 w-8"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    aria-hidden="true"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
                   <div class="min-w-0">
                     <h3 class="text-sm font-semibold text-slate-100">{{ t('apiKeys.sectionObserve') }}</h3>
                   </div>
@@ -798,16 +806,14 @@ onMounted(() => {
               <p v-if="createErr" class="mt-5 rounded-lg border border-red-500/25 bg-red-950/35 px-3 py-2 text-sm text-red-300">{{ createErr }}</p>
             </div>
 
-            <footer
-              class="flex shrink-0 justify-end gap-2 border-t border-white/10 bg-slate-950/95 px-5 py-4 shadow-[0_-8px_24px_-8px_rgba(0,0,0,0.45)] backdrop-blur-sm"
-            >
-              <button type="button" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-white/5" @click="closeCreateModal">
+            <footer class="th-modal-divider-t th-modal-footer-bar flex shrink-0 justify-end gap-2 px-5 py-4 backdrop-blur-sm">
+              <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300" @click="closeCreateModal">
                 {{ t('apiKeys.cancel') }}
               </button>
               <button
                 type="button"
                 :disabled="loading"
-                class="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+                class="th-btn-primary-flat inline-flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-50"
                 @click="submitCreateKey"
               >
                 <svg class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -825,26 +831,26 @@ onMounted(() => {
       <Transition name="th-modal">
         <div v-if="editOpen" class="fixed inset-0 z-[130] flex items-center justify-center p-4 sm:p-6">
           <div class="absolute inset-0 cursor-pointer bg-black/65 backdrop-blur-[2px]" aria-hidden="true" @click="editOpen = false" />
-          <div class="th-modal-surface relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+          <div class="th-modal-surface th-modal-card-flat relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6">
           <h3 class="mb-4 font-semibold">{{ t('apiKeys.editTitle') }}</h3>
           <label class="mb-3 block text-sm">
             <span class="text-slate-500">{{ t('apiKeys.labelName') }}</span>
-            <input v-model="edit.name" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5" />
+            <input v-model="edit.name" class="th-input mt-1 w-full" />
           </label>
           <label class="mb-3 flex items-center gap-2 text-sm">
             <input v-model="edit.enabled" type="checkbox" /> {{ t('apiKeys.enabled') }}
           </label>
           <label class="mb-3 block text-sm">
             <span class="text-slate-500">{{ t('apiKeys.dailyQuota') }}</span>
-            <input v-model="edit.daily_quota" :placeholder="t('apiKeys.dailyQuotaPh')" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-xs" />
+            <input v-model="edit.daily_quota" :placeholder="t('apiKeys.dailyQuotaPh')" class="th-input mt-1 w-full font-mono text-xs" />
           </label>
           <label class="mb-4 block text-sm">
             <span class="text-slate-500">{{ t('apiKeys.ipWhitelist') }}</span>
-            <textarea v-model="edit.ip_whitelist" rows="3" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-xs" />
+            <textarea v-model="edit.ip_whitelist" rows="3" class="th-input mt-1 w-full font-mono text-xs" />
           </label>
           <div class="flex justify-end gap-2">
-            <button type="button" class="rounded border border-slate-600 px-3 py-1.5 text-sm" @click="editOpen = false">{{ t('apiKeys.cancel') }}</button>
-            <button type="button" class="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white" @click="saveEdit">{{ t('apiKeys.save') }}</button>
+            <button type="button" class="th-ghost-hover rounded border border-slate-600 px-3 py-1.5 text-sm" @click="editOpen = false">{{ t('apiKeys.cancel') }}</button>
+            <button type="button" class="th-btn-primary-flat px-3 py-1.5 text-sm" @click="saveEdit">{{ t('apiKeys.save') }}</button>
           </div>
           </div>
         </div>
