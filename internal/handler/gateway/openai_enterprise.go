@@ -206,7 +206,9 @@ func enterpriseForwardJSON(
 		ct2 = preComp
 	}
 	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-	_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+		return
+	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	outCT := resp.Header.Get("Content-Type")
@@ -273,12 +275,25 @@ func enterpriseForwardStream(
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	_, _ = copyStreamFlushing(c.Writer, resp.Body)
-
-	pt := prePrompt
-	comp := preComp
+	streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+	pt := streamPT
+	comp := streamCT
+	if pt < 1 {
+		pt = prePrompt
+	}
+	if comp < 0 {
+		comp = 0
+	}
+	if streamPT == 0 && streamCT == 0 {
+		comp = preComp
+	}
 	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
-	_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+		em := err.Error()
+		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		return
+	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
@@ -345,12 +360,25 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	_, _ = copyStreamFlushing(c.Writer, resp.Body)
-
-	pt := prePrompt
-	comp := preComp
+	streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+	pt := streamPT
+	comp := streamCT
+	if pt < 1 {
+		pt = prePrompt
+	}
+	if comp < 0 {
+		comp = 0
+	}
+	if streamPT == 0 && streamCT == 0 {
+		comp = preComp
+	}
 	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
-	_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+		em := err.Error()
+		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		return
+	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
@@ -401,7 +429,7 @@ func enterpriseForwardBinaryDownload(
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	n, _ := io.Copy(c.Writer, resp.Body)
+	n, _ := copyStreamFlushing(c.Writer, resp.Body)
 
 	pt := prePrompt
 	if cl := resp.ContentLength; cl > 0 {
@@ -417,7 +445,12 @@ func enterpriseForwardBinaryDownload(
 	}
 	comp := preComp
 	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
-	_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+		em := err.Error()
+		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		return
+	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
@@ -504,7 +537,9 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 			ct2 = 2048
 		}
 		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-		_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+			return
+		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		c.Data(resp.StatusCode, "application/json", raw)

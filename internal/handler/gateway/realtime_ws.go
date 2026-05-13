@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -168,7 +169,9 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		defer upConn.Close()
 
 		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, compToks)
-		_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+			slog.Warn("realtime ws deduct failed", "user_id", u.ID, "err", err)
+		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compToks, cost, c.ClientIP(), 200, nil, time.Since(start))
 

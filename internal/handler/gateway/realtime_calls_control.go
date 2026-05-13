@@ -195,7 +195,9 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 				ct2 = maxComp
 			}
 			cost, _ := d.Billing.Charge(c.Request.Context(), u, route.LogicalModel, pt2, ct2)
-			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+				return
+			}
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, route.LogicalModel, route.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		}
 

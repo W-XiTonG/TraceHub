@@ -195,11 +195,25 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			if f, ok := c.Writer.(http.Flusher); ok {
 				f.Flush()
 			}
-			_, _ = copyStreamFlushing(c.Writer, resp.Body)
-			pt := promptToks
-			comp := maxComp
+			streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+			pt := streamPT
+			comp := streamCT
+			if pt < 1 {
+				pt = promptToks
+			}
+			if comp < 0 {
+				comp = 0
+			}
+			if streamPT == 0 && streamCT == 0 {
+				comp = maxComp
+			}
 			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
-			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+				em := err.Error()
+				metrics.GatewayRequests.WithLabelValues(model, chType, "deduct_err").Inc()
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+				return
+			}
 			metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			return
@@ -214,7 +228,9 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			ct2 = maxComp
 		}
 		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-		_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+			return
+		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 
@@ -354,7 +370,9 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			}
 		}
 		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-		_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+			return
+		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 

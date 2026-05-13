@@ -1,8 +1,10 @@
 package gateway
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -24,6 +26,21 @@ import (
 const imageGenDefaultCompletionTokens = 2048
 
 const maxImageMultipartMemory = 64 << 20 // 与音频 multipart 一致，大图编辑/变体可能较大
+
+// streamUpstreamImageSuccessBody 将上游 2xx 响应体边写入客户端（按块 Flush）边写入 buf，供解析 usage 与扣费。
+// 首字节写出后须使用 gatewayDeduct(..., true)。若 io.Copy 失败，客户端可能已收到截断体。
+func streamUpstreamImageSuccessBody(w http.ResponseWriter, resp *http.Response, buf *bytes.Buffer) error {
+	if v := resp.Header.Get("Content-Type"); v != "" {
+		w.Header().Set("Content-Type", v)
+	}
+	w.WriteHeader(resp.StatusCode)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+	mw := io.MultiWriter(WriterFlushWrap(w), buf)
+	_, err := io.Copy(mw, resp.Body)
+	return err
+}
 
 // ImageEdits OpenAI 兼容 POST /v1/images/edits（multipart/form-data）。
 func ImageEdits(d ChatDeps) gin.HandlerFunc {
@@ -164,15 +181,24 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 			return
 		}
 		defer relay.DrainBody(resp.Body)
-		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 
-		raw, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode >= 400 {
+			raw, _ := io.ReadAll(resp.Body)
+			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
 			c.Data(resp.StatusCode, "application/json", raw)
 			return
 		}
+		var buf bytes.Buffer
+		if err := streamUpstreamImageSuccessBody(c.Writer, resp, &buf); err != nil {
+			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+			slog.Warn("image multipart relay body copy", "err", err)
+			return
+		}
+		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+		raw := buf.Bytes()
 		pt2, ct2 := parseUsageFromOpenAIResponse(raw)
 		if pt2 == 0 {
 			pt2 = promptToks
@@ -181,10 +207,14 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 			ct2 = maxOut
 		}
 		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-		_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+			em := err.Error()
+			metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+			return
+		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-		c.Data(resp.StatusCode, "application/json", raw)
 	}
 }
 
@@ -288,15 +318,24 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			defer relay.DrainBody(resp.Body)
-			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 
-			raw, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode >= 400 {
+				raw, _ := io.ReadAll(resp.Body)
+				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
 				c.Data(resp.StatusCode, "application/json", raw)
 				return
 			}
+			var buf bytes.Buffer
+			if err := streamUpstreamImageSuccessBody(c.Writer, resp, &buf); err != nil {
+				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+				slog.Warn("image generations body copy", "err", err)
+				return
+			}
+			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+			raw := buf.Bytes()
 			pt2, ct2 := parseUsageFromOpenAIResponse(raw)
 			if pt2 == 0 {
 				pt2 = promptToks
@@ -305,10 +344,14 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 				ct2 = maxOut
 			}
 			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+				em := err.Error()
+				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+				return
+			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-			c.Data(resp.StatusCode, "application/json", raw)
 
 		default:
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")

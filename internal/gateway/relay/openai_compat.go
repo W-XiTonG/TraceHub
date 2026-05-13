@@ -64,6 +64,7 @@ func ForwardOpenAIImageGenerations(ctx context.Context, baseURL, apiKey string, 
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.ContentLength = int64(len(body))
 	return httpImageUpstream.Do(req)
 }
 

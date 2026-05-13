@@ -51,8 +51,9 @@ type RedisConfig struct {
 }
 
 type SecurityConfig struct {
-	JWTSecret    string `mapstructure:"jwt_secret"`
-	AESKeyBase64 string `mapstructure:"aes_key_base64"`
+	JWTSecret          string `mapstructure:"jwt_secret"`
+	AESKeyBase64       string `mapstructure:"aes_key_base64"`
+	MetricsBearerToken string `mapstructure:"metrics_bearer_token"`
 }
 
 type SiteConfig struct {

@@ -11,14 +11,18 @@ redis:
   db: 0
 
 security:
-  jwt_secret: "change-me-to-long-random-string"
+  # 生产环境必须替换为高强度随机串（建议 ≥32 字符）；勿使用示例占位符
+  jwt_secret: "<REPLACE_WITH_LONG_RANDOM_SECRET>"
   # AES-256 key: exactly 32 bytes as base64 or raw; if absent, derived from jwt_secret via SHA256
   aes_key_base64: ""
+  # 非空时 GET /metrics 需携带 Authorization: Bearer <metrics_bearer_token>；生产建议配置或由反向代理限制访问
+  # metrics_bearer_token: ""
 
 site:
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
   default_new_user_balance: 5000 # 试用额度（额度单位）
+  # 浏览器跨域：列出完整 Origin（如 http://localhost:5173）；与 * 组合时 * 表示未匹配请求不携带 Credentials
   cors_origins:
     - "*"
   # Realtime 通话子资源（POST .../realtime/calls/{id}/accept 等）：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
@@ -66,5 +70,9 @@ email:
 
 bootstrap:
   admin_email: "admin@example.com"
-  admin_password: "Admin123!"
+  # 首次种子管理员密码：部署时务必改为强密码；勿保留仓库示例值
+  admin_password: "<REPLACE_WITH_STRONG_PASSWORD>"
   default_group_name: "基础分组"
+
+# 上线前自检：① security.jwt_secret / bootstrap.admin_password 已替换 ② 生产 database.sslmode 与 Redis 密码
+# ③ 按需设置 security.metrics_bearer_token 或限制 /metrics 仅内网 ④ site.cors_origins 为真实前端 Origin，勿用弱口令

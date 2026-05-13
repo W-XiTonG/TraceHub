@@ -14,6 +14,7 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/pkg/safehttp"
 	"tracehub/internal/service/billing"
 
 	"github.com/gin-gonic/gin"
@@ -235,6 +236,10 @@ func FetchUpstreamModelList() gin.HandlerFunc {
 			return
 		}
 		modelsURL := base + "/models"
+		if err := safehttp.EgressURLHostSafe(modelsURL); err != nil {
+			httpx.BadRequest(c, "api_base_url 主机不可访问: "+err.Error())
+			return
+		}
 		u, err := url.Parse(modelsURL)
 		if err != nil {
 			httpx.BadRequest(c, "无法拼接 models URL")

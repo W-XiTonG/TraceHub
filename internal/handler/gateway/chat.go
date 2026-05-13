@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -153,11 +154,25 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
 				}
-				_, _ = copyStreamFlushing(c.Writer, resp.Body)
-				pt := promptToks
-				comp := maxOut
+				streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+				pt := streamPT
+				comp := streamCT
+				if pt < 1 {
+					pt = promptToks
+				}
+				if comp < 0 {
+					comp = 0
+				}
+				if streamPT == 0 && streamCT == 0 {
+					comp = maxOut
+				}
 				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
-				_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+					em := err.Error()
+					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+					return
+				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 				return
@@ -178,7 +193,9 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				ct2 = maxOut
 			}
 			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+				return
+			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			c.Data(resp.StatusCode, "application/json", raw)
@@ -210,7 +227,12 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					ct2 = maxOut
 				}
 				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-				_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+					em := err.Error()
+					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, &em, time.Since(start))
+					return
+				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, nil, time.Since(start))
 				return
@@ -228,7 +250,9 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			}
 			pt2, ct2 := parseUsageFromOpenAIResponse(out)
 			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+				return
+			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), status, nil, time.Since(start))
 			c.Data(status, "application/json", out)
@@ -260,7 +284,12 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					ct2 = maxOut
 				}
 				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-				_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+					em := err.Error()
+					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, &em, time.Since(start))
+					return
+				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, nil, time.Since(start))
 				return
@@ -278,7 +307,9 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			}
 			pt2, ct2 := parseUsageFromOpenAIResponse(out)
 			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-			_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+				return
+			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), status, nil, time.Since(start))
 			c.Data(status, "application/json", out)
@@ -346,6 +377,35 @@ func injectStreamUsageJSON(body []byte) ([]byte, error) {
 	so, _ := json.Marshal(map[string]bool{"include_usage": true})
 	m["stream_options"] = json.RawMessage(so)
 	return json.Marshal(m)
+}
+
+// copyOpenAIChatSSEWithUsage 透传 OpenAI 兼容 SSE，并解析各 data 行中最后一个非空 usage（依赖 stream_options.include_usage）。
+// 写入经 WriterFlushWrap，与 copyStreamFlushing 一致，避免缓冲导致流式卡顿。
+func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptTokens, completionTokens int) {
+	out := WriterFlushWrap(w)
+	br := bufio.NewReader(r)
+	for {
+		line, err := br.ReadString('\n')
+		if _, werr := io.WriteString(out, line); werr != nil {
+			return promptTokens, completionTokens
+		}
+		s := strings.TrimSpace(line)
+		if strings.HasPrefix(s, "data:") {
+			payload := strings.TrimSpace(strings.TrimPrefix(s, "data:"))
+			if payload != "" && payload != "[DONE]" {
+				pt, ct := parseUsageFromOpenAIResponse([]byte(payload))
+				if pt > 0 || ct > 0 {
+					promptTokens, completionTokens = pt, ct
+				}
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				return promptTokens, completionTokens
+			}
+			return promptTokens, completionTokens
+		}
+	}
 }
 
 func parseUsageFromOpenAIResponse(raw []byte) (promptTokens, completionTokens int) {

@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"tracehub/internal/ent"
@@ -74,20 +75,32 @@ func (e *Engine) UserBalance(ctx context.Context, userID int) (int64, error) {
 }
 
 func (e *Engine) DeductBalance(ctx context.Context, userID int64, amount int64) error {
-	u, err := e.Client.User.Get(ctx, int(userID))
+	if amount < 0 {
+		return fmt.Errorf("billing: negative deduct amount")
+	}
+	if amount == 0 {
+		return nil
+	}
+	aff, err := e.Client.User.Update().
+		Where(user.IDEQ(int(userID)), user.BalanceGTE(amount)).
+		AddBalance(-amount).
+		Save(ctx)
 	if err != nil {
 		return err
 	}
-	oldBal := u.Balance
-	if err := e.Client.User.UpdateOneID(int(userID)).
-		AddBalance(-amount).
-		Exec(ctx); err != nil {
-		return err
+	if aff == 0 {
+		return ErrInsufficientBalance
 	}
-	newBal := oldBal - amount
-	if e.Alerts != nil {
-		e.Alerts.MaybeNotifyCrossBelow(ctx, u, oldBal, newBal)
+	if e.Alerts == nil {
+		return nil
 	}
+	u2, err := e.Client.User.Get(ctx, int(userID))
+	if err != nil {
+		return nil
+	}
+	newBal := u2.Balance
+	oldBal := newBal + amount
+	e.Alerts.MaybeNotifyCrossBelow(ctx, u2, oldBal, newBal)
 	return nil
 }
 

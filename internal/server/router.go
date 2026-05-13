@@ -69,7 +69,12 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	} else {
 		r.Static(adminhandler.BrandIconPublicURLPrefix, uploadRoot)
 	}
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	metricsH := gin.WrapH(promhttp.Handler())
+	if tok := strings.TrimSpace(opt.Config.Security.MetricsBearerToken); tok != "" {
+		r.GET("/metrics", middleware.MetricsBearerAuth(tok), metricsH)
+	} else {
+		r.GET("/metrics", metricsH)
+	}
 
 	balAlerts := balancealert.New(opt.Config, opt.Log)
 	billingEngine := &billing.Engine{Client: opt.Client, Alerts: balAlerts}

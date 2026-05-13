@@ -505,7 +505,9 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 		ct2 = 2048
 	}
 	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-	_ = d.Billing.DeductBalance(c.Request.Context(), int64(u.ID), cost)
+	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+		return
+	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	c.Data(resp.StatusCode, "application/json", raw)
