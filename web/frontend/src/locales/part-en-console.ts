@@ -356,6 +356,8 @@ export default {
     title: 'Try API',
     configKicker: 'Model & sampling',
     desc: 'Try /v1/chat/completions with your console API key (not the login JWT). Streaming, vision URLs, and raw JSON supported. Key is kept in session storage only.',
+    billingHint:
+      'Requests from this page are billed like production: each successful completion counts toward usage and debits the account tied to this API key per gateway rules (input and output tokens).',
     customBody: 'Custom request JSON',
     customBodyHint: 'Edit the full payload; on send we append your input to messages if that array exists.',
     customBodyWarn: 'Provide model and messages in JSON; invalid payloads will fail.',

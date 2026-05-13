@@ -357,6 +357,8 @@ export default {
     title: 'API 試玩',
     configKicker: '模型與採樣',
     desc: '使用控制台簽發的 API Key 連線本站 /v1/chat/completions 偵錯對話；支援流式、多模態與自訂 JSON。金鑰僅存於瀏覽器工作階段儲存。',
+    billingHint:
+      '試玩中的請求與正式呼叫相同：每次成功對話會計入用量，並依閘道規則從該 API Key 所屬帳戶額度中扣費（含輸入與輸出 token）。',
     customBody: '自訂請求 JSON',
     customBodyHint: '開啟後直接編輯完整請求體；送出時會在 messages 陣列末尾附加目前輸入（若存在該陣列）。',
     customBodyWarn: '自訂模式請在 JSON 中填寫 model 與 messages；結構錯誤將導致請求失敗。',

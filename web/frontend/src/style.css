@@ -1823,6 +1823,22 @@
   color: var(--th-accent);
 }
 
+/* 操练场：对话气泡（语义色；浅色主题在 themes-light.css 覆盖） */
+.th-pg-msg {
+  border-style: solid;
+  border-width: 1px;
+}
+.th-pg-msg--user {
+  border-color: rgb(6 182 212 / 0.25);
+  background: rgb(8 51 68 / 0.35);
+  color: rgb(241 245 249);
+}
+.th-pg-msg--assistant {
+  border-color: rgb(255 255 255 / 0.08);
+  background: rgb(15 23 42 / 0.8);
+  color: rgb(226 232 240);
+}
+
 /* 操练场：侧栏/对话壳与子卡片（避免浅色主题下 bg-black/25 发灰发闷） */
 .th-pg-sidebar {
   box-sizing: border-box;

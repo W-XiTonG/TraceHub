@@ -357,6 +357,8 @@ export default {
     title: 'API 试玩',
     configKicker: '模型与采样',
     desc: '使用控制台签发的 API Key 直连本站点 /v1/chat/completions 调试对话；支持流式、多模态与自定义 JSON。密钥仅存于浏览器会话存储。',
+    billingHint:
+      '试玩中的请求与正式调用相同：每次成功对话会计入用量，并按网关规则从该 API Key 所属账户额度中扣费（含输入与输出 token）。',
     customBody: '自定义请求 JSON',
     customBodyHint: '开启后直接编辑完整请求体；发送时在 messages 末尾追加当前输入（若存在 messages 数组）。',
     customBodyWarn: '自定义模式下请在 JSON 中填写 model 与 messages；错误结构将导致请求失败。',

@@ -814,6 +814,9 @@ function fmtNum(n: number) {
         <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ t('playground.configKicker') }}</p>
         <h1 class="text-lg font-semibold text-slate-100">{{ t('playground.title') }}</h1>
         <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('playground.desc') }}</p>
+        <p class="mt-2 border-l-2 border-cyan-500/45 pl-2.5 text-[11px] leading-relaxed th-pg-muted">
+          {{ t('playground.billingHint') }}
+        </p>
       </div>
 
       <div class="thin-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4">
@@ -1194,12 +1197,8 @@ function fmtNum(n: number) {
             :class="m.role === 'user' ? 'items-end' : 'items-start'"
           >
             <div
-              class="flex min-w-0 flex-col gap-0 rounded-2xl border px-3.5 py-2 text-sm"
-              :class="
-                m.role === 'user'
-                  ? 'border-cyan-500/25 bg-cyan-950/35 text-slate-100'
-                  : 'border-white/[0.08] bg-slate-900/80 text-slate-200'
-              "
+              class="th-pg-msg flex min-w-0 flex-col gap-0 rounded-2xl border px-3.5 py-2 text-sm"
+              :class="m.role === 'user' ? 'th-pg-msg--user' : 'th-pg-msg--assistant'"
             >
               <div v-if="m.imageUrl" class="mb-2 shrink-0">
                 <img
@@ -1218,7 +1217,7 @@ function fmtNum(n: number) {
               </div>
               <div
                 v-else-if="m.role === 'assistant' && assistantMarkdown"
-                class="playground-bubble-md min-w-0 break-words leading-normal text-slate-200"
+                class="playground-bubble-md min-w-0 break-words leading-normal"
                 v-html="renderAssistantMarkdown(playgroundBubbleText(m))"
               />
               <div v-else class="min-w-0 whitespace-pre-wrap break-words leading-normal">{{ playgroundBubbleText(m) }}</div>
@@ -1394,9 +1393,21 @@ function fmtNum(n: number) {
 .playground-bubble-md :deep(ul),
 .playground-bubble-md :deep(ol) {
   margin: 0.4em 0;
-  padding-left: 1.35em;
+  padding-left: 1.5em;
+  list-style-position: outside;
+}
+/* Preflight 对 ul/ol 使用 list-style:none；此处恢复 Markdown 列表符号 */
+.playground-bubble-md :deep(ul) {
+  list-style-type: disc;
+}
+.playground-bubble-md :deep(ol) {
+  list-style-type: decimal;
+}
+.playground-bubble-md :deep(ul ul) {
+  list-style-type: circle;
 }
 .playground-bubble-md :deep(li) {
+  display: list-item;
   margin: 0.2em 0;
 }
 .playground-bubble-md :deep(blockquote) {
