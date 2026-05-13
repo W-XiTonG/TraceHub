@@ -591,7 +591,7 @@ onMounted(() => {
                 <button
                   v-if="k.status === 'enabled'"
                   type="button"
-                  class="rounded border border-red-500/35 px-2 py-0.5 text-[11px] font-medium text-red-300 hover:bg-red-950/40"
+                  class="th-btn-danger-soft !text-[11px] !px-2 !py-0.5 !leading-snug"
                   @click="quickSetEnabled(k, false)"
                 >
                   {{ t('apiKeys.disableBtn') }}
@@ -605,7 +605,7 @@ onMounted(() => {
                   {{ t('apiKeys.enableBtn') }}
                 </button>
                 <button type="button" class="text-[11px] text-cyan-400 hover:underline" @click="openEdit(k)">{{ t('apiKeys.editBtn') }}</button>
-                <button type="button" class="text-[11px] text-red-400 hover:underline" @click="remove(k.id)">{{ t('apiKeys.deleteBtn') }}</button>
+                <button type="button" class="th-link-danger-plain text-[11px]" @click="remove(k.id)">{{ t('apiKeys.deleteBtn') }}</button>
               </div>
             </td>
           </tr>
