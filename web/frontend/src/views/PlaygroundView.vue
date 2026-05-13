@@ -19,7 +19,14 @@ const LS_KEY = 'tracehub_playground_settings_v1'
 const SS_KEY = 'tracehub_playground_apikey'
 const LS_MSG = 'tracehub_playground_messages_v1'
 
-type ChatMsg = { id: string; role: 'user' | 'assistant'; content: string; imageUrl?: string }
+type ChatMsg = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  imageUrl?: string
+  /** 文生图：展示用 URL 或 data URL，避免把超长 base64 塞进 Markdown */
+  imageOutputs?: string[]
+}
 
 const apiKey = ref('')
 const stickySession = ref('')
@@ -114,6 +121,11 @@ const filteredPlaygroundModels = computed(() => {
   })
 })
 
+/** 对话补全 vs 文生图（POST /v1/images/generations） */
+const playMode = ref<'chat' | 'image'>('chat')
+const imageGenSize = ref('1024x1024')
+const imageResponseFormat = ref<'url' | 'b64_json'>('url')
+
 const systemPrompt = ref('')
 const customBody = ref(false)
 const customBodyJson = ref('{\n  "model": "gpt-4o-mini",\n  "messages": []\n}')
@@ -127,6 +139,7 @@ const imageFileInputRef = ref<HTMLInputElement | null>(null)
 
 const PG_IMAGE_MAX_BYTES = 15 * 1024 * 1024
 const PG_IMAGE_ACCEPT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+const PG_IMAGE_GEN_SIZES = ['256x256', '512x512', '1024x1024', '1024x1792', '1792x1024'] as const
 
 const useTemp = ref(true)
 const temperature = ref(0.7)
@@ -162,7 +175,13 @@ function uid() {
 
 function parseErr(text: string) {
   try {
-    return (JSON.parse(text) as { error?: { message?: string } }).error?.message || text
+    const j = JSON.parse(text) as { error?: { message?: string }; message?: string; code?: number }
+    if (j.error?.message) return j.error.message
+    if (typeof j.message === 'string' && j.message.trim()) {
+      if (typeof j.code === 'number') return `[${j.code}] ${j.message}`
+      return j.message
+    }
+    return text
   } catch {
     return text
   }
@@ -197,12 +216,46 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', onWinReposition, true)
 })
 
+let apiKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null
 watch(apiKey, (v) => {
   try {
     if (v.trim()) sessionStorage.setItem(SS_KEY, v.trim())
     else sessionStorage.removeItem(SS_KEY)
   } catch {
     /* ignore */
+  }
+  if (apiKeyRefreshTimer) clearTimeout(apiKeyRefreshTimer)
+  apiKeyRefreshTimer = setTimeout(() => {
+    apiKeyRefreshTimer = null
+    const t = v.trim()
+    if (!t) {
+      models.value = []
+      modelsErr.value = ''
+      return
+    }
+    void refreshModels()
+  }, 400)
+})
+
+/** 勾选「自定义请求体」时，把当前下拉的 model 写入 JSON，避免模板里仍是旧 model 导致上游 20012 */
+watch(customBody, (on, prev) => {
+  if (!on) return
+  if (prev === true) return
+  const picked = model.value.trim()
+  if (!picked) return
+  try {
+    const j = JSON.parse(customBodyJson.value) as Record<string, unknown>
+    j.model = picked
+    customBodyJson.value = JSON.stringify(j, null, 2)
+  } catch {
+    /* ignore */
+  }
+})
+
+watch(playMode, (m) => {
+  if (m === 'image') {
+    customBody.value = false
+    useStream.value = false
   }
 })
 
@@ -255,6 +308,11 @@ function loadSettings() {
     if (typeof j.useMaxTokens === 'boolean') useMaxTokens.value = j.useMaxTokens
     if (typeof j.useStream === 'boolean') useStream.value = j.useStream
     if (typeof j.useImage === 'boolean') useImage.value = j.useImage
+    if (j.playMode === 'chat' || j.playMode === 'image') playMode.value = j.playMode
+    if (typeof j.imageGenSize === 'string' && (PG_IMAGE_GEN_SIZES as readonly string[]).includes(j.imageGenSize))
+      imageGenSize.value = j.imageGenSize
+    if (j.imageResponseFormat === 'url' || j.imageResponseFormat === 'b64_json')
+      imageResponseFormat.value = j.imageResponseFormat
     if (typeof j.useSeed === 'boolean') useSeed.value = j.useSeed
     if (typeof j.seed === 'number') seed.value = j.seed
     if (typeof j.assistantMarkdown === 'boolean') assistantMarkdown.value = j.assistantMarkdown
@@ -279,6 +337,9 @@ function persistSettings() {
     useMaxTokens: useMaxTokens.value,
     useStream: useStream.value,
     useImage: useImage.value,
+    playMode: playMode.value,
+    imageGenSize: imageGenSize.value,
+    imageResponseFormat: imageResponseFormat.value,
     useSeed: useSeed.value,
     seed: seed.value,
     assistantMarkdown: assistantMarkdown.value,
@@ -306,6 +367,9 @@ watch(
     useMaxTokens,
     useStream,
     useImage,
+    playMode,
+    imageGenSize,
+    imageResponseFormat,
     useSeed,
     seed,
     assistantMarkdown,
@@ -431,10 +495,15 @@ function buildNormalBody(appendUser: { text: string; img?: string }): Record<str
 
 function buildCustomBody(text: string, img?: string): Record<string, unknown> {
   const j = JSON.parse(customBodyJson.value) as Record<string, unknown>
+  const mergePickerModel = (o: Record<string, unknown>) => {
+    const picked = model.value.trim()
+    if (picked) return { ...o, model: picked }
+    return o
+  }
   const msgs = j.messages
   if (Array.isArray(msgs) && text) {
     if (img?.trim()) {
-      return {
+      return mergePickerModel({
         ...j,
         messages: [
           ...msgs,
@@ -446,16 +515,68 @@ function buildCustomBody(text: string, img?: string): Record<string, unknown> {
             ],
           },
         ],
-      }
+      })
     }
-    return { ...j, messages: [...msgs, { role: 'user', content: text }] }
+    return mergePickerModel({ ...j, messages: [...msgs, { role: 'user', content: text }] })
   }
-  return { ...j }
+  return mergePickerModel({ ...j })
+}
+
+async function sendImageGeneration(prompt: string) {
+  const k = apiKey.value.trim()
+  if (!k) {
+    modelsErr.value = t('playground.needKey')
+    return
+  }
+  if (!model.value.trim()) {
+    modelsErr.value = t('playground.needModel')
+    return
+  }
+
+  const body: Record<string, unknown> = {
+    model: model.value.trim(),
+    prompt,
+    n: 1,
+    size: imageGenSize.value,
+    response_format: imageResponseFormat.value,
+  }
+
+  messages.value = [...messages.value, { id: uid(), role: 'user', content: prompt }]
+  input.value = ''
+
+  const assistantId = uid()
+  messages.value = [...messages.value, { id: assistantId, role: 'assistant', content: '', imageOutputs: [] }]
+
+  lastRequest.value = JSON.stringify(body, null, 2)
+  lastResponse.value = ''
+  streamLog.value = ''
+  modelsErr.value = ''
+  sending.value = true
+
+  try {
+    const r = await pgw.imageGenerations(k, stickySession.value, body)
+    lastResponse.value = r.raw
+    let cap = t('playground.imageDoneCaption')
+    if (!r.imageOutputs.length) cap += `\n\n${t('playground.imageNoUrlInResponse')}`
+    patchAssistantImages(assistantId, cap, r.imageOutputs)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    modelsErr.value = msg
+    patchAssistantImages(assistantId, `【${t('playground.error')}】\n\n${msg}`, [])
+  } finally {
+    sending.value = false
+  }
 }
 
 async function sendMessage() {
   const text = input.value.trim()
   if (!text || sending.value) return
+
+  if (playMode.value === 'image') {
+    await sendImageGeneration(text)
+    return
+  }
+
   const k = apiKey.value.trim()
   if (!k) {
     modelsErr.value = t('playground.needKey')
@@ -513,7 +634,7 @@ async function sendMessage() {
       })
       if (!res.ok) {
         const errText = await res.text()
-        throw new Error(parseErr(errText))
+        throw new Error(parseErr(errText) + pgw.traceHubGatewayErrorDetails(res))
       }
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No body')
@@ -569,6 +690,12 @@ async function sendMessage() {
 
 function patchAssistant(id: string, content: string) {
   messages.value = messages.value.map((m) => (m.id === id ? { ...m, content } : m))
+}
+
+function patchAssistantImages(id: string, content: string, imageOutputs: string[]) {
+  messages.value = messages.value.map((m) =>
+    m.id === id ? { ...m, content, imageOutputs: imageOutputs.length ? imageOutputs : undefined } : m,
+  )
 }
 
 /** 气泡内展示：去掉前导换行/BOM，避免 whitespace-pre-wrap 在框顶出现大块空白（模型常带 \n 开头） */
@@ -703,6 +830,9 @@ function exportSettings() {
             useImage: useImage.value,
             customBody: customBody.value,
             assistantMarkdown: assistantMarkdown.value,
+            playMode: playMode.value,
+            imageGenSize: imageGenSize.value,
+            imageResponseFormat: imageResponseFormat.value,
           },
         },
         null,
@@ -760,6 +890,11 @@ function importSettings(ev: Event) {
       if (typeof f.useImage === 'boolean') useImage.value = f.useImage
       if (typeof f.customBody === 'boolean') customBody.value = f.customBody
       if (typeof f.assistantMarkdown === 'boolean') assistantMarkdown.value = f.assistantMarkdown
+      if (f.playMode === 'chat' || f.playMode === 'image') playMode.value = f.playMode
+      if (typeof f.imageGenSize === 'string' && (PG_IMAGE_GEN_SIZES as readonly string[]).includes(f.imageGenSize))
+        imageGenSize.value = f.imageGenSize
+      if (f.imageResponseFormat === 'url' || f.imageResponseFormat === 'b64_json')
+        imageResponseFormat.value = f.imageResponseFormat
       persistSettings()
     } catch {
       modelsErr.value = t('playground.importFail')
@@ -813,14 +948,40 @@ function fmtNum(n: number) {
       <div class="th-pg-sidebar-head px-4 py-3">
         <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ t('playground.configKicker') }}</p>
         <h1 class="text-lg font-semibold text-slate-100">{{ t('playground.title') }}</h1>
-        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('playground.desc') }}</p>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">
+          {{ playMode === 'image' ? t('playground.descImage') : t('playground.desc') }}
+        </p>
         <p class="mt-2 border-l-2 border-cyan-500/45 pl-2.5 text-[11px] leading-relaxed th-pg-muted">
           {{ t('playground.billingHint') }}
         </p>
       </div>
 
       <div class="thin-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4">
-        <div class="th-pg-card th-pg-card--emph p-3">
+        <div class="th-pg-card th-pg-card--emph space-y-2 p-3">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('playground.playMode') }}</p>
+          <div class="th-pg-seg flex w-full" role="group" :aria-label="t('playground.playMode')">
+            <button
+              type="button"
+              class="th-pg-seg__btn min-w-0 flex-1 text-xs"
+              :class="{ 'th-pg-seg__btn--active': playMode === 'chat' }"
+              :aria-pressed="playMode === 'chat'"
+              @click="playMode = 'chat'"
+            >
+              {{ t('playground.modeChat') }}
+            </button>
+            <button
+              type="button"
+              class="th-pg-seg__btn min-w-0 flex-1 text-xs"
+              :class="{ 'th-pg-seg__btn--active': playMode === 'image' }"
+              :aria-pressed="playMode === 'image'"
+              @click="playMode = 'image'"
+            >
+              {{ t('playground.modeImage') }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="playMode === 'chat'" class="th-pg-card th-pg-card--emph p-3">
           <label class="flex cursor-pointer items-center justify-between gap-2 text-sm th-pg-muted">
             <span>{{ t('playground.customBody') }}</span>
             <input v-model="customBody" type="checkbox" class="h-4 w-4 rounded border-slate-600 text-cyan-500" />
@@ -862,7 +1023,7 @@ function fmtNum(n: number) {
           >
             {{ modelsLoading ? t('common.loading') : t('playground.refreshModels') }}
           </button>
-          <label class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
+          <label v-if="playMode === 'chat'" class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
             <input v-model="useStream" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />
             {{ t('playground.stream') }}
           </label>
@@ -967,6 +1128,29 @@ function fmtNum(n: number) {
             </Teleport>
           </div>
 
+          <div v-if="playMode === 'image'" class="th-pg-card space-y-3 p-3">
+            <div>
+              <label class="text-xs text-slate-500">{{ t('playground.imageGenSize') }}</label>
+              <select
+                v-model="imageGenSize"
+                class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+              >
+                <option v-for="s in PG_IMAGE_GEN_SIZES" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">{{ t('playground.imageResponseFormat') }}</label>
+              <select
+                v-model="imageResponseFormat"
+                class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+              >
+                <option value="url">{{ t('playground.imageFormatUrl') }}</option>
+                <option value="b64_json">{{ t('playground.imageFormatB64') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <template v-if="playMode === 'chat'">
           <div>
             <label class="text-xs text-slate-500">{{ t('playground.system') }}</label>
             <textarea
@@ -1105,6 +1289,7 @@ function fmtNum(n: number) {
             </label>
             <input v-model.number="seed" type="number" class="w-28 rounded border border-slate-600 bg-slate-950 px-2 py-1 font-mono text-xs" />
           </div>
+          </template>
         </template>
 
         <div v-else class="rounded-xl border border-amber-500/20 bg-amber-950/20 p-3 text-xs text-amber-200/90">
@@ -1128,9 +1313,17 @@ function fmtNum(n: number) {
     >
       <header class="th-pg-chat-head flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div>
-          <p class="text-sm font-semibold text-slate-100">{{ t('playground.chatTitle') }}</p>
+          <p class="text-sm font-semibold text-slate-100">
+            {{ playMode === 'image' ? t('playground.chatTitleImage') : t('playground.chatTitle') }}
+          </p>
           <p class="text-[11px] text-slate-500">
-            {{ model || '—' }} · {{ useStream ? t('playground.streamOn') : t('playground.streamOff') }}
+            <template v-if="playMode === 'chat'">
+              {{ model || '—' }} · {{ useStream ? t('playground.streamOn') : t('playground.streamOff') }}
+            </template>
+            <template v-else>
+              {{ model || '—' }} · {{ imageGenSize }} ·
+              {{ imageResponseFormat === 'url' ? t('playground.imageFormatUrl') : t('playground.imageFormatB64') }}
+            </template>
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -1184,7 +1377,7 @@ function fmtNum(n: number) {
       >
         <div class="flex flex-col gap-3">
         <div v-if="!messages.length" class="flex flex-1 flex-col items-center justify-center py-16 text-center text-sm text-slate-500">
-          <p>{{ t('playground.emptyChat') }}</p>
+          <p>{{ playMode === 'image' ? t('playground.emptyImage') : t('playground.emptyChat') }}</p>
         </div>
         <div
           v-for="m in messages"
@@ -1200,6 +1393,16 @@ function fmtNum(n: number) {
               class="th-pg-msg flex min-w-0 flex-col gap-0 rounded-2xl border px-3.5 py-2 text-sm"
               :class="m.role === 'user' ? 'th-pg-msg--user' : 'th-pg-msg--assistant'"
             >
+              <div v-if="m.role === 'assistant' && m.imageOutputs?.length" class="mb-2 flex flex-col gap-2">
+                <img
+                  v-for="(src, ix) in m.imageOutputs"
+                  :key="ix"
+                  :src="src"
+                  alt=""
+                  class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
+                  @error="(($event.target as HTMLImageElement).style.display = 'none')"
+                />
+              </div>
               <div v-if="m.imageUrl" class="mb-2 shrink-0">
                 <img
                   :src="m.imageUrl"
@@ -1329,12 +1532,12 @@ function fmtNum(n: number) {
             v-model="input"
             rows="2"
             class="min-h-[3rem] flex-1 resize-y rounded-xl border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600"
-            :placeholder="t('playground.inputPh')"
+            :placeholder="playMode === 'image' ? t('playground.inputPhImage') : t('playground.inputPh')"
             @keydown.enter.exact.prevent="sendMessage"
           />
           <div class="flex flex-col gap-1">
             <button
-              v-if="sending && useStream"
+              v-if="sending && useStream && playMode === 'chat'"
               type="button"
               class="th-pg-btn-amber"
               @click="stopStream"

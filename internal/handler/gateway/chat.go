@@ -56,7 +56,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		model, stream, maxOut, promptText, err := parseChatBody(body)
+		model, stream, maxOut, _, err := parseChatBody(body)
 		if err != nil || model == "" {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或 messages 无效")
 			return
@@ -88,13 +88,17 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 
-		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptText)
+		promptToks, err := EstimateChatPromptTokensFromRequestBody(body, sel.UpstreamModel, d.Billing)
+		if err != nil {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "messages 无效或无法估算 token")
+			return
+		}
 		if promptToks < 1 {
 			promptToks = 1
 		}
 		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
 		if u.Balance < costPre {
-			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
+			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", balancePrecheck402Message())
 			return
 		}
 
@@ -143,6 +147,20 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 
 			if stream {
+				if resp.StatusCode >= 400 {
+					rawErr, _ := io.ReadAll(resp.Body)
+					out := augmentUpstreamJSONModelNotExistChatHint(rawErr)
+					setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
+					c.Writer.Header().Set("Content-Type", "application/json")
+					c.Writer.WriteHeader(resp.StatusCode)
+					if f, ok := c.Writer.(http.Flusher); ok {
+						f.Flush()
+					}
+					_, _ = c.Writer.Write(out)
+					metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
+					logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, out)
+					return
+				}
 				h := resp.Header.Get("Content-Type")
 				if h != "" {
 					c.Writer.Header().Set("Content-Type", h)
@@ -180,9 +198,11 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 
 			raw, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode >= 400 {
+				setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-				c.Data(resp.StatusCode, "application/json", raw)
+				out := augmentUpstreamJSONModelNotExistChatHint(raw)
+				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, out)
+				c.Data(resp.StatusCode, "application/json", out)
 				return
 			}
 			pt2, ct2 := parseUsageFromOpenAIResponse(raw)
@@ -327,6 +347,7 @@ func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptTe
 	}
 	if raw, ok := m["model"]; ok {
 		_ = json.Unmarshal(raw, &model)
+		model = strings.TrimSpace(model)
 	}
 	if raw, ok := m["stream"]; ok {
 		_ = json.Unmarshal(raw, &stream)
@@ -346,11 +367,11 @@ func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptTe
 	}
 	msgsRaw, ok := m["messages"]
 	if !ok {
-		return model, stream, maxOut, "", nil
+		return strings.TrimSpace(model), stream, maxOut, "", nil
 	}
 	var messages []map[string]any
 	if err := json.Unmarshal(msgsRaw, &messages); err != nil {
-		return model, stream, maxOut, "", err
+		return strings.TrimSpace(model), stream, maxOut, "", err
 	}
 	var b strings.Builder
 	for _, msg := range messages {
@@ -360,13 +381,12 @@ func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptTe
 				b.WriteString(v)
 				b.WriteByte('\n')
 			default:
-				bytes, _ := json.Marshal(v)
-				b.Write(bytes)
+				// 预检 token 由 EstimateChatPromptTokensFromRequestBody 单独解析；此处勿序列化含 base64 的 content
 				b.WriteByte('\n')
 			}
 		}
 	}
-	return model, stream, maxOut, b.String(), nil
+	return strings.TrimSpace(model), stream, maxOut, b.String(), nil
 }
 
 func injectStreamUsageJSON(body []byte) ([]byte, error) {

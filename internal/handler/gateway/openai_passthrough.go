@@ -138,15 +138,15 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		promptEst := ""
 		maxComp := 0
 		if len(body) > 0 && json.Valid(body) {
-			promptEst, maxComp = passthroughBillingHints(body)
+			maxComp = passthroughMaxCompletionHints(body)
 		}
-		if promptEst == "" {
-			promptEst = model
+		promptToks, err := EstimatePromptTokensFromOpenAIBody(body, sel.UpstreamModel, model, d.Billing)
+		if err != nil {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效或无法估算 token")
+			return
 		}
-		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptEst)
 		if promptToks < 1 {
 			promptToks = 1
 		}
@@ -155,7 +155,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		}
 		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxComp)
 		if u.Balance < costPre {
-			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
+			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", balancePrecheck402Message())
 			return
 		}
 
@@ -276,25 +276,12 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 	}
 }
 
-func passthroughBillingHints(body []byte) (promptEst string, maxComp int) {
+func passthroughMaxCompletionHints(body []byte) int {
 	var m map[string]json.RawMessage
 	if json.Unmarshal(body, &m) != nil {
-		return "", 0
+		return 0
 	}
-	if raw, ok := m["input"]; ok {
-		promptEst = rawJSONToEstimateString(raw)
-	}
-	if raw, ok := m["messages"]; ok {
-		promptEst = string(raw)
-	}
-	if raw, ok := m["prompt"]; ok {
-		var s string
-		if json.Unmarshal(raw, &s) == nil {
-			promptEst = s
-		} else {
-			promptEst = string(raw)
-		}
-	}
+	maxComp := 0
 	if raw, ok := m["max_tokens"]; ok {
 		var mt int
 		if json.Unmarshal(raw, &mt) == nil && mt > 0 {
@@ -313,5 +300,5 @@ func passthroughBillingHints(body []byte) (promptEst string, maxComp int) {
 			maxComp = mt
 		}
 	}
-	return promptEst, maxComp
+	return maxComp
 }

@@ -50,6 +50,8 @@ func CORS(origins []string) gin.HandlerFunc {
 		}
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID, X-TraceHub-Session, X-Sticky-Session")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		// 浏览器 fetch 默认可读响应体；自定义头需显式暴露（网关试玩排错：选路 model vs 实际上游 model）
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "X-Request-ID, X-TraceHub-Routing-Model, X-TraceHub-Upstream-Model, X-TraceHub-Channel-Id")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return

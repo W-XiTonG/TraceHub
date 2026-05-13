@@ -41,11 +41,25 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
 
 function parseOpenAIError(text: string): string {
   try {
-    const j = JSON.parse(text) as { error?: { message?: string } }
-    return j?.error?.message || ''
+    const j = JSON.parse(text) as { error?: { message?: string }; message?: string; code?: number }
+    if (j.error?.message) return j.error.message
+    if (typeof j.message === 'string' && j.message.trim()) {
+      if (typeof j.code === 'number') return `[${j.code}] ${j.message}`
+      return j.message
+    }
+    return ''
   } catch {
     return text.slice(0, 500)
   }
+}
+
+/** 网关在上游 4xx 时返回的选路诊断头（需 CORS Expose-Headers） */
+export function traceHubGatewayErrorDetails(res: Response): string {
+  const r = res.headers.get('X-TraceHub-Routing-Model')?.trim()
+  const u = res.headers.get('X-TraceHub-Upstream-Model')?.trim()
+  const cid = res.headers.get('X-TraceHub-Channel-Id')?.trim()
+  if (!r && !u && !cid) return ''
+  return `\n\n[TraceHub 选路] routing_model=${r ?? '—'} | upstream_model=${u ?? '—'} | channel_id=${cid ?? '—'}\n若 upstream 与上游控制台不一致，请检查渠道「模型 ID / 别名」配置。`
 }
 
 export async function chatCompletion(
@@ -64,11 +78,40 @@ export async function chatCompletion(
   })
   const raw = await res.text()
   if (!res.ok) {
-    throw new Error(parseOpenAIError(raw) || `${res.status}`)
+    throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
   }
   const json = JSON.parse(raw) as {
     choices?: Array<{ message?: { content?: string | null } }>
   }
   const content = json.choices?.[0]?.message?.content ?? ''
   return { content: typeof content === 'string' ? content : '', raw }
+}
+
+/** POST /v1/images/generations（非流式；网关可能 chunked 写出，浏览器仍收完整 JSON） */
+export async function imageGenerations(
+  apiKey: string,
+  sticky: string,
+  body: Record<string, unknown>,
+): Promise<{ raw: string; imageOutputs: string[] }> {
+  const res = await fetch('/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey.trim()}`,
+      'Content-Type': 'application/json',
+      [STICKY_HDR]: sticky,
+    },
+    body: JSON.stringify(body),
+  })
+  const raw = await res.text()
+  if (!res.ok) {
+    throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  const json = JSON.parse(raw) as { data?: Array<{ url?: string; b64_json?: string }> }
+  const imageOutputs: string[] = []
+  for (const d of json.data || []) {
+    if (typeof d.url === 'string' && d.url.trim()) imageOutputs.push(d.url.trim())
+    else if (typeof d.b64_json === 'string' && d.b64_json)
+      imageOutputs.push(`data:image/png;base64,${d.b64_json}`)
+  }
+  return { raw, imageOutputs }
 }

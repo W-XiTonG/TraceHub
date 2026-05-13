@@ -28,7 +28,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法读取请求体")
 			return
 		}
-		model, stream, maxOut, inputEst, err := parseResponsesBody(body)
+		model, stream, maxOut, inputRaw, err := parseResponsesBody(body)
 		if err != nil || model == "" {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或请求 JSON 无效")
 			return
@@ -67,13 +67,26 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, inputEst)
+		var promptToks int
+		if len(inputRaw) == 0 {
+			promptToks, err = d.Billing.EstimateTokens(sel.UpstreamModel, "")
+			if err != nil {
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法估算 input token")
+				return
+			}
+		} else {
+			promptToks, err = EstimateResponsesInputPromptTokens(inputRaw, sel.UpstreamModel, d.Billing)
+			if err != nil {
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "input 无效或无法估算 token")
+				return
+			}
+		}
 		if promptToks < 1 {
 			promptToks = 1
 		}
 		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
 		if u.Balance < costPre {
-			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
+			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", balancePrecheck402Message())
 			return
 		}
 
@@ -183,11 +196,11 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 	}
 }
 
-func parseResponsesBody(body []byte) (model string, stream bool, maxOut int, inputEst string, err error) {
+func parseResponsesBody(body []byte) (model string, stream bool, maxOut int, inputRaw json.RawMessage, err error) {
 	maxOut = 2048
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(body, &m); err != nil {
-		return "", false, 0, "", err
+		return "", false, 0, nil, err
 	}
 	if raw, ok := m["model"]; ok {
 		_ = json.Unmarshal(raw, &model)
@@ -202,9 +215,7 @@ func parseResponsesBody(body []byte) (model string, stream bool, maxOut int, inp
 		}
 	}
 	if raw, ok := m["input"]; ok {
-		inputEst = rawJSONToEstimateString(raw)
-	} else {
-		inputEst = string(body)
+		inputRaw = raw
 	}
-	return strings.TrimSpace(model), stream, maxOut, inputEst, nil
+	return strings.TrimSpace(model), stream, maxOut, inputRaw, nil
 }
