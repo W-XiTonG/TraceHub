@@ -1373,6 +1373,38 @@
   box-shadow: 0 0 0 2px var(--th-topbar-icon-ring);
 }
 
+/* 控制台顶栏：「文档」「官网首页」成对文字按钮（与 th-console-top-icon-btn 共用 --th-topbar-icon-*，深浅色一致） */
+.th-console-topbar-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-topbar-icon-border);
+  background: var(--th-topbar-icon-bg);
+  color: var(--th-topbar-icon-fg);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  outline: none;
+  text-decoration: none;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.th-console-topbar-text-btn:hover {
+  border-color: var(--th-topbar-icon-border-hover);
+  background: var(--th-topbar-icon-bg-hover);
+  color: var(--th-topbar-icon-fg-hover);
+}
+
+.th-console-topbar-text-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--th-topbar-icon-ring);
+}
+
 /* 管理端顶栏：琥珀强调（与 cyan 变量分离，避免浅色 hover 发乌） */
 .th-console-top-icon-btn--amber:hover {
   border-color: color-mix(in srgb, #f59e0b 42%, rgba(255, 255, 255, 0.1));
