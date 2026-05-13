@@ -412,6 +412,22 @@ html[data-th-theme="paper"] .th-topbar {
   backdrop-filter: blur(14px);
 }
 
+/* 充值中心：企业微信二维码主卡片（浅色下避免深色渐变块发乌） */
+html[data-th-theme="dawn"] .th-billing-wecom,
+html[data-th-theme="paper"] .th-billing-wecom {
+  border-color: rgba(8, 145, 178, 0.42) !important;
+  background: linear-gradient(165deg, #e0f2fe 0%, #f0fdfa 40%, #f8fafc 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.88) inset,
+    0 18px 44px -26px rgba(15, 23, 42, 0.12) !important;
+  --tw-ring-color: rgba(6, 182, 212, 0.22);
+}
+
+html[data-th-theme="dawn"] .th-billing-wecom h2,
+html[data-th-theme="paper"] .th-billing-wecom h2 {
+  color: #0e7490;
+}
+
 html[data-th-theme="dawn"] .th-console-top-icon-btn--amber:hover,
 html[data-th-theme="paper"] .th-console-top-icon-btn--amber:hover {
   border-color: rgba(245, 158, 11, 0.38);

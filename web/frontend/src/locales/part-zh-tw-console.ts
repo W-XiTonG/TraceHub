@@ -298,6 +298,10 @@ export default {
   billingPage: {
     title: '充值中心',
     desc: '产品文档中的微信 / 支付宝 / Stripe 自助充值将在此接入；当前可通过兌換碼或联系平台管理员調整餘額。',
+    wecomTitle: '企業微信 · 人工儲值與對公諮詢',
+    wecomDesc:
+      '目前未開通線上自助支付。如需對公匯款、合約開票或批量加額，請掃描下方二維碼新增企業微信，並備註註冊信箱以利核對。',
+    wecomBadge: '未開通線上支付',
     redeemTitle: '兌換碼',
     redeemDesc: '輸入兌換碼即时增加额度。',
     redeemLink: '前往兌換碼 →',

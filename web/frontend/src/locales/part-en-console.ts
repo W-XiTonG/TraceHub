@@ -297,6 +297,10 @@ export default {
   billingPage: {
     title: 'Billing',
     desc: 'WeChat / Alipay / Stripe self-serve top-up will plug in here per product docs; for now use redeem codes or ask an admin to adjust balance.',
+    wecomTitle: 'WeCom (enterprise WeChat) · manual top-up & invoicing',
+    wecomDesc:
+      'Online self-serve payments are not enabled yet. For wire transfers, contracts/invoices, or bulk quota, scan the QR code below to add us on WeCom. Mention your registered email in the request so we can verify your account faster.',
+    wecomBadge: 'No online checkout',
     redeemTitle: 'Redeem code',
     redeemDesc: 'Redeem a code to add quota immediately.',
     redeemLink: 'Redeem codes →',
