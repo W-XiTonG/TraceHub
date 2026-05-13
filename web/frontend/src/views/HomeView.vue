@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
+import { homeBillingExampleRows } from '../data/homeBillingExamples'
 import { homeModelVendors } from '../data/homeModelVendors'
 import { useAuthStore } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
@@ -199,6 +200,8 @@ const billingCards = computed(() => [
   { title: t('home.billCard3Title'), desc: t('home.billCard3Desc') },
   { title: t('home.billCard4Title'), desc: t('home.billCard4Desc') },
 ])
+
+const pricingBadges = computed(() => [t('home.billingBadge1'), t('home.billingBadge2'), t('home.billingBadge3')])
 
 function featureLink(to: string) {
   if (auth.isLoggedIn) return { path: to }
@@ -633,11 +636,37 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
       <section id="pricing" class="th-reveal mx-auto max-w-6xl px-5 py-16 md:py-24">
         <div class="text-center">
           <p class="th-kicker mb-2"><span class="th-kicker-accent">{{ t('home.usageKicker') }}</span></p>
-          <h2 class="text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.85rem]">{{ t('home.usageNoteTitle') }}</h2>
+          <h2 class="text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.85rem]">{{ t('home.pricingMainTitle') }}</h2>
           <p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-500 md:text-[0.9375rem]">
-            {{ t('home.usageLead') }}
+            {{ t('home.pricingMainSub') }}
           </p>
         </div>
+
+        <div
+          class="th-home-pricing-formula-card th-reveal-stagger mx-auto mt-10 max-w-3xl rounded-[var(--th-radius-xl)] border border-cyan-500/20 bg-gradient-to-br from-cyan-950/35 via-slate-950/50 to-slate-950/80 p-5 shadow-[0_16px_48px_-28px_rgba(34,211,238,0.18)] md:p-7"
+        >
+          <p class="th-home-pricing-formula-title text-sm font-semibold text-cyan-200/95">{{ t('home.billingFormulaTitle') }}</p>
+          <pre
+            class="th-home-pricing-formula-pre thin-scrollbar mt-3 overflow-x-auto rounded-lg border border-white/[0.06] bg-black/30 px-4 py-3 font-mono text-[12px] leading-relaxed text-slate-200 md:text-[13px]"
+            role="region"
+            :aria-label="t('home.billingFormulaTitle')"
+          >{{ t('home.billingFormulaMath') }}</pre>
+          <p class="th-home-pricing-formula-explain mt-3 text-[13px] leading-relaxed text-slate-500">{{ t('home.billingFormulaExplain') }}</p>
+        </div>
+
+        <ul
+          class="th-reveal-stagger mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2 md:gap-3"
+          :aria-label="t('home.billingBadgesAria')"
+        >
+          <li
+            v-for="(b, i) in pricingBadges"
+            :key="i"
+            class="th-home-pricing-badge rounded-full border border-emerald-500/20 bg-emerald-950/20 px-3.5 py-1.5 text-[11px] font-medium text-emerald-100/90 md:text-xs"
+          >
+            {{ b }}
+          </li>
+        </ul>
+
         <div class="th-reveal-stagger mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div
             v-for="(b, i) in billingCards"
@@ -648,6 +677,32 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
             <p class="mt-2 flex-1 text-[13px] leading-relaxed text-slate-500">{{ b.desc }}</p>
           </div>
         </div>
+
+        <div class="th-reveal-stagger mt-12">
+          <h3 class="text-center text-sm font-semibold uppercase tracking-wider text-slate-500">{{ t('home.billTableTitle') }}</h3>
+          <div class="mt-4 overflow-x-auto rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/40 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.55)]">
+            <table class="w-full min-w-[28rem] text-left text-sm">
+              <thead class="border-b border-white/[0.06] bg-white/[0.03] text-[11px] uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-4 py-3 font-medium">{{ t('home.billTableThModel') }}</th>
+                  <th class="px-4 py-3 font-medium tabular-nums">{{ t('home.billTableThIn') }}</th>
+                  <th class="px-4 py-3 font-medium tabular-nums">{{ t('home.billTableThOut') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/[0.04] text-slate-300">
+                <tr v-for="row in homeBillingExampleRows" :key="row.model" class="hover:bg-white/[0.02]">
+                  <td class="px-4 py-2.5 font-mono text-[13px] text-cyan-100/90">{{ row.model }}</td>
+                  <td class="px-4 py-2.5 font-mono tabular-nums text-slate-400">{{ row.inPer1k }}</td>
+                  <td class="px-4 py-2.5 font-mono tabular-nums text-slate-400">{{ row.outPer1k }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="border-t border-white/[0.05] px-4 py-3 text-center text-[11px] leading-relaxed text-slate-600 md:text-xs">
+              {{ t('home.billTableFoot') }}
+            </p>
+          </div>
+        </div>
+
         <p class="mx-auto mt-8 max-w-3xl text-center text-xs leading-relaxed text-slate-600">
           {{ t('home.usageFootnote') }}
         </p>

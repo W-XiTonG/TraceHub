@@ -78,22 +78,40 @@ export default {
     vendorPerplexity: 'Perplexity',
     vendorOllama: 'Ollama',
     usageKicker: 'Transparent billing',
+    pricingMainTitle: 'Pay per token · clear formula, friendly mini-model rates',
+    pricingMainSub:
+      'Charges map measured prompt and completion tokens into your account quota—input and output priced separately, no monthly minimum. Smaller models (e.g. mini / Flash) ship with gentler per-1K rates for everyday testing. How debits are applied for your account is shown in the console and usage detail after you sign in.',
+    billingFormulaTitle: 'How usage is calculated',
+    billingFormulaMath:
+      'prompt side = (prompt tokens ÷ 1000) × input reference rate\noutput side = (output tokens ÷ 1000) × output reference rate\nreference sum = prompt side + output side\ndebited quota = rounded up to a whole number after site billing rules',
+    billingFormulaExplain:
+      'Reference rates depend on the model you pick. Chat, images, and audio share the same metering idea—balance checks before a call match the final debit logic; token counts may be estimated first or taken from the provider. If anything here differs from your environment, follow the usage detail in the signed-in console.',
+    billingBadge1: 'No monthly minimum · pay as you go',
+    billingBadge2: 'Balance check before calls · fewer wasted retries',
+    billingBadge3: 'Ledger + logs · easy reconciliation',
+    billingBadgesAria: 'Billing highlights',
+    billTableTitle: 'Popular models · reference per-1K quota (in / out)',
+    billTableThModel: 'Model',
+    billTableThIn: 'Input / 1K',
+    billTableThOut: 'Output / 1K',
+    billTableFoot:
+      'Each figure is reference quota per 1,000 tokens of that kind (input vs output columns). The model name must match your API request exactly to use this row; otherwise a general default tier applies. Order is for readability only. If your live debits differ, follow your usage detail.',
     usageLead:
       'Pay for what you actually use: prompt and completion tokens roll up into your account quota—no “minimum monthly spend” lock-in. Totals reconcile in the console and request logs.',
     usageFootnote:
-      'Per-model input/output rates, group and user multipliers, and how fiat maps to internal quota are configured by your operator. The cards below describe how TraceHub thinks about billing; live numbers always follow your signed-in console and per-request logs.',
+      'Per-model input/output rates, top-ups, and how fiat maps to internal quota are configured by your operator. The cards and table are illustrative only; live numbers follow your signed-in console and usage detail.',
     usageCtaConsole: 'Sign in to see usage & balance',
     usageNoteTitle: 'Usage & account',
     usageNoteCta: 'Read docs · console & billing',
     billCard1Title: 'Token-accurate usage',
     billCard1Desc:
-      'Chat-style calls charge from measured prompt and completion tokens converted into your quota currency; input and output are priced separately so costs stay explainable.',
+      'Chat calls debit measured prompt and completion tokens; input is typically cheaper than output so long answers read clearly on the bill. Compact models stay budget-friendly for high-frequency dev and QA.',
     billCard2Title: 'Dashboards + exportable logs',
     billCard2Desc:
       'Roll up spend by day and model; every request is traceable in logs. Export CSV / JSON for finance, chargebacks, or team reviews.',
-    billCard3Title: 'Group multipliers for cost control',
+    billCard3Title: 'Team groups & spend policies',
     billCard3Desc:
-      'Users belong to a group where admins set per-model multipliers (and optional user-level multipliers). Same model, different teams—great for friendlier internal rates on heavy workloads.',
+      'Accounts can be organized into teams; admins manage model visibility and routing in one place. Different teams can follow different cost policies—see your console after sign-in for what applies to you.',
     billCard4Title: 'Redeem codes & top-ups (site config)',
     billCard4Desc:
       'Redeem codes and billing center offers depend on how this site is configured—flexible promos without changing your integration.',
@@ -146,8 +164,8 @@ export default {
     f2desc: 'Dashboards by day/model; traceable logs; one-click CSV / JSON export for analysis and auditing.',
     f2cta: 'View logs',
     f3tag: 'Governance',
-    f3title: 'Groups & multipliers',
-    f3desc: 'Users belong to groups; model rates and routing are configurable in admin for predictable governance.',
+    f3title: 'Groups & routing',
+    f3desc: 'Users belong to groups; model visibility and upstream routing are configurable in admin for predictable governance.',
     f3cta: 'My group',
     f4tag: 'Account',
     f4title: 'Account & quota',
@@ -155,7 +173,7 @@ export default {
     f4cta: 'Open console',
     f5tag: 'Operations',
     f5title: 'Admin console (RBAC)',
-    f5desc: 'Users, channels, group rates, model market, usage and audit for admin / superadmin—good for private delivery.',
+    f5desc: 'Users, channels, model market, usage and audit for admin / superadmin—good for private delivery.',
     f5cta: 'Admin',
     t0label: 'OpenAI-compatible protocol',
     t0hint: 'Low migration cost',

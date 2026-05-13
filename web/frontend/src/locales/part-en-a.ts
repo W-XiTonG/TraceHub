@@ -116,7 +116,7 @@ export default {
     i1t: 'Usage & export',
     i1d: 'Searchable logs; CSV / JSON export',
     i2t: 'Groups & policy',
-    i2d: 'Rates, routing and account tools',
+    i2d: 'Routing, billing policy, and account tools are configurable per deployment',
     company: '循迹未来 · Xunji Future',
   },
   layout: {

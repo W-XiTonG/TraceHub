@@ -77,22 +77,40 @@ export default {
     vendorPerplexity: 'Perplexity',
     vendorOllama: 'Ollama',
     usageKicker: '透明計費',
+    pricingMainTitle: '按量計費 · 公式公開，輕量模型更省',
+    pricingMainSub:
+      '依實際提示與輸出 Token 折算為帳戶「額度」：輸入、輸出分開計價，用多少記多少，無月租式門檻；輕量模型（如 mini / Flash）單價更友善，適合日常除錯與高頻情境。具體入帳規則以登入後控制台與用量明細為準。',
+    billingFormulaTitle: '計費怎麼算',
+    billingFormulaMath:
+      '提示側 = (提示 Token ÷ 1000) × 輸入參考單價\n輸出側 = (輸出 Token ÷ 1000) × 輸出參考單價\n參考合計 = 提示側 + 輸出側\n入帳額度 = 依站內計費規則折算後，向上取整為整數',
+    billingFormulaExplain:
+      '參考單價由所選模型決定。對話、繪圖、語音等使用同一套計量思路；送出前的餘額預覽與成交扣費口徑一致，Token 數以估算或實際回報為準。若與本頁示意不一致，請以登入後控制台中的用量明細為準。',
+    billingBadge1: '無月租 · 按次按量',
+    billingBadge2: '送出前檢查餘額 · 減少無效重試',
+    billingBadge3: '流水 + 呼叫日誌 · 可對帳',
+    billingBadgesAria: '計費亮點',
+    billTableTitle: '熱門模型 · 參考單價（額度 / 千 Token）',
+    billTableThModel: '模型',
+    billTableThIn: '輸入',
+    billTableThOut: '輸出',
+    billTableFoot:
+      '數字為每千個對應方向 Token 的參考額度消耗（輸入欄、輸出欄分開計）。模型名稱須與呼叫時填寫完全一致才按此行計價，否則走站內通用參考檔；排序僅為方便瀏覽。若與您的實際消耗不一致，請以用量明細為準。',
     usageLead:
       '按真實呼叫結算：提示與生成按 Token 精細折算，無「最低月租」式門檻；用量在控制台與呼叫日誌裡都能核對。',
     usageFootnote:
-      '各模型的輸入/輸出倍率、分組與用戶倍率，以及「充值／法幣 ↔ 站內額度」的換算，由站點營運方在管理端配置。以下為產品側計費思路，具體數值以您登入後的控制台與單筆呼叫日誌為準。',
+      '各模型的輸入／輸出單價、儲值與「法幣 ↔ 站內額度」等規則由站點營運方配置。下方卡片與參考表僅為示意；具體數值以您登入後的控制台與用量明細為準。',
     usageCtaConsole: '登入查看用量與餘額',
     usageNoteTitle: '用量與帳戶',
     usageNoteCta: '閱讀文件 · 控制台與計費',
     billCard1Title: '按 Token 精算，用多少記多少',
     billCard1Desc:
-      '對話等能力按真實提示與模型輸出 Token 折算為帳戶「額度」；輸入與輸出分開計價，帳單可對齊到單次請求。',
+      '對話等依真實提示與輸出 Token 入帳；輸入通常低於輸出單價，長回答成本一目了然。輕量模型單價更友善，適合高頻開發與測試。',
     billCard2Title: '儀表板 + 日誌，一鍵匯出',
     billCard2Desc:
       '按日、按模型匯總消費；呼叫日誌可追溯每一筆。支援 CSV / JSON 匯出，團隊對帳與成本歸因更省力。',
-    billCard3Title: '分組倍率，靈活控成本',
+    billCard3Title: '團隊分組與成本策略',
     billCard3Desc:
-      '帳戶歸屬分組，管理員可為模型設定倍率（亦可疊加用戶側倍率）。同一模型可對不同團隊給不同策略，便於給高頻情境更友善的內部價。',
+      '帳戶可按團隊分組，管理員在後台統一管理模型可見性與路由。不同團隊可採用不同成本策略，具體以登入後控制台為準。',
     billCard4Title: '兌換碼與儲值隨站點配置',
     billCard4Desc:
       '支援兌換碼等營運能力；儲值檔位與活動優惠以本站「儲值中心」為準，可依營運節奏靈活拉新與回饋。',
@@ -146,8 +164,8 @@ export default {
     f2desc: '仪表盘按日/模型聚合消費，呼叫日誌可追溯；支持一键匯出 CSV / JSON 便于内部分析。',
     f2cta: '查看呼叫日誌',
     f3tag: '治理',
-    f3title: '分組与倍率',
-    f3desc: '用戶归属分組，模型倍率与渠道路由在管理端可配，便于統一治理与配额策略。',
+    f3title: '分組與路由',
+    f3desc: '用戶歸屬分組；模型可見性與上游路由在管理端可配，便於團隊統一治理與配額策略。',
     f3cta: '我的分組',
     f4tag: '帳户',
     f4title: '帳户与额度',
@@ -156,7 +174,7 @@ export default {
     f5tag: '运营',
     f5title: '管理后台（RBAC）',
     f5desc:
-      '用戶与渠道、分組倍率、模型市场、用量与审計等能力面向 admin / superadmin，适合私有化交付与运維。',
+      '用戶與渠道、模型市場、用量與審計等能力面向 admin / superadmin，適合私有化交付與運維。',
     f5cta: '管理后台',
     t0label: 'OpenAI 兼容协议',
     t0hint: '迁移成本低',
