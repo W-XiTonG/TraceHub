@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"tracehub/internal/ent"
@@ -15,12 +16,12 @@ import (
 	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (
 	// BrandIconPublicURLPrefix 本地上传图标对外 URL 前缀（与 gin Static 挂载一致）。
 	BrandIconPublicURLPrefix = "/uploads/site-brand"
-	brandIconDiskBase        = "site-brand-icon"
 	brandIconMaxBytes        = 2 << 20 // 2 MiB
 )
 
@@ -56,11 +57,140 @@ func detectBrandUploadExt(data []byte) (ext string, ok bool) {
 	return "", false
 }
 
-func brandIconPublicURL(ext string) string {
-	return BrandIconPublicURLPrefix + "/" + brandIconDiskBase + ext
+func brandIconPublicURL(filename string) string {
+	return BrandIconPublicURLPrefix + "/" + filename
 }
 
-// PostBrandIconUpload POST /api/admin/site-upload/brand-icon — multipart 字段 file；写入磁盘并更新 site.brand.icon_url。
+func isBrandLibraryFilename(name string) bool {
+	if name == "" || strings.Contains(name, "..") {
+		return false
+	}
+	if filepath.Base(name) != name {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+	default:
+		return false
+	}
+	return strings.HasPrefix(name, "site-brand-")
+}
+
+// GetBrandIconLibrary GET /api/admin/site-brand/icons — 列出本地上传目录内保留的品牌图标（按修改时间新到旧）。
+func GetBrandIconLibrary(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		root := BrandUploadDir(cfg)
+		de, err := os.ReadDir(root)
+		if err != nil {
+			if os.IsNotExist(err) {
+				httpx.OK(c, gin.H{"icons": []gin.H{}})
+				return
+			}
+			httpx.ServerError(c, "读取图标目录失败")
+			return
+		}
+		type iconRow struct {
+			URL        string `json:"url"`
+			UploadedAt int64  `json:"uploaded_at"`
+			Filename   string `json:"filename"`
+		}
+		var rows []iconRow
+		for _, e := range de {
+			if e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if !isBrandLibraryFilename(name) {
+				continue
+			}
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			url := brandIconPublicURL(name)
+			if err := sitecfg.ValidateBrandIconURL(url); err != nil {
+				continue
+			}
+			rows = append(rows, iconRow{
+				URL:        url,
+				UploadedAt: info.ModTime().Unix(),
+				Filename:   name,
+			})
+		}
+		sort.Slice(rows, func(i, j int) bool {
+			if rows[i].UploadedAt != rows[j].UploadedAt {
+				return rows[i].UploadedAt > rows[j].UploadedAt
+			}
+			return rows[i].URL > rows[j].URL
+		})
+		out := make([]gin.H, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, gin.H{
+				"url":         r.URL,
+				"uploaded_at": r.UploadedAt,
+				"filename":    r.Filename,
+			})
+		}
+		httpx.OK(c, gin.H{"icons": out})
+	}
+}
+
+// DeleteBrandIcon DELETE /api/admin/site-brand/icons/:filename — 删除本地上传目录中的单个图标文件；若与当前 site.brand.icon_url 一致则清空该配置。
+func DeleteBrandIcon(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		filename := strings.TrimSpace(c.Param("filename"))
+		if filename == "" || !isBrandLibraryFilename(filename) {
+			httpx.BadRequest(c, "无效的文件名")
+			return
+		}
+		root := BrandUploadDir(cfg)
+		dest := filepath.Join(root, filename)
+		rel, err := filepath.Rel(root, dest)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			httpx.BadRequest(c, "无效的路径")
+			return
+		}
+		if _, err := os.Stat(dest); err != nil {
+			if os.IsNotExist(err) {
+				httpx.BadRequest(c, "文件不存在")
+				return
+			}
+			httpx.ServerError(c, "读取文件失败")
+			return
+		}
+
+		ctx := c.Request.Context()
+		deletedURL := brandIconPublicURL(filename)
+		stored := sitecfg.StoredBrandIconURL(ctx, client)
+		cleared := false
+		if strings.TrimSpace(stored) == deletedURL {
+			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(sitecfg.SystemConfigKeyBrandIconURL)).Only(ctx)
+			if err != nil {
+				if !ent.IsNotFound(err) {
+					httpx.ServerError(c, "读取配置失败")
+					return
+				}
+			} else {
+				if err := client.SystemConfig.UpdateOne(ex).SetConfigValue("").Exec(ctx); err != nil {
+					httpx.ServerError(c, "更新配置失败")
+					return
+				}
+				cleared = true
+			}
+		}
+
+		if err := os.Remove(dest); err != nil {
+			httpx.ServerError(c, "删除文件失败："+err.Error())
+			return
+		}
+
+		auditLog(client, adm.ID, "site.brand_icon_delete", "site_brand", filename, map[string]any{"url": deletedURL, "cleared_config": cleared}, c)
+		httpx.OK(c, gin.H{"cleared_config": cleared})
+	}
+}
+
+// PostBrandIconUpload POST /api/admin/site-upload/brand-icon — multipart 字段 file；写入磁盘（保留历史文件）并更新 site.brand.icon_url。
 func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -105,18 +235,14 @@ func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc
 			return
 		}
 
-		matches, _ := filepath.Glob(filepath.Join(root, brandIconDiskBase+".*"))
-		for _, m := range matches {
-			_ = os.Remove(m)
-		}
-
-		dest := filepath.Join(root, brandIconDiskBase+ext)
+		filename := "site-brand-" + uuid.New().String() + ext
+		dest := filepath.Join(root, filename)
 		if err := os.WriteFile(dest, data, 0o644); err != nil {
 			httpx.ServerError(c, "保存文件失败："+err.Error())
 			return
 		}
 
-		url := brandIconPublicURL(ext)
+		url := brandIconPublicURL(filename)
 		if err := sitecfg.ValidateBrandIconURL(url); err != nil {
 			httpx.ServerError(c, "内部错误：生成 URL 无效")
 			return

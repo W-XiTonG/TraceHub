@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { useSiteMetaStore } from '../stores/siteMeta'
 
 const { t } = useI18n()
 const siteMeta = useSiteMetaStore()
+
+/** 与后端 sitecfg.DefaultBrandIconURL 一致 */
+const defaultBrandIconUrl = '/tracehub-icon.svg'
+
+type BrandLibIcon = {
+  url: string
+  uploaded_at?: number
+  filename?: string
+  /** 首项内置默认图标：点击后清空 URL，保存即恢复默认 */
+  is_builtin_default?: boolean
+}
 
 type SiteSettings = {
   brand_name?: string
@@ -31,6 +42,24 @@ const saving = ref(false)
 const uploadingIcon = ref(false)
 const msg = ref('')
 const err = ref('')
+const brandIcons = ref<BrandLibIcon[]>([])
+const deletingBrandFilename = ref<string | null>(null)
+
+const brandIconPreviewSrc = computed(() => {
+  const u = form.brandIconUrl.trim()
+  return u || defaultBrandIconUrl
+})
+
+const brandIconsForUi = computed((): BrandLibIcon[] => {
+  const rest = brandIcons.value.filter((x) => x.url.trim() !== defaultBrandIconUrl)
+  const head: BrandLibIcon = {
+    url: defaultBrandIconUrl,
+    uploaded_at: 0,
+    filename: 'default',
+    is_builtin_default: true,
+  }
+  return [head, ...rest]
+})
 
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
@@ -62,6 +91,74 @@ async function load() {
   }
 }
 
+async function loadBrandIcons() {
+  try {
+    const { data } = await http.get<Envelope<{ icons?: BrandLibIcon[] }>>('/api/admin/site-brand/icons')
+    if (data.code !== 0 || !Array.isArray(data.data?.icons)) {
+      brandIcons.value = []
+      return
+    }
+    brandIcons.value = data.data.icons.filter((x) => x && typeof x.url === 'string' && x.url.trim())
+  } catch {
+    brandIcons.value = []
+  }
+}
+
+function brandIconTitle(ico: BrandLibIcon): string {
+  if (ico.is_builtin_default) return t('adminSystem.brandIconDefault')
+  const name = typeof ico.filename === 'string' && ico.filename.trim() ? ico.filename.trim() : ico.url
+  const ts = typeof ico.uploaded_at === 'number' && ico.uploaded_at > 0 ? ico.uploaded_at * 1000 : 0
+  const when = ts ? new Date(ts).toLocaleString() : ''
+  return when ? `${name}\n${when}` : name
+}
+
+function isBrandIconTileSelected(ico: BrandLibIcon): boolean {
+  if (ico.is_builtin_default) {
+    const u = form.brandIconUrl.trim()
+    return u === '' || u === defaultBrandIconUrl
+  }
+  return form.brandIconUrl.trim() === ico.url.trim()
+}
+
+function selectBrandIcon(ico: BrandLibIcon) {
+  if (ico.is_builtin_default) {
+    form.brandIconUrl = ''
+    return
+  }
+  form.brandIconUrl = ico.url.trim()
+}
+
+async function confirmDeleteBrandIcon(ico: BrandLibIcon) {
+  if (ico.is_builtin_default) return
+  const fn = typeof ico.filename === 'string' ? ico.filename.trim() : ''
+  if (!fn) return
+  if (!globalThis.confirm(t('adminSystem.brandIconDeleteConfirm', { name: fn }))) return
+  deletingBrandFilename.value = fn
+  err.value = ''
+  msg.value = ''
+  try {
+    const { data } = await http.delete<Envelope<{ cleared_config?: boolean }>>(
+      `/api/admin/site-brand/icons/${encodeURIComponent(fn)}`,
+    )
+    if (data.code !== 0) throw new Error(data.message || t('adminSystem.brandIconDeleteFail'))
+    if (form.brandIconUrl.trim() === ico.url.trim()) {
+      form.brandIconUrl = ''
+    }
+    msg.value = t('adminSystem.brandIconDeleted')
+    await refresh()
+    await siteMeta.refreshFromServer()
+  } catch (e: unknown) {
+    err.value = httpErr(e)
+  } finally {
+    deletingBrandFilename.value = null
+  }
+}
+
+async function refresh() {
+  await load()
+  await loadBrandIcons()
+}
+
 async function uploadBrandIcon(ev: Event) {
   const input = ev.target as HTMLInputElement
   const file = input.files?.[0]
@@ -79,7 +176,7 @@ async function uploadBrandIcon(ev: Event) {
     if (!u) throw new Error(t('adminSystem.brandIconUploadFail'))
     form.brandIconUrl = u
     msg.value = t('adminSystem.brandIconUploaded')
-    await load()
+    await refresh()
     await siteMeta.refreshFromServer()
   } catch (e: unknown) {
     err.value = httpErr(e)
@@ -118,7 +215,7 @@ async function save() {
     const { data } = await http.put<Envelope<unknown>>('/api/admin/config', { items })
     if (data.code !== 0) throw new Error(data.message || t('adminSystem.saveFail'))
     msg.value = t('adminSystem.saved')
-    await load()
+    await refresh()
     await siteMeta.refreshFromServer()
   } catch (e: unknown) {
     err.value = httpErr(e)
@@ -127,7 +224,7 @@ async function save() {
   }
 }
 
-onMounted(() => void load())
+onMounted(() => void refresh())
 </script>
 
 <template>
@@ -158,9 +255,47 @@ onMounted(() => void load())
                 {{ uploadingIcon ? t('adminSystem.brandIconUploading') : t('adminSystem.brandIconUpload') }}
               </label>
             </div>
-            <p v-if="form.brandIconUrl.trim()" class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+            <div class="mt-3">
+              <p class="text-[11px] font-medium text-slate-400">{{ t('adminSystem.brandIconLibrary') }}</p>
+              <p class="mt-0.5 text-[11px] text-slate-500">{{ t('adminSystem.brandIconLibraryHint') }}</p>
+              <div class="mt-2 flex max-w-xl flex-wrap gap-2">
+                <div
+                  v-for="ico in brandIconsForUi"
+                  :key="ico.is_builtin_default ? '__builtin_default__' : ico.url"
+                  class="relative h-11 w-11 shrink-0"
+                >
+                  <button
+                    type="button"
+                    :title="brandIconTitle(ico)"
+                    class="h-11 w-11 overflow-hidden rounded-md border bg-black/25 p-0 transition-colors hover:border-white/25"
+                    :class="
+                      isBrandIconTileSelected(ico) ? 'border-cyan-500 ring-2 ring-cyan-500/30' : 'border-white/10'
+                    "
+                    @click="selectBrandIcon(ico)"
+                  >
+                    <img :src="ico.url.trim()" alt="" class="h-full w-full object-contain" />
+                  </button>
+                  <button
+                    v-if="!ico.is_builtin_default && ico.filename"
+                    type="button"
+                    :title="t('adminSystem.brandIconDelete')"
+                    :disabled="deletingBrandFilename !== null || saving || uploadingIcon"
+                    class="absolute -right-1 -top-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-red-500/40 bg-red-950/90 text-[11px] leading-none font-semibold text-red-100 shadow-sm hover:bg-red-900/95 disabled:cursor-not-allowed disabled:opacity-40"
+                    @click.stop="void confirmDeleteBrandIcon(ico)"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <p v-if="brandIcons.length === 0" class="mt-2 text-[11px] text-slate-600">{{ t('adminSystem.brandIconLibraryEmpty') }}</p>
+            </div>
+            <p class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
               <span>{{ t('adminSystem.brandIconPreview') }}</span>
-              <img :src="form.brandIconUrl.trim()" alt="" class="h-8 w-8 rounded border border-white/10 object-contain" />
+              <img
+                :src="brandIconPreviewSrc"
+                alt=""
+                class="h-8 w-8 rounded border border-white/10 bg-black/20 object-contain"
+              />
             </p>
             <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintBrandIcon') }}</p>
           </div>
@@ -193,7 +328,7 @@ onMounted(() => void load())
         <button type="button" class="th-btn-primary px-5 py-2.5 text-sm" :disabled="saving" @click="save">
           {{ saving ? t('common.submitting') : t('adminCommon.save') }}
         </button>
-        <button type="button" class="th-btn-secondary px-5 py-2.5 text-sm" :disabled="saving || busy" @click="load">
+        <button type="button" class="th-btn-secondary px-5 py-2.5 text-sm" :disabled="saving || busy" @click="refresh">
           {{ t('adminCommon.refresh') }}
         </button>
       </div>

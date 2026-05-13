@@ -412,10 +412,20 @@ export default {
     lblBrandName: 'Product name',
     lblBrandIcon: 'Logo / icon URL or path',
     hintBrandIcon:
-      'Use a same-origin path starting with / or an https URL, or local upload (PNG / JPEG / GIF / WebP, max 2MB; saved to DB immediately). Leave empty for the default icon.',
+      'Use a same-origin path starting with / or an https URL, or local upload (PNG / JPEG / GIF / WebP, max 2MB). Uploads are kept in the gallery below and become the live icon immediately; picking from the gallery only fills the field — click Save to persist. Leave empty for the default icon.',
+    brandIconLibrary: 'Uploaded logos',
+    brandIconLibraryHint:
+      'The first tile is the built-in default; click to clear the field above, then Save to apply it. Other tiles are local uploads; after switching from the gallery, click Save to persist. Use × on an uploaded tile to remove its file from disk (the built-in default cannot be removed). Hover for filename and time.',
+    brandIconLibraryEmpty: 'No local uploads yet; each upload is kept so you can switch back later.',
+    brandIconDefault: 'Built-in default (TraceHub)',
+    brandIconDelete: 'Remove from gallery',
+    brandIconDeleteConfirm:
+      'Delete "{name}" from the gallery? The file on disk will be permanently removed and cannot be undone.',
+    brandIconDeleted: 'Icon file deleted',
+    brandIconDeleteFail: 'Failed to delete icon',
     brandIconUpload: 'Upload file',
     brandIconUploading: 'Uploading…',
-    brandIconUploaded: 'Uploaded and saved; the logo is live',
+    brandIconUploaded: 'Uploaded and set as the live icon (saved); previous files remain in the gallery',
     brandIconUploadFail: 'Logo upload failed',
     brandIconPreview: 'Preview',
     secSecurity: 'Sign-in security',

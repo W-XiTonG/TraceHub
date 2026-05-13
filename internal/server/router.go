@@ -263,6 +263,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.DELETE("/redeem-codes/:id", adminhandler.RevokeRedeemCode(opt.Client))
 	a.GET("/config", adminhandler.GetSystemConfig(opt.Client))
 	a.GET("/site-settings", adminhandler.GetAdminSiteSettings(opt.Client, opt.Config))
+	a.GET("/site-brand/icons", adminhandler.GetBrandIconLibrary(opt.Config))
+	a.DELETE("/site-brand/icons/:filename", adminhandler.DeleteBrandIcon(opt.Client, opt.Config))
 	a.POST("/site-upload/brand-icon", adminhandler.PostBrandIconUpload(opt.Client, opt.Config))
 	a.PUT("/config", adminhandler.PutSystemConfig(opt.Client))
 	a.POST("/config/reload", adminhandler.ReloadSystemConfig())

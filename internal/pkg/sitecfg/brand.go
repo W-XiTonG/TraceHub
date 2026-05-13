@@ -46,6 +46,15 @@ func EffectiveBrandName(ctx context.Context, client *ent.Client) string {
 	return s
 }
 
+// StoredBrandIconURL 库中保存的站点图标 URL（trim 后为空表示未配置），不含默认回退；供管理端表单编辑。
+func StoredBrandIconURL(ctx context.Context, client *ent.Client) string {
+	v, ok, err := stringFromConfigRow(ctx, client, SystemConfigKeyBrandIconURL)
+	if err != nil || !ok {
+		return ""
+	}
+	return strings.TrimSpace(v)
+}
+
 // EffectiveBrandIconURL 图标地址：库中有非空值则用库，否则 DefaultBrandIconURL。
 func EffectiveBrandIconURL(ctx context.Context, client *ent.Client) string {
 	defaultURL := DefaultBrandIconURL

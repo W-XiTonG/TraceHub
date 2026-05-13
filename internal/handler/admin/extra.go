@@ -518,7 +518,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
 		httpx.OK(c, gin.H{
 			"brand_name":               sitecfg.EffectiveBrandName(ctx, client),
-			"brand_icon_url":           sitecfg.EffectiveBrandIconURL(ctx, client),
+			"brand_icon_url":           sitecfg.StoredBrandIconURL(ctx, client),
 			"login_captcha_enabled":    sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
 			"login_captcha_file":       cfg.Site.LoginCaptcha.Enabled,
 			"login_captcha_db_set":     dbSet,

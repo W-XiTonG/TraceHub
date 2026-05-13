@@ -42,7 +42,7 @@ site:
   login_captcha:
     enabled: true
     ttl_seconds: 300
-  # 可选：管理后台「本地上传品牌图标」保存目录（进程可写）；默认 data/site_brand，对外 URL 为 /uploads/site-brand/site-brand-icon.*
+  # 可选：管理后台「本地上传品牌图标」保存目录（进程可写）；默认 data/site_brand，对外 URL 为 /uploads/site-brand/site-brand-*.{png,jpg,...}（多版本保留）
   # brand_upload_dir: ./data/site_brand
 
 email:
