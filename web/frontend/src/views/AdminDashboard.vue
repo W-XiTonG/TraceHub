@@ -122,6 +122,8 @@ const snapshot = ref<SnapshotPayload | null>(null)
 const snapshotErr = ref('')
 const ops = ref<OpsPayload | null>(null)
 const opsErr = ref('')
+const loginCaptchaSaving = ref(false)
+const loginCaptchaMsg = ref('')
 const chartDays = ref<1 | 7 | 30>(7)
 const chartMetric = ref<'requests' | 'tokens' | 'cost_yuan'>('requests')
 const busy = ref(true)
@@ -269,6 +271,76 @@ async function load() {
   } finally {
     busy.value = false
   }
+}
+
+async function loadOpsOnly() {
+  opsErr.value = ''
+  try {
+    const { data } = await http.get<Envelope<OpsPayload>>('/api/admin/dashboard/ops')
+    if (data.code !== 0) {
+      ops.value = null
+      opsErr.value = (data as { message?: string }).message || t('adminDash.p4OpsFail')
+      return
+    }
+    ops.value = data.data ?? null
+  } catch (e: unknown) {
+    ops.value = null
+    if (axios.isAxiosError(e)) {
+      const body = e.response?.data as { message?: string } | undefined
+      opsErr.value = body?.message || e.message || t('adminDash.p4OpsFail')
+    } else {
+      opsErr.value = e instanceof Error ? e.message : t('adminDash.p4OpsFail')
+    }
+  }
+}
+
+function loginCaptchaDbSummary(): string {
+  const o = ops.value?.config_outline
+  if (!o || !o.login_captcha_db_set) return t('adminCommon.no')
+  const v = String(o.login_captcha_db_value ?? '').trim()
+  if (!v) return t('adminDash.p4LoginCaptchaDbUnset')
+  return v
+}
+
+async function saveLoginCaptcha(enabled: boolean) {
+  loginCaptchaSaving.value = true
+  loginCaptchaMsg.value = ''
+  try {
+    const { data } = await http.put<Envelope<unknown>>('/api/admin/config', {
+      items: [
+        {
+          key: 'site.login_captcha.enabled',
+          value: enabled ? 'true' : 'false',
+          description:
+            'Login CAPTCHA (password + send email login code). Overrides YAML site.login_captcha.enabled; requires Redis when enabled.',
+        },
+      ],
+    })
+    if (data.code !== 0) {
+      throw new Error((data as { message?: string }).message || t('adminDash.p4LoginCaptchaSaveFail'))
+    }
+    loginCaptchaMsg.value = t('adminDash.p4LoginCaptchaSaved')
+    await loadOpsOnly()
+    window.setTimeout(() => {
+      loginCaptchaMsg.value = ''
+    }, 4500)
+  } catch (e: unknown) {
+    if (axios.isAxiosError(e)) {
+      const body = e.response?.data as { message?: string } | undefined
+      loginCaptchaMsg.value = body?.message || e.message || t('adminDash.p4LoginCaptchaSaveFail')
+    } else {
+      loginCaptchaMsg.value = e instanceof Error ? e.message : t('adminDash.p4LoginCaptchaSaveFail')
+    }
+    await loadOpsOnly()
+  } finally {
+    loginCaptchaSaving.value = false
+  }
+}
+
+function onLoginCaptchaCheckbox(ev: Event) {
+  const el = ev.target as HTMLInputElement | null
+  if (!el) return
+  void saveLoginCaptcha(el.checked)
 }
 
 watch(chartDays, () => {
@@ -1421,7 +1493,32 @@ const showSkeleton = computed(() => !s.value && busy.value)
                     <dt class="text-slate-500">{{ t('adminDash.p4CfgLoginCaptcha') }}</dt>
                     <dd>{{ ops.config_outline?.login_captcha_enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</dd>
                   </div>
+                  <div class="flex justify-between gap-2">
+                    <dt class="text-slate-500">{{ t('adminDash.p4CfgLoginCaptchaFile') }}</dt>
+                    <dd>{{ ops.config_outline?.login_captcha_file ? t('adminCommon.yes') : t('adminCommon.no') }}</dd>
+                  </div>
+                  <div class="flex justify-between gap-2">
+                    <dt class="text-slate-500">{{ t('adminDash.p4CfgLoginCaptchaDb') }}</dt>
+                    <dd class="max-w-[55%] truncate font-mono text-xs" :title="loginCaptchaDbSummary()">
+                      {{ loginCaptchaDbSummary() }}
+                    </dd>
+                  </div>
                 </dl>
+                <div class="mt-4 border-t border-white/[0.06] pt-4">
+                  <p class="text-xs font-medium text-slate-300">{{ t('adminDash.p4LoginCaptchaAdminTitle') }}</p>
+                  <p class="mt-1 text-[11px] leading-relaxed text-slate-500">{{ t('adminDash.p4LoginCaptchaAdminDesc') }}</p>
+                  <label class="mt-3 flex cursor-pointer items-center gap-2.5 text-sm text-slate-200 select-none">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 shrink-0 rounded border-slate-600 text-cyan-500"
+                      :checked="Boolean(ops.config_outline?.login_captcha_enabled)"
+                      :disabled="loginCaptchaSaving || busy"
+                      @change="onLoginCaptchaCheckbox"
+                    />
+                    <span>{{ t('adminDash.p4LoginCaptchaAdminSwitch') }}</span>
+                  </label>
+                  <p v-if="loginCaptchaMsg" class="mt-2 text-[11px] leading-relaxed text-slate-400">{{ loginCaptchaMsg }}</p>
+                </div>
               </div>
               <div class="rounded-lg border border-dashed border-white/[0.12] bg-black/[0.06] p-4">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p4AlertsTitle') }}</h3>

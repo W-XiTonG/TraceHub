@@ -73,7 +73,7 @@ func SendLoginCode(client *ent.Client, cfg *config.Config, rdb *redis.Client) gi
 			httpx.BadRequest(c, "请输入有效邮箱")
 			return
 		}
-		if !loginCaptchaOK(c, cfg, rdb, req.CaptchaID, req.CaptchaAnswer) {
+		if !loginCaptchaOK(c, client, cfg, rdb, req.CaptchaID, req.CaptchaAnswer) {
 			return
 		}
 

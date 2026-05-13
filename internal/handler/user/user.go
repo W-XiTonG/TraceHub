@@ -120,7 +120,7 @@ func Login(client *ent.Client, cfg *config.Config, jwtSecret []byte, rdb *redis.
 			httpx.BadRequest(c, "邮箱或用户名与密码必填")
 			return
 		}
-		if !loginCaptchaOK(c, cfg, rdb, req.CaptchaID, req.CaptchaAnswer) {
+		if !loginCaptchaOK(c, client, cfg, rdb, req.CaptchaID, req.CaptchaAnswer) {
 			return
 		}
 		ctx := c.Request.Context()

@@ -5,8 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"tracehub/internal/ent"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mojocn/base64Captcha"
@@ -109,14 +111,14 @@ func newLoginCaptcha(cfg *config.Config, rdb *redis.Client) *base64Captcha.Captc
 }
 
 // LoginCaptchaIssue GET /api/user/login-captcha — 未开启时返回 enabled:false；开启时需 Redis。
-func LoginCaptchaIssue(cfg *config.Config, rdb *redis.Client) gin.HandlerFunc {
+func LoginCaptchaIssue(client *ent.Client, cfg *config.Config, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !cfg.Site.LoginCaptcha.Enabled {
+		if !sitecfg.EffectiveLoginCaptchaEnabled(c.Request.Context(), client, cfg) {
 			httpx.OK(c, gin.H{"enabled": false})
 			return
 		}
 		if rdb == nil {
-			httpx.ServiceUnavailable(c, "请先连接 Redis，或将 site.login_captcha.enabled 设为 false")
+			httpx.ServiceUnavailable(c, "请先连接 Redis，或关闭登录图形验证码（配置文件 site.login_captcha.enabled 或管理后台 site.login_captcha.enabled）")
 			return
 		}
 		c.Header("Cache-Control", "no-store")
@@ -135,12 +137,12 @@ func LoginCaptchaIssue(cfg *config.Config, rdb *redis.Client) gin.HandlerFunc {
 }
 
 // loginCaptchaOK 未开启时直接通过；开启时校验并一次性消费 Redis 中的答案。
-func loginCaptchaOK(c *gin.Context, cfg *config.Config, rdb *redis.Client, captchaID, captchaAnswer string) bool {
-	if !cfg.Site.LoginCaptcha.Enabled {
+func loginCaptchaOK(c *gin.Context, client *ent.Client, cfg *config.Config, rdb *redis.Client, captchaID, captchaAnswer string) bool {
+	if !sitecfg.EffectiveLoginCaptchaEnabled(c.Request.Context(), client, cfg) {
 		return true
 	}
 	if rdb == nil {
-		httpx.ServiceUnavailable(c, "登录图形验证码需要 Redis，请连接 Redis 或关闭 site.login_captcha.enabled")
+		httpx.ServiceUnavailable(c, "登录图形验证码需要 Redis，请连接 Redis 或在管理后台/配置文件中关闭登录图形验证码")
 		return false
 	}
 	cid := strings.TrimSpace(strings.TrimPrefix(captchaID, "\ufeff"))

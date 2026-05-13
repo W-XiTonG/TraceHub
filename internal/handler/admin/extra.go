@@ -26,6 +26,7 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
 	redis "github.com/redis/go-redis/v9"
@@ -529,6 +530,12 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			k := strings.TrimSpace(it.Key)
 			if k == "" {
 				continue
+			}
+			if k == sitecfg.SystemConfigKeyLoginCaptchaEnabled {
+				if _, err := strconv.ParseBool(strings.TrimSpace(it.Value)); err != nil {
+					httpx.BadRequest(c, sitecfg.SystemConfigKeyLoginCaptchaEnabled+" 须为 true 或 false")
+					return
+				}
 			}
 			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(k)).Only(ctx)
 			if ent.IsNotFound(err) {
@@ -1156,13 +1163,18 @@ func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin
 			checks["redis"] = "skipped"
 		}
 
+		dbCaptchaSet, dbCaptchaVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
+		effectiveCaptcha := sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg)
 		outline := gin.H{
 			"server_mode":               cfg.Server.Mode,
 			"currency_quota_per_yuan":   cfg.Site.CurrencyQuotaPerYuan,
 			"cors_origins_count":        len(cfg.Site.CORSOrigins),
 			"realtime_call_mapping":     cfg.Site.RealtimeCallMappingEnabled,
 			"email_login_enabled":       cfg.Email.Enabled,
-			"login_captcha_enabled":     cfg.Site.LoginCaptcha.Enabled,
+			"login_captcha_enabled":     effectiveCaptcha,
+			"login_captcha_file":        cfg.Site.LoginCaptcha.Enabled,
+			"login_captcha_db_set":      dbCaptchaSet,
+			"login_captcha_db_value":    strings.TrimSpace(dbCaptchaVal),
 			"liveness_path":             "/health",
 			"readiness_path":            "/ready",
 		}

@@ -116,7 +116,16 @@ export default {
     p4CfgCors: 'CORS origin count',
     p4CfgRealtime: 'Realtime mapping',
     p4CfgEmail: 'Email login',
-    p4CfgLoginCaptcha: 'Login CAPTCHA',
+    p4CfgLoginCaptcha: 'Login CAPTCHA (effective)',
+    p4CfgLoginCaptchaFile: 'YAML site.login_captcha.enabled',
+    p4CfgLoginCaptchaDb: 'DB override',
+    p4LoginCaptchaAdminTitle: 'Admin toggle',
+    p4LoginCaptchaAdminDesc:
+      'Persists key site.login_captcha.enabled (true/false). When set, it overrides YAML. When off, password login and “send email login code” skip image CAPTCHA (CAPTCHA still requires Redis when on).',
+    p4LoginCaptchaAdminSwitch: 'Enable login CAPTCHA',
+    p4LoginCaptchaSaved: 'Saved. Login page follows the new setting.',
+    p4LoginCaptchaSaveFail: 'Save failed',
+    p4LoginCaptchaDbUnset: 'Key present, empty value (follows YAML)',
     p4AlertsTitle: 'Quotas & external alerts',
     p4AlertsBody:
       'Disk, queues, upstream balances need deployment-specific monitoring; no external alert feed is connected. Placeholder dimensions below.',
