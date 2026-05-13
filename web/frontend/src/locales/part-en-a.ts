@@ -129,6 +129,7 @@ export default {
     navPlayground: 'Try API',
     navKeys: 'API Key',
     navLogs: 'Request logs',
+    navLedger: 'Balance ledger',
     navGroup: 'My group',
     navBilling: 'Billing',
     navRedeem: 'Redeem code',

@@ -18,6 +18,7 @@ const router = createRouter({
         { path: 'playground', name: 'console-playground', component: () => import('../views/PlaygroundView.vue') },
         { path: 'keys', name: 'keys', component: () => import('../views/ApiKeysView.vue') },
         { path: 'logs', name: 'console-logs', component: () => import('../views/UsageLogsView.vue') },
+        { path: 'balance-ledger', name: 'console-ledger', component: () => import('../views/BalanceLedgerView.vue') },
         { path: 'group', name: 'console-group', component: () => import('../views/GroupView.vue') },
         { path: 'billing', name: 'console-billing', component: () => import('../views/BillingView.vue') },
         { path: 'settings', name: 'console-settings', component: () => import('../views/SettingsView.vue') },

@@ -128,6 +128,7 @@ export default {
     uaMe: '当前用戶資訊',
     uaBal: '餘額',
     uaLogs: '呼叫日誌分頁',
+    uaLedger: '帳戶流水（扣費、兌換入帳、管理員調帳、回饋獎勵合併）',
     uaGrp: '我的分組',
     uaAvail: '可用模型（同 /api/user/models）',
     uaUsage: '用量統計',

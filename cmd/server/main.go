@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"net/http"
 	"time"
 
+	entsql "entgo.io/ent/dialect/sql"
 	"tracehub/internal/bootstrap"
 	"tracehub/internal/ent"
 	"tracehub/internal/pkg/config"
@@ -41,11 +43,13 @@ func main() {
 		zlog.Info("created PostgreSQL database (schema will be applied by migration)", zap.String("database", createdDBName))
 	}
 
-	client, err := ent.Open("postgres", cfg.Database.DSN)
+	sqldb, err := sql.Open("postgres", cfg.Database.DSN)
 	if err != nil {
-		zlog.Fatal("database connection failed", zap.Error(err))
+		zlog.Fatal("database open failed", zap.Error(err))
 	}
-	defer client.Close()
+	defer func() { _ = sqldb.Close() }()
+
+	client := ent.NewClient(ent.Driver(entsql.OpenDB("postgres", sqldb)))
 
 	if err := client.Schema.Create(ctx); err != nil {
 		zlog.Fatal("database migration failed", zap.Error(err))
@@ -88,6 +92,7 @@ func main() {
 	r, err := server.NewRouter(server.Options{
 		Config: cfg,
 		Client: client,
+		StdDB:  sqldb,
 		Redis:  rdb,
 		Log:    zlog,
 	})

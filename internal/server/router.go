@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 
+	"database/sql"
+
 	"tracehub/internal/ent"
 	adminhandler "tracehub/internal/handler/admin"
 	gatewayhandler "tracehub/internal/handler/gateway"
@@ -25,6 +27,7 @@ import (
 type Options struct {
 	Config *config.Config
 	Client *ent.Client
+	StdDB  *sql.DB
 	Redis  *redis.Client
 	Log    *zap.Logger
 }
@@ -210,6 +213,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	authUser.GET("/me", userhandler.Me(opt.Client, opt.Config))
 	authUser.GET("/balance", userhandler.Balance(opt.Client, opt.Config))
 	authUser.GET("/usage-logs", userhandler.UsageLogs(opt.Client))
+	authUser.GET("/balance-ledger", userhandler.BalanceLedger(opt.StdDB))
 	authUser.GET("/group", userhandler.MyGroup(opt.Client))
 	authUser.GET("/available-models", userhandler.AvailableModels(opt.Client))
 	authUser.GET("/models", userhandler.AvailableModels(opt.Client))

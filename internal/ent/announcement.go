@@ -28,6 +28,8 @@ type Announcement struct {
 	PublishedAt *time.Time `json:"published_at,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
 	CreatedBy int `json:"created_by,omitempty"`
+	// 定向用户：仅该用户可见；空表示全员公告
+	AudienceUserID *int `json:"audience_user_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -65,7 +67,7 @@ func (*Announcement) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case announcement.FieldPublished:
 			values[i] = new(sql.NullBool)
-		case announcement.FieldID, announcement.FieldCreatedBy:
+		case announcement.FieldID, announcement.FieldCreatedBy, announcement.FieldAudienceUserID:
 			values[i] = new(sql.NullInt64)
 		case announcement.FieldTitle, announcement.FieldContent:
 			values[i] = new(sql.NullString)
@@ -122,6 +124,13 @@ func (_m *Announcement) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_by", values[i])
 			} else if value.Valid {
 				_m.CreatedBy = int(value.Int64)
+			}
+		case announcement.FieldAudienceUserID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field audience_user_id", values[i])
+			} else if value.Valid {
+				_m.AudienceUserID = new(int)
+				*_m.AudienceUserID = int(value.Int64)
 			}
 		case announcement.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -192,6 +201,11 @@ func (_m *Announcement) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_by=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CreatedBy))
+	builder.WriteString(", ")
+	if v := _m.AudienceUserID; v != nil {
+		builder.WriteString("audience_user_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

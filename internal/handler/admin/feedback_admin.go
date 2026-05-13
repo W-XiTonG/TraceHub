@@ -1,6 +1,9 @@
 package adminhandler
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,12 +19,35 @@ import (
 )
 
 const (
-	fbStatePending       = 0
-	fbStateInvalid     = 1
-	fbStateValidNoPay   = 2
-	fbStateRewarded     = 3
-	maxFeedbackReward   int64 = 50_000_000
+	fbStatePending          = 0
+	fbStateInvalid          = 1
+	fbStateValidNoPay       = 2
+	fbStateRewarded         = 3
+	maxFeedbackReward int64 = 50_000_000
 )
+
+// publishFeedbackRewardAnnouncement 向获奖用户推送一条已发布的定向公告（站内铃铛可见）。
+func publishFeedbackRewardAnnouncement(ctx context.Context, client *ent.Client, adminID, recipientUserID, feedbackID int, points, balanceAfter int64) {
+	const title = "反馈奖励已到账"
+	body := fmt.Sprintf(
+		"感谢您的有效反馈！管理员已为您发放额度奖励。\n\n"+
+			"奖励额度：%d\n当前账户余额：%d\n反馈编号：#%d\n\n"+
+			"入账明细可在「控制台 → 流水明细」查看。",
+		points, balanceAfter, feedbackID,
+	)
+	now := time.Now()
+	_, err := client.Announcement.Create().
+		SetTitle(title).
+		SetContent(body).
+		SetPublished(true).
+		SetPublishedAt(now).
+		SetCreatedBy(adminID).
+		SetAudienceUserID(recipientUserID).
+		Save(ctx)
+	if err != nil {
+		log.Printf("publishFeedbackRewardAnnouncement: %v", err)
+	}
+}
 
 // ListFeedbacks 管理端反馈列表。
 func ListFeedbacks(client *ent.Client) gin.HandlerFunc {
@@ -35,7 +61,7 @@ func ListFeedbacks(client *ent.Client) gin.HandlerFunc {
 			ps = 20
 		}
 		ctx := c.Request.Context()
-		q := client.Feedback.Query().WithUser()
+		q := client.Feedback.Query()
 		if st := strings.TrimSpace(c.Query("review_state")); st != "" {
 			if v, err := strconv.Atoi(st); err == nil && v >= 0 && v <= 3 {
 				q = q.Where(feedback.ReviewStateEQ(v))
@@ -49,7 +75,7 @@ func ListFeedbacks(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "查询失败")
 			return
 		}
-		rows, err := q.
+		rows, err := q.WithUser().
 			Order(ent.Desc(feedback.FieldCreatedAt)).
 			Offset((page - 1) * ps).
 			Limit(ps).
@@ -65,20 +91,20 @@ func ListFeedbacks(client *ent.Client) gin.HandlerFunc {
 				em = fb.Edges.User.Email
 			}
 			items = append(items, gin.H{
-				"id":                     fb.ID,
-				"user_id":                fb.UserID,
-				"user_email":             em,
-				"preset_key":             fb.PresetKey,
-				"title":                  fb.Title,
-				"detail":                 fb.Detail,
-				"review_state":           fb.ReviewState,
-				"reward_points":          fb.RewardPoints,
-				"balance_after_reward":   fb.BalanceAfterReward,
-				"admin_note":             fb.AdminNote,
-				"reviewed_by":            fb.ReviewedBy,
-				"reviewed_at":            fb.ReviewedAt,
-				"created_at":             fb.CreatedAt,
-				"updated_at":             fb.UpdatedAt,
+				"id":                   fb.ID,
+				"user_id":              fb.UserID,
+				"user_email":           em,
+				"preset_key":           fb.PresetKey,
+				"title":                fb.Title,
+				"detail":               fb.Detail,
+				"review_state":         fb.ReviewState,
+				"reward_points":        fb.RewardPoints,
+				"balance_after_reward": fb.BalanceAfterReward,
+				"admin_note":           fb.AdminNote,
+				"reviewed_by":          fb.ReviewedBy,
+				"reviewed_at":          fb.ReviewedAt,
+				"created_at":           fb.CreatedAt,
+				"updated_at":           fb.UpdatedAt,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
@@ -207,6 +233,7 @@ func ReviewFeedback(client *ent.Client) gin.HandlerFunc {
 		auditLog(client, adm.ID, "feedback.reward", "feedback", strconv.Itoa(id), map[string]any{
 			"user_id": fb.UserID, "points": req.RewardPoints, "balance_after": nu.Balance,
 		}, c)
+		publishFeedbackRewardAnnouncement(c.Request.Context(), client, adm.ID, fb.UserID, id, req.RewardPoints, nu.Balance)
 		httpx.OKMsg(c, "已发放奖励", gin.H{"new_balance": nu.Balance})
 	}
 }

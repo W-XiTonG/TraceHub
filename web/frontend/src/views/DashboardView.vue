@@ -359,6 +359,7 @@ const quickLinks = computed(() => [
   { to: '/console/playground', title: t('ql.playground'), desc: t('ql.playgroundD') },
   { to: '/console/keys', title: t('ql.keys'), desc: t('ql.keysD') },
   { to: '/console/logs', title: t('ql.logs'), desc: t('ql.logsD') },
+  { to: '/console/balance-ledger', title: t('ql.ledger'), desc: t('ql.ledgerD') },
   { to: '/console/billing', title: t('ql.billing'), desc: t('ql.billingD') },
 ])
 

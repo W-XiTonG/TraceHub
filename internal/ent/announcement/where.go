@@ -80,6 +80,11 @@ func CreatedBy(v int) predicate.Announcement {
 	return predicate.Announcement(sql.FieldEQ(FieldCreatedBy, v))
 }
 
+// AudienceUserID applies equality check predicate on the "audience_user_id" field. It's identical to AudienceUserIDEQ.
+func AudienceUserID(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldEQ(FieldAudienceUserID, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Announcement {
 	return predicate.Announcement(sql.FieldEQ(FieldCreatedAt, v))
@@ -308,6 +313,56 @@ func CreatedByIsNil() predicate.Announcement {
 // CreatedByNotNil applies the NotNil predicate on the "created_by" field.
 func CreatedByNotNil() predicate.Announcement {
 	return predicate.Announcement(sql.FieldNotNull(FieldCreatedBy))
+}
+
+// AudienceUserIDEQ applies the EQ predicate on the "audience_user_id" field.
+func AudienceUserIDEQ(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldEQ(FieldAudienceUserID, v))
+}
+
+// AudienceUserIDNEQ applies the NEQ predicate on the "audience_user_id" field.
+func AudienceUserIDNEQ(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldNEQ(FieldAudienceUserID, v))
+}
+
+// AudienceUserIDIn applies the In predicate on the "audience_user_id" field.
+func AudienceUserIDIn(vs ...int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldIn(FieldAudienceUserID, vs...))
+}
+
+// AudienceUserIDNotIn applies the NotIn predicate on the "audience_user_id" field.
+func AudienceUserIDNotIn(vs ...int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldNotIn(FieldAudienceUserID, vs...))
+}
+
+// AudienceUserIDGT applies the GT predicate on the "audience_user_id" field.
+func AudienceUserIDGT(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldGT(FieldAudienceUserID, v))
+}
+
+// AudienceUserIDGTE applies the GTE predicate on the "audience_user_id" field.
+func AudienceUserIDGTE(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldGTE(FieldAudienceUserID, v))
+}
+
+// AudienceUserIDLT applies the LT predicate on the "audience_user_id" field.
+func AudienceUserIDLT(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldLT(FieldAudienceUserID, v))
+}
+
+// AudienceUserIDLTE applies the LTE predicate on the "audience_user_id" field.
+func AudienceUserIDLTE(v int) predicate.Announcement {
+	return predicate.Announcement(sql.FieldLTE(FieldAudienceUserID, v))
+}
+
+// AudienceUserIDIsNil applies the IsNil predicate on the "audience_user_id" field.
+func AudienceUserIDIsNil() predicate.Announcement {
+	return predicate.Announcement(sql.FieldIsNull(FieldAudienceUserID))
+}
+
+// AudienceUserIDNotNil applies the NotNil predicate on the "audience_user_id" field.
+func AudienceUserIDNotNil() predicate.Announcement {
+	return predicate.Announcement(sql.FieldNotNull(FieldAudienceUserID))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

@@ -128,6 +128,7 @@ export default {
     uaMe: '当前用户信息',
     uaBal: '余额',
     uaLogs: '调用日志分页',
+    uaLedger: '账户流水（扣费、兑换入账、管理员调账、反馈奖励合并）',
     uaGrp: '我的分组',
     uaAvail: '可用模型（同 /api/user/models）',
     uaUsage: '用量统计',

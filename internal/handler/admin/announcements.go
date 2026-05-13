@@ -241,5 +241,8 @@ func announcementJSON(a *ent.Announcement) gin.H {
 	if a.PublishedAt != nil {
 		h["published_at"] = *a.PublishedAt
 	}
+	if a.AudienceUserID != nil {
+		h["audience_user_id"] = *a.AudienceUserID
+	}
 	return h
 }

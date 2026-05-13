@@ -5,19 +5,25 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/announcement"
+	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/httpx"
 
 	"github.com/gin-gonic/gin"
 )
 
-// LatestAnnouncement 返回当前已发布最新一条（用于站内提醒）；无已发布公告时 data 为 null。
+// LatestAnnouncement 返回当前用户可见的已发布最新一条（用于站内提醒）；无已发布公告时 data 为 null。
 func LatestAnnouncement(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		ctx := c.Request.Context()
 		a, err := client.Announcement.Query().
 			Where(
 				announcement.PublishedEQ(true),
 				announcement.PublishedAtNotNil(),
+				announcement.Or(
+					announcement.AudienceUserIDIsNil(),
+					announcement.AudienceUserIDEQ(u.ID),
+				),
 			).
 			Order(ent.Desc(announcement.FieldPublishedAt), ent.Desc(announcement.FieldID)).
 			First(ctx)
@@ -33,9 +39,10 @@ func LatestAnnouncement(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-// ListPublishedAnnouncements 已发布公告列表（用户侧），按发布时间倒序。
+// ListPublishedAnnouncements 已发布公告列表（用户侧）：全员公告 + 仅当前用户可见的定向公告，按发布时间倒序。
 func ListPublishedAnnouncements(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 		if limit < 1 || limit > 50 {
 			limit = 20
@@ -45,6 +52,10 @@ func ListPublishedAnnouncements(client *ent.Client) gin.HandlerFunc {
 			Where(
 				announcement.PublishedEQ(true),
 				announcement.PublishedAtNotNil(),
+				announcement.Or(
+					announcement.AudienceUserIDIsNil(),
+					announcement.AudienceUserIDEQ(u.ID),
+				),
 			).
 			Order(ent.Desc(announcement.FieldPublishedAt), ent.Desc(announcement.FieldID)).
 			Limit(limit).

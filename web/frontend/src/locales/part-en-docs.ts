@@ -129,6 +129,7 @@ export default {
     uaMe: 'Current user',
     uaBal: 'Balance',
     uaLogs: 'Paged request logs',
+    uaLedger: 'Balance ledger (usage, redeem, admin adjustments, feedback rewards)',
     uaGrp: 'My group',
     uaAvail: 'Available models (same as /api/user/models)',
     uaUsage: 'Usage stats',

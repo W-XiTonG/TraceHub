@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 
@@ -51,6 +51,13 @@ function httpErr(e: unknown): string {
     if (typeof d.message === 'string' && d.message.trim()) return d.message.trim()
   }
   return e instanceof Error ? e.message : t('adminCommon.requestFail')
+}
+
+function closedActionLabel(s: number): string {
+  if (s === 1) return t('adminFeedbacks.doneInvalid')
+  if (s === 2) return t('adminFeedbacks.doneNoReward')
+  if (s === 3) return t('adminFeedbacks.doneReward')
+  return t('adminFeedbacks.alreadyDone')
 }
 
 function stateLabel(s: number) {
@@ -134,6 +141,10 @@ function clearFilters() {
   void load()
 }
 
+function refreshOnly() {
+  void load()
+}
+
 function prevPage() {
   if (page.value > 1) {
     page.value--
@@ -148,8 +159,18 @@ function nextPage() {
   }
 }
 
+function onVisibility() {
+  if (document.visibilityState !== 'visible') return
+  void load()
+}
+
 onMounted(() => {
   void load()
+  document.addEventListener('visibilitychange', onVisibility)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 </script>
 
@@ -158,6 +179,7 @@ onMounted(() => {
     <div>
       <h1 class="text-2xl font-bold text-slate-100">{{ t('adminFeedbacks.title') }}</h1>
       <p class="mt-1 max-w-3xl text-sm text-slate-500">{{ t('adminFeedbacks.intro') }}</p>
+      <p class="mt-1 max-w-3xl text-xs text-slate-600">{{ t('adminFeedbacks.listSyncHint') }}</p>
     </div>
 
     <div class="flex flex-wrap items-end gap-3">
@@ -172,6 +194,13 @@ onMounted(() => {
         </select>
       </div>
       <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="applyFilter">{{ t('adminFeedbacks.query') }}</button>
+      <button
+        type="button"
+        class="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.05]"
+        @click="refreshOnly"
+      >
+        {{ t('adminFeedbacks.refresh') }}
+      </button>
       <button
         type="button"
         class="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.05]"
@@ -224,7 +253,9 @@ onMounted(() => {
               >
                 {{ t('adminFeedbacks.review') }}
               </button>
-              <span v-else class="text-slate-600">—</span>
+              <span v-else class="whitespace-nowrap text-slate-500" :title="t('adminFeedbacks.opDoneHint')">{{
+                closedActionLabel(r.review_state)
+              }}</span>
             </td>
           </tr>
         </tbody>

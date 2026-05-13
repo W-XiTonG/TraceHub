@@ -20,6 +20,7 @@ func (Announcement) Fields() []ent.Field {
 		field.Bool("published").Default(false),
 		field.Time("published_at").Optional().Nillable(),
 		field.Int("created_by").Optional(),
+		field.Int("audience_user_id").Optional().Nillable().Comment("定向用户：仅该用户可见；空表示全员公告"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
@@ -38,5 +39,6 @@ func (Announcement) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("published"),
 		index.Fields("published_at"),
+		index.Fields("audience_user_id"),
 	}
 }

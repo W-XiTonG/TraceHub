@@ -118,6 +118,7 @@ var (
 		{Name: "content", Type: field.TypeString, Size: 2147483647},
 		{Name: "published", Type: field.TypeBool, Default: false},
 		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "audience_user_id", Type: field.TypeInt, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "created_by", Type: field.TypeInt, Nullable: true},
@@ -130,7 +131,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "announcements_users_created_announcements",
-				Columns:    []*schema.Column{AnnouncementsColumns[7]},
+				Columns:    []*schema.Column{AnnouncementsColumns[8]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -145,6 +146,11 @@ var (
 				Name:    "announcement_published_at",
 				Unique:  false,
 				Columns: []*schema.Column{AnnouncementsColumns[4]},
+			},
+			{
+				Name:    "announcement_audience_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{AnnouncementsColumns[5]},
 			},
 		},
 	}

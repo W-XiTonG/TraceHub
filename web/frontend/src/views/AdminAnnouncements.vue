@@ -14,6 +14,7 @@ type Row = {
   published_at?: string
   created_at?: string
   updated_at?: string
+  audience_user_id?: number | null
 }
 
 const rows = ref<Row[]>([])
@@ -221,6 +222,7 @@ onMounted(() => void load())
             <tr class="border-b border-white/[0.06] text-xs uppercase tracking-wide text-slate-500">
               <th class="py-2 pr-3">{{ t('adminAnnounce.thId') }}</th>
               <th class="py-2 pr-3">{{ t('adminAnnounce.thTitle') }}</th>
+              <th class="py-2 pr-3">{{ t('adminAnnounce.thAudience') }}</th>
               <th class="py-2 pr-3">{{ t('adminAnnounce.thStatus') }}</th>
               <th class="py-2 pr-3">{{ t('adminAnnounce.thPublishedAt') }}</th>
               <th class="py-2 text-right">{{ t('adminAnnounce.thActions') }}</th>
@@ -230,6 +232,10 @@ onMounted(() => void load())
             <tr v-for="r in rows" :key="r.id" class="border-b border-white/[0.04] text-slate-300">
               <td class="py-2.5 pr-3 font-mono text-xs text-slate-500">{{ r.id }}</td>
               <td class="max-w-[220px] truncate py-2.5 pr-3" :title="r.title">{{ r.title }}</td>
+              <td class="py-2.5 pr-3 text-xs text-slate-500">
+                <span v-if="r.audience_user_id != null && r.audience_user_id > 0">{{ t('adminAnnounce.audienceUser', { id: r.audience_user_id }) }}</span>
+                <span v-else>{{ t('adminAnnounce.audienceAll') }}</span>
+              </td>
               <td class="py-2.5 pr-3">
                 <span v-if="r.published" class="text-emerald-300/90">{{ t('adminAnnounce.statusOn') }}</span>
                 <span v-else class="text-slate-500">{{ t('adminAnnounce.statusDraft') }}</span>

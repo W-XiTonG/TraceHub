@@ -383,7 +383,7 @@ export default {
   },
   adminAnnounce: {
     title: '公告管理',
-    desc: '撰寫草稿並發布後，已登入用戶將在控制台與管理後台右上角看到新公告提醒。',
+    desc: '撰寫草稿並發布後，已登入用戶將在控制台與管理後台右上角看到新公告提醒。回饋發獎會自動建立「僅獲獎用戶可見」的定向公告。',
     newDraft: '新建公告（草稿）',
     titlePh: '標題',
     contentPh: '正文（純文字）',
@@ -393,6 +393,7 @@ export default {
     total: '共 {n} 筆',
     thId: 'ID',
     thTitle: '標題',
+    thAudience: '可見範圍',
     thStatus: '狀態',
     thPublishedAt: '發布時間',
     thActions: '操作',
@@ -407,6 +408,8 @@ export default {
     unpublished: '已撤回',
     deleted: '已刪除',
     fillRequired: '請填寫標題與正文',
+    audienceAll: '全員',
+    audienceUser: '用戶 {id}',
     editTitle: '編輯公告 #{id}',
   },
   adminRedeem: {
@@ -472,6 +475,8 @@ export default {
     title: '問題回饋',
     intro:
       '使用者提交的回饋；若確認為有效 Bug，可發放額度獎勵（直接入帳使用者餘額）。每筆僅能處理一次。',
+    listSyncHint:
+      '列表不會即時更新；在其他頁面或分頁提交新回饋後，請點「重新整理」或切回本分頁以自動拉取。若始終為 0，請確認管理端與使用者控制台連到同一後端與資料庫。',
     filterState: '狀態',
     allStates: '全部',
     st0: '待處理',
@@ -481,6 +486,7 @@ export default {
     lblEmail: '使用者郵箱',
     phEmail: '模糊比對，留空為全部',
     query: '查詢',
+    refresh: '重新整理',
     clear: '清除',
     total: '共 {n} 筆',
     thId: 'ID',
@@ -491,6 +497,7 @@ export default {
     thReward: '獎勵額度',
     thCreated: '送出時間',
     thActions: '操作',
+    opDoneHint: '每筆回饋僅可審核一次，處理完成後不再提供按鈕。',
     review: '審核',
     dlgTitle: '審核回饋 #{id}',
     lblValid: '有效 Bug',

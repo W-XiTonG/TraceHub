@@ -133,6 +133,7 @@ export default {
     navPlayground: 'API 試玩',
     navKeys: 'API Key',
     navLogs: '呼叫日誌',
+    navLedger: '流水明細',
     navGroup: '我的分組',
     navBilling: '充值中心',
     navRedeem: '兌換碼',

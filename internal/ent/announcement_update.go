@@ -111,6 +111,33 @@ func (_u *AnnouncementUpdate) ClearCreatedBy() *AnnouncementUpdate {
 	return _u
 }
 
+// SetAudienceUserID sets the "audience_user_id" field.
+func (_u *AnnouncementUpdate) SetAudienceUserID(v int) *AnnouncementUpdate {
+	_u.mutation.ResetAudienceUserID()
+	_u.mutation.SetAudienceUserID(v)
+	return _u
+}
+
+// SetNillableAudienceUserID sets the "audience_user_id" field if the given value is not nil.
+func (_u *AnnouncementUpdate) SetNillableAudienceUserID(v *int) *AnnouncementUpdate {
+	if v != nil {
+		_u.SetAudienceUserID(*v)
+	}
+	return _u
+}
+
+// AddAudienceUserID adds value to the "audience_user_id" field.
+func (_u *AnnouncementUpdate) AddAudienceUserID(v int) *AnnouncementUpdate {
+	_u.mutation.AddAudienceUserID(v)
+	return _u
+}
+
+// ClearAudienceUserID clears the value of the "audience_user_id" field.
+func (_u *AnnouncementUpdate) ClearAudienceUserID() *AnnouncementUpdate {
+	_u.mutation.ClearAudienceUserID()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *AnnouncementUpdate) SetUpdatedAt(v time.Time) *AnnouncementUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -224,6 +251,15 @@ func (_u *AnnouncementUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if _u.mutation.PublishedAtCleared() {
 		_spec.ClearField(announcement.FieldPublishedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.AudienceUserID(); ok {
+		_spec.SetField(announcement.FieldAudienceUserID, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedAudienceUserID(); ok {
+		_spec.AddField(announcement.FieldAudienceUserID, field.TypeInt, value)
+	}
+	if _u.mutation.AudienceUserIDCleared() {
+		_spec.ClearField(announcement.FieldAudienceUserID, field.TypeInt)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(announcement.FieldUpdatedAt, field.TypeTime, value)
@@ -356,6 +392,33 @@ func (_u *AnnouncementUpdateOne) SetNillableCreatedBy(v *int) *AnnouncementUpdat
 // ClearCreatedBy clears the value of the "created_by" field.
 func (_u *AnnouncementUpdateOne) ClearCreatedBy() *AnnouncementUpdateOne {
 	_u.mutation.ClearCreatedBy()
+	return _u
+}
+
+// SetAudienceUserID sets the "audience_user_id" field.
+func (_u *AnnouncementUpdateOne) SetAudienceUserID(v int) *AnnouncementUpdateOne {
+	_u.mutation.ResetAudienceUserID()
+	_u.mutation.SetAudienceUserID(v)
+	return _u
+}
+
+// SetNillableAudienceUserID sets the "audience_user_id" field if the given value is not nil.
+func (_u *AnnouncementUpdateOne) SetNillableAudienceUserID(v *int) *AnnouncementUpdateOne {
+	if v != nil {
+		_u.SetAudienceUserID(*v)
+	}
+	return _u
+}
+
+// AddAudienceUserID adds value to the "audience_user_id" field.
+func (_u *AnnouncementUpdateOne) AddAudienceUserID(v int) *AnnouncementUpdateOne {
+	_u.mutation.AddAudienceUserID(v)
+	return _u
+}
+
+// ClearAudienceUserID clears the value of the "audience_user_id" field.
+func (_u *AnnouncementUpdateOne) ClearAudienceUserID() *AnnouncementUpdateOne {
+	_u.mutation.ClearAudienceUserID()
 	return _u
 }
 
@@ -502,6 +565,15 @@ func (_u *AnnouncementUpdateOne) sqlSave(ctx context.Context) (_node *Announceme
 	}
 	if _u.mutation.PublishedAtCleared() {
 		_spec.ClearField(announcement.FieldPublishedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.AudienceUserID(); ok {
+		_spec.SetField(announcement.FieldAudienceUserID, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedAudienceUserID(); ok {
+		_spec.AddField(announcement.FieldAudienceUserID, field.TypeInt, value)
+	}
+	if _u.mutation.AudienceUserIDCleared() {
+		_spec.ClearField(announcement.FieldAudienceUserID, field.TypeInt)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(announcement.FieldUpdatedAt, field.TypeTime, value)

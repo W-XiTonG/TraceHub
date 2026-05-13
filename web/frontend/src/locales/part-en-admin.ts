@@ -386,7 +386,7 @@ export default {
   },
   adminAnnounce: {
     title: 'Announcements',
-    desc: 'Create drafts and publish. Signed-in users see a reminder in the top-right of the console and admin shell when there is a newer published notice.',
+    desc: 'Create drafts and publish. Signed-in users see a reminder in the top-right of the console and admin shell when there is a newer published notice. Feedback rewards also create a user-targeted notice for the recipient only.',
     newDraft: 'New announcement (draft)',
     titlePh: 'Title',
     contentPh: 'Body (plain text)',
@@ -396,6 +396,7 @@ export default {
     total: '{n} total',
     thId: 'ID',
     thTitle: 'Title',
+    thAudience: 'Audience',
     thStatus: 'Status',
     thPublishedAt: 'Published at',
     thActions: 'Actions',
@@ -410,6 +411,8 @@ export default {
     unpublished: 'Unpublished',
     deleted: 'Deleted',
     fillRequired: 'Title and body are required',
+    audienceAll: 'Everyone',
+    audienceUser: 'User {id}',
     editTitle: 'Edit announcement #{id}',
   },
   adminRedeem: {
@@ -476,6 +479,8 @@ export default {
     title: 'User feedback',
     intro:
       'Review submissions. For valid bugs you can credit quota to the user balance. Each row can be processed only once.',
+    listSyncHint:
+      'This list does not live-update. After new feedback is submitted elsewhere, click Refresh or return to this tab to reload. If it stays empty, confirm admin and console use the same API and database.',
     filterState: 'State',
     allStates: 'All',
     st0: 'Pending',
@@ -485,6 +490,7 @@ export default {
     lblEmail: 'User email',
     phEmail: 'Contains match; empty = all',
     query: 'Search',
+    refresh: 'Refresh',
     clear: 'Clear',
     total: '{n} total',
     thId: 'ID',
@@ -495,6 +501,7 @@ export default {
     thReward: 'Reward',
     thCreated: 'Submitted',
     thActions: 'Actions',
+    opDoneHint: 'Each feedback can be reviewed only once; no further actions after it is closed.',
     review: 'Review',
     dlgTitle: 'Review feedback #{id}',
     lblValid: 'Valid bug',

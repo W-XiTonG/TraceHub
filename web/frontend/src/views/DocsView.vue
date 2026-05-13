@@ -338,6 +338,7 @@ onUnmounted(() => {
                 <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/me</td><td>{{ t('docs.uaMe') }}</td></tr>
                 <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/balance</td><td>{{ t('docs.uaBal') }}</td></tr>
                 <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/usage-logs</td><td>{{ t('docs.uaLogs') }}</td></tr>
+                <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/balance-ledger</td><td>{{ t('docs.uaLedger') }}</td></tr>
                 <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/group</td><td>{{ t('docs.uaGrp') }}</td></tr>
                 <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/available-models</td><td>{{ t('docs.uaAvail') }}</td></tr>
                 <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/usage</td><td>{{ t('docs.uaUsage') }}</td></tr>

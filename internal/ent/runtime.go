@@ -173,11 +173,11 @@ func init() {
 	// announcement.DefaultPublished holds the default value on creation for the published field.
 	announcement.DefaultPublished = announcementDescPublished.Default.(bool)
 	// announcementDescCreatedAt is the schema descriptor for created_at field.
-	announcementDescCreatedAt := announcementFields[5].Descriptor()
+	announcementDescCreatedAt := announcementFields[6].Descriptor()
 	// announcement.DefaultCreatedAt holds the default value on creation for the created_at field.
 	announcement.DefaultCreatedAt = announcementDescCreatedAt.Default.(func() time.Time)
 	// announcementDescUpdatedAt is the schema descriptor for updated_at field.
-	announcementDescUpdatedAt := announcementFields[6].Descriptor()
+	announcementDescUpdatedAt := announcementFields[7].Descriptor()
 	// announcement.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	announcement.DefaultUpdatedAt = announcementDescUpdatedAt.Default.(func() time.Time)
 	// announcement.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

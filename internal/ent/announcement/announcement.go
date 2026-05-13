@@ -24,6 +24,8 @@ const (
 	FieldPublishedAt = "published_at"
 	// FieldCreatedBy holds the string denoting the created_by field in the database.
 	FieldCreatedBy = "created_by"
+	// FieldAudienceUserID holds the string denoting the audience_user_id field in the database.
+	FieldAudienceUserID = "audience_user_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -49,6 +51,7 @@ var Columns = []string{
 	FieldPublished,
 	FieldPublishedAt,
 	FieldCreatedBy,
+	FieldAudienceUserID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -109,6 +112,11 @@ func ByPublishedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedBy orders the results by the created_by field.
 func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
+}
+
+// ByAudienceUserID orders the results by the audience_user_id field.
+func ByAudienceUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAudienceUserID, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.
