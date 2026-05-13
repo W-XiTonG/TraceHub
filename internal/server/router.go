@@ -272,6 +272,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/logs/export", adminhandler.ExportLogs(opt.Client))
 	a.GET("/logs/stats", adminhandler.LogStats(opt.Client))
 	a.GET("/logs", adminhandler.ListLogs(opt.Client))
+	a.GET("/balance-ledger", adminhandler.AdminBalanceLedger(opt.StdDB))
 	a.GET("/redeem-codes", adminhandler.ListRedeemCodes(opt.Client))
 	a.POST("/redeem-codes", adminhandler.BatchRedeemCodes(opt.Client))
 	a.DELETE("/redeem-codes/:id", adminhandler.RevokeRedeemCode(opt.Client))

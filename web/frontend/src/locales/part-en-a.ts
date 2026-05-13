@@ -147,6 +147,7 @@ export default {
     adminNavChannels: 'Channels',
     adminNavGroups: 'Groups',
     adminNavLogs: 'Logs',
+    adminNavBalanceLedger: 'Balance ledger',
     adminNavMarket: 'Model market',
     adminNavAnnouncements: 'Announcements',
     adminNavRedeem: 'Redeem codes',

@@ -36,6 +36,7 @@ const router = createRouter({
         { path: 'channels', name: 'admin-channels', component: () => import('../views/AdminChannels.vue') },
         { path: 'groups', name: 'admin-groups', component: () => import('../views/AdminGroups.vue') },
         { path: 'logs', name: 'admin-logs', component: () => import('../views/AdminLogs.vue') },
+        { path: 'balance-ledger', name: 'admin-balance-ledger', component: () => import('../views/AdminBalanceLedger.vue') },
         { path: 'model-market', name: 'admin-model-market', component: () => import('../views/AdminModelMarket.vue') },
         { path: 'announcements', name: 'admin-announcements', component: () => import('../views/AdminAnnouncements.vue') },
         { path: 'redeem-codes', name: 'admin-redeem-codes', component: () => import('../views/AdminRedeemCodes.vue') },

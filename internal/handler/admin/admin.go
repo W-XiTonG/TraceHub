@@ -672,6 +672,9 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 			id, _ := strconv.Atoi(uid)
 			q = q.Where(usagelog.UserIDEQ(id))
 		}
+		if em := strings.TrimSpace(c.Query("email")); em != "" {
+			q = q.Where(usagelog.HasUserWith(user.EmailContainsFold(em)))
+		}
 		if model := c.Query("model"); model != "" {
 			q = q.Where(usagelog.ModelEQ(model))
 		}
@@ -698,7 +701,8 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "查询失败")
 			return
 		}
-		logs, err := q.Order(ent.Desc(usagelog.FieldRequestTime)).
+		logs, err := q.WithUser().WithAPIKey().WithChannel().
+			Order(ent.Desc(usagelog.FieldRequestTime)).
 			Offset((page - 1) * ps).
 			Limit(ps).
 			All(ctx)
@@ -706,7 +710,54 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "查询失败")
 			return
 		}
-		httpx.OK(c, gin.H{"items": logs, "total": total, "page": page, "page_size": ps})
+		items := make([]gin.H, 0, len(logs))
+		for _, lg := range logs {
+			em := ""
+			if lg.Edges.User != nil {
+				em = lg.Edges.User.Email
+			}
+			keyName := ""
+			keyPrefix := ""
+			if lg.Edges.APIKey != nil {
+				keyName = strings.TrimSpace(lg.Edges.APIKey.Name)
+				keyPrefix = strings.TrimSpace(lg.Edges.APIKey.KeyPrefix)
+			}
+			chLabel := ""
+			chType := ""
+			if lg.Edges.Channel != nil {
+				ch := lg.Edges.Channel
+				chType = ch.ChannelType
+				if strings.TrimSpace(ch.ChannelName) != "" {
+					chLabel = strings.TrimSpace(ch.ChannelName)
+				} else {
+					chLabel = "#" + strconv.Itoa(ch.ID)
+				}
+			}
+			items = append(items, gin.H{
+				"id":                lg.ID,
+				"user_id":           lg.UserID,
+				"user_email":        em,
+				"api_key_id":        lg.APIKeyID,
+				"api_key_name":      keyName,
+				"api_key_prefix":    keyPrefix,
+				"channel_id":        lg.ChannelID,
+				"channel_name":      chLabel,
+				"channel_type":      chType,
+				"request_id":        lg.RequestID,
+				"model":             lg.Model,
+				"model_upstream":    lg.ModelUpstream,
+				"prompt_tokens":     lg.PromptTokens,
+				"completion_tokens": lg.CompletionTokens,
+				"total_tokens":      lg.TotalTokens,
+				"total_cost":        lg.TotalCost,
+				"status_code":       lg.StatusCode,
+				"response_time_ms":  lg.ResponseTimeMs,
+				"request_time":      lg.RequestTime,
+				"ip_address":        lg.IPAddress,
+				"error_message":     lg.ErrorMessage,
+			})
+		}
+		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
 	}
 }
 

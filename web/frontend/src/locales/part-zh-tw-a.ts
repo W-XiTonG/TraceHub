@@ -151,6 +151,7 @@ export default {
     adminNavChannels: '渠道',
     adminNavGroups: '分組',
     adminNavLogs: '呼叫日誌',
+    adminNavBalanceLedger: '額度流水',
     adminNavMarket: '模型市场',
     adminNavAnnouncements: '公告',
     adminNavRedeem: '兌換碼',

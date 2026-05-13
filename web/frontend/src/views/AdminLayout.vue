@@ -28,6 +28,7 @@ const { t } = useI18n()
         <RouterLink to="/admin/channels" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavChannels') }}</RouterLink>
         <RouterLink :to="{ name: 'admin-groups' }" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavGroups') }}</RouterLink>
         <RouterLink to="/admin/logs" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavLogs') }}</RouterLink>
+        <RouterLink to="/admin/balance-ledger" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavBalanceLedger') }}</RouterLink>
         <RouterLink to="/admin/model-market" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavMarket') }}</RouterLink>
         <RouterLink to="/admin/announcements" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavAnnouncements') }}</RouterLink>
         <RouterLink to="/admin/redeem-codes" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavRedeem') }}</RouterLink>
