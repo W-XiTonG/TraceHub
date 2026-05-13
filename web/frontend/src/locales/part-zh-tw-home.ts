@@ -76,10 +76,26 @@ export default {
     vendorOpenRouter: 'OpenRouter',
     vendorPerplexity: 'Perplexity',
     vendorOllama: 'Ollama',
-    usageNoteTitle: '用量与帳户',
-    usageNoteBody:
-      '具体折算方式与模型单价随部署与分組策略而定，不在官网公示示例數字；登入控制台即可查看可用模型与用量，详见文件「控制台」章節。',
-    usageNoteCta: '打开文件 · 控制台說明',
+    usageKicker: '透明計費',
+    usageLead:
+      '按真實呼叫結算：提示與生成按 Token 精細折算，無「最低月租」式門檻；用量在控制台與呼叫日誌裡都能核對。',
+    usageFootnote:
+      '各模型的輸入/輸出倍率、分組與用戶倍率，以及「充值／法幣 ↔ 站內額度」的換算，由站點營運方在管理端配置。以下為產品側計費思路，具體數值以您登入後的控制台與單筆呼叫日誌為準。',
+    usageCtaConsole: '登入查看用量與餘額',
+    usageNoteTitle: '用量與帳戶',
+    usageNoteCta: '閱讀文件 · 控制台與計費',
+    billCard1Title: '按 Token 精算，用多少記多少',
+    billCard1Desc:
+      '對話等能力按真實提示與模型輸出 Token 折算為帳戶「額度」；輸入與輸出分開計價，帳單可對齊到單次請求。',
+    billCard2Title: '儀表板 + 日誌，一鍵匯出',
+    billCard2Desc:
+      '按日、按模型匯總消費；呼叫日誌可追溯每一筆。支援 CSV / JSON 匯出，團隊對帳與成本歸因更省力。',
+    billCard3Title: '分組倍率，靈活控成本',
+    billCard3Desc:
+      '帳戶歸屬分組，管理員可為模型設定倍率（亦可疊加用戶側倍率）。同一模型可對不同團隊給不同策略，便於給高頻情境更友善的內部價。',
+    billCard4Title: '兌換碼與儲值隨站點配置',
+    billCard4Desc:
+      '支援兌換碼等營運能力；儲值檔位與活動優惠以本站「儲值中心」為準，可依營運節奏靈活拉新與回饋。',
     faqTitle: '常见問題',
     footerBlurb:
       '开源 AI API 网关：統一 OpenAI 兼容入口、用量观测与用戶控制台，可按仓库文件私有化部署。',

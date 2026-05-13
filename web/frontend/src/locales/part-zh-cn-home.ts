@@ -76,10 +76,26 @@ export default {
     vendorOpenRouter: 'OpenRouter',
     vendorPerplexity: 'Perplexity',
     vendorOllama: 'Ollama',
+    usageKicker: '透明计费',
+    usageLead:
+      '按真实调用结算：提示与生成按 Token 精细折算，无「最低月租」式门槛；用量在控制台与调用日志里都能核对。',
+    usageFootnote:
+      '各模型的输入/输出倍率、分组与用户倍率，以及「人民币 ↔ 站内额度」的换算，由站点运营方在管理端配置。以下为产品侧计费思路，具体数值以您登录后的控制台与单笔调用日志为准。',
+    usageCtaConsole: '登录查看用量与余额',
     usageNoteTitle: '用量与账户',
-    usageNoteBody:
-      '具体折算方式与模型单价随部署与分组策略而定，不在官网公示示例数字；登录控制台即可查看可用模型与用量，详见文档「控制台」章节。',
-    usageNoteCta: '打开文档 · 控制台说明',
+    usageNoteCta: '阅读文档 · 控制台与计费',
+    billCard1Title: '按 Token 精算，用多少记多少',
+    billCard1Desc:
+      '对话等能力按真实提示与模型输出 Token 折算为账户「额度」；输入与输出分开计价，账单可对齐到单次请求。',
+    billCard2Title: '仪表盘 + 日志，一键导出',
+    billCard2Desc:
+      '按日、按模型汇总消费；调用日志可追溯每一笔。支持 CSV / JSON 导出，团队对账与成本归因更省力。',
+    billCard3Title: '分组倍率，灵活控成本',
+    billCard3Desc:
+      '账户归属分组，管理员可为模型配置倍率（亦可叠加用户侧倍率）。同一模型可对不同团队给不同策略，便于给高频场景更友好的内部价。',
+    billCard4Title: '兑换码与充值随站点配置',
+    billCard4Desc:
+      '支持兑换码等运营能力；充值档位与活动优惠以本站「充值中心」为准，可按运营节奏灵活拉新与回馈。',
     faqTitle: '常见问题',
     footerBlurb:
       '开源 AI API 网关：统一 OpenAI 兼容入口、用量观测与用户控制台，可按仓库文档私有化部署。',

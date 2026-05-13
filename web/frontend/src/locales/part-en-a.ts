@@ -11,7 +11,7 @@ export default {
     features: 'Features',
     integration: 'Integration',
     models: 'Models',
-    pricing: 'Pricing',
+    pricing: 'Billing',
     whyTraceHub: 'Why TraceHub',
     quickStart: 'Quick start',
     faq: 'FAQ',

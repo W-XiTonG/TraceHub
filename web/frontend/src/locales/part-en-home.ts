@@ -77,10 +77,26 @@ export default {
     vendorOpenRouter: 'OpenRouter',
     vendorPerplexity: 'Perplexity',
     vendorOllama: 'Ollama',
+    usageKicker: 'Transparent billing',
+    usageLead:
+      'Pay for what you actually use: prompt and completion tokens roll up into your account quota—no “minimum monthly spend” lock-in. Totals reconcile in the console and request logs.',
+    usageFootnote:
+      'Per-model input/output rates, group and user multipliers, and how fiat maps to internal quota are configured by your operator. The cards below describe how TraceHub thinks about billing; live numbers always follow your signed-in console and per-request logs.',
+    usageCtaConsole: 'Sign in to see usage & balance',
     usageNoteTitle: 'Usage & account',
-    usageNoteBody:
-      'Rates and quota rules depend on how your deployment is configured—we do not publish sample price tables on the marketing site. Sign in to the console for your live model list and usage; see the docs for details.',
-    usageNoteCta: 'Docs: console section',
+    usageNoteCta: 'Read docs · console & billing',
+    billCard1Title: 'Token-accurate usage',
+    billCard1Desc:
+      'Chat-style calls charge from measured prompt and completion tokens converted into your quota currency; input and output are priced separately so costs stay explainable.',
+    billCard2Title: 'Dashboards + exportable logs',
+    billCard2Desc:
+      'Roll up spend by day and model; every request is traceable in logs. Export CSV / JSON for finance, chargebacks, or team reviews.',
+    billCard3Title: 'Group multipliers for cost control',
+    billCard3Desc:
+      'Users belong to a group where admins set per-model multipliers (and optional user-level multipliers). Same model, different teams—great for friendlier internal rates on heavy workloads.',
+    billCard4Title: 'Redeem codes & top-ups (site config)',
+    billCard4Desc:
+      'Redeem codes and billing center offers depend on how this site is configured—flexible promos without changing your integration.',
     faqTitle: 'FAQ',
     footerBlurb:
       'Open-source AI API gateway: OpenAI-compatible entry, observability and user console; deploy privately per repo docs.',

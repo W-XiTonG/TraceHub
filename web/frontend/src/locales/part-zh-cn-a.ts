@@ -15,7 +15,7 @@ export default {
     features: '功能',
     integration: '接入',
     models: '模型',
-    pricing: '价格',
+    pricing: '计费说明',
     whyTraceHub: '为何选择',
     quickStart: '快速上手',
     faq: 'FAQ',

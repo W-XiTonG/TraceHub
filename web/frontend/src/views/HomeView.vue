@@ -193,6 +193,13 @@ const whyIconWrap: Record<WhyAccent, string> = {
   amber: 'bg-amber-500/15 text-amber-200 ring-amber-500/20',
 }
 
+const billingCards = computed(() => [
+  { title: t('home.billCard1Title'), desc: t('home.billCard1Desc') },
+  { title: t('home.billCard2Title'), desc: t('home.billCard2Desc') },
+  { title: t('home.billCard3Title'), desc: t('home.billCard3Desc') },
+  { title: t('home.billCard4Title'), desc: t('home.billCard4Desc') },
+])
+
 function featureLink(to: string) {
   if (auth.isLoggedIn) return { path: to }
   return { path: '/login', query: { redirect: to } }
@@ -251,6 +258,7 @@ function featureLink(to: string) {
           <a href="#features" class="th-site-nav-link">{{ t('nav.features') }}</a>
           <a href="#integration" class="th-site-nav-link hidden sm:inline">{{ t('nav.integration') }}</a>
           <a href="#models" class="th-site-nav-link">{{ t('nav.models') }}</a>
+          <a href="#pricing" class="th-site-nav-link hidden sm:inline">{{ t('nav.pricing') }}</a>
           <a href="#faq" class="th-site-nav-link">{{ t('nav.faq') }}</a>
           <RouterLink to="/docs" class="th-site-nav-link">{{ t('nav.docs') }}</RouterLink>
           <template v-if="!auth.isLoggedIn">
@@ -622,15 +630,44 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
         </div>
       </section>
 
-      <section id="pricing" class="th-reveal mx-auto max-w-6xl px-5 py-16 md:py-20">
-        <div class="th-glass--subtle mx-auto max-w-2xl rounded-[var(--th-radius-xl)] px-6 py-8 text-center md:px-10 md:py-10">
-          <h2 class="text-lg font-semibold tracking-tight text-slate-200 md:text-xl">{{ t('home.usageNoteTitle') }}</h2>
-          <p class="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-500">
-            {{ t('home.usageNoteBody') }}
+      <section id="pricing" class="th-reveal mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div class="text-center">
+          <p class="th-kicker mb-2"><span class="th-kicker-accent">{{ t('home.usageKicker') }}</span></p>
+          <h2 class="text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.85rem]">{{ t('home.usageNoteTitle') }}</h2>
+          <p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-500 md:text-[0.9375rem]">
+            {{ t('home.usageLead') }}
           </p>
+        </div>
+        <div class="th-reveal-stagger mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            v-for="(b, i) in billingCards"
+            :key="i"
+            class="th-glass flex flex-col rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/35 p-5 text-left shadow-[0_12px_40px_-28px_rgba(0,0,0,0.65)]"
+          >
+            <p class="text-sm font-semibold tracking-tight text-slate-100">{{ b.title }}</p>
+            <p class="mt-2 flex-1 text-[13px] leading-relaxed text-slate-500">{{ b.desc }}</p>
+          </div>
+        </div>
+        <p class="mx-auto mt-8 max-w-3xl text-center text-xs leading-relaxed text-slate-600">
+          {{ t('home.usageFootnote') }}
+        </p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <RouterLink
+            :to="auth.isLoggedIn ? '/console' : '/register'"
+            class="th-btn-primary inline-flex items-center gap-1.5 px-5 py-2.5 text-sm"
+          >
+            {{ t('home.usageCtaConsole') }}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </RouterLink>
           <RouterLink
             to="/docs#doc-console"
-            class="th-home-usage-note-cta mt-6 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/25 px-4 py-2.5 text-sm font-medium text-cyan-200/95 transition hover:border-cyan-400/35 hover:bg-cyan-900/30"
+            class="th-home-usage-note-cta inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-950/25 px-4 py-2.5 text-sm font-medium text-cyan-200/95 transition hover:border-cyan-400/35 hover:bg-cyan-900/30"
           >
             {{ t('home.usageNoteCta') }}
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4" aria-hidden="true">
@@ -680,6 +717,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
               <li><a href="#features" class="transition hover:text-cyan-400/90">{{ t('home.footerFeat') }}</a></li>
               <li><a href="#integration" class="transition hover:text-cyan-400/90">{{ t('home.footerInteg') }}</a></li>
               <li><a href="#models" class="transition hover:text-cyan-400/90">{{ t('home.footerModels') }}</a></li>
+              <li><a href="#pricing" class="transition hover:text-cyan-400/90">{{ t('nav.pricing') }}</a></li>
               <li>
                 <RouterLink to="/docs#doc-console" class="transition hover:text-cyan-400/90">{{ t('home.footerDocsConsole') }}</RouterLink>
               </li>
