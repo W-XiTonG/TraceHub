@@ -524,7 +524,7 @@ function featureLink(to: string) {
                 </li>
                 <li class="flex gap-2">
                   <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500/80" aria-hidden="true" />
-                  <span>{{ t('home.integrationLi3', { metrics: '/metrics' }) }}</span>
+                  <span>{{ t('home.integrationLi3') }}</span>
                 </li>
               </ul>
             </div>
@@ -706,7 +706,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
         </div>
       </div>
       <p class="mx-auto mt-10 max-w-6xl border-t border-white/[0.05] px-5 pt-8 text-center text-xs leading-relaxed text-slate-600">
-        {{ t('home.footerLegal', { metrics: '/metrics', health: '/health', ready: '/ready' }) }}
+        {{ t('home.footerLegal') }}
       </p>
       <p class="mx-auto mt-2 max-w-6xl px-5 text-center text-[11px] tracking-wide text-slate-500">
         {{ t('home.companyCredit') }}

@@ -40,7 +40,7 @@ export default {
     healthOk: 'Ready',
     healthBad: 'Not ready',
     healthCheck: 'Checking…',
-    healthDesc: 'Probes /ready (database & Redis).',
+    healthDesc: 'Shows whether the gateway backend and related services are responding.',
     announceTitle: 'Announcements',
     noAnnounce: 'No announcements',
     faqTitle: 'FAQ',

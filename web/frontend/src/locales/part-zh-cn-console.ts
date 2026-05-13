@@ -40,7 +40,7 @@ export default {
     healthOk: '就绪',
     healthBad: '异常',
     healthCheck: '检测中…',
-    healthDesc: '探测 /ready（数据库与 Redis）。',
+    healthDesc: '表示网关后端与相关服务是否可正常响应。',
     announceTitle: '系统公告',
     noAnnounce: '暂无公告',
     faqTitle: '常见问题',

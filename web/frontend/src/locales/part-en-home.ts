@@ -47,7 +47,8 @@ export default {
       'Point Base URL at TraceHub and use your console API key as Bearer token—reuse your existing SDK and SSE parser for streaming.',
     integrationLi1: '{getModels} lists models available to your account (group + channel configuration).',
     integrationLi2: '{postChat} chat completions; compatible channels support streaming chunks.',
-    integrationLi3: 'In production use HTTPS, key rotation and Prometheus {metrics} for health and capacity.',
+    integrationLi3:
+      'Use HTTPS for your gateway and rotate console API keys regularly; uptime and capacity follow your operator’s deployment.',
     codeWinTitle: 'curl · chat.completions',
     codeComment: '# Replace BASE and KEY with your gateway URL and console API key',
     modelsTitle: 'Broad model coverage',
@@ -93,8 +94,7 @@ export default {
     footerAccount: 'Account',
     footerDocLine1: 'Product and API details live under ',
     footerDocLine2: ' in the repository (versioned with each release).',
-    footerLegal:
-      'Use HTTPS, rotate keys and alerting in production; scrape {metrics} and probe {health} / {ready}.',
+    footerLegal: 'Features and policies follow this site and its docs; contact the operator for support.',
     companyCredit: '循迹未来 · Xunji Future',
     contactHintGeneric: 'Contact (expand)',
     contactHintHomeFaq: 'Not answered in the FAQ above?',

@@ -47,7 +47,7 @@ export default {
       '{getModels} 拉取当前账号可用模型（受分组与渠道配置影响）。',
     integrationLi2: '{postChat} 对话补全；兼容渠道支持流式 chunk。',
     integrationLi3:
-      '生产环境建议配合 HTTPS、密钥轮换与 Prometheus {metrics} 做健康与容量观测。',
+      '请通过 HTTPS 访问网关，并建议在控制台定期轮换 API Key；稳定性与容量由部署方保障。',
     codeWinTitle: 'curl · chat.completions',
     codeComment: '# 将 BASE 与 KEY 替换为你的网关地址与控制台 API Key',
     modelsTitle: '多厂商模型接入',
@@ -93,8 +93,7 @@ export default {
     footerAccount: '账户',
     footerDocLine1: '产品需求与接口细节见仓库内 ',
     footerDocLine2: ' 目录（随部署版本更新）。',
-    footerLegal:
-      '生产环境请配置 HTTPS、密钥轮换与观测告警；Prometheus 抓取 {metrics}，健康检查 {health}、{ready}。',
+    footerLegal: '功能与规则以本站及文档为准；使用问题请联系站点运营方。',
     companyCredit: '循迹未来',
     contactHintGeneric: '联络方式（展开）',
     contactHintHomeFaq: '常见问题里没有你要的？',
