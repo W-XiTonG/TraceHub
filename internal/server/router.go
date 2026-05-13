@@ -262,6 +262,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/redeem-codes", adminhandler.ListRedeemCodes(opt.Client))
 	a.POST("/redeem-codes", adminhandler.BatchRedeemCodes(opt.Client))
 	a.DELETE("/redeem-codes/:id", adminhandler.RevokeRedeemCode(opt.Client))
+	a.GET("/redeem-ledger", adminhandler.ListRedeemLedger(opt.Client))
 	a.GET("/config", adminhandler.GetSystemConfig(opt.Client))
 	a.GET("/site-settings", adminhandler.GetAdminSiteSettings(opt.Client, opt.Config))
 	a.POST("/site-settings/reset-defaults", adminhandler.ResetAdminSiteSettingsDefaults(opt.Client))

@@ -37,6 +37,7 @@ const router = createRouter({
         { path: 'model-market', name: 'admin-model-market', component: () => import('../views/AdminModelMarket.vue') },
         { path: 'announcements', name: 'admin-announcements', component: () => import('../views/AdminAnnouncements.vue') },
         { path: 'redeem-codes', name: 'admin-redeem-codes', component: () => import('../views/AdminRedeemCodes.vue') },
+        { path: 'redeem-ledger', name: 'admin-redeem-ledger', component: () => import('../views/AdminRedeemLedger.vue') },
         { path: 'settings', name: 'admin-system', component: () => import('../views/AdminSystemConfig.vue') },
       ],
     },

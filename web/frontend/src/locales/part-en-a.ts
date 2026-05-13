@@ -148,6 +148,7 @@ export default {
     adminNavMarket: 'Model market',
     adminNavAnnouncements: 'Announcements',
     adminNavRedeem: 'Redeem codes',
+    adminNavRedeemLedger: 'Redeem credits',
     adminNavSystem: 'Site settings',
     adminConsoleTitle: 'Switch to user console (usage, API keys, billing)',
     adminTopSubtitle: 'Admin',

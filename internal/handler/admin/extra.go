@@ -16,7 +16,9 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
@@ -351,6 +353,81 @@ func ListRedeemCodes(client *ent.Client) gin.HandlerFunc {
 				"used_count":  rc.UsedCount,
 				"valid_until": rc.ValidUntil,
 				"created_at":  rc.CreatedAt,
+			})
+		}
+		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
+	}
+}
+
+// ListRedeemLedger 管理员查看用户兑换入账流水（可选 user_id、redeem_code_id、redeem_code 筛选，含用户邮箱便于对账）。
+// redeem_code_match：exact（默认，整码精确）、prefix（前缀）、contains（子串，大小写不敏感）。
+func ListRedeemLedger(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+		if page < 1 {
+			page = 1
+		}
+		if ps < 1 || ps > 200 {
+			ps = 50
+		}
+		ctx := c.Request.Context()
+		q := client.RedeemLedger.Query()
+		if uid := strings.TrimSpace(c.Query("user_id")); uid != "" {
+			if id, err := strconv.Atoi(uid); err == nil && id > 0 {
+				q = q.Where(redeemledger.UserIDEQ(id))
+			}
+		}
+		if ridStr := strings.TrimSpace(c.Query("redeem_code_id")); ridStr != "" {
+			if rid, err := strconv.Atoi(ridStr); err == nil && rid > 0 {
+				q = q.Where(redeemledger.RedeemCodeIDEQ(rid))
+			}
+		}
+		if codeStr := strings.TrimSpace(c.Query("redeem_code")); codeStr != "" {
+			mode := strings.ToLower(strings.TrimSpace(c.DefaultQuery("redeem_code_match", "exact")))
+			var codePred predicate.RedeemCode
+			switch mode {
+			case "exact":
+				codePred = redeemutil.CodeMatchPredicate(codeStr)
+			case "prefix":
+				codePred = redeemutil.CodePrefixPredicate(codeStr)
+			case "contains":
+				codePred = redeemcode.CodeContainsFold(codeStr)
+			default:
+				httpx.BadRequest(c, "redeem_code_match 无效，可选 exact、prefix、contains")
+				return
+			}
+			q = q.Where(redeemledger.HasRedeemCodeWith(codePred))
+		}
+		total, err := q.Clone().Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		list, err := q.WithUser().
+			Order(ent.Desc(redeemledger.FieldCreatedAt)).
+			Offset((page - 1) * ps).
+			Limit(ps).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		items := make([]gin.H, 0, len(list))
+		for _, row := range list {
+			email := ""
+			if row.Edges.User != nil {
+				email = row.Edges.User.Email
+			}
+			items = append(items, gin.H{
+				"id":              row.ID,
+				"user_id":         row.UserID,
+				"user_email":      email,
+				"redeem_code_id":  row.RedeemCodeID,
+				"amount":          row.Amount,
+				"balance_after":   row.BalanceAfter,
+				"code_hint":       row.CodeHint,
+				"created_at":      row.CreatedAt,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})

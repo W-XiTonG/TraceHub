@@ -45,14 +45,6 @@ func redeemCodeSlotAvailable() predicate.RedeemCode {
 	})
 }
 
-func redeemCodeMatchInput(trimmed string) predicate.RedeemCode {
-	upper := strings.ToUpper(trimmed)
-	if trimmed == upper {
-		return redeemcode.CodeEQ(trimmed)
-	}
-	return redeemcode.Or(redeemcode.CodeEQ(trimmed), redeemcode.CodeEQ(upper))
-}
-
 const (
 	redeemMaxPerUserPerMinute = 20
 	redeemMaxPerIPPerMinute   = 100
@@ -742,7 +734,7 @@ func Redeem(client *ent.Client, rdb *redis.Client) gin.HandlerFunc {
 		ctx := c.Request.Context()
 		code := strings.TrimSpace(req.Code)
 		rc, err := client.RedeemCode.Query().
-			Where(redeemCodeMatchInput(code)).
+			Where(redeemutil.CodeMatchPredicate(code)).
 			Only(ctx)
 		if err != nil {
 			httpx.BadRequest(c, "兑换码无效")

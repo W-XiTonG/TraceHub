@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { http, type Envelope } from '../api/http'
 import { useAuthStore } from '../stores/auth'
@@ -38,6 +39,17 @@ type UserDetail = {
   totp_enabled: boolean
 }
 
+type LedgerAdminRow = {
+  id: number
+  user_id: number
+  user_email: string
+  redeem_code_id: number
+  amount: number
+  balance_after: number
+  code_hint?: string | null
+  created_at?: string
+}
+
 const items = ref<Row[]>([])
 const deltaByUser = ref<Record<number, string>>({})
 const filterText = ref('')
@@ -70,6 +82,10 @@ const editForm = reactive({
 })
 
 const canManageAdmins = computed(() => authRole.value === 'superadmin')
+
+const userLedgerRows = ref<LedgerAdminRow[]>([])
+const userLedgerTotal = ref(0)
+const userLedgerErr = ref('')
 
 function rowIsElevated(u: Row) {
   return u.role === 'admin' || u.role === 'superadmin'
@@ -165,6 +181,22 @@ function parseIpLines(s: string): string[] {
     .filter(Boolean)
 }
 
+async function loadUserLedger(uid: number) {
+  userLedgerErr.value = ''
+  userLedgerRows.value = []
+  userLedgerTotal.value = 0
+  try {
+    const { data: ld } = await http.get<Envelope<{ items: LedgerAdminRow[]; total: number }>>('/api/admin/redeem-ledger', {
+      params: { user_id: uid, page: 1, page_size: 12 },
+    })
+    if (ld.code !== 0) throw new Error(ld.message || t('adminCommon.requestFail'))
+    userLedgerRows.value = ld.data?.items ?? []
+    userLedgerTotal.value = ld.data?.total ?? 0
+  } catch (e: unknown) {
+    userLedgerErr.value = e instanceof Error ? e.message : t('adminCommon.requestFail')
+  }
+}
+
 async function openEdit(u: Row) {
   err.value = ''
   editOpen.value = true
@@ -194,6 +226,7 @@ async function openEdit(u: Row) {
     editForm.ipWhitelistText = joinLines(d.ip_whitelist)
     editForm.ipBlacklistText = joinLines(d.ip_blacklist)
     editForm.totpEnabled = !!d.totp_enabled
+    void loadUserLedger(d.id)
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : t('adminCommon.loadFail')
     editOpen.value = false
@@ -204,6 +237,9 @@ async function openEdit(u: Row) {
 
 function closeEdit() {
   editOpen.value = false
+  userLedgerRows.value = []
+  userLedgerTotal.value = 0
+  userLedgerErr.value = ''
 }
 
 async function saveEdit() {
@@ -515,6 +551,46 @@ onMounted(() => {
                 <input v-model="editForm.clearTotp" type="checkbox" class="rounded border-slate-600" />
                 <span class="text-xs text-slate-400">{{ t('adminUsers.lblClearTotp') }}</span>
               </label>
+            </div>
+            <div class="mt-6 border-t border-slate-800 pt-5">
+              <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h4 class="text-sm font-semibold text-white">{{ t('adminUsers.redeemLedgerTitle') }}</h4>
+                <RouterLink
+                  v-if="editForm.id"
+                  :to="{ path: '/admin/redeem-ledger', query: { user_id: String(editForm.id) } }"
+                  class="text-[11px] th-link-accent hover:underline"
+                >
+                  {{ t('adminUsers.redeemLedgerMore') }}
+                  <span v-if="userLedgerTotal > userLedgerRows.length" class="text-slate-500">
+                    ({{ userLedgerTotal }})
+                  </span>
+                </RouterLink>
+              </div>
+              <p class="mb-2 text-xs text-slate-500">{{ t('adminUsers.redeemLedgerHint') }}</p>
+              <p v-if="userLedgerErr" class="text-xs text-rose-400">{{ userLedgerErr }}</p>
+              <p v-else-if="!userLedgerRows.length" class="text-xs text-slate-500">{{ t('adminUsers.redeemLedgerEmpty') }}</p>
+              <div v-else class="overflow-x-auto rounded-lg border border-slate-800">
+                <table class="w-full text-left text-xs">
+                  <thead class="text-slate-500">
+                    <tr>
+                      <th class="px-2 py-1.5">{{ t('adminUsers.redeemThTime') }}</th>
+                      <th class="px-2 py-1.5">{{ t('adminUsers.redeemThHint') }}</th>
+                      <th class="px-2 py-1.5">{{ t('adminUsers.redeemThAmount') }}</th>
+                      <th class="px-2 py-1.5">{{ t('adminUsers.redeemThBalAfter') }}</th>
+                      <th class="px-2 py-1.5">{{ t('adminUsers.redeemThCodeId') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="lr in userLedgerRows" :key="lr.id" class="border-t border-slate-800/80">
+                      <td class="px-2 py-1.5 font-mono text-slate-500">{{ lr.created_at || '—' }}</td>
+                      <td class="px-2 py-1.5 font-mono text-slate-400">{{ lr.code_hint || '—' }}</td>
+                      <td class="px-2 py-1.5 font-mono font-semibold th-redeem-quota-fg">{{ lr.amount }}</td>
+                      <td class="px-2 py-1.5 font-mono text-slate-300">{{ lr.balance_after }}</td>
+                      <td class="px-2 py-1.5 font-mono text-slate-500">{{ lr.redeem_code_id }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div class="mt-6 flex justify-end gap-2">
               <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400 hover:bg-slate-800" :disabled="editSaving" @click="closeEdit">

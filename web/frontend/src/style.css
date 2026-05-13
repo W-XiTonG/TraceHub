@@ -1798,11 +1798,11 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* API 试玩：模型下拉（Teleport + fixed，避免侧栏 overflow 裁切；列表用 thin-scrollbar） */
-.th-playground .th-pg-model-picker {
+/* API 试玩 / 控制台：模型式下拉（Teleport + fixed，避免侧栏 overflow 裁切；列表 thin-scrollbar） */
+.th-pg-model-picker {
   position: relative;
 }
-.th-playground .th-pg-model-picker__trigger {
+.th-pg-model-picker__trigger {
   display: flex;
   width: 100%;
   align-items: center;
@@ -1821,24 +1821,24 @@
     border-color 0.12s ease,
     box-shadow 0.12s ease;
 }
-.th-playground .th-pg-model-picker__value {
+.th-pg-model-picker__value {
   color: var(--th-text);
 }
-.th-playground .th-pg-model-picker__trigger:disabled .th-pg-model-picker__value {
+.th-pg-model-picker__trigger:disabled .th-pg-model-picker__value {
   color: var(--th-text-muted);
 }
-.th-playground .th-pg-model-picker__trigger:hover:not(:disabled) {
+.th-pg-model-picker__trigger:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--th-accent) 42%, var(--th-border-strong));
 }
-.th-playground .th-pg-model-picker__trigger:focus-visible {
+.th-pg-model-picker__trigger:focus-visible {
   border-color: var(--th-input-focus-border);
   box-shadow: 0 0 0 3px var(--th-input-focus-ring);
 }
-.th-playground .th-pg-model-picker__trigger:disabled {
+.th-pg-model-picker__trigger:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
-.th-playground .th-pg-model-picker__chev {
+.th-pg-model-picker__chev {
   margin-left: auto;
   flex-shrink: 0;
   width: 1rem;
@@ -1846,29 +1846,29 @@
   color: var(--th-text-muted);
   transition: transform 0.15s ease;
 }
-.th-playground .th-pg-model-picker__trigger:not(:disabled):hover .th-pg-model-picker__chev {
+.th-pg-model-picker__trigger:not(:disabled):hover .th-pg-model-picker__chev {
   color: var(--th-text);
   opacity: 0.85;
 }
-.th-playground .th-pg-model-picker__chev--open {
+.th-pg-model-picker__chev--open {
   transform: rotate(180deg);
 }
 
-.th-playground .th-pg-model-picker__health-dot {
+.th-pg-model-picker__health-dot {
   flex-shrink: 0;
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 9999px;
 }
-.th-playground .th-pg-model-picker__health-dot--healthy {
+.th-pg-model-picker__health-dot--healthy {
   background: #34d399;
   box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
 }
-.th-playground .th-pg-model-picker__health-dot--unhealthy {
+.th-pg-model-picker__health-dot--unhealthy {
   background: #fb923c;
   box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.45);
 }
-.th-playground .th-pg-model-picker__health-dot--catalog_only {
+.th-pg-model-picker__health-dot--catalog_only {
   background: #94a3b8;
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.4);
 }
@@ -1964,6 +1964,16 @@
     monospace;
   word-break: break-word;
 }
+
+/* 非模型 ID 的选项文案（如「精确 / 前缀」） */
+.th-pg-model-picker__opt-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-family: var(--th-font-body);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
 .th-pg-model-picker__health {
   flex-shrink: 0;
   margin-top: 0.05rem;
@@ -2054,6 +2064,51 @@
 .th-input:focus {
   border-color: var(--th-input-focus-border);
   box-shadow: 0 0 0 3px var(--th-input-focus-ring);
+}
+
+/* 原生 select：与控制台表单、频道管理等页下拉风格一致 */
+.th-select {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-border-strong);
+  background-color: rgba(2, 6, 23, 0.72);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem 1rem;
+  padding: 0.625rem 2.25rem 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #f1f5f9;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.th-select:hover {
+  border-color: rgba(148, 163, 184, 0.38);
+}
+
+.th-select:focus {
+  border-color: var(--th-input-focus-border);
+  box-shadow: 0 0 0 3px var(--th-input-focus-ring);
+}
+
+.th-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* 与输入框同一行时使用：不占满宽 */
+.th-select--inline {
+  width: auto;
+  min-width: 7.25rem;
+  max-width: 11rem;
 }
 
 /* 章节小标签 */
