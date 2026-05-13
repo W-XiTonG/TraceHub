@@ -10,6 +10,7 @@ import (
 	"tracehub/internal/ent/adminauditlog"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
+	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/redeemledger"
@@ -366,6 +367,21 @@ func (_c *UserCreate) AddCreatedAnnouncements(v ...*Announcement) *UserCreate {
 	return _c.AddCreatedAnnouncementIDs(ids...)
 }
 
+// AddFeedbackIDs adds the "feedbacks" edge to the Feedback entity by IDs.
+func (_c *UserCreate) AddFeedbackIDs(ids ...int) *UserCreate {
+	_c.mutation.AddFeedbackIDs(ids...)
+	return _c
+}
+
+// AddFeedbacks adds the "feedbacks" edges to the Feedback entity.
+func (_c *UserCreate) AddFeedbacks(v ...*Feedback) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddFeedbackIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -710,6 +726,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.FeedbacksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FeedbacksTable,
+			Columns: []string{user.FeedbacksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(feedback.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

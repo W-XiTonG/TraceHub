@@ -13,6 +13,7 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
+	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/modelcatalogentry"
@@ -91,6 +92,7 @@ func checkColumn(t, c string) error {
 			announcement.Table:         announcement.ValidColumn,
 			channel.Table:              channel.ValidColumn,
 			dashboardaggregation.Table: dashboardaggregation.ValidColumn,
+			feedback.Table:             feedback.ValidColumn,
 			group.Table:                group.ValidColumn,
 			groupmodelrate.Table:       groupmodelrate.ValidColumn,
 			modelcatalogentry.Table:    modelcatalogentry.ValidColumn,

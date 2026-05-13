@@ -51,6 +51,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("redeem_ledgers", RedeemLedger.Type),
 		edge.To("admin_audit_logs", AdminAuditLog.Type),
 		edge.To("created_announcements", Announcement.Type),
+		edge.To("feedbacks", Feedback.Type),
 	}
 }
 

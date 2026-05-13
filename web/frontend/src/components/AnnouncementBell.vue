@@ -76,10 +76,9 @@ const hasUnread = computed(() => {
   return a.id > readSeenId()
 })
 
-const ringClass =
-  props.accent === 'amber'
-    ? 'hover:border-amber-400/35 hover:bg-amber-950/30 hover:text-amber-100'
-    : 'hover:border-cyan-400/35 hover:bg-cyan-950/30 hover:text-cyan-100'
+const iconBtnClass = computed(() =>
+  props.accent === 'amber' ? 'th-console-top-icon-btn th-console-top-icon-btn--amber' : 'th-console-top-icon-btn',
+)
 
 async function refresh() {
   if (!auth.isLoggedIn) return
@@ -155,8 +154,7 @@ function fmtTime(iso?: string) {
   <div ref="rootRef" class="relative shrink-0">
     <button
       type="button"
-      class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-slate-400 outline-none transition"
-      :class="ringClass"
+      :class="iconBtnClass"
       :aria-label="t('announcement.aria')"
       :title="t('announcement.aria')"
       @click="toggle"

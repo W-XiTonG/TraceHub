@@ -16,6 +16,7 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
+	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/modelcatalogentry"
@@ -47,6 +48,8 @@ type Client struct {
 	Channel *ChannelClient
 	// DashboardAggregation is the client for interacting with the DashboardAggregation builders.
 	DashboardAggregation *DashboardAggregationClient
+	// Feedback is the client for interacting with the Feedback builders.
+	Feedback *FeedbackClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
 	// GroupModelRate is the client for interacting with the GroupModelRate builders.
@@ -81,6 +84,7 @@ func (c *Client) init() {
 	c.Announcement = NewAnnouncementClient(c.config)
 	c.Channel = NewChannelClient(c.config)
 	c.DashboardAggregation = NewDashboardAggregationClient(c.config)
+	c.Feedback = NewFeedbackClient(c.config)
 	c.Group = NewGroupClient(c.config)
 	c.GroupModelRate = NewGroupModelRateClient(c.config)
 	c.ModelCatalogEntry = NewModelCatalogEntryClient(c.config)
@@ -187,6 +191,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Announcement:         NewAnnouncementClient(cfg),
 		Channel:              NewChannelClient(cfg),
 		DashboardAggregation: NewDashboardAggregationClient(cfg),
+		Feedback:             NewFeedbackClient(cfg),
 		Group:                NewGroupClient(cfg),
 		GroupModelRate:       NewGroupModelRateClient(cfg),
 		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
@@ -220,6 +225,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Announcement:         NewAnnouncementClient(cfg),
 		Channel:              NewChannelClient(cfg),
 		DashboardAggregation: NewDashboardAggregationClient(cfg),
+		Feedback:             NewFeedbackClient(cfg),
 		Group:                NewGroupClient(cfg),
 		GroupModelRate:       NewGroupModelRateClient(cfg),
 		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
@@ -259,8 +265,9 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.DashboardAggregation,
-		c.Group, c.GroupModelRate, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
+		c.Feedback, c.Group, c.GroupModelRate, c.ModelCatalogEntry,
+		c.ModelCatalogSource, c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog,
+		c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -271,8 +278,9 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.DashboardAggregation,
-		c.Group, c.GroupModelRate, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
+		c.Feedback, c.Group, c.GroupModelRate, c.ModelCatalogEntry,
+		c.ModelCatalogSource, c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog,
+		c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -291,6 +299,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Channel.mutate(ctx, m)
 	case *DashboardAggregationMutation:
 		return c.DashboardAggregation.mutate(ctx, m)
+	case *FeedbackMutation:
+		return c.Feedback.mutate(ctx, m)
 	case *GroupMutation:
 		return c.Group.mutate(ctx, m)
 	case *GroupModelRateMutation:
@@ -1104,6 +1114,155 @@ func (c *DashboardAggregationClient) mutate(ctx context.Context, m *DashboardAgg
 		return (&DashboardAggregationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DashboardAggregation mutation op: %q", m.Op())
+	}
+}
+
+// FeedbackClient is a client for the Feedback schema.
+type FeedbackClient struct {
+	config
+}
+
+// NewFeedbackClient returns a client for the Feedback from the given config.
+func NewFeedbackClient(c config) *FeedbackClient {
+	return &FeedbackClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `feedback.Hooks(f(g(h())))`.
+func (c *FeedbackClient) Use(hooks ...Hook) {
+	c.hooks.Feedback = append(c.hooks.Feedback, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `feedback.Intercept(f(g(h())))`.
+func (c *FeedbackClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Feedback = append(c.inters.Feedback, interceptors...)
+}
+
+// Create returns a builder for creating a Feedback entity.
+func (c *FeedbackClient) Create() *FeedbackCreate {
+	mutation := newFeedbackMutation(c.config, OpCreate)
+	return &FeedbackCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Feedback entities.
+func (c *FeedbackClient) CreateBulk(builders ...*FeedbackCreate) *FeedbackCreateBulk {
+	return &FeedbackCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FeedbackClient) MapCreateBulk(slice any, setFunc func(*FeedbackCreate, int)) *FeedbackCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FeedbackCreateBulk{err: fmt.Errorf("calling to FeedbackClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FeedbackCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FeedbackCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Feedback.
+func (c *FeedbackClient) Update() *FeedbackUpdate {
+	mutation := newFeedbackMutation(c.config, OpUpdate)
+	return &FeedbackUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FeedbackClient) UpdateOne(_m *Feedback) *FeedbackUpdateOne {
+	mutation := newFeedbackMutation(c.config, OpUpdateOne, withFeedback(_m))
+	return &FeedbackUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FeedbackClient) UpdateOneID(id int) *FeedbackUpdateOne {
+	mutation := newFeedbackMutation(c.config, OpUpdateOne, withFeedbackID(id))
+	return &FeedbackUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Feedback.
+func (c *FeedbackClient) Delete() *FeedbackDelete {
+	mutation := newFeedbackMutation(c.config, OpDelete)
+	return &FeedbackDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FeedbackClient) DeleteOne(_m *Feedback) *FeedbackDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FeedbackClient) DeleteOneID(id int) *FeedbackDeleteOne {
+	builder := c.Delete().Where(feedback.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FeedbackDeleteOne{builder}
+}
+
+// Query returns a query builder for Feedback.
+func (c *FeedbackClient) Query() *FeedbackQuery {
+	return &FeedbackQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFeedback},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Feedback entity by its id.
+func (c *FeedbackClient) Get(ctx context.Context, id int) (*Feedback, error) {
+	return c.Query().Where(feedback.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FeedbackClient) GetX(ctx context.Context, id int) *Feedback {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a Feedback.
+func (c *FeedbackClient) QueryUser(_m *Feedback) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(feedback.Table, feedback.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, feedback.UserTable, feedback.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FeedbackClient) Hooks() []Hook {
+	return c.hooks.Feedback
+}
+
+// Interceptors returns the client interceptors.
+func (c *FeedbackClient) Interceptors() []Interceptor {
+	return c.inters.Feedback
+}
+
+func (c *FeedbackClient) mutate(ctx context.Context, m *FeedbackMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FeedbackCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FeedbackUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FeedbackUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FeedbackDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Feedback mutation op: %q", m.Op())
 	}
 }
 
@@ -2663,6 +2822,22 @@ func (c *UserClient) QueryCreatedAnnouncements(_m *User) *AnnouncementQuery {
 	return query
 }
 
+// QueryFeedbacks queries the feedbacks edge of a User.
+func (c *UserClient) QueryFeedbacks(_m *User) *FeedbackQuery {
+	query := (&FeedbackClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(feedback.Table, feedback.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.FeedbacksTable, user.FeedbacksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -2691,13 +2866,13 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Group,
-		GroupModelRate, ModelCatalogEntry, ModelCatalogSource, RedeemCode,
+		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Feedback,
+		Group, GroupModelRate, ModelCatalogEntry, ModelCatalogSource, RedeemCode,
 		RedeemLedger, SystemConfig, UsageLog, User []ent.Hook
 	}
 	inters struct {
-		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Group,
-		GroupModelRate, ModelCatalogEntry, ModelCatalogSource, RedeemCode,
+		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Feedback,
+		Group, GroupModelRate, ModelCatalogEntry, ModelCatalogSource, RedeemCode,
 		RedeemLedger, SystemConfig, UsageLog, User []ent.Interceptor
 	}
 )

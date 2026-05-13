@@ -9,6 +9,7 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
+	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/modelcatalogentry"
@@ -315,6 +316,58 @@ func init() {
 	dashboardaggregation.DefaultUpdatedAt = dashboardaggregationDescUpdatedAt.Default.(func() time.Time)
 	// dashboardaggregation.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	dashboardaggregation.UpdateDefaultUpdatedAt = dashboardaggregationDescUpdatedAt.UpdateDefault.(func() time.Time)
+	feedbackFields := schema.Feedback{}.Fields()
+	_ = feedbackFields
+	// feedbackDescPresetKey is the schema descriptor for preset_key field.
+	feedbackDescPresetKey := feedbackFields[1].Descriptor()
+	// feedback.DefaultPresetKey holds the default value on creation for the preset_key field.
+	feedback.DefaultPresetKey = feedbackDescPresetKey.Default.(string)
+	// feedback.PresetKeyValidator is a validator for the "preset_key" field. It is called by the builders before save.
+	feedback.PresetKeyValidator = feedbackDescPresetKey.Validators[0].(func(string) error)
+	// feedbackDescTitle is the schema descriptor for title field.
+	feedbackDescTitle := feedbackFields[2].Descriptor()
+	// feedback.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	feedback.TitleValidator = func() func(string) error {
+		validators := feedbackDescTitle.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(title string) error {
+			for _, fn := range fns {
+				if err := fn(title); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// feedbackDescDetail is the schema descriptor for detail field.
+	feedbackDescDetail := feedbackFields[3].Descriptor()
+	// feedback.DetailValidator is a validator for the "detail" field. It is called by the builders before save.
+	feedback.DetailValidator = feedbackDescDetail.Validators[0].(func(string) error)
+	// feedbackDescReviewState is the schema descriptor for review_state field.
+	feedbackDescReviewState := feedbackFields[4].Descriptor()
+	// feedback.DefaultReviewState holds the default value on creation for the review_state field.
+	feedback.DefaultReviewState = feedbackDescReviewState.Default.(int)
+	// feedbackDescRewardPoints is the schema descriptor for reward_points field.
+	feedbackDescRewardPoints := feedbackFields[5].Descriptor()
+	// feedback.DefaultRewardPoints holds the default value on creation for the reward_points field.
+	feedback.DefaultRewardPoints = feedbackDescRewardPoints.Default.(int64)
+	// feedbackDescAdminNote is the schema descriptor for admin_note field.
+	feedbackDescAdminNote := feedbackFields[7].Descriptor()
+	// feedback.AdminNoteValidator is a validator for the "admin_note" field. It is called by the builders before save.
+	feedback.AdminNoteValidator = feedbackDescAdminNote.Validators[0].(func(string) error)
+	// feedbackDescCreatedAt is the schema descriptor for created_at field.
+	feedbackDescCreatedAt := feedbackFields[10].Descriptor()
+	// feedback.DefaultCreatedAt holds the default value on creation for the created_at field.
+	feedback.DefaultCreatedAt = feedbackDescCreatedAt.Default.(func() time.Time)
+	// feedbackDescUpdatedAt is the schema descriptor for updated_at field.
+	feedbackDescUpdatedAt := feedbackFields[11].Descriptor()
+	// feedback.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	feedback.DefaultUpdatedAt = feedbackDescUpdatedAt.Default.(func() time.Time)
+	// feedback.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	feedback.UpdateDefaultUpdatedAt = feedbackDescUpdatedAt.UpdateDefault.(func() time.Time)
 	groupFields := schema.Group{}.Fields()
 	_ = groupFields
 	// groupDescName is the schema descriptor for name field.

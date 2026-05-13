@@ -64,6 +64,13 @@ html[data-th-theme="paper"] {
   --th-console-panel-bg: rgba(248, 250, 252, 0.96);
   --th-console-panel-border: rgba(15, 23, 42, 0.1);
   --th-ghost-hover-bg: rgba(15, 23, 42, 0.06);
+  --th-topbar-icon-border: rgba(15, 23, 42, 0.1);
+  --th-topbar-icon-bg: rgba(255, 255, 255, 0.55);
+  --th-topbar-icon-fg: #64748b;
+  --th-topbar-icon-border-hover: color-mix(in srgb, var(--th-accent) 28%, rgba(15, 23, 42, 0.12));
+  --th-topbar-icon-bg-hover: rgba(15, 23, 42, 0.06);
+  --th-topbar-icon-fg-hover: var(--th-accent);
+  --th-topbar-icon-ring: color-mix(in srgb, var(--th-accent) 34%, transparent);
   --th-surface-faint-border: rgba(15, 23, 42, 0.1);
   --th-surface-faint-bg: rgba(15, 23, 42, 0.04);
   --th-modal-divider: rgba(15, 23, 42, 0.1);
@@ -149,6 +156,19 @@ html[data-th-theme="paper"] {
   --th-admin-user-cta-border-hover: color-mix(in srgb, var(--th-accent) 34%, transparent);
   --th-admin-user-cta-hover-fg: var(--th-dash-code-fg);
   --th-admin-sidebar-title-fg: #713f12;
+  /* 问题反馈弹窗（浅色：芯片选中态须深色字 + 浅底，勿用 bg-sky-950/35 + text-sky-100） */
+  --th-feedback-backdrop: rgba(15, 23, 42, 0.5);
+  --th-feedback-chip-off-bg: rgba(255, 255, 255, 0.72);
+  --th-feedback-chip-off-border: rgba(15, 23, 42, 0.14);
+  --th-feedback-chip-off-fg: #334155;
+  --th-feedback-chip-off-hover-bg: rgba(15, 23, 42, 0.06);
+  --th-feedback-chip-on-bg: color-mix(in srgb, var(--th-accent) 18%, #ffffff);
+  --th-feedback-chip-on-fg: #0c4a6e;
+  --th-feedback-chip-on-border: color-mix(in srgb, var(--th-accent) 45%, rgba(15, 23, 42, 0.16));
+  --th-feedback-hint-fg: #92400e;
+  --th-feedback-hint-bg: rgba(254, 243, 199, 0.55);
+  --th-feedback-modal-panel-bg: #f8fafc;
+  --th-feedback-modal-panel-border: rgba(15, 23, 42, 0.12);
 }
 
 html[data-th-theme="dawn"] {
@@ -390,6 +410,18 @@ html[data-th-theme="paper"] .th-topbar {
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+}
+
+html[data-th-theme="dawn"] .th-console-top-icon-btn--amber:hover,
+html[data-th-theme="paper"] .th-console-top-icon-btn--amber:hover {
+  border-color: rgba(245, 158, 11, 0.38);
+  background: rgba(254, 243, 199, 0.55);
+  color: #92400e;
+}
+
+html[data-th-theme="dawn"] .th-console-top-icon-btn--amber:focus-visible,
+html[data-th-theme="paper"] .th-console-top-icon-btn--amber:focus-visible {
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.42);
 }
 
 html[data-th-theme="dawn"] .th-site-header,

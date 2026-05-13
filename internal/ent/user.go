@@ -80,9 +80,11 @@ type UserEdges struct {
 	AdminAuditLogs []*AdminAuditLog `json:"admin_audit_logs,omitempty"`
 	// CreatedAnnouncements holds the value of the created_announcements edge.
 	CreatedAnnouncements []*Announcement `json:"created_announcements,omitempty"`
+	// Feedbacks holds the value of the feedbacks edge.
+	Feedbacks []*Feedback `json:"feedbacks,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [9]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -157,6 +159,15 @@ func (e UserEdges) CreatedAnnouncementsOrErr() ([]*Announcement, error) {
 		return e.CreatedAnnouncements, nil
 	}
 	return nil, &NotLoadedError{edge: "created_announcements"}
+}
+
+// FeedbacksOrErr returns the Feedbacks value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) FeedbacksOrErr() ([]*Feedback, error) {
+	if e.loadedTypes[8] {
+		return e.Feedbacks, nil
+	}
+	return nil, &NotLoadedError{edge: "feedbacks"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -360,6 +371,11 @@ func (_m *User) QueryAdminAuditLogs() *AdminAuditLogQuery {
 // QueryCreatedAnnouncements queries the "created_announcements" edge of the User entity.
 func (_m *User) QueryCreatedAnnouncements() *AnnouncementQuery {
 	return NewUserClient(_m.config).QueryCreatedAnnouncements(_m)
+}
+
+// QueryFeedbacks queries the "feedbacks" edge of the User entity.
+func (_m *User) QueryFeedbacks() *FeedbackQuery {
+	return NewUserClient(_m.config).QueryFeedbacks(_m)
 }
 
 // Update returns a builder for updating this User.

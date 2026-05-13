@@ -59,8 +59,6 @@ const costDistTip = ref({ x: 0, y: 0 })
 const reqDistHoverModel = ref<string | null>(null)
 const reqDistTip = ref({ x: 0, y: 0 })
 
-const showAdminQuick = computed(() => ['admin', 'superadmin'].includes(auth.role))
-
 const apiBase = computed(() => {
   const o = window.location.origin.replace(/\/$/, '')
   return `${o}/v1`
@@ -553,9 +551,9 @@ onMounted(loadAll)
       </div>
     </div>
 
-    <div class="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">
+    <div class="mt-8 grid gap-6 xl:grid-cols-[1fr_320px] xl:items-stretch">
       <!-- 模型数据分析 -->
-      <div class="th-glass min-w-0 rounded-[var(--th-radius-lg)] p-5 md:p-6">
+      <div class="th-glass flex min-h-0 min-w-0 flex-col rounded-[var(--th-radius-lg)] p-5 md:p-6 xl:h-full">
         <div class="flex flex-col gap-3 border-b border-white/[0.06] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-sm font-semibold text-slate-100">{{ t('dashboard.modelAnalysis') }}</h2>
           <div class="flex flex-wrap gap-1">
@@ -572,7 +570,7 @@ onMounted(loadAll)
             </button>
           </div>
         </div>
-        <div class="mt-5">
+        <div class="mt-5 min-h-0 flex-1">
           <div v-if="chartTab === 'cost_trend'" class="relative space-y-2">
             <p class="text-xs text-slate-500">{{ trendSeries.kind === 'hour' ? t('dashboard.trendHourly') : t('dashboard.trendDaily') }}</p>
             <div v-if="trendSeries.rows.length === 0" class="flex h-40 items-center justify-center text-sm text-slate-600">{{ t('dashboard.noChart') }}</div>
@@ -678,13 +676,13 @@ onMounted(loadAll)
         </div>
       </div>
 
-      <!-- 侧栏：API + 可用性 -->
-      <div class="flex min-w-0 flex-col gap-4">
-        <div class="th-glass rounded-[var(--th-radius-lg)] p-5">
+      <!-- 侧栏：API 占满余高，服务可用性随内容（紧凑） -->
+      <div class="flex min-h-0 min-w-0 flex-col gap-4 xl:h-full">
+        <div class="th-glass flex min-h-0 min-w-0 flex-1 flex-col rounded-[var(--th-radius-lg)] p-5">
           <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.apiInfo') }}</h3>
           <p class="mt-1 text-xs text-slate-600">{{ t('dashboard.apiHint') }}</p>
-          <div class="mt-4 space-y-3">
-            <div class="th-dash-api-callout p-3">
+          <div class="mt-4 flex min-h-0 flex-1 flex-col gap-3">
+            <div class="th-dash-api-callout shrink-0 p-3">
               <p class="text-[10px] font-medium uppercase tracking-wider text-slate-500">{{ t('dashboard.apiBase') }}</p>
               <code class="th-dash-code-mono mt-1 block break-all text-xs">{{ apiBase }}</code>
               <div class="mt-2 flex gap-2">
@@ -692,28 +690,20 @@ onMounted(loadAll)
                 <a :href="apiBase.replace(/\/v1$/, '') + '/docs'" class="th-btn-secondary !inline-flex !items-center !px-2 !py-1 !text-[11px] no-underline">{{ t('dashboard.openDocs') }}</a>
               </div>
             </div>
-            <p class="text-[11px] leading-relaxed text-slate-500">
+            <p class="mt-auto text-[11px] leading-relaxed text-slate-500">
               {{ t('dashboard.authHint') }}
               <code class="th-dash-code-inline px-1 py-0.5 text-[10px]">Authorization: Bearer &lt;API Key&gt;</code>
             </p>
           </div>
         </div>
-        <div class="th-glass rounded-[var(--th-radius-lg)] p-5">
+        <div class="th-glass shrink-0 rounded-[var(--th-radius-lg)] px-5 pb-4 pt-4">
           <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.svcHealth') }}</h3>
-          <div class="mt-3 flex items-center gap-2">
+          <div class="mt-2 flex items-center gap-2">
             <span class="h-2 w-2 rounded-full" :class="readyOk === true ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : readyOk === false ? 'bg-rose-400' : 'bg-slate-500'" />
             <span class="text-sm text-slate-200">{{ readyOk === true ? t('dashboard.healthOk') : readyOk === false ? t('dashboard.healthBad') : t('dashboard.healthCheck') }}</span>
           </div>
-          <p class="mt-2 text-xs text-slate-600">{{ t('dashboard.healthDesc') }}</p>
+          <p class="mt-1.5 text-xs leading-snug text-slate-600">{{ t('dashboard.healthDesc') }}</p>
         </div>
-        <RouterLink
-          v-if="showAdminQuick"
-          to="/admin"
-          class="group th-glass flex flex-col rounded-[var(--th-radius-lg)] border border-fuchsia-500/15 bg-fuchsia-950/10 p-4 no-underline outline-none ring-fuchsia-500/25 transition hover:border-fuchsia-500/30 hover:bg-fuchsia-950/25 focus-visible:ring-2"
-        >
-          <span class="text-sm font-semibold text-fuchsia-100/95 group-hover:text-white">{{ t('dashboard.adminCard') }}</span>
-          <span class="mt-1 text-xs text-fuchsia-200/50">{{ t('dashboard.adminCardDesc') }}</span>
-        </RouterLink>
       </div>
     </div>
 

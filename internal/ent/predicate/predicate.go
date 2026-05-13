@@ -21,6 +21,9 @@ type Channel func(*sql.Selector)
 // DashboardAggregation is the predicate function for dashboardaggregation builders.
 type DashboardAggregation func(*sql.Selector)
 
+// Feedback is the predicate function for feedback builders.
+type Feedback func(*sql.Selector)
+
 // Group is the predicate function for group builders.
 type Group func(*sql.Selector)
 

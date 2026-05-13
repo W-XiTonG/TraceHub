@@ -10,6 +10,7 @@ import (
 	"tracehub/internal/ent/adminauditlog"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
+	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
@@ -38,6 +39,7 @@ type UserQuery struct {
 	withRedeemLedgers        *RedeemLedgerQuery
 	withAdminAuditLogs       *AdminAuditLogQuery
 	withCreatedAnnouncements *AnnouncementQuery
+	withFeedbacks            *FeedbackQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -250,6 +252,28 @@ func (_q *UserQuery) QueryCreatedAnnouncements() *AnnouncementQuery {
 	return query
 }
 
+// QueryFeedbacks chains the current query on the "feedbacks" edge.
+func (_q *UserQuery) QueryFeedbacks() *FeedbackQuery {
+	query := (&FeedbackClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(feedback.Table, feedback.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.FeedbacksTable, user.FeedbacksColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (_q *UserQuery) First(ctx context.Context) (*User, error) {
@@ -450,6 +474,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withRedeemLedgers:        _q.withRedeemLedgers.Clone(),
 		withAdminAuditLogs:       _q.withAdminAuditLogs.Clone(),
 		withCreatedAnnouncements: _q.withCreatedAnnouncements.Clone(),
+		withFeedbacks:            _q.withFeedbacks.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -544,6 +569,17 @@ func (_q *UserQuery) WithCreatedAnnouncements(opts ...func(*AnnouncementQuery)) 
 	return _q
 }
 
+// WithFeedbacks tells the query-builder to eager-load the nodes that are connected to
+// the "feedbacks" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithFeedbacks(opts ...func(*FeedbackQuery)) *UserQuery {
+	query := (&FeedbackClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withFeedbacks = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -622,7 +658,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [8]bool{
+		loadedTypes = [9]bool{
 			_q.withGroup != nil,
 			_q.withAPIKeys != nil,
 			_q.withUsageLogs != nil,
@@ -631,6 +667,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withRedeemLedgers != nil,
 			_q.withAdminAuditLogs != nil,
 			_q.withCreatedAnnouncements != nil,
+			_q.withFeedbacks != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -703,6 +740,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadCreatedAnnouncements(ctx, query, nodes,
 			func(n *User) { n.Edges.CreatedAnnouncements = []*Announcement{} },
 			func(n *User, e *Announcement) { n.Edges.CreatedAnnouncements = append(n.Edges.CreatedAnnouncements, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withFeedbacks; query != nil {
+		if err := _q.loadFeedbacks(ctx, query, nodes,
+			func(n *User) { n.Edges.Feedbacks = []*Feedback{} },
+			func(n *User, e *Feedback) { n.Edges.Feedbacks = append(n.Edges.Feedbacks, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -943,6 +987,36 @@ func (_q *UserQuery) loadCreatedAnnouncements(ctx context.Context, query *Announ
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "created_by" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadFeedbacks(ctx context.Context, query *FeedbackQuery, nodes []*User, init func(*User), assign func(*User, *Feedback)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(feedback.FieldUserID)
+	}
+	query.Where(predicate.Feedback(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.FeedbacksColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

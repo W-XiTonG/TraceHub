@@ -242,6 +242,48 @@ var (
 			},
 		},
 	}
+	// FeedbacksColumns holds the columns for the "feedbacks" table.
+	FeedbacksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "preset_key", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "title", Type: field.TypeString, Size: 200},
+		{Name: "detail", Type: field.TypeString, Size: 2147483647},
+		{Name: "review_state", Type: field.TypeInt, Default: 0},
+		{Name: "reward_points", Type: field.TypeInt64, Default: 0},
+		{Name: "balance_after_reward", Type: field.TypeInt64, Nullable: true},
+		{Name: "admin_note", Type: field.TypeString, Nullable: true, Size: 4000},
+		{Name: "reviewed_by", Type: field.TypeInt, Nullable: true},
+		{Name: "reviewed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// FeedbacksTable holds the schema information for the "feedbacks" table.
+	FeedbacksTable = &schema.Table{
+		Name:       "feedbacks",
+		Columns:    FeedbacksColumns,
+		PrimaryKey: []*schema.Column{FeedbacksColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "feedbacks_users_feedbacks",
+				Columns:    []*schema.Column{FeedbacksColumns[12]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "feedback_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{FeedbacksColumns[12], FeedbacksColumns[10]},
+			},
+			{
+				Name:    "feedback_review_state_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{FeedbacksColumns[4], FeedbacksColumns[10]},
+			},
+		},
+	}
 	// GroupsColumns holds the columns for the "groups" table.
 	GroupsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -647,6 +689,7 @@ var (
 		AnnouncementsTable,
 		ChannelsTable,
 		DashboardAggregationsTable,
+		FeedbacksTable,
 		GroupsTable,
 		GroupModelRatesTable,
 		ModelCatalogEntriesTable,
@@ -665,6 +708,7 @@ func init() {
 	AdminAuditLogsTable.ForeignKeys[0].RefTable = UsersTable
 	AnnouncementsTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelsTable.ForeignKeys[0].RefTable = GroupsTable
+	FeedbacksTable.ForeignKeys[0].RefTable = UsersTable
 	GroupModelRatesTable.ForeignKeys[0].RefTable = GroupsTable
 	ModelCatalogEntriesTable.ForeignKeys[0].RefTable = ModelCatalogSourcesTable
 	ModelCatalogSourcesTable.ForeignKeys[0].RefTable = ChannelsTable

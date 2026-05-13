@@ -22,6 +22,7 @@ const router = createRouter({
         { path: 'billing', name: 'console-billing', component: () => import('../views/BillingView.vue') },
         { path: 'settings', name: 'console-settings', component: () => import('../views/SettingsView.vue') },
         { path: 'redeem', name: 'redeem', component: () => import('../views/RedeemView.vue') },
+        { path: 'feedback', name: 'console-feedback', component: () => import('../views/FeedbackView.vue') },
       ],
     },
     {
@@ -38,6 +39,7 @@ const router = createRouter({
         { path: 'announcements', name: 'admin-announcements', component: () => import('../views/AdminAnnouncements.vue') },
         { path: 'redeem-codes', name: 'admin-redeem-codes', component: () => import('../views/AdminRedeemCodes.vue') },
         { path: 'redeem-ledger', name: 'admin-redeem-ledger', component: () => import('../views/AdminRedeemLedger.vue') },
+        { path: 'feedbacks', name: 'admin-feedbacks', component: () => import('../views/AdminFeedbacks.vue') },
         { path: 'settings', name: 'admin-system', component: () => import('../views/AdminSystemConfig.vue') },
       ],
     },

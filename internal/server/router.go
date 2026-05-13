@@ -227,6 +227,10 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	authUser.PUT("/ip_whitelist", userhandler.SetIPWhitelist(opt.Client))
 	authUser.GET("/announcements/latest", userhandler.LatestAnnouncement(opt.Client))
 	authUser.GET("/announcements", userhandler.ListPublishedAnnouncements(opt.Client))
+	authUser.GET("/feedbacks/meta/throttle", userhandler.FeedbackThrottleMeta(opt.Client))
+	authUser.POST("/feedbacks", userhandler.CreateFeedback(opt.Client))
+	authUser.GET("/feedbacks", userhandler.ListMyFeedbacks(opt.Client))
+	authUser.GET("/feedbacks/:id", userhandler.GetFeedback(opt.Client))
 
 	chAdmin := adminhandler.ChannelDeps{Client: opt.Client, AESKey: aesKey}
 	mcAdmin := adminhandler.ModelCatalogDeps{Client: opt.Client, AESKey: aesKey}
@@ -290,6 +294,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.DELETE("/announcements/:id", adminhandler.DeleteAnnouncement(opt.Client))
 	a.POST("/announcements/:id/publish", adminhandler.PublishAnnouncement(opt.Client))
 	a.POST("/announcements/:id/unpublish", adminhandler.UnpublishAnnouncement(opt.Client))
+	a.GET("/feedbacks", adminhandler.ListFeedbacks(opt.Client))
+	a.PUT("/feedbacks/:id/review", adminhandler.ReviewFeedback(opt.Client))
 
 	registerSPA(r)
 	return r, nil

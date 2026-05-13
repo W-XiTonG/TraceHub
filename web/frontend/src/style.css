@@ -74,12 +74,34 @@
   --th-console-panel-border: rgba(255, 255, 255, 0.06);
   /* API Key 等用户页：浅色下勿用 bg-white / border-white（会随 --color-white 反相） */
   --th-ghost-hover-bg: rgba(255, 255, 255, 0.06);
+  /* 顶栏方形图标（反馈 / 公告）：hover 用 accent 混色，勿在浅色里写死 cyan-950/x */
+  --th-topbar-icon-border: rgba(255, 255, 255, 0.1);
+  --th-topbar-icon-bg: rgba(255, 255, 255, 0.04);
+  --th-topbar-icon-fg: #94a3b8;
+  --th-topbar-icon-border-hover: color-mix(in srgb, var(--th-accent) 44%, rgba(255, 255, 255, 0.08));
+  --th-topbar-icon-bg-hover: color-mix(in srgb, var(--th-accent) 22%, rgba(15, 23, 42, 0.52));
+  --th-topbar-icon-fg-hover: #e0f2fe;
+  --th-topbar-icon-ring: color-mix(in srgb, var(--th-accent) 40%, transparent);
   --th-surface-faint-border: rgba(255, 255, 255, 0.08);
   --th-surface-faint-bg: rgba(255, 255, 255, 0.04);
   --th-modal-divider: rgba(255, 255, 255, 0.1);
   --th-modal-footer-bg: rgba(15, 23, 42, 0.96);
   --th-modal-footer-shadow: 0 -8px 24px -8px rgba(0, 0, 0, 0.35);
   --th-modal-card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+  /* 问题反馈弹窗（Teleport 至 body；芯片/遮罩勿依赖浅色下会反相的 slate/sky 工具类） */
+  --th-feedback-backdrop: rgba(0, 0, 0, 0.58);
+  --th-feedback-chip-off-bg: rgba(255, 255, 255, 0.06);
+  --th-feedback-chip-off-border: rgba(148, 163, 184, 0.22);
+  --th-feedback-chip-off-fg: #cbd5e1;
+  --th-feedback-chip-off-hover-bg: rgba(255, 255, 255, 0.1);
+  --th-feedback-chip-on-bg: color-mix(in srgb, var(--th-accent) 24%, rgba(15, 23, 42, 0.92));
+  --th-feedback-chip-on-fg: #f0f9ff;
+  --th-feedback-chip-on-border: color-mix(in srgb, var(--th-accent) 52%, rgba(255, 255, 255, 0.12));
+  --th-feedback-hint-fg: #fde68a;
+  --th-feedback-hint-bg: rgba(120, 53, 15, 0.2);
+  /* 反馈弹窗面板须不透明（勿用 --th-console-panel-bg：深色下仅为 0.25 黑透明） */
+  --th-feedback-modal-panel-bg: #0f172a;
+  --th-feedback-modal-panel-border: rgba(148, 163, 184, 0.14);
   --th-user-table-border: rgba(51, 65, 85, 0.55);
   --th-user-table-head-bg: rgba(2, 6, 23, 0.5);
   --th-user-table-row-hover: rgba(255, 255, 255, 0.03);
@@ -1173,6 +1195,213 @@
 .th-btn-primary-flat:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* 问题反馈弹窗：面板/芯片/提示条随 :root 与 themes-light 变量，避免浅色下 Tailwind 色板反相 */
+.th-feedback-backdrop {
+  background: var(--th-feedback-backdrop);
+}
+
+.th-feedback-modal {
+  background: var(--th-feedback-modal-panel-bg);
+  border: 1px solid var(--th-feedback-modal-panel-border);
+  color: var(--th-text);
+  box-shadow: var(--th-modal-card-shadow);
+}
+
+.th-feedback-modal__head {
+  border-bottom: 1px solid var(--th-modal-divider);
+}
+
+.th-feedback-modal__title {
+  color: var(--th-text);
+}
+
+.th-feedback-modal__intro {
+  color: var(--th-text-muted);
+}
+
+.th-feedback-modal__close {
+  color: var(--th-text-muted);
+}
+
+.th-feedback-modal__close:hover {
+  color: var(--th-text);
+  background: var(--th-ghost-hover-bg);
+}
+
+.th-feedback-hint {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--th-feedback-hint-fg);
+  background: var(--th-feedback-hint-bg);
+}
+
+.th-feedback-chip {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 2.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-feedback-chip-off-border);
+  background: var(--th-feedback-chip-off-bg);
+  color: var(--th-feedback-chip-off-fg);
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.th-feedback-chip:hover:not(.th-feedback-chip--on) {
+  background: var(--th-feedback-chip-off-hover-bg);
+}
+
+.th-feedback-chip--on {
+  border-color: var(--th-feedback-chip-on-border);
+  background: var(--th-feedback-chip-on-bg);
+  color: var(--th-feedback-chip-on-fg);
+  font-weight: 600;
+}
+
+.th-feedback-modal .th-btn-primary-flat {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  min-height: 2.75rem;
+}
+
+.th-feedback-modal__label {
+  color: var(--th-text-muted);
+}
+
+.th-feedback-modal__muted {
+  color: var(--th-text-muted);
+}
+
+.th-feedback-modal__summary {
+  color: var(--th-text);
+}
+
+.th-feedback-modal__summary:hover {
+  color: var(--th-accent);
+}
+
+.th-feedback-table-wrap {
+  border: 1px solid var(--th-user-table-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.th-feedback-table-wrap thead {
+  background: var(--th-user-table-head-bg);
+  border-bottom: 1px solid var(--th-user-table-line);
+}
+
+.th-feedback-table-wrap th {
+  color: var(--th-text-muted);
+}
+
+.th-feedback-table-wrap td {
+  color: var(--th-text);
+}
+
+.th-feedback-table-wrap tbody tr + tr {
+  border-top: 1px solid var(--th-user-table-line);
+}
+
+.th-feedback-refresh {
+  cursor: pointer;
+  border-radius: 0.375rem;
+  border: 1px solid var(--th-surface-faint-border);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  color: var(--th-text-muted);
+  background: var(--th-surface-faint-bg);
+  transition: background 0.12s ease;
+}
+
+.th-feedback-refresh:hover:not(:disabled) {
+  background: var(--th-ghost-hover-bg);
+}
+
+/* 控制台 / 管理端顶栏：反馈、公告等 36×36 图标按钮（浅色与文档顶栏 ghost 一致） */
+.th-console-top-icon-btn {
+  position: relative;
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-topbar-icon-border);
+  background: var(--th-topbar-icon-bg);
+  color: var(--th-topbar-icon-fg);
+  outline: none;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.th-console-top-icon-btn:hover {
+  border-color: var(--th-topbar-icon-border-hover);
+  background: var(--th-topbar-icon-bg-hover);
+  color: var(--th-topbar-icon-fg-hover);
+}
+
+.th-console-top-icon-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--th-topbar-icon-ring);
+}
+
+/* 管理端顶栏：琥珀强调（与 cyan 变量分离，避免浅色 hover 发乌） */
+.th-console-top-icon-btn--amber:hover {
+  border-color: color-mix(in srgb, #f59e0b 42%, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, #f59e0b 20%, rgba(15, 23, 42, 0.5));
+  color: #fef3c7;
+}
+
+.th-console-top-icon-btn--amber:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #fbbf24 42%, transparent);
+}
+
+/* 弹窗内详情 / 代码块：使用 --th-dash-code-*，深浅色与概览 API 卡一致 */
+.th-dialog-code-block {
+  background: var(--th-dash-code-bg);
+  border: 1px solid var(--th-dash-code-border);
+  color: var(--th-dash-code-fg);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  font-family: var(--th-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  max-height: 10rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.th-modal-secondary-btn {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-surface-faint-border);
+  background: var(--th-surface-faint-bg);
+  color: var(--th-text);
+  transition: background 0.12s ease;
+}
+
+.th-modal-secondary-btn:hover {
+  background: var(--th-ghost-hover-bg);
+}
+
+.th-modal-check-row {
+  color: var(--th-text);
 }
 
 /* 工具栏危险操作：扁平描边 + 浅底，浅色主题可读 */

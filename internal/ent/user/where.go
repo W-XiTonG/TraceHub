@@ -1134,6 +1134,29 @@ func HasCreatedAnnouncementsWith(preds ...predicate.Announcement) predicate.User
 	})
 }
 
+// HasFeedbacks applies the HasEdge predicate on the "feedbacks" edge.
+func HasFeedbacks() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, FeedbacksTable, FeedbacksColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasFeedbacksWith applies the HasEdge predicate on the "feedbacks" edge with a given conditions (other predicates).
+func HasFeedbacksWith(preds ...predicate.Feedback) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newFeedbacksStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.User) predicate.User {
 	return predicate.User(sql.AndPredicates(predicates...))

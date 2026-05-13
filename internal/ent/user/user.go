@@ -66,6 +66,8 @@ const (
 	EdgeAdminAuditLogs = "admin_audit_logs"
 	// EdgeCreatedAnnouncements holds the string denoting the created_announcements edge name in mutations.
 	EdgeCreatedAnnouncements = "created_announcements"
+	// EdgeFeedbacks holds the string denoting the feedbacks edge name in mutations.
+	EdgeFeedbacks = "feedbacks"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table that holds the group relation/edge.
@@ -124,6 +126,13 @@ const (
 	CreatedAnnouncementsInverseTable = "announcements"
 	// CreatedAnnouncementsColumn is the table column denoting the created_announcements relation/edge.
 	CreatedAnnouncementsColumn = "created_by"
+	// FeedbacksTable is the table that holds the feedbacks relation/edge.
+	FeedbacksTable = "feedbacks"
+	// FeedbacksInverseTable is the table name for the Feedback entity.
+	// It exists in this package in order to avoid circular dependency with the "feedback" package.
+	FeedbacksInverseTable = "feedbacks"
+	// FeedbacksColumn is the table column denoting the feedbacks relation/edge.
+	FeedbacksColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -379,6 +388,20 @@ func ByCreatedAnnouncements(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpt
 		sqlgraph.OrderByNeighborTerms(s, newCreatedAnnouncementsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByFeedbacksCount orders the results by feedbacks count.
+func ByFeedbacksCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newFeedbacksStep(), opts...)
+	}
+}
+
+// ByFeedbacks orders the results by feedbacks terms.
+func ByFeedbacks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newFeedbacksStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -433,5 +456,12 @@ func newCreatedAnnouncementsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CreatedAnnouncementsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, CreatedAnnouncementsTable, CreatedAnnouncementsColumn),
+	)
+}
+func newFeedbacksStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(FeedbacksInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, FeedbacksTable, FeedbacksColumn),
 	)
 }
