@@ -8,6 +8,9 @@ type PubSiteMeta = {
   brand_icon_url?: string
 }
 
+/** 与后端 sitecfg.DefaultBrandIconURL 一致；接口返回该值时存为空串表示「无自定义」 */
+const defaultPubIcon = '/tracehub-icon.svg'
+
 export const useSiteMetaStore = defineStore('siteMeta', () => {
   const brandName = ref('')
   const brandIconUrl = ref('')
@@ -21,27 +24,36 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
 
   const displayIconUrl = computed(() => {
     const u = brandIconUrl.value.trim()
-    return u || '/tracehub-icon.svg'
+    return u || defaultPubIcon
   })
+
+  async function pullPubSiteMeta(): Promise<void> {
+    try {
+      const { data } = await http.get<Envelope<PubSiteMeta>>('/api/pub/site-meta', {
+        params: { _: Date.now() },
+      })
+      if (Number(data.code) === 0 && data.data) {
+        if (typeof data.data.brand_name === 'string') {
+          brandName.value = data.data.brand_name
+        }
+        if (typeof data.data.brand_icon_url === 'string') {
+          const u = data.data.brand_icon_url.trim()
+          brandIconUrl.value = u === defaultPubIcon ? '' : u
+        }
+      }
+    } catch (e: unknown) {
+      if (!axios.isAxiosError(e) || e.response?.status !== 404) {
+        /* 保持默认 */
+      }
+    }
+  }
 
   async function ensureLoaded() {
     if (loaded.value) return
     if (inflight) return inflight
     inflight = (async () => {
       try {
-        const { data } = await http.get<Envelope<PubSiteMeta>>('/api/pub/site-meta')
-        if (data.code === 0 && data.data) {
-          if (typeof data.data.brand_name === 'string') {
-            brandName.value = data.data.brand_name
-          }
-          if (typeof data.data.brand_icon_url === 'string') {
-            brandIconUrl.value = data.data.brand_icon_url
-          }
-        }
-      } catch (e: unknown) {
-        if (!axios.isAxiosError(e) || e.response?.status !== 404) {
-          /* 保持默认 */
-        }
+        await pullPubSiteMeta()
       } finally {
         loaded.value = true
         inflight = null
@@ -51,10 +63,21 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   }
 
   async function refreshFromServer() {
+    if (inflight) {
+      await inflight.catch(() => {})
+    }
     loaded.value = false
     brandName.value = ''
     brandIconUrl.value = ''
-    await ensureLoaded()
+    inflight = (async () => {
+      try {
+        await pullPubSiteMeta()
+      } finally {
+        loaded.value = true
+        inflight = null
+      }
+    })()
+    await inflight
   }
 
   return {

@@ -432,6 +432,11 @@ export default {
     moreHint: '其他站級開關後續可掛到此頁；進階仍可用原始設定 API 維護任意鍵。',
     saved: '已儲存',
     saveFail: '儲存失敗',
+    resetDefaults: '恢復預設',
+    resetDefaultsConfirm:
+      '確定要清除本頁在資料庫中的站點設定覆寫嗎？品牌名、圖示、登入驗證碼、operator 將回到設定檔與內建預設值。磁碟上的本地上傳圖示不會刪除，仍可能出現在圖庫中。',
+    resetDefaultsDone: '已清除資料庫覆寫項；站點名稱與圖示已依設定檔與內建預設生效（側欄等若未變請整頁重新整理）。',
+    resetDefaultsFail: '恢復預設失敗',
     descBrandName: '站點對外展示名稱',
     descBrandIcon: '站點圖示 URL',
     descLoginCaptcha: '登入圖形驗證碼開關',

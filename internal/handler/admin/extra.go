@@ -516,6 +516,9 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
+		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		c.Header("Pragma", "no-cache")
 		httpx.OK(c, gin.H{
 			"brand_name":               sitecfg.EffectiveBrandName(ctx, client),
 			"brand_icon_url":           sitecfg.StoredBrandIconURL(ctx, client),
@@ -526,6 +529,27 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"operator_display_name":    sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
 			"operator_display_file":    strings.TrimSpace(cfg.Site.OperatorDisplayName),
 		})
+	}
+}
+
+// ResetAdminSiteSettingsDefaults POST /api/admin/site-settings/reset-defaults — 删除本页相关 system_configs 行，运行时回退到 YAML / 内置默认；不删除本地上传的图标文件。
+func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		ctx := c.Request.Context()
+		keys := []string{
+			sitecfg.SystemConfigKeyBrandName,
+			sitecfg.SystemConfigKeyBrandIconURL,
+			sitecfg.SystemConfigKeyLoginCaptchaEnabled,
+			sitecfg.SystemConfigKeyOperatorDisplayName,
+		}
+		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
+		if err != nil {
+			httpx.ServerError(c, "清除配置失败")
+			return
+		}
+		auditLog(client, adm.ID, "site.settings_reset_defaults", "system_config", "", map[string]any{"deleted_rows": n}, c)
+		httpx.OK(c, gin.H{"deleted_rows": n})
 	}
 }
 

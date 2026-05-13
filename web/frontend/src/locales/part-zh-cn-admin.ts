@@ -432,6 +432,11 @@ export default {
     moreHint: '其他站点级开关后续可继续挂到此页；高级用户仍可通过「原始配置」接口维护任意键。',
     saved: '已保存',
     saveFail: '保存失败',
+    resetDefaults: '恢复默认',
+    resetDefaultsConfirm:
+      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
+    resetDefaultsDone: '已清除数据库覆盖项；站点名称与图标已按配置文件及内置默认生效（侧栏等若未变请整页刷新）。',
+    resetDefaultsFail: '恢复默认失败',
     descBrandName: '站点对外展示名称',
     descBrandIcon: '站点图标 URL',
     descLoginCaptcha: '登录图形验证码开关',

@@ -437,6 +437,12 @@ export default {
     moreHint: 'More knobs can be added here over time; advanced operators may still use the raw config API for other keys.',
     saved: 'Saved',
     saveFail: 'Save failed',
+    resetDefaults: 'Restore defaults',
+    resetDefaultsConfirm:
+      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
+    resetDefaultsDone:
+      'Database overrides cleared; name and icon now follow config and built-in defaults (hard refresh if the shell still looks stale).',
+    resetDefaultsFail: 'Failed to restore defaults',
     descBrandName: 'Public product name',
     descBrandIcon: 'Public logo URL',
     descLoginCaptcha: 'Login CAPTCHA toggle',

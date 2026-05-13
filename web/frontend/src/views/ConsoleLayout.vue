@@ -68,7 +68,14 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         class="group mb-8 flex items-center gap-3 rounded-xl px-2 py-1.5 outline-none transition hover:bg-white/[0.05]"
       >
         <div class="th-logo-mark th-logo-mark--md th-logo-mark--image shrink-0 transition group-hover:brightness-105">
-          <img :src="siteMeta.displayIconUrl" :alt="siteMeta.displayName" width="40" height="40" decoding="async" />
+          <img
+            :key="siteMeta.displayIconUrl"
+            :src="siteMeta.displayIconUrl"
+            :alt="siteMeta.displayName"
+            width="40"
+            height="40"
+            decoding="async"
+          />
         </div>
         <div class="min-w-0">
           <p class="th-sidebar-brand text-sm font-semibold text-slate-100">

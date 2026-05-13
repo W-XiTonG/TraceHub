@@ -44,6 +44,9 @@ const msg = ref('')
 const err = ref('')
 const brandIcons = ref<BrandLibIcon[]>([])
 const deletingBrandFilename = ref<string | null>(null)
+const resettingDefaults = ref(false)
+/** 恢复默认后递增，配合预览图 :key 避免浏览器强缓存 */
+const brandPreviewNonce = ref(0)
 
 const brandIconPreviewSrc = computed(() => {
   const u = form.brandIconUrl.trim()
@@ -63,10 +66,18 @@ const brandIconsForUi = computed((): BrandLibIcon[] => {
 
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
-    const d = e.response.data as { message?: string }
+    const d = e.response.data as { message?: string; code?: unknown }
     if (typeof d.message === 'string' && d.message.trim()) return d.message.trim()
+    const c = Number(d.code)
+    if (Number.isFinite(c) && c !== 0) return `${t('adminCommon.requestFail')} (${c})`
   }
   return e instanceof Error ? e.message : t('adminCommon.requestFail')
+}
+
+function isEnvelopeSuccess(body: unknown): body is { code: number } {
+  if (!body || typeof body !== 'object' || !('code' in body)) return false
+  const c = Number((body as { code: unknown }).code)
+  return Number.isFinite(c) && c === 0
 }
 
 function applyPayload(d: SiteSettings) {
@@ -81,8 +92,10 @@ async function load() {
   err.value = ''
   msg.value = ''
   try {
-    const { data } = await http.get<Envelope<SiteSettings>>('/api/admin/site-settings')
-    if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
+    const { data } = await http.get<Envelope<SiteSettings>>('/api/admin/site-settings', {
+      params: { _: Date.now() },
+    })
+    if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminCommon.loadFail'))
     applyPayload(data.data ?? {})
   } catch (e: unknown) {
     err.value = httpErr(e)
@@ -93,8 +106,10 @@ async function load() {
 
 async function loadBrandIcons() {
   try {
-    const { data } = await http.get<Envelope<{ icons?: BrandLibIcon[] }>>('/api/admin/site-brand/icons')
-    if (data.code !== 0 || !Array.isArray(data.data?.icons)) {
+    const { data } = await http.get<Envelope<{ icons?: BrandLibIcon[] }>>('/api/admin/site-brand/icons', {
+      params: { _: Date.now() },
+    })
+    if (!isEnvelopeSuccess(data) || !Array.isArray(data.data?.icons)) {
       brandIcons.value = []
       return
     }
@@ -140,13 +155,13 @@ async function confirmDeleteBrandIcon(ico: BrandLibIcon) {
     const { data } = await http.delete<Envelope<{ cleared_config?: boolean }>>(
       `/api/admin/site-brand/icons/${encodeURIComponent(fn)}`,
     )
-    if (data.code !== 0) throw new Error(data.message || t('adminSystem.brandIconDeleteFail'))
+    if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.brandIconDeleteFail'))
     if (form.brandIconUrl.trim() === ico.url.trim()) {
       form.brandIconUrl = ''
     }
-    msg.value = t('adminSystem.brandIconDeleted')
     await refresh()
     await siteMeta.refreshFromServer()
+    msg.value = t('adminSystem.brandIconDeleted')
   } catch (e: unknown) {
     err.value = httpErr(e)
   } finally {
@@ -171,13 +186,13 @@ async function uploadBrandIcon(ev: Event) {
     const fd = new FormData()
     fd.append('file', file)
     const { data } = await http.post<Envelope<{ url?: string }>>('/api/admin/site-upload/brand-icon', fd)
-    if (data.code !== 0) throw new Error(data.message || t('adminSystem.brandIconUploadFail'))
+    if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.brandIconUploadFail'))
     const u = data.data && typeof data.data.url === 'string' ? data.data.url.trim() : ''
     if (!u) throw new Error(t('adminSystem.brandIconUploadFail'))
     form.brandIconUrl = u
-    msg.value = t('adminSystem.brandIconUploaded')
     await refresh()
     await siteMeta.refreshFromServer()
+    msg.value = t('adminSystem.brandIconUploaded')
   } catch (e: unknown) {
     err.value = httpErr(e)
   } finally {
@@ -213,14 +228,37 @@ async function save() {
   ]
   try {
     const { data } = await http.put<Envelope<unknown>>('/api/admin/config', { items })
-    if (data.code !== 0) throw new Error(data.message || t('adminSystem.saveFail'))
-    msg.value = t('adminSystem.saved')
+    if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.saveFail'))
     await refresh()
     await siteMeta.refreshFromServer()
+    msg.value = t('adminSystem.saved')
   } catch (e: unknown) {
     err.value = httpErr(e)
   } finally {
     saving.value = false
+  }
+}
+
+async function resetDefaults() {
+  if (!globalThis.confirm(t('adminSystem.resetDefaultsConfirm'))) return
+  resettingDefaults.value = true
+  err.value = ''
+  msg.value = ''
+  try {
+    const { data } = await http.post<Envelope<{ deleted_rows?: number }>>(
+      '/api/admin/site-settings/reset-defaults',
+      {},
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+    if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.resetDefaultsFail'))
+    await refresh()
+    await siteMeta.refreshFromServer()
+    brandPreviewNonce.value += 1
+    msg.value = t('adminSystem.resetDefaultsDone')
+  } catch (e: unknown) {
+    err.value = httpErr(e)
+  } finally {
+    resettingDefaults.value = false
   }
 }
 
@@ -232,8 +270,8 @@ onMounted(() => void refresh())
     <h1 class="text-xl font-semibold tracking-tight text-slate-100">{{ t('adminSystem.title') }}</h1>
     <p class="mt-1 text-sm text-slate-500">{{ t('adminSystem.intro') }}</p>
 
-    <p v-if="err" class="mt-4 rounded-lg border border-red-500/20 bg-red-950/35 px-3 py-2 text-sm text-red-200">{{ err }}</p>
-    <p v-if="msg" class="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-950/25 px-3 py-2 text-sm text-emerald-100">{{ msg }}</p>
+    <p v-if="err" class="th-admin-flash--error mt-4 rounded-lg border px-3 py-2 text-sm">{{ err }}</p>
+    <p v-if="msg" class="th-admin-flash--success mt-4 rounded-lg border px-3 py-2 text-sm">{{ msg }}</p>
 
     <div v-if="busy" class="mt-8 text-sm text-slate-500">{{ t('common.loading') }}</div>
 
@@ -292,6 +330,7 @@ onMounted(() => void refresh())
             <p class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
               <span>{{ t('adminSystem.brandIconPreview') }}</span>
               <img
+                :key="`${brandIconPreviewSrc}|${brandPreviewNonce}`"
                 :src="brandIconPreviewSrc"
                 alt=""
                 class="h-8 w-8 rounded border border-white/10 bg-black/20 object-contain"
@@ -330,6 +369,20 @@ onMounted(() => void refresh())
         </button>
         <button type="button" class="th-btn-secondary px-5 py-2.5 text-sm" :disabled="saving || busy" @click="refresh">
           {{ t('adminCommon.refresh') }}
+        </button>
+        <button
+          type="button"
+          class="th-btn-secondary border-amber-500/25 px-5 py-2.5 text-sm text-amber-100/90 hover:border-amber-500/40"
+          :disabled="
+            saving ||
+            busy ||
+            resettingDefaults ||
+            uploadingIcon ||
+            deletingBrandFilename !== null
+          "
+          @click="void resetDefaults()"
+        >
+          {{ resettingDefaults ? t('common.loading') : t('adminSystem.resetDefaults') }}
         </button>
       </div>
     </div>

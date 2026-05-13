@@ -11,6 +11,9 @@ import (
 // PubSiteMeta GET /api/pub/site-meta — 无需登录；品牌名与图标供前端壳层使用。
 func PubSiteMeta(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 避免浏览器/代理缓存导致恢复默认后仍读到旧的 brand_icon_url
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		c.Header("Pragma", "no-cache")
 		ctx := c.Request.Context()
 		httpx.OK(c, gin.H{
 			"brand_name":     sitecfg.EffectiveBrandName(ctx, client),
