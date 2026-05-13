@@ -18,7 +18,7 @@ security:
 site:
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
-  default_new_user_balance: 100000 # 试用额度（额度单位）
+  default_new_user_balance: 5000 # 试用额度（额度单位）
   cors_origins:
     - "*"
   # Realtime 通话子资源（POST .../realtime/calls/{id}/accept 等）：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md

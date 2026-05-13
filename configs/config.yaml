@@ -16,7 +16,7 @@ security:
 site:
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
-  default_new_user_balance: 100000
+  default_new_user_balance: 5000
   cors_origins:
     - "*"
 

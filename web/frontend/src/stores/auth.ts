@@ -229,16 +229,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function sendRegisterCode(email: string, locale?: string): Promise<number | undefined> {
+  /** 发送注册邮箱验证码；captcha 在开启登录图形验证码时与登录发信一致、必填 */
+  async function sendRegisterCode(
+    email: string,
+    locale?: string,
+    captcha?: LoginCaptchaPayload,
+  ): Promise<number | undefined> {
     try {
+      const body: Record<string, string> = { email: email.trim() }
+      if (locale) body.locale = locale
+      if (captcha) {
+        body.captcha_id = captcha.captcha_id
+        body.captcha_answer = captcha.captcha_answer
+      }
       const { data } = await http.post<Envelope<{ next_resend_sec?: number }>>(
         '/api/user/register/email-code/send',
-        { email: email.trim(), ...(locale ? { locale } : {}) },
+        body,
       )
       if (data.code !== 0) throw new Error(data.message || '发送失败')
       return data.data?.next_resend_sec
     } catch (e) {
-      throw new Error(apiErrorMessage(e, '发送失败'))
+      if (axios.isAxiosError(e)) throw e
+      throw e instanceof Error ? e : new Error(apiErrorMessage(e, '发送失败'))
     }
   }
 
