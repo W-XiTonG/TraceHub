@@ -18,6 +18,7 @@ import (
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
@@ -95,6 +96,7 @@ func checkColumn(t, c string) error {
 			modelcatalogentry.Table:    modelcatalogentry.ValidColumn,
 			modelcatalogsource.Table:   modelcatalogsource.ValidColumn,
 			redeemcode.Table:           redeemcode.ValidColumn,
+			redeemledger.Table:         redeemledger.ValidColumn,
 			systemconfig.Table:         systemconfig.ValidColumn,
 			usagelog.Table:             usagelog.ValidColumn,
 			user.Table:                 user.ValidColumn,

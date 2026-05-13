@@ -12,8 +12,8 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/adminauditlog"
-	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/announcement"
+	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/redeemcode"
@@ -26,6 +26,7 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
@@ -214,13 +215,13 @@ func UpdateGroup(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		var req struct {
-			Name           *string             `json:"name"`
-			Description    *string             `json:"description"`
-			RateMultiplier *float64            `json:"rate_multiplier"`
-			RPMLimit       *int                `json:"rpm_limit"`
-			ModelRouting   map[string][]int64  `json:"model_routing"`
-			DefaultModel   *string             `json:"default_model"`
-			Enabled        *bool               `json:"enabled"`
+			Name           *string            `json:"name"`
+			Description    *string            `json:"description"`
+			RateMultiplier *float64           `json:"rate_multiplier"`
+			RPMLimit       *int               `json:"rpm_limit"`
+			ModelRouting   map[string][]int64 `json:"model_routing"`
+			DefaultModel   *string            `json:"default_model"`
+			Enabled        *bool              `json:"enabled"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -340,20 +341,16 @@ func ListRedeemCodes(client *ent.Client) gin.HandlerFunc {
 		}
 		var items []gin.H
 		for _, rc := range list {
-			masked := rc.Code
-			if len(masked) > 10 {
-				masked = masked[:6] + "****" + masked[len(masked)-4:]
-			}
 			items = append(items, gin.H{
-				"id":         rc.ID,
-				"code_hint":  masked,
-				"code_type":  rc.CodeType,
-				"amount":     rc.Amount,
-				"status":     rc.Status,
-				"max_uses":   rc.MaxUses,
-				"used_count": rc.UsedCount,
+				"id":          rc.ID,
+				"code_hint":   redeemutil.CodeHint(rc.Code),
+				"code_type":   rc.CodeType,
+				"amount":      rc.Amount,
+				"status":      rc.Status,
+				"max_uses":    rc.MaxUses,
+				"used_count":  rc.UsedCount,
 				"valid_until": rc.ValidUntil,
-				"created_at": rc.CreatedAt,
+				"created_at":  rc.CreatedAt,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
@@ -521,17 +518,17 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
 		httpx.OK(c, gin.H{
-			"brand_name":               sitecfg.EffectiveBrandName(ctx, client),
-			"brand_icon_url":           sitecfg.StoredBrandIconURL(ctx, client),
-			"login_captcha_enabled":    sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
-			"login_captcha_file":       cfg.Site.LoginCaptcha.Enabled,
-			"login_captcha_db_set":     dbSet,
-			"login_captcha_db_value":   strings.TrimSpace(dbVal),
-			"operator_display_name":    sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
-			"operator_display_file":      strings.TrimSpace(cfg.Site.OperatorDisplayName),
-			"default_new_user_balance": sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg),
-			"default_new_user_balance_file":   cfg.Site.DefaultNewUserBalance,
-			"default_new_user_balance_db_set": dbSetBal,
+			"brand_name":                        sitecfg.EffectiveBrandName(ctx, client),
+			"brand_icon_url":                    sitecfg.StoredBrandIconURL(ctx, client),
+			"login_captcha_enabled":             sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
+			"login_captcha_file":                cfg.Site.LoginCaptcha.Enabled,
+			"login_captcha_db_set":              dbSet,
+			"login_captcha_db_value":            strings.TrimSpace(dbVal),
+			"operator_display_name":             sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
+			"operator_display_file":             strings.TrimSpace(cfg.Site.OperatorDisplayName),
+			"default_new_user_balance":          sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg),
+			"default_new_user_balance_file":     cfg.Site.DefaultNewUserBalance,
+			"default_new_user_balance_db_set":   dbSetBal,
 			"default_new_user_balance_db_value": strings.TrimSpace(dbValBal),
 		})
 	}
@@ -669,15 +666,15 @@ func DashboardOverview(client *ent.Client) gin.HandlerFunc {
 			hourly = append(hourly, n)
 		}
 		httpx.OK(c, gin.H{
-			"today_requests":    todayReq,
-			"today_tokens":      todayTokens,
-			"today_cost_quota":  todayCost,
-			"active_users_24h":  len(activeIDs),
-			"total_users":       totalUsers,
+			"today_requests":   todayReq,
+			"today_tokens":     todayTokens,
+			"today_cost_quota": todayCost,
+			"active_users_24h": len(activeIDs),
+			"total_users":      totalUsers,
 			"channel_health": gin.H{
-				"healthy":    healthy,
-				"unhealthy":  unhealthy,
-				"disabled":   disabled,
+				"healthy":   healthy,
+				"unhealthy": unhealthy,
+				"disabled":  disabled,
 			},
 			"recent_requests_trend": hourly,
 		})
@@ -732,13 +729,13 @@ func DashboardChannels(client *ent.Client) gin.HandlerFunc {
 				gn = ch.Edges.Group.Name
 			}
 			items = append(items, gin.H{
-				"id":             ch.ID,
-				"channel_name":   ch.ChannelName,
-				"channel_type":   ch.ChannelType,
-				"group_name":     gn,
-				"enabled":        ch.Enabled,
-				"health_status":  ch.HealthStatus,
-				"schedulable":    ch.Schedulable,
+				"id":            ch.ID,
+				"channel_name":  ch.ChannelName,
+				"channel_type":  ch.ChannelType,
+				"group_name":    gn,
+				"enabled":       ch.Enabled,
+				"health_status": ch.HealthStatus,
+				"schedulable":   ch.Schedulable,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items})
@@ -945,9 +942,9 @@ func DashboardInsight(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		}
 
 		httpx.OK(c, gin.H{
-			"window_days":              days,
-			"timeseries_granularity":   timeseriesGranularity,
-			"timeseries":               series,
+			"window_days":            days,
+			"timeseries_granularity": timeseriesGranularity,
+			"timeseries":             series,
 			"top_models_today": gin.H{
 				"window": "today",
 				"items":  topToday,
@@ -1212,18 +1209,18 @@ func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin
 		dbCaptchaSet, dbCaptchaVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
 		effectiveCaptcha := sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg)
 		outline := gin.H{
-			"server_mode":               cfg.Server.Mode,
-			"currency_quota_per_yuan":   cfg.Site.CurrencyQuotaPerYuan,
-			"cors_origins_count":        len(cfg.Site.CORSOrigins),
-			"realtime_call_mapping":     cfg.Site.RealtimeCallMappingEnabled,
-			"email_login_enabled":       cfg.Email.Enabled,
-			"brand_name":                sitecfg.EffectiveBrandName(ctx, client),
-			"login_captcha_enabled":     effectiveCaptcha,
-			"login_captcha_file":        cfg.Site.LoginCaptcha.Enabled,
-			"login_captcha_db_set":      dbCaptchaSet,
-			"login_captcha_db_value":    strings.TrimSpace(dbCaptchaVal),
-			"liveness_path":             "/health",
-			"readiness_path":            "/ready",
+			"server_mode":             cfg.Server.Mode,
+			"currency_quota_per_yuan": cfg.Site.CurrencyQuotaPerYuan,
+			"cors_origins_count":      len(cfg.Site.CORSOrigins),
+			"realtime_call_mapping":   cfg.Site.RealtimeCallMappingEnabled,
+			"email_login_enabled":     cfg.Email.Enabled,
+			"brand_name":              sitecfg.EffectiveBrandName(ctx, client),
+			"login_captcha_enabled":   effectiveCaptcha,
+			"login_captcha_file":      cfg.Site.LoginCaptcha.Enabled,
+			"login_captcha_db_set":    dbCaptchaSet,
+			"login_captcha_db_value":  strings.TrimSpace(dbCaptchaVal),
+			"liveness_path":           "/health",
+			"readiness_path":          "/ready",
 		}
 
 		httpx.OK(c, gin.H{

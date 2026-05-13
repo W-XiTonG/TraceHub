@@ -151,6 +151,7 @@ export default {
     adminNavLogs: '呼叫日誌',
     adminNavMarket: '模型市场',
     adminNavAnnouncements: '公告',
+    adminNavRedeem: '兌換碼',
     adminNavSystem: '系統設定',
     adminConsoleTitle: '切换到用戶控制台（用量、API Key、充值等）',
     adminTopSubtitle: '管理端',

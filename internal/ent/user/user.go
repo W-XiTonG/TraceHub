@@ -60,6 +60,8 @@ const (
 	EdgeRedeemedCodes = "redeemed_codes"
 	// EdgeCreatedRedeemCodes holds the string denoting the created_redeem_codes edge name in mutations.
 	EdgeCreatedRedeemCodes = "created_redeem_codes"
+	// EdgeRedeemLedgers holds the string denoting the redeem_ledgers edge name in mutations.
+	EdgeRedeemLedgers = "redeem_ledgers"
 	// EdgeAdminAuditLogs holds the string denoting the admin_audit_logs edge name in mutations.
 	EdgeAdminAuditLogs = "admin_audit_logs"
 	// EdgeCreatedAnnouncements holds the string denoting the created_announcements edge name in mutations.
@@ -101,6 +103,13 @@ const (
 	CreatedRedeemCodesInverseTable = "redeem_codes"
 	// CreatedRedeemCodesColumn is the table column denoting the created_redeem_codes relation/edge.
 	CreatedRedeemCodesColumn = "created_by"
+	// RedeemLedgersTable is the table that holds the redeem_ledgers relation/edge.
+	RedeemLedgersTable = "redeem_ledgers"
+	// RedeemLedgersInverseTable is the table name for the RedeemLedger entity.
+	// It exists in this package in order to avoid circular dependency with the "redeemledger" package.
+	RedeemLedgersInverseTable = "redeem_ledgers"
+	// RedeemLedgersColumn is the table column denoting the redeem_ledgers relation/edge.
+	RedeemLedgersColumn = "user_id"
 	// AdminAuditLogsTable is the table that holds the admin_audit_logs relation/edge.
 	AdminAuditLogsTable = "admin_audit_logs"
 	// AdminAuditLogsInverseTable is the table name for the AdminAuditLog entity.
@@ -329,6 +338,20 @@ func ByCreatedRedeemCodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOptio
 	}
 }
 
+// ByRedeemLedgersCount orders the results by redeem_ledgers count.
+func ByRedeemLedgersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRedeemLedgersStep(), opts...)
+	}
+}
+
+// ByRedeemLedgers orders the results by redeem_ledgers terms.
+func ByRedeemLedgers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRedeemLedgersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAdminAuditLogsCount orders the results by admin_audit_logs count.
 func ByAdminAuditLogsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -389,6 +412,13 @@ func newCreatedRedeemCodesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CreatedRedeemCodesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, CreatedRedeemCodesTable, CreatedRedeemCodesColumn),
+	)
+}
+func newRedeemLedgersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RedeemLedgersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, RedeemLedgersTable, RedeemLedgersColumn),
 	)
 }
 func newAdminAuditLogsStep() *sqlgraph.Step {

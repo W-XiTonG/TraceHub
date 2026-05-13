@@ -14,6 +14,7 @@ import (
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/schema"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
@@ -600,6 +601,16 @@ func init() {
 	redeemcode.DefaultUpdatedAt = redeemcodeDescUpdatedAt.Default.(func() time.Time)
 	// redeemcode.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	redeemcode.UpdateDefaultUpdatedAt = redeemcodeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	redeemledgerFields := schema.RedeemLedger{}.Fields()
+	_ = redeemledgerFields
+	// redeemledgerDescCodeHint is the schema descriptor for code_hint field.
+	redeemledgerDescCodeHint := redeemledgerFields[4].Descriptor()
+	// redeemledger.CodeHintValidator is a validator for the "code_hint" field. It is called by the builders before save.
+	redeemledger.CodeHintValidator = redeemledgerDescCodeHint.Validators[0].(func(string) error)
+	// redeemledgerDescCreatedAt is the schema descriptor for created_at field.
+	redeemledgerDescCreatedAt := redeemledgerFields[5].Descriptor()
+	// redeemledger.DefaultCreatedAt holds the default value on creation for the created_at field.
+	redeemledger.DefaultCreatedAt = redeemledgerDescCreatedAt.Default.(func() time.Time)
 	systemconfigFields := schema.SystemConfig{}.Fields()
 	_ = systemconfigFields
 	// systemconfigDescConfigKey is the schema descriptor for config_key field.

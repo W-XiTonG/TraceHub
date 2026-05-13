@@ -13,6 +13,7 @@ import (
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/pkg/alertconfig"
@@ -416,6 +417,21 @@ func (_u *UserUpdate) AddCreatedRedeemCodes(v ...*RedeemCode) *UserUpdate {
 	return _u.AddCreatedRedeemCodeIDs(ids...)
 }
 
+// AddRedeemLedgerIDs adds the "redeem_ledgers" edge to the RedeemLedger entity by IDs.
+func (_u *UserUpdate) AddRedeemLedgerIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// AddRedeemLedgers adds the "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *UserUpdate) AddRedeemLedgers(v ...*RedeemLedger) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRedeemLedgerIDs(ids...)
+}
+
 // AddAdminAuditLogIDs adds the "admin_audit_logs" edge to the AdminAuditLog entity by IDs.
 func (_u *UserUpdate) AddAdminAuditLogIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddAdminAuditLogIDs(ids...)
@@ -539,6 +555,27 @@ func (_u *UserUpdate) RemoveCreatedRedeemCodes(v ...*RedeemCode) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveCreatedRedeemCodeIDs(ids...)
+}
+
+// ClearRedeemLedgers clears all "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *UserUpdate) ClearRedeemLedgers() *UserUpdate {
+	_u.mutation.ClearRedeemLedgers()
+	return _u
+}
+
+// RemoveRedeemLedgerIDs removes the "redeem_ledgers" edge to RedeemLedger entities by IDs.
+func (_u *UserUpdate) RemoveRedeemLedgerIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// RemoveRedeemLedgers removes "redeem_ledgers" edges to RedeemLedger entities.
+func (_u *UserUpdate) RemoveRedeemLedgers(v ...*RedeemLedger) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRedeemLedgerIDs(ids...)
 }
 
 // ClearAdminAuditLogs clears all "admin_audit_logs" edges to the AdminAuditLog entity.
@@ -965,6 +1002,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(redeemcode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRedeemLedgersIDs(); len(nodes) > 0 && !_u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RedeemLedgersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1462,6 +1544,21 @@ func (_u *UserUpdateOne) AddCreatedRedeemCodes(v ...*RedeemCode) *UserUpdateOne 
 	return _u.AddCreatedRedeemCodeIDs(ids...)
 }
 
+// AddRedeemLedgerIDs adds the "redeem_ledgers" edge to the RedeemLedger entity by IDs.
+func (_u *UserUpdateOne) AddRedeemLedgerIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// AddRedeemLedgers adds the "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *UserUpdateOne) AddRedeemLedgers(v ...*RedeemLedger) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRedeemLedgerIDs(ids...)
+}
+
 // AddAdminAuditLogIDs adds the "admin_audit_logs" edge to the AdminAuditLog entity by IDs.
 func (_u *UserUpdateOne) AddAdminAuditLogIDs(ids ...int) *UserUpdateOne {
 	_u.mutation.AddAdminAuditLogIDs(ids...)
@@ -1585,6 +1682,27 @@ func (_u *UserUpdateOne) RemoveCreatedRedeemCodes(v ...*RedeemCode) *UserUpdateO
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveCreatedRedeemCodeIDs(ids...)
+}
+
+// ClearRedeemLedgers clears all "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *UserUpdateOne) ClearRedeemLedgers() *UserUpdateOne {
+	_u.mutation.ClearRedeemLedgers()
+	return _u
+}
+
+// RemoveRedeemLedgerIDs removes the "redeem_ledgers" edge to RedeemLedger entities by IDs.
+func (_u *UserUpdateOne) RemoveRedeemLedgerIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// RemoveRedeemLedgers removes "redeem_ledgers" edges to RedeemLedger entities.
+func (_u *UserUpdateOne) RemoveRedeemLedgers(v ...*RedeemLedger) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRedeemLedgerIDs(ids...)
 }
 
 // ClearAdminAuditLogs clears all "admin_audit_logs" edges to the AdminAuditLog entity.
@@ -2041,6 +2159,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(redeemcode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRedeemLedgersIDs(); len(nodes) > 0 && !_u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RedeemLedgersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

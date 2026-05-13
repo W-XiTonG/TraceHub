@@ -454,6 +454,48 @@ var (
 			},
 		},
 	}
+	// RedeemLedgersColumns holds the columns for the "redeem_ledgers" table.
+	RedeemLedgersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "amount", Type: field.TypeInt64},
+		{Name: "balance_after", Type: field.TypeInt64},
+		{Name: "code_hint", Type: field.TypeString, Nullable: true, Size: 80},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "redeem_code_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// RedeemLedgersTable holds the schema information for the "redeem_ledgers" table.
+	RedeemLedgersTable = &schema.Table{
+		Name:       "redeem_ledgers",
+		Columns:    RedeemLedgersColumns,
+		PrimaryKey: []*schema.Column{RedeemLedgersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "redeem_ledgers_redeem_codes_redeem_ledgers",
+				Columns:    []*schema.Column{RedeemLedgersColumns[5]},
+				RefColumns: []*schema.Column{RedeemCodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "redeem_ledgers_users_redeem_ledgers",
+				Columns:    []*schema.Column{RedeemLedgersColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "redeemledger_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{RedeemLedgersColumns[6], RedeemLedgersColumns[4]},
+			},
+			{
+				Name:    "redeemledger_redeem_code_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{RedeemLedgersColumns[5], RedeemLedgersColumns[4]},
+			},
+		},
+	}
 	// SystemConfigsColumns holds the columns for the "system_configs" table.
 	SystemConfigsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -610,6 +652,7 @@ var (
 		ModelCatalogEntriesTable,
 		ModelCatalogSourcesTable,
 		RedeemCodesTable,
+		RedeemLedgersTable,
 		SystemConfigsTable,
 		UsageLogsTable,
 		UsersTable,
@@ -627,6 +670,8 @@ func init() {
 	ModelCatalogSourcesTable.ForeignKeys[0].RefTable = ChannelsTable
 	RedeemCodesTable.ForeignKeys[0].RefTable = UsersTable
 	RedeemCodesTable.ForeignKeys[1].RefTable = UsersTable
+	RedeemLedgersTable.ForeignKeys[0].RefTable = RedeemCodesTable
+	RedeemLedgersTable.ForeignKeys[1].RefTable = UsersTable
 	UsageLogsTable.ForeignKeys[0].RefTable = APIKeysTable
 	UsageLogsTable.ForeignKeys[1].RefTable = ChannelsTable
 	UsageLogsTable.ForeignKeys[2].RefTable = UsersTable

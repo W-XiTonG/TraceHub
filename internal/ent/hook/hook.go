@@ -128,6 +128,18 @@ func (f RedeemCodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RedeemCodeMutation", m)
 }
 
+// The RedeemLedgerFunc type is an adapter to allow the use of ordinary
+// function as RedeemLedger mutator.
+type RedeemLedgerFunc func(context.Context, *ent.RedeemLedgerMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f RedeemLedgerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RedeemLedgerMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RedeemLedgerMutation", m)
+}
+
 // The SystemConfigFunc type is an adapter to allow the use of ordinary
 // function as SystemConfig mutator.
 type SystemConfigFunc func(context.Context, *ent.SystemConfigMutation) (ent.Value, error)

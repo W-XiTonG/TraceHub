@@ -137,6 +137,7 @@ export default {
     uaKeysPut: 'Update key metadata',
     uaKeysDel: 'Delete key',
     uaRedeem: 'Redeem code',
+    uaRedeemLedger: 'Redeem ledger (paged credit history)',
     uaPwd: 'Change password',
     uaBind: 'Bind profile (display name, etc.)',
     uaIp: 'Account IP allowlist',

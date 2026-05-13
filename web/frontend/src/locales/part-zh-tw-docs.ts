@@ -137,6 +137,7 @@ export default {
     uaKeysPut: '更新 Key 元数据',
     uaKeysDel: '刪除 Key',
     uaRedeem: '兌換碼充值',
+    uaRedeemLedger: '兌換入帳流水（分頁）',
     uaPwd: '修改密碼',
     uaBind: '绑定资料（昵称等）',
     uaIp: '帳号级 IP 白名單',

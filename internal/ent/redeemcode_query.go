@@ -4,10 +4,12 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/user"
 
 	"entgo.io/ent"
@@ -19,12 +21,13 @@ import (
 // RedeemCodeQuery is the builder for querying RedeemCode entities.
 type RedeemCodeQuery struct {
 	config
-	ctx            *QueryContext
-	order          []redeemcode.OrderOption
-	inters         []Interceptor
-	predicates     []predicate.RedeemCode
-	withUsedByUser *UserQuery
-	withCreator    *UserQuery
+	ctx               *QueryContext
+	order             []redeemcode.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.RedeemCode
+	withUsedByUser    *UserQuery
+	withCreator       *UserQuery
+	withRedeemLedgers *RedeemLedgerQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -98,6 +101,28 @@ func (_q *RedeemCodeQuery) QueryCreator() *UserQuery {
 			sqlgraph.From(redeemcode.Table, redeemcode.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, redeemcode.CreatorTable, redeemcode.CreatorColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRedeemLedgers chains the current query on the "redeem_ledgers" edge.
+func (_q *RedeemCodeQuery) QueryRedeemLedgers() *RedeemLedgerQuery {
+	query := (&RedeemLedgerClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(redeemcode.Table, redeemcode.FieldID, selector),
+			sqlgraph.To(redeemledger.Table, redeemledger.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, redeemcode.RedeemLedgersTable, redeemcode.RedeemLedgersColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -292,13 +317,14 @@ func (_q *RedeemCodeQuery) Clone() *RedeemCodeQuery {
 		return nil
 	}
 	return &RedeemCodeQuery{
-		config:         _q.config,
-		ctx:            _q.ctx.Clone(),
-		order:          append([]redeemcode.OrderOption{}, _q.order...),
-		inters:         append([]Interceptor{}, _q.inters...),
-		predicates:     append([]predicate.RedeemCode{}, _q.predicates...),
-		withUsedByUser: _q.withUsedByUser.Clone(),
-		withCreator:    _q.withCreator.Clone(),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]redeemcode.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.RedeemCode{}, _q.predicates...),
+		withUsedByUser:    _q.withUsedByUser.Clone(),
+		withCreator:       _q.withCreator.Clone(),
+		withRedeemLedgers: _q.withRedeemLedgers.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -324,6 +350,17 @@ func (_q *RedeemCodeQuery) WithCreator(opts ...func(*UserQuery)) *RedeemCodeQuer
 		opt(query)
 	}
 	_q.withCreator = query
+	return _q
+}
+
+// WithRedeemLedgers tells the query-builder to eager-load the nodes that are connected to
+// the "redeem_ledgers" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RedeemCodeQuery) WithRedeemLedgers(opts ...func(*RedeemLedgerQuery)) *RedeemCodeQuery {
+	query := (&RedeemLedgerClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRedeemLedgers = query
 	return _q
 }
 
@@ -405,9 +442,10 @@ func (_q *RedeemCodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*R
 	var (
 		nodes       = []*RedeemCode{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withUsedByUser != nil,
 			_q.withCreator != nil,
+			_q.withRedeemLedgers != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -437,6 +475,13 @@ func (_q *RedeemCodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*R
 	if query := _q.withCreator; query != nil {
 		if err := _q.loadCreator(ctx, query, nodes, nil,
 			func(n *RedeemCode, e *User) { n.Edges.Creator = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withRedeemLedgers; query != nil {
+		if err := _q.loadRedeemLedgers(ctx, query, nodes,
+			func(n *RedeemCode) { n.Edges.RedeemLedgers = []*RedeemLedger{} },
+			func(n *RedeemCode, e *RedeemLedger) { n.Edges.RedeemLedgers = append(n.Edges.RedeemLedgers, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -498,6 +543,36 @@ func (_q *RedeemCodeQuery) loadCreator(ctx context.Context, query *UserQuery, no
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *RedeemCodeQuery) loadRedeemLedgers(ctx context.Context, query *RedeemLedgerQuery, nodes []*RedeemCode, init func(*RedeemCode), assign func(*RedeemCode, *RedeemLedger)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*RedeemCode)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(redeemledger.FieldRedeemCodeID)
+	}
+	query.Where(predicate.RedeemLedger(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(redeemcode.RedeemLedgersColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RedeemCodeID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "redeem_code_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

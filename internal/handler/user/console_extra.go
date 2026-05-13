@@ -7,6 +7,7 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/middleware"
@@ -37,18 +38,18 @@ func Me(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 			unit = 10000
 		}
 		httpx.OK(c, gin.H{
-			"id":                        fu.ID,
-			"email":                     fu.Email,
-			"username":                  fu.Username,
-			"group_id":                  fu.GroupID,
-			"group_name":                gn,
-			"webhook_url":               fu.WebhookURL,
-			"ip_whitelist":              fu.IPWhitelist,
-			"balance_alert_threshold":   fu.BalanceAlertThreshold,
-			"custom_alert_config":       alertconfig.PublicView(fu.CustomAlertConfig),
-			"rate_multiplier":           fu.RateMultiplier,
-			"balance":                   fu.Balance,
-			"currency_quota_per_yuan":   unit,
+			"id":                      fu.ID,
+			"email":                   fu.Email,
+			"username":                fu.Username,
+			"group_id":                fu.GroupID,
+			"group_name":              gn,
+			"webhook_url":             fu.WebhookURL,
+			"ip_whitelist":            fu.IPWhitelist,
+			"balance_alert_threshold": fu.BalanceAlertThreshold,
+			"custom_alert_config":     alertconfig.PublicView(fu.CustomAlertConfig),
+			"rate_multiplier":         fu.RateMultiplier,
+			"balance":                 fu.Balance,
+			"currency_quota_per_yuan": unit,
 		})
 	}
 }
@@ -101,22 +102,22 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 		var items []gin.H
 		for _, l := range logs {
 			items = append(items, gin.H{
-				"id":                 l.ID,
-				"request_id":         l.RequestID,
-				"model":              l.Model,
-				"model_upstream":     l.ModelUpstream,
-				"channel_id":         l.ChannelID,
-				"api_key_id":         l.APIKeyID,
-				"prompt_tokens":      l.PromptTokens,
-				"completion_tokens":  l.CompletionTokens,
-				"total_tokens":       l.TotalTokens,
-				"total_cost":         l.TotalCost,
-				"request_time":       l.RequestTime,
-				"response_time_ms":   l.ResponseTimeMs,
-				"status_code":        l.StatusCode,
-				"error_message":      l.ErrorMessage,
-				"ip_address":         l.IPAddress,
-				"is_cached":          l.IsCached,
+				"id":                l.ID,
+				"request_id":        l.RequestID,
+				"model":             l.Model,
+				"model_upstream":    l.ModelUpstream,
+				"channel_id":        l.ChannelID,
+				"api_key_id":        l.APIKeyID,
+				"prompt_tokens":     l.PromptTokens,
+				"completion_tokens": l.CompletionTokens,
+				"total_tokens":      l.TotalTokens,
+				"total_cost":        l.TotalCost,
+				"request_time":      l.RequestTime,
+				"response_time_ms":  l.ResponseTimeMs,
+				"status_code":       l.StatusCode,
+				"error_message":     l.ErrorMessage,
+				"ip_address":        l.IPAddress,
+				"is_cached":         l.IsCached,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
@@ -148,12 +149,12 @@ func MyGroup(client *ent.Client) gin.HandlerFunc {
 		}
 		httpx.OK(c, gin.H{
 			"group": gin.H{
-				"id":               g.ID,
-				"name":             g.Name,
-				"description":      g.Description,
-				"rate_multiplier":  g.RateMultiplier,
-				"rpm_limit":        g.RpmLimit,
-				"default_model":    g.DefaultModel,
+				"id":                g.ID,
+				"name":              g.Name,
+				"description":       g.Description,
+				"rate_multiplier":   g.RateMultiplier,
+				"rpm_limit":         g.RpmLimit,
+				"default_model":     g.DefaultModel,
 				"subscription_type": g.SubscriptionType,
 			},
 			"model_rates": rates,
@@ -199,4 +200,46 @@ func countGateway(items []availmodels.ConsoleModel) int {
 		}
 	}
 	return n
+}
+
+// ListRedeemLedger 当前用户兑换入账流水（分页，按时间倒序）。
+func ListRedeemLedger(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+		if page < 1 {
+			page = 1
+		}
+		if ps < 1 || ps > 100 {
+			ps = 20
+		}
+		ctx := c.Request.Context()
+		q := client.RedeemLedger.Query().Where(redeemledger.UserIDEQ(u.ID))
+		total, err := q.Clone().Count(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		list, err := q.Order(ent.Desc(redeemledger.FieldCreatedAt)).
+			Offset((page - 1) * ps).
+			Limit(ps).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		items := make([]gin.H, 0, len(list))
+		for _, row := range list {
+			items = append(items, gin.H{
+				"id":             row.ID,
+				"redeem_code_id": row.RedeemCodeID,
+				"amount":         row.Amount,
+				"balance_after":  row.BalanceAfter,
+				"code_hint":      row.CodeHint,
+				"created_at":     row.CreatedAt,
+			})
+		}
+		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
+	}
 }

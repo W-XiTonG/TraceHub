@@ -48,6 +48,8 @@ const (
 	EdgeUsedByUser = "used_by_user"
 	// EdgeCreator holds the string denoting the creator edge name in mutations.
 	EdgeCreator = "creator"
+	// EdgeRedeemLedgers holds the string denoting the redeem_ledgers edge name in mutations.
+	EdgeRedeemLedgers = "redeem_ledgers"
 	// Table holds the table name of the redeemcode in the database.
 	Table = "redeem_codes"
 	// UsedByUserTable is the table that holds the used_by_user relation/edge.
@@ -64,6 +66,13 @@ const (
 	CreatorInverseTable = "users"
 	// CreatorColumn is the table column denoting the creator relation/edge.
 	CreatorColumn = "created_by"
+	// RedeemLedgersTable is the table that holds the redeem_ledgers relation/edge.
+	RedeemLedgersTable = "redeem_ledgers"
+	// RedeemLedgersInverseTable is the table name for the RedeemLedger entity.
+	// It exists in this package in order to avoid circular dependency with the "redeemledger" package.
+	RedeemLedgersInverseTable = "redeem_ledgers"
+	// RedeemLedgersColumn is the table column denoting the redeem_ledgers relation/edge.
+	RedeemLedgersColumn = "redeem_code_id"
 )
 
 // Columns holds all SQL columns for redeemcode fields.
@@ -217,6 +226,20 @@ func ByCreatorField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newCreatorStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByRedeemLedgersCount orders the results by redeem_ledgers count.
+func ByRedeemLedgersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRedeemLedgersStep(), opts...)
+	}
+}
+
+// ByRedeemLedgers orders the results by redeem_ledgers terms.
+func ByRedeemLedgers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRedeemLedgersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUsedByUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -229,5 +252,12 @@ func newCreatorStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CreatorInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, CreatorTable, CreatorColumn),
+	)
+}
+func newRedeemLedgersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RedeemLedgersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, RedeemLedgersTable, RedeemLedgersColumn),
 	)
 }

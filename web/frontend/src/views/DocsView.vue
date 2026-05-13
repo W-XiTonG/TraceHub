@@ -342,6 +342,7 @@ onUnmounted(() => {
                 <tr><td class="text-amber-400/90">PUT</td><td class="font-mono text-slate-300">/api/user/apikeys/:id</td><td>{{ t('docs.uaKeysPut') }}</td></tr>
                 <tr><td class="text-rose-400/90">DELETE</td><td class="font-mono text-slate-300">/api/user/apikeys/:id</td><td>{{ t('docs.uaKeysDel') }}</td></tr>
                 <tr><td class="text-emerald-400/90">POST</td><td class="font-mono text-slate-300">/api/user/redeem</td><td>{{ t('docs.uaRedeem') }}</td></tr>
+                <tr><td class="text-sky-400/90">GET</td><td class="font-mono text-slate-300">/api/user/redeem-ledger</td><td>{{ t('docs.uaRedeemLedger') }}</td></tr>
                 <tr><td class="text-amber-400/90">PUT</td><td class="font-mono text-slate-300">/api/user/password</td><td>{{ t('docs.uaPwd') }}</td></tr>
                 <tr><td class="text-amber-400/90">PUT</td><td class="font-mono text-slate-300">/api/user/bind</td><td>{{ t('docs.uaBind') }}</td></tr>
                 <tr><td class="text-amber-400/90">PUT</td><td class="font-mono text-slate-300">/api/user/ip_whitelist</td><td>{{ t('docs.uaIp') }}</td></tr>

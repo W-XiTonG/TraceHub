@@ -60,9 +60,11 @@ type RedeemCodeEdges struct {
 	UsedByUser *User `json:"used_by_user,omitempty"`
 	// Creator holds the value of the creator edge.
 	Creator *User `json:"creator,omitempty"`
+	// RedeemLedgers holds the value of the redeem_ledgers edge.
+	RedeemLedgers []*RedeemLedger `json:"redeem_ledgers,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // UsedByUserOrErr returns the UsedByUser value or an error if the edge
@@ -85,6 +87,15 @@ func (e RedeemCodeEdges) CreatorOrErr() (*User, error) {
 		return nil, &NotFoundError{label: user.Label}
 	}
 	return nil, &NotLoadedError{edge: "creator"}
+}
+
+// RedeemLedgersOrErr returns the RedeemLedgers value or an error if the edge
+// was not loaded in eager-loading.
+func (e RedeemCodeEdges) RedeemLedgersOrErr() ([]*RedeemLedger, error) {
+	if e.loadedTypes[2] {
+		return e.RedeemLedgers, nil
+	}
+	return nil, &NotLoadedError{edge: "redeem_ledgers"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -232,6 +243,11 @@ func (_m *RedeemCode) QueryUsedByUser() *UserQuery {
 // QueryCreator queries the "creator" edge of the RedeemCode entity.
 func (_m *RedeemCode) QueryCreator() *UserQuery {
 	return NewRedeemCodeClient(_m.config).QueryCreator(_m)
+}
+
+// QueryRedeemLedgers queries the "redeem_ledgers" edge of the RedeemCode entity.
+func (_m *RedeemCode) QueryRedeemLedgers() *RedeemLedgerQuery {
+	return NewRedeemCodeClient(_m.config).QueryRedeemLedgers(_m)
 }
 
 // Update returns a builder for updating this RedeemCode.

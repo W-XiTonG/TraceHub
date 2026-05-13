@@ -147,6 +147,7 @@ export default {
     adminNavLogs: 'Logs',
     adminNavMarket: 'Model market',
     adminNavAnnouncements: 'Announcements',
+    adminNavRedeem: 'Redeem codes',
     adminNavSystem: 'Site settings',
     adminConsoleTitle: 'Switch to user console (usage, API keys, billing)',
     adminTopSubtitle: 'Admin',

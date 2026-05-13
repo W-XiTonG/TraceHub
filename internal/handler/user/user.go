@@ -2,6 +2,7 @@ package userhandler
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
@@ -11,9 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
@@ -24,6 +27,7 @@ import (
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +36,74 @@ import (
 )
 
 const maxAPIKeysPerUser = 20
+
+// redeemCodeSlotAvailable 在 SQL 层断言 used_count < max_uses，与原子更新配合避免并发超额核销。
+// 使用裸表达式而非 sql.LT(列, 列)：后者在 UPDATE 的 WHERE 中在部分方言/上下文中会生成无效 SQL（表现为 500）。
+func redeemCodeSlotAvailable() predicate.RedeemCode {
+	return predicate.RedeemCode(func(s *sql.Selector) {
+		s.Where(sql.ExprP("used_count < max_uses"))
+	})
+}
+
+func redeemCodeMatchInput(trimmed string) predicate.RedeemCode {
+	upper := strings.ToUpper(trimmed)
+	if trimmed == upper {
+		return redeemcode.CodeEQ(trimmed)
+	}
+	return redeemcode.Or(redeemcode.CodeEQ(trimmed), redeemcode.CodeEQ(upper))
+}
+
+const (
+	redeemMaxPerUserPerMinute = 20
+	redeemMaxPerIPPerMinute   = 100
+	redeemRateWindowTTL       = 120 * time.Second
+)
+
+func redeemIPKeyPart(ip string) string {
+	if strings.TrimSpace(ip) == "" {
+		return "na"
+	}
+	sum := sha256.Sum256([]byte(ip))
+	return hex.EncodeToString(sum[:8])
+}
+
+// redeemRateLimitOK 在 Redis 可用时对「每用户 / 每 IP」做分钟桶计数，抑制撞库与脚本滥用；Redis 不可用时跳过。
+func redeemRateLimitOK(c *gin.Context, rdb *redis.Client, userID int) bool {
+	if rdb == nil {
+		return true
+	}
+	ctx := c.Request.Context()
+	slot := time.Now().Unix() / 60
+	uKey := fmt.Sprintf("tracehub:redeem_rate:u:%d:%d", userID, slot)
+	iKey := fmt.Sprintf("tracehub:redeem_rate:ip:%s:%d", redeemIPKeyPart(c.ClientIP()), slot)
+
+	uN, err := rdb.Incr(ctx, uKey).Result()
+	if err != nil {
+		httpx.ServerError(c, "服务暂不可用")
+		return false
+	}
+	if uN == 1 {
+		_ = rdb.Expire(ctx, uKey, redeemRateWindowTTL).Err()
+	}
+	if uN > int64(redeemMaxPerUserPerMinute) {
+		httpx.TooManyRequests(c, fmt.Sprintf("兑换请求过于频繁，请约 1 分钟后再试（每账号每分钟最多 %d 次）", redeemMaxPerUserPerMinute))
+		return false
+	}
+
+	iN, err := rdb.Incr(ctx, iKey).Result()
+	if err != nil {
+		httpx.ServerError(c, "服务暂不可用")
+		return false
+	}
+	if iN == 1 {
+		_ = rdb.Expire(ctx, iKey, redeemRateWindowTTL).Err()
+	}
+	if iN > int64(redeemMaxPerIPPerMinute) {
+		httpx.TooManyRequests(c, fmt.Sprintf("当前网络兑换请求过于频繁，请稍后再试（每 IP 每分钟最多 %d 次）", redeemMaxPerIPPerMinute))
+		return false
+	}
+	return true
+}
 
 func Register(client *ent.Client, cfg *config.Config, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -238,13 +310,24 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		}
 		var totalReq, totalTok int
 		var totalCost int64
-		byDay := map[string]struct{ reqs int; cost int64; tokens int }{}
-		byModel := map[string]struct{ reqs int; cost int64 }{}
+		byDay := map[string]struct {
+			reqs   int
+			cost   int64
+			tokens int
+		}{}
+		byModel := map[string]struct {
+			reqs int
+			cost int64
+		}{}
 		var minT, maxT time.Time
 		now := time.Now()
 		endHour := now.Truncate(time.Hour)
 		firstHour := endHour.Add(-23 * time.Hour)
-		hourly := map[int64]struct{ reqs int; cost int64; tokens int }{}
+		hourly := map[int64]struct {
+			reqs   int
+			cost   int64
+			tokens int
+		}{}
 		for _, l := range logs {
 			totalReq++
 			totalTok += l.TotalTokens
@@ -302,9 +385,9 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		var lifeTotalTok int64
 		var lifeTotalCost int64
 		var lifeRows []struct {
-			Cnt            int     `json:"count"`
-			SumTotalCost   *int64  `json:"sum_total_cost"`
-			SumTotalTokens *int64  `json:"sum_total_tokens"`
+			Cnt            int    `json:"count"`
+			SumTotalCost   *int64 `json:"sum_total_cost"`
+			SumTotalTokens *int64 `json:"sum_total_tokens"`
 		}
 		if scanErr := client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID)).
 			Aggregate(
@@ -347,16 +430,16 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		})
 		round2 := func(x float64) float64 { return float64(int(x*100+0.5)) / 100 }
 		httpx.OK(c, gin.H{
-			"period":             period,
-			"total_requests":     totalReq,
-			"total_tokens":       totalTok,
-			"total_cost":         float64(totalCost) / float64(unit),
-			"daily_breakdown":    dailyBreakdown,
-			"model_breakdown":    modelBreakdown,
-			"hourly_breakdown":   hourlyBreakdown,
-			"avg_rpm":            round2(avgRPM),
-			"avg_tpm":            round2(avgTPM),
-			"unique_models":      len(byModel),
+			"period":           period,
+			"total_requests":   totalReq,
+			"total_tokens":     totalTok,
+			"total_cost":       float64(totalCost) / float64(unit),
+			"daily_breakdown":  dailyBreakdown,
+			"model_breakdown":  modelBreakdown,
+			"hourly_breakdown": hourlyBreakdown,
+			"avg_rpm":          round2(avgRPM),
+			"avg_tpm":          round2(avgTPM),
+			"unique_models":    len(byModel),
 			"lifetime": gin.H{
 				"total_requests": lifeTotalReq,
 				"total_tokens":   lifeTotalTok,
@@ -436,18 +519,18 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 				gn = k.Edges.Group.Name
 			}
 			row := gin.H{
-				"id":                   k.ID,
-				"name":                 k.Name,
-				"key_prefix":           k.KeyPrefix,
-				"can_reveal_full_key":  strings.TrimSpace(k.KeyMaterialEnc) != "",
-				"group_name":           gn,
-				"status":               st,
-				"last_used_at":         k.LastUsedAt,
-				"created_at":           k.CreatedAt,
-				"usage_24h":            tok24h[k.ID],
-				"daily_quota":          k.DailyQuota,
-				"ip_whitelist":         k.IPWhitelist,
-				"log_full_request":     k.LogFullRequest,
+				"id":                  k.ID,
+				"name":                k.Name,
+				"key_prefix":          k.KeyPrefix,
+				"can_reveal_full_key": strings.TrimSpace(k.KeyMaterialEnc) != "",
+				"group_name":          gn,
+				"status":              st,
+				"last_used_at":        k.LastUsedAt,
+				"created_at":          k.CreatedAt,
+				"usage_24h":           tok24h[k.ID],
+				"daily_quota":         k.DailyQuota,
+				"ip_whitelist":        k.IPWhitelist,
+				"log_full_request":    k.LogFullRequest,
 			}
 			if !k.ExpiresAt.IsZero() {
 				row["expires_at"] = k.ExpiresAt.UTC().Format(time.RFC3339)
@@ -462,12 +545,12 @@ func CreateAPIKey(client *ent.Client, cfg *config.Config, aesKey []byte) gin.Han
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			Name         string   `json:"name"`
-			GroupID      *int     `json:"group_id"`
-			IPWhitelist  []string `json:"ip_whitelist"`
-			DailyQuota   *int64   `json:"daily_quota"`
-			ExpiresAt    *string  `json:"expires_at"`
-			LogFullReq   *bool    `json:"log_full_request"`
+			Name        string   `json:"name"`
+			GroupID     *int     `json:"group_id"`
+			IPWhitelist []string `json:"ip_whitelist"`
+			DailyQuota  *int64   `json:"daily_quota"`
+			ExpiresAt   *string  `json:"expires_at"`
+			LogFullReq  *bool    `json:"log_full_request"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -643,7 +726,7 @@ func UpdateAPIKey(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-func Redeem(client *ent.Client) gin.HandlerFunc {
+func Redeem(client *ent.Client, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
@@ -653,10 +736,13 @@ func Redeem(client *ent.Client) gin.HandlerFunc {
 			httpx.BadRequest(c, "请输入兑换码")
 			return
 		}
+		if !redeemRateLimitOK(c, rdb, u.ID) {
+			return
+		}
 		ctx := c.Request.Context()
 		code := strings.TrimSpace(req.Code)
 		rc, err := client.RedeemCode.Query().
-			Where(redeemcode.CodeEQ(code)).
+			Where(redeemCodeMatchInput(code)).
 			Only(ctx)
 		if err != nil {
 			httpx.BadRequest(c, "兑换码无效")
@@ -675,35 +761,81 @@ func Redeem(client *ent.Client) gin.HandlerFunc {
 			httpx.BadRequest(c, "兑换码已过期")
 			return
 		}
+		if rc.MaxUses < 1 {
+			httpx.BadRequest(c, "兑换码不可用")
+			return
+		}
 		if rc.UsedCount >= rc.MaxUses {
 			httpx.BadRequest(c, "兑换码次数已用尽")
 			return
 		}
-		var add int64
-		switch rc.CodeType {
-		case "fixed":
-			add = rc.Amount
-		default:
-			add = rc.Amount
+		ct := strings.TrimSpace(rc.CodeType)
+		if ct != "" && ct != "fixed" {
+			httpx.BadRequest(c, "暂不支持的兑换码类型")
+			return
 		}
+		add := rc.Amount
+		if add <= 0 {
+			httpx.BadRequest(c, "兑换码面额无效")
+			return
+		}
+
 		tx, err := client.Tx(ctx)
 		if err != nil {
 			httpx.ServerError(c, "兑换失败")
 			return
+		}
+		aff, err := tx.RedeemCode.Update().
+			Where(
+				redeemcode.IDEQ(rc.ID),
+				redeemcode.StatusEQ(1),
+				redeemCodeSlotAvailable(),
+			).
+			AddUsedCount(1).
+			SetUsedAt(now).
+			SetUsedByUserID(u.ID).
+			Save(ctx)
+		if err != nil {
+			_ = tx.Rollback()
+			httpx.ServerError(c, "兑换失败")
+			return
+		}
+		if aff != 1 {
+			_ = tx.Rollback()
+			httpx.BadRequest(c, "兑换码次数已用尽")
+			return
+		}
+		rc2, err := tx.RedeemCode.Get(ctx, rc.ID)
+		if err != nil {
+			_ = tx.Rollback()
+			httpx.ServerError(c, "兑换失败")
+			return
+		}
+		if rc2.UsedCount >= rc2.MaxUses {
+			if err := tx.RedeemCode.UpdateOneID(rc.ID).SetStatus(2).Exec(ctx); err != nil {
+				_ = tx.Rollback()
+				httpx.ServerError(c, "兑换失败")
+				return
+			}
 		}
 		if err := tx.User.UpdateOneID(u.ID).AddBalance(add).Exec(ctx); err != nil {
 			_ = tx.Rollback()
 			httpx.ServerError(c, "兑换失败")
 			return
 		}
-		up := tx.RedeemCode.UpdateOne(rc).
-			AddUsedCount(1).
-			SetUsedAt(now).
-			SetUsedByUserID(u.ID)
-		if rc.UsedCount+1 >= rc.MaxUses {
-			up.SetStatus(2)
+		nu, err := tx.User.Get(ctx, u.ID)
+		if err != nil {
+			_ = tx.Rollback()
+			httpx.ServerError(c, "兑换失败")
+			return
 		}
-		if err := up.Exec(ctx); err != nil {
+		if _, err := tx.RedeemLedger.Create().
+			SetUserID(u.ID).
+			SetRedeemCodeID(rc.ID).
+			SetAmount(add).
+			SetBalanceAfter(nu.Balance).
+			SetCodeHint(redeemutil.CodeHint(rc.Code)).
+			Save(ctx); err != nil {
 			_ = tx.Rollback()
 			httpx.ServerError(c, "兑换失败")
 			return
@@ -712,7 +844,6 @@ func Redeem(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "兑换失败")
 			return
 		}
-		nu, _ := client.User.Get(ctx, u.ID)
 		httpx.OKMsg(c, "兑换成功", gin.H{"amount_added": add, "new_balance": nu.Balance})
 	}
 }

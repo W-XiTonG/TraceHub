@@ -74,13 +74,15 @@ type UserEdges struct {
 	RedeemedCodes []*RedeemCode `json:"redeemed_codes,omitempty"`
 	// CreatedRedeemCodes holds the value of the created_redeem_codes edge.
 	CreatedRedeemCodes []*RedeemCode `json:"created_redeem_codes,omitempty"`
+	// RedeemLedgers holds the value of the redeem_ledgers edge.
+	RedeemLedgers []*RedeemLedger `json:"redeem_ledgers,omitempty"`
 	// AdminAuditLogs holds the value of the admin_audit_logs edge.
 	AdminAuditLogs []*AdminAuditLog `json:"admin_audit_logs,omitempty"`
 	// CreatedAnnouncements holds the value of the created_announcements edge.
 	CreatedAnnouncements []*Announcement `json:"created_announcements,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [8]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -130,10 +132,19 @@ func (e UserEdges) CreatedRedeemCodesOrErr() ([]*RedeemCode, error) {
 	return nil, &NotLoadedError{edge: "created_redeem_codes"}
 }
 
+// RedeemLedgersOrErr returns the RedeemLedgers value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) RedeemLedgersOrErr() ([]*RedeemLedger, error) {
+	if e.loadedTypes[5] {
+		return e.RedeemLedgers, nil
+	}
+	return nil, &NotLoadedError{edge: "redeem_ledgers"}
+}
+
 // AdminAuditLogsOrErr returns the AdminAuditLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) AdminAuditLogsOrErr() ([]*AdminAuditLog, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.AdminAuditLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "admin_audit_logs"}
@@ -142,7 +153,7 @@ func (e UserEdges) AdminAuditLogsOrErr() ([]*AdminAuditLog, error) {
 // CreatedAnnouncementsOrErr returns the CreatedAnnouncements value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) CreatedAnnouncementsOrErr() ([]*Announcement, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.CreatedAnnouncements, nil
 	}
 	return nil, &NotLoadedError{edge: "created_announcements"}
@@ -334,6 +345,11 @@ func (_m *User) QueryRedeemedCodes() *RedeemCodeQuery {
 // QueryCreatedRedeemCodes queries the "created_redeem_codes" edge of the User entity.
 func (_m *User) QueryCreatedRedeemCodes() *RedeemCodeQuery {
 	return NewUserClient(_m.config).QueryCreatedRedeemCodes(_m)
+}
+
+// QueryRedeemLedgers queries the "redeem_ledgers" edge of the User entity.
+func (_m *User) QueryRedeemLedgers() *RedeemLedgerQuery {
+	return NewUserClient(_m.config).QueryRedeemLedgers(_m)
 }
 
 // QueryAdminAuditLogs queries the "admin_audit_logs" edge of the User entity.

@@ -32,6 +32,8 @@ type Tx struct {
 	ModelCatalogSource *ModelCatalogSourceClient
 	// RedeemCode is the client for interacting with the RedeemCode builders.
 	RedeemCode *RedeemCodeClient
+	// RedeemLedger is the client for interacting with the RedeemLedger builders.
+	RedeemLedger *RedeemLedgerClient
 	// SystemConfig is the client for interacting with the SystemConfig builders.
 	SystemConfig *SystemConfigClient
 	// UsageLog is the client for interacting with the UsageLog builders.
@@ -179,6 +181,7 @@ func (tx *Tx) init() {
 	tx.ModelCatalogEntry = NewModelCatalogEntryClient(tx.config)
 	tx.ModelCatalogSource = NewModelCatalogSourceClient(tx.config)
 	tx.RedeemCode = NewRedeemCodeClient(tx.config)
+	tx.RedeemLedger = NewRedeemLedgerClient(tx.config)
 	tx.SystemConfig = NewSystemConfigClient(tx.config)
 	tx.UsageLog = NewUsageLogClient(tx.config)
 	tx.User = NewUserClient(tx.config)

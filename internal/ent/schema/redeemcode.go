@@ -43,6 +43,7 @@ func (RedeemCode) Edges() []ent.Edge {
 			Ref("created_redeem_codes").
 			Field("created_by").
 			Unique(),
+		edge.To("redeem_ledgers", RedeemLedger.Type),
 	}
 }
 

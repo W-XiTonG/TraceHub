@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/user"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -253,6 +254,21 @@ func (_c *RedeemCodeCreate) SetCreator(v *User) *RedeemCodeCreate {
 	return _c.SetCreatorID(v.ID)
 }
 
+// AddRedeemLedgerIDs adds the "redeem_ledgers" edge to the RedeemLedger entity by IDs.
+func (_c *RedeemCodeCreate) AddRedeemLedgerIDs(ids ...int) *RedeemCodeCreate {
+	_c.mutation.AddRedeemLedgerIDs(ids...)
+	return _c
+}
+
+// AddRedeemLedgers adds the "redeem_ledgers" edges to the RedeemLedger entity.
+func (_c *RedeemCodeCreate) AddRedeemLedgers(v ...*RedeemLedger) *RedeemCodeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddRedeemLedgerIDs(ids...)
+}
+
 // Mutation returns the RedeemCodeMutation object of the builder.
 func (_c *RedeemCodeCreate) Mutation() *RedeemCodeMutation {
 	return _c.mutation
@@ -474,6 +490,22 @@ func (_c *RedeemCodeCreate) createSpec() (*RedeemCode, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.CreatedBy = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RedeemLedgersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

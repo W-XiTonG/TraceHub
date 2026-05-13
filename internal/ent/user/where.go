@@ -1065,6 +1065,29 @@ func HasCreatedRedeemCodesWith(preds ...predicate.RedeemCode) predicate.User {
 	})
 }
 
+// HasRedeemLedgers applies the HasEdge predicate on the "redeem_ledgers" edge.
+func HasRedeemLedgers() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RedeemLedgersTable, RedeemLedgersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRedeemLedgersWith applies the HasEdge predicate on the "redeem_ledgers" edge with a given conditions (other predicates).
+func HasRedeemLedgersWith(preds ...predicate.RedeemLedger) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newRedeemLedgersStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasAdminAuditLogs applies the HasEdge predicate on the "admin_audit_logs" edge.
 func HasAdminAuditLogs() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

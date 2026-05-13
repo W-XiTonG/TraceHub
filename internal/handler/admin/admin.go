@@ -98,16 +98,16 @@ func ListUsers(client *ent.Client) gin.HandlerFunc {
 				gn = u.Edges.Group.Name
 			}
 			items = append(items, gin.H{
-				"id":              u.ID,
-				"email":           u.Email,
-				"username":        u.Username,
-				"role":            u.Role,
-				"group_name":      gn,
-				"balance":         u.Balance,
-				"status":          u.Status,
-				"total_requests":  reqCounts[u.ID],
-				"created_at":      u.CreatedAt,
-				"last_login_at":   u.LastLoginAt,
+				"id":             u.ID,
+				"email":          u.Email,
+				"username":       u.Username,
+				"role":           u.Role,
+				"group_name":     gn,
+				"balance":        u.Balance,
+				"status":         u.Status,
+				"total_requests": reqCounts[u.ID],
+				"created_at":     u.CreatedAt,
+				"last_login_at":  u.LastLoginAt,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
@@ -128,21 +128,21 @@ func UpdateUser(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		var req struct {
-			Status          *int       `json:"status"`
-			GroupID         *int       `json:"group_id"`
-			NoGroup         *bool      `json:"no_group"`
-			RateMultiplier  *float64   `json:"rate_multiplier"`
-			BalanceAlert    *int64     `json:"balance_alert_threshold"`
-			IPWhitelist     *[]string  `json:"ip_whitelist"`
-			IPBlacklist     *[]string  `json:"ip_blacklist"`
-			Email           *string    `json:"email"`
-			Username        *string    `json:"username"`
-			NewPassword     *string    `json:"new_password"`
-			ClearTotp       *bool      `json:"clear_totp"`
-			Balance         *int64     `json:"balance"`
-			Role            *string    `json:"role"`
-			Concurrency     *int       `json:"concurrency"`
-			WebhookURL      *string    `json:"webhook_url"`
+			Status         *int      `json:"status"`
+			GroupID        *int      `json:"group_id"`
+			NoGroup        *bool     `json:"no_group"`
+			RateMultiplier *float64  `json:"rate_multiplier"`
+			BalanceAlert   *int64    `json:"balance_alert_threshold"`
+			IPWhitelist    *[]string `json:"ip_whitelist"`
+			IPBlacklist    *[]string `json:"ip_blacklist"`
+			Email          *string   `json:"email"`
+			Username       *string   `json:"username"`
+			NewPassword    *string   `json:"new_password"`
+			ClearTotp      *bool     `json:"clear_totp"`
+			Balance        *int64    `json:"balance"`
+			Role           *string   `json:"role"`
+			Concurrency    *int      `json:"concurrency"`
+			WebhookURL     *string   `json:"webhook_url"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -384,21 +384,21 @@ func CreateChannel(d ChannelDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			GroupID       int               `json:"group_id"`
-			ChannelType   string            `json:"channel_type"`
-			ChannelName   string            `json:"channel_name"`
-			AuthType      channel.AuthType  `json:"auth_type"`
-			APIKey        string            `json:"api_key"`
-			OauthToken    string            `json:"oauth_token"`
-			OauthRefresh  string            `json:"oauth_refresh_token"`
-			SetupToken    string            `json:"setup_token"`
-			APIBaseURL    string            `json:"api_base_url"`
-			Models        []string          `json:"models"`
-			ModelAlias    map[string]string `json:"model_alias"`
-			Priority      int               `json:"priority"`
-			Weight        int               `json:"weight"`
-			Concurrency   int               `json:"concurrency"`
-			Enabled       bool              `json:"enabled"`
+			GroupID      int               `json:"group_id"`
+			ChannelType  string            `json:"channel_type"`
+			ChannelName  string            `json:"channel_name"`
+			AuthType     channel.AuthType  `json:"auth_type"`
+			APIKey       string            `json:"api_key"`
+			OauthToken   string            `json:"oauth_token"`
+			OauthRefresh string            `json:"oauth_refresh_token"`
+			SetupToken   string            `json:"setup_token"`
+			APIBaseURL   string            `json:"api_base_url"`
+			Models       []string          `json:"models"`
+			ModelAlias   map[string]string `json:"model_alias"`
+			Priority     int               `json:"priority"`
+			Weight       int               `json:"weight"`
+			Concurrency  int               `json:"concurrency"`
+			Enabled      bool              `json:"enabled"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.ChannelType == "" || req.GroupID == 0 {
 			httpx.BadRequest(c, "参数无效")
@@ -573,13 +573,13 @@ func CreateGroup(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			Name            string             `json:"name"`
-			Description     string             `json:"description"`
-			RateMultiplier  float64            `json:"rate_multiplier"`
-			RPMLimit        int                `json:"rpm_limit"`
-			ModelRouting    map[string][]int64 `json:"model_routing"`
-			DefaultModel    string             `json:"default_model"`
-			Enabled         bool               `json:"enabled"`
+			Name           string             `json:"name"`
+			Description    string             `json:"description"`
+			RateMultiplier float64            `json:"rate_multiplier"`
+			RPMLimit       int                `json:"rpm_limit"`
+			ModelRouting   map[string][]int64 `json:"model_routing"`
+			DefaultModel   string             `json:"default_model"`
+			Enabled        bool               `json:"enabled"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 			httpx.BadRequest(c, "参数无效")
@@ -616,10 +616,10 @@ func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
 		}
 		var req struct {
 			Rates []struct {
-				ModelName string  `json:"model_name"`
-				InputRate float64 `json:"input_rate"`
+				ModelName  string  `json:"model_name"`
+				InputRate  float64 `json:"input_rate"`
 				OutputRate float64 `json:"output_rate"`
-				Enabled   bool    `json:"enabled"`
+				Enabled    bool    `json:"enabled"`
 			} `json:"rates"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -711,30 +711,55 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 }
 
 func BatchRedeemCodes(client *ent.Client) gin.HandlerFunc {
+	const (
+		maxRedeemCodeAmount int64 = 100_000_000_000_000 // 单码面额上限（内部额度单位）
+		maxRedeemUses             = 10_000_000
+		maxRedeemPrefixLen        = 64
+	)
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			Count      int    `json:"count"`
-			CodeType   string `json:"code_type"`
-			Amount     int64  `json:"amount"`
-			MaxUses    int    `json:"max_uses"`
-			ValidDays  int    `json:"valid_days"`
-			Prefix     string `json:"prefix"`
+			Count     int    `json:"count"`
+			CodeType  string `json:"code_type"`
+			Amount    int64  `json:"amount"`
+			MaxUses   int    `json:"max_uses"`
+			ValidDays int    `json:"valid_days"`
+			Prefix    string `json:"prefix"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.Count < 1 || req.Count > 500 {
 			httpx.BadRequest(c, "count 须在 1~500")
 			return
 		}
+		if req.Amount <= 0 || req.Amount > maxRedeemCodeAmount {
+			httpx.BadRequest(c, "amount 须为正数且不超过单码上限")
+			return
+		}
+		if req.ValidDays < 0 {
+			httpx.BadRequest(c, "valid_days 不能为负")
+			return
+		}
 		if req.CodeType == "" {
 			req.CodeType = "fixed"
+		}
+		if req.CodeType != "fixed" {
+			httpx.BadRequest(c, "code_type 当前仅支持 fixed")
+			return
 		}
 		if req.MaxUses < 1 {
 			req.MaxUses = 1
 		}
+		if req.MaxUses > maxRedeemUses {
+			httpx.BadRequest(c, "max_uses 超出上限")
+			return
+		}
+		pfx := strings.TrimSpace(req.Prefix)
+		if len(pfx) > maxRedeemPrefixLen {
+			httpx.BadRequest(c, "prefix 过长")
+			return
+		}
 		ctx := c.Request.Context()
 		var codes []string
 		until := time.Now().Add(time.Duration(req.ValidDays) * 24 * time.Hour)
-		pfx := strings.TrimSpace(req.Prefix)
 		if pfx == "" {
 			pfx = "TH-"
 		}
@@ -758,7 +783,12 @@ func BatchRedeemCodes(client *ent.Client) gin.HandlerFunc {
 			}
 			codes = append(codes, code)
 		}
-		auditLog(client, adm.ID, "redeem.batch", "redeem", "", map[string]any{"count": len(codes)}, c)
+		auditLog(client, adm.ID, "redeem.batch", "redeem", "", map[string]any{
+			"count":      len(codes),
+			"amount":     req.Amount,
+			"max_uses":   req.MaxUses,
+			"valid_days": req.ValidDays,
+		}, c)
 		httpx.OK(c, gin.H{"codes": codes})
 	}
 }
@@ -854,23 +884,23 @@ func DashboardSummary(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		}
 
 		httpx.OK(c, gin.H{
-			"total_users":              users,
-			"enabled_channels":         channels,
-			"today_requests":           todayReq,
-			"today_tokens":             todayTok,
-			"today_cost_quota":         todayCost,
-			"today_cost_yuan":          quotaToYuan(todayCost),
-			"currency_quota_per_yuan":  unit,
+			"total_users":             users,
+			"enabled_channels":        channels,
+			"today_requests":          todayReq,
+			"today_tokens":            todayTok,
+			"today_cost_quota":        todayCost,
+			"today_cost_yuan":         quotaToYuan(todayCost),
+			"currency_quota_per_yuan": unit,
 
-			"yesterday_requests":    yReq,
-			"yesterday_tokens":      yTok,
-			"yesterday_cost_quota":  yCost,
-			"yesterday_cost_yuan":   quotaToYuan(yCost),
+			"yesterday_requests":   yReq,
+			"yesterday_tokens":     yTok,
+			"yesterday_cost_quota": yCost,
+			"yesterday_cost_yuan":  quotaToYuan(yCost),
 
-			"last_7d_requests":    d7Req,
-			"last_7d_tokens":      d7Tok,
-			"last_7d_cost_quota":  d7Cost,
-			"last_7d_cost_yuan":   quotaToYuan(d7Cost),
+			"last_7d_requests":   d7Req,
+			"last_7d_tokens":     d7Tok,
+			"last_7d_cost_quota": d7Cost,
+			"last_7d_cost_yuan":  quotaToYuan(d7Cost),
 
 			"vs_yesterday_requests_pct": pctVsYesterday(todayReq, yReq),
 			"vs_yesterday_tokens_pct":   pctVsYesterday(todayTok, yTok),

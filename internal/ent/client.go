@@ -21,6 +21,7 @@ import (
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
@@ -56,6 +57,8 @@ type Client struct {
 	ModelCatalogSource *ModelCatalogSourceClient
 	// RedeemCode is the client for interacting with the RedeemCode builders.
 	RedeemCode *RedeemCodeClient
+	// RedeemLedger is the client for interacting with the RedeemLedger builders.
+	RedeemLedger *RedeemLedgerClient
 	// SystemConfig is the client for interacting with the SystemConfig builders.
 	SystemConfig *SystemConfigClient
 	// UsageLog is the client for interacting with the UsageLog builders.
@@ -83,6 +86,7 @@ func (c *Client) init() {
 	c.ModelCatalogEntry = NewModelCatalogEntryClient(c.config)
 	c.ModelCatalogSource = NewModelCatalogSourceClient(c.config)
 	c.RedeemCode = NewRedeemCodeClient(c.config)
+	c.RedeemLedger = NewRedeemLedgerClient(c.config)
 	c.SystemConfig = NewSystemConfigClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -188,6 +192,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
 		ModelCatalogSource:   NewModelCatalogSourceClient(cfg),
 		RedeemCode:           NewRedeemCodeClient(cfg),
+		RedeemLedger:         NewRedeemLedgerClient(cfg),
 		SystemConfig:         NewSystemConfigClient(cfg),
 		UsageLog:             NewUsageLogClient(cfg),
 		User:                 NewUserClient(cfg),
@@ -220,6 +225,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
 		ModelCatalogSource:   NewModelCatalogSourceClient(cfg),
 		RedeemCode:           NewRedeemCodeClient(cfg),
+		RedeemLedger:         NewRedeemLedgerClient(cfg),
 		SystemConfig:         NewSystemConfigClient(cfg),
 		UsageLog:             NewUsageLogClient(cfg),
 		User:                 NewUserClient(cfg),
@@ -254,7 +260,7 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.DashboardAggregation,
 		c.Group, c.GroupModelRate, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.RedeemCode, c.SystemConfig, c.UsageLog, c.User,
+		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -266,7 +272,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.DashboardAggregation,
 		c.Group, c.GroupModelRate, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.RedeemCode, c.SystemConfig, c.UsageLog, c.User,
+		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -295,6 +301,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ModelCatalogSource.mutate(ctx, m)
 	case *RedeemCodeMutation:
 		return c.RedeemCode.mutate(ctx, m)
+	case *RedeemLedgerMutation:
+		return c.RedeemLedger.mutate(ctx, m)
 	case *SystemConfigMutation:
 		return c.SystemConfig.mutate(ctx, m)
 	case *UsageLogMutation:
@@ -1899,6 +1907,22 @@ func (c *RedeemCodeClient) QueryCreator(_m *RedeemCode) *UserQuery {
 	return query
 }
 
+// QueryRedeemLedgers queries the redeem_ledgers edge of a RedeemCode.
+func (c *RedeemCodeClient) QueryRedeemLedgers(_m *RedeemCode) *RedeemLedgerQuery {
+	query := (&RedeemLedgerClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(redeemcode.Table, redeemcode.FieldID, id),
+			sqlgraph.To(redeemledger.Table, redeemledger.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, redeemcode.RedeemLedgersTable, redeemcode.RedeemLedgersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RedeemCodeClient) Hooks() []Hook {
 	return c.hooks.RedeemCode
@@ -1921,6 +1945,171 @@ func (c *RedeemCodeClient) mutate(ctx context.Context, m *RedeemCodeMutation) (V
 		return (&RedeemCodeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown RedeemCode mutation op: %q", m.Op())
+	}
+}
+
+// RedeemLedgerClient is a client for the RedeemLedger schema.
+type RedeemLedgerClient struct {
+	config
+}
+
+// NewRedeemLedgerClient returns a client for the RedeemLedger from the given config.
+func NewRedeemLedgerClient(c config) *RedeemLedgerClient {
+	return &RedeemLedgerClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `redeemledger.Hooks(f(g(h())))`.
+func (c *RedeemLedgerClient) Use(hooks ...Hook) {
+	c.hooks.RedeemLedger = append(c.hooks.RedeemLedger, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `redeemledger.Intercept(f(g(h())))`.
+func (c *RedeemLedgerClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RedeemLedger = append(c.inters.RedeemLedger, interceptors...)
+}
+
+// Create returns a builder for creating a RedeemLedger entity.
+func (c *RedeemLedgerClient) Create() *RedeemLedgerCreate {
+	mutation := newRedeemLedgerMutation(c.config, OpCreate)
+	return &RedeemLedgerCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RedeemLedger entities.
+func (c *RedeemLedgerClient) CreateBulk(builders ...*RedeemLedgerCreate) *RedeemLedgerCreateBulk {
+	return &RedeemLedgerCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RedeemLedgerClient) MapCreateBulk(slice any, setFunc func(*RedeemLedgerCreate, int)) *RedeemLedgerCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RedeemLedgerCreateBulk{err: fmt.Errorf("calling to RedeemLedgerClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RedeemLedgerCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RedeemLedgerCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RedeemLedger.
+func (c *RedeemLedgerClient) Update() *RedeemLedgerUpdate {
+	mutation := newRedeemLedgerMutation(c.config, OpUpdate)
+	return &RedeemLedgerUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RedeemLedgerClient) UpdateOne(_m *RedeemLedger) *RedeemLedgerUpdateOne {
+	mutation := newRedeemLedgerMutation(c.config, OpUpdateOne, withRedeemLedger(_m))
+	return &RedeemLedgerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RedeemLedgerClient) UpdateOneID(id int) *RedeemLedgerUpdateOne {
+	mutation := newRedeemLedgerMutation(c.config, OpUpdateOne, withRedeemLedgerID(id))
+	return &RedeemLedgerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RedeemLedger.
+func (c *RedeemLedgerClient) Delete() *RedeemLedgerDelete {
+	mutation := newRedeemLedgerMutation(c.config, OpDelete)
+	return &RedeemLedgerDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RedeemLedgerClient) DeleteOne(_m *RedeemLedger) *RedeemLedgerDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RedeemLedgerClient) DeleteOneID(id int) *RedeemLedgerDeleteOne {
+	builder := c.Delete().Where(redeemledger.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RedeemLedgerDeleteOne{builder}
+}
+
+// Query returns a query builder for RedeemLedger.
+func (c *RedeemLedgerClient) Query() *RedeemLedgerQuery {
+	return &RedeemLedgerQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRedeemLedger},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RedeemLedger entity by its id.
+func (c *RedeemLedgerClient) Get(ctx context.Context, id int) (*RedeemLedger, error) {
+	return c.Query().Where(redeemledger.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RedeemLedgerClient) GetX(ctx context.Context, id int) *RedeemLedger {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a RedeemLedger.
+func (c *RedeemLedgerClient) QueryUser(_m *RedeemLedger) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(redeemledger.Table, redeemledger.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, redeemledger.UserTable, redeemledger.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRedeemCode queries the redeem_code edge of a RedeemLedger.
+func (c *RedeemLedgerClient) QueryRedeemCode(_m *RedeemLedger) *RedeemCodeQuery {
+	query := (&RedeemCodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(redeemledger.Table, redeemledger.FieldID, id),
+			sqlgraph.To(redeemcode.Table, redeemcode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, redeemledger.RedeemCodeTable, redeemledger.RedeemCodeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RedeemLedgerClient) Hooks() []Hook {
+	return c.hooks.RedeemLedger
+}
+
+// Interceptors returns the client interceptors.
+func (c *RedeemLedgerClient) Interceptors() []Interceptor {
+	return c.inters.RedeemLedger
+}
+
+func (c *RedeemLedgerClient) mutate(ctx context.Context, m *RedeemLedgerMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RedeemLedgerCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RedeemLedgerUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RedeemLedgerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RedeemLedgerDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RedeemLedger mutation op: %q", m.Op())
 	}
 }
 
@@ -2426,6 +2615,22 @@ func (c *UserClient) QueryCreatedRedeemCodes(_m *User) *RedeemCodeQuery {
 	return query
 }
 
+// QueryRedeemLedgers queries the redeem_ledgers edge of a User.
+func (c *UserClient) QueryRedeemLedgers(_m *User) *RedeemLedgerQuery {
+	query := (&RedeemLedgerClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(redeemledger.Table, redeemledger.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.RedeemLedgersTable, user.RedeemLedgersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAdminAuditLogs queries the admin_audit_logs edge of a User.
 func (c *UserClient) QueryAdminAuditLogs(_m *User) *AdminAuditLogQuery {
 	query := (&AdminAuditLogClient{config: c.config}).Query()
@@ -2488,11 +2693,11 @@ type (
 	hooks struct {
 		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Group,
 		GroupModelRate, ModelCatalogEntry, ModelCatalogSource, RedeemCode,
-		SystemConfig, UsageLog, User []ent.Hook
+		RedeemLedger, SystemConfig, UsageLog, User []ent.Hook
 	}
 	inters struct {
 		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Group,
 		GroupModelRate, ModelCatalogEntry, ModelCatalogSource, RedeemCode,
-		SystemConfig, UsageLog, User []ent.Interceptor
+		RedeemLedger, SystemConfig, UsageLog, User []ent.Interceptor
 	}
 )

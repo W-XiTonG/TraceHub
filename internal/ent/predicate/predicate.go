@@ -36,6 +36,9 @@ type ModelCatalogSource func(*sql.Selector)
 // RedeemCode is the predicate function for redeemcode builders.
 type RedeemCode func(*sql.Selector)
 
+// RedeemLedger is the predicate function for redeemledger builders.
+type RedeemLedger func(*sql.Selector)
+
 // SystemConfig is the predicate function for systemconfig builders.
 type SystemConfig func(*sql.Selector)
 

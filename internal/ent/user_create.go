@@ -12,6 +12,7 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/pkg/alertconfig"
@@ -318,6 +319,21 @@ func (_c *UserCreate) AddCreatedRedeemCodes(v ...*RedeemCode) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddCreatedRedeemCodeIDs(ids...)
+}
+
+// AddRedeemLedgerIDs adds the "redeem_ledgers" edge to the RedeemLedger entity by IDs.
+func (_c *UserCreate) AddRedeemLedgerIDs(ids ...int) *UserCreate {
+	_c.mutation.AddRedeemLedgerIDs(ids...)
+	return _c
+}
+
+// AddRedeemLedgers adds the "redeem_ledgers" edges to the RedeemLedger entity.
+func (_c *UserCreate) AddRedeemLedgers(v ...*RedeemLedger) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddRedeemLedgerIDs(ids...)
 }
 
 // AddAdminAuditLogIDs adds the "admin_audit_logs" edge to the AdminAuditLog entity by IDs.
@@ -646,6 +662,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(redeemcode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RedeemLedgersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.RedeemLedgersTable,
+			Columns: []string{user.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

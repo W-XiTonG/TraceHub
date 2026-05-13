@@ -166,6 +166,10 @@
   --th-admin-flash-error-border: rgba(248, 113, 113, 0.28);
   --th-admin-flash-error-bg: rgba(127, 29, 29, 0.38);
   --th-admin-flash-error-fg: #fecaca;
+  /* 兑换页：额度数字与成功卡片（浅色 dawn/paper 在 themes-light.css 覆写） */
+  --th-redeem-quota-fg: #a7f3d0;
+  --th-redeem-result-border: rgba(52, 211, 153, 0.22);
+  --th-redeem-result-bg: rgba(6, 78, 59, 0.28);
 }
 
 @layer base {
@@ -244,6 +248,20 @@
   border-color: var(--th-admin-flash-error-border);
   background-color: var(--th-admin-flash-error-bg);
   color: var(--th-admin-flash-error-fg);
+}
+
+/* 兑换页：成功卡片与额度数字（变量由 themes-light 在 dawn/paper 下覆写） */
+.th-redeem-result {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--th-redeem-result-border);
+  background-color: var(--th-redeem-result-bg);
+}
+.th-redeem-quota-fg {
+  color: var(--th-redeem-quota-fg);
+}
+.th-redeem-result__label {
+  color: var(--th-text-muted);
 }
 
 /* 页面背景：极弱环境光 + 底向深的纵向渐变；子层叠在纹理之上 */

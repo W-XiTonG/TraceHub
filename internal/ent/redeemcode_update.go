@@ -9,6 +9,7 @@ import (
 	"time"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
+	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/user"
 
 	"entgo.io/ent/dialect/sql"
@@ -327,6 +328,21 @@ func (_u *RedeemCodeUpdate) SetCreator(v *User) *RedeemCodeUpdate {
 	return _u.SetCreatorID(v.ID)
 }
 
+// AddRedeemLedgerIDs adds the "redeem_ledgers" edge to the RedeemLedger entity by IDs.
+func (_u *RedeemCodeUpdate) AddRedeemLedgerIDs(ids ...int) *RedeemCodeUpdate {
+	_u.mutation.AddRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// AddRedeemLedgers adds the "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *RedeemCodeUpdate) AddRedeemLedgers(v ...*RedeemLedger) *RedeemCodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRedeemLedgerIDs(ids...)
+}
+
 // Mutation returns the RedeemCodeMutation object of the builder.
 func (_u *RedeemCodeUpdate) Mutation() *RedeemCodeMutation {
 	return _u.mutation
@@ -342,6 +358,27 @@ func (_u *RedeemCodeUpdate) ClearUsedByUser() *RedeemCodeUpdate {
 func (_u *RedeemCodeUpdate) ClearCreator() *RedeemCodeUpdate {
 	_u.mutation.ClearCreator()
 	return _u
+}
+
+// ClearRedeemLedgers clears all "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *RedeemCodeUpdate) ClearRedeemLedgers() *RedeemCodeUpdate {
+	_u.mutation.ClearRedeemLedgers()
+	return _u
+}
+
+// RemoveRedeemLedgerIDs removes the "redeem_ledgers" edge to RedeemLedger entities by IDs.
+func (_u *RedeemCodeUpdate) RemoveRedeemLedgerIDs(ids ...int) *RedeemCodeUpdate {
+	_u.mutation.RemoveRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// RemoveRedeemLedgers removes "redeem_ledgers" edges to RedeemLedger entities.
+func (_u *RedeemCodeUpdate) RemoveRedeemLedgers(v ...*RedeemLedger) *RedeemCodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRedeemLedgerIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -521,6 +558,51 @@ func (_u *RedeemCodeUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRedeemLedgersIDs(); len(nodes) > 0 && !_u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RedeemLedgersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -846,6 +928,21 @@ func (_u *RedeemCodeUpdateOne) SetCreator(v *User) *RedeemCodeUpdateOne {
 	return _u.SetCreatorID(v.ID)
 }
 
+// AddRedeemLedgerIDs adds the "redeem_ledgers" edge to the RedeemLedger entity by IDs.
+func (_u *RedeemCodeUpdateOne) AddRedeemLedgerIDs(ids ...int) *RedeemCodeUpdateOne {
+	_u.mutation.AddRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// AddRedeemLedgers adds the "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *RedeemCodeUpdateOne) AddRedeemLedgers(v ...*RedeemLedger) *RedeemCodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRedeemLedgerIDs(ids...)
+}
+
 // Mutation returns the RedeemCodeMutation object of the builder.
 func (_u *RedeemCodeUpdateOne) Mutation() *RedeemCodeMutation {
 	return _u.mutation
@@ -861,6 +958,27 @@ func (_u *RedeemCodeUpdateOne) ClearUsedByUser() *RedeemCodeUpdateOne {
 func (_u *RedeemCodeUpdateOne) ClearCreator() *RedeemCodeUpdateOne {
 	_u.mutation.ClearCreator()
 	return _u
+}
+
+// ClearRedeemLedgers clears all "redeem_ledgers" edges to the RedeemLedger entity.
+func (_u *RedeemCodeUpdateOne) ClearRedeemLedgers() *RedeemCodeUpdateOne {
+	_u.mutation.ClearRedeemLedgers()
+	return _u
+}
+
+// RemoveRedeemLedgerIDs removes the "redeem_ledgers" edge to RedeemLedger entities by IDs.
+func (_u *RedeemCodeUpdateOne) RemoveRedeemLedgerIDs(ids ...int) *RedeemCodeUpdateOne {
+	_u.mutation.RemoveRedeemLedgerIDs(ids...)
+	return _u
+}
+
+// RemoveRedeemLedgers removes "redeem_ledgers" edges to RedeemLedger entities.
+func (_u *RedeemCodeUpdateOne) RemoveRedeemLedgers(v ...*RedeemLedger) *RedeemCodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRedeemLedgerIDs(ids...)
 }
 
 // Where appends a list predicates to the RedeemCodeUpdate builder.
@@ -1070,6 +1188,51 @@ func (_u *RedeemCodeUpdateOne) sqlSave(ctx context.Context) (_node *RedeemCode, 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRedeemLedgersIDs(); len(nodes) > 0 && !_u.mutation.RedeemLedgersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RedeemLedgersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   redeemcode.RedeemLedgersTable,
+			Columns: []string{redeemcode.RedeemLedgersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(redeemledger.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

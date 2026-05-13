@@ -836,6 +836,29 @@ func HasCreatorWith(preds ...predicate.User) predicate.RedeemCode {
 	})
 }
 
+// HasRedeemLedgers applies the HasEdge predicate on the "redeem_ledgers" edge.
+func HasRedeemLedgers() predicate.RedeemCode {
+	return predicate.RedeemCode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RedeemLedgersTable, RedeemLedgersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRedeemLedgersWith applies the HasEdge predicate on the "redeem_ledgers" edge with a given conditions (other predicates).
+func HasRedeemLedgersWith(preds ...predicate.RedeemLedger) predicate.RedeemCode {
+	return predicate.RedeemCode(func(s *sql.Selector) {
+		step := newRedeemLedgersStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.RedeemCode) predicate.RedeemCode {
 	return predicate.RedeemCode(sql.AndPredicates(predicates...))
