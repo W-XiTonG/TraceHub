@@ -272,6 +272,18 @@
   color: var(--th-admin-flash-error-fg);
 }
 
+/* 用户控制台 · 概览「服务可用性」探测结果：与后台成功条共用 --th-admin-flash-*（浅色下深字+浅底，见 themes-light.css） */
+.th-dash-health-probe--ok {
+  border-color: var(--th-admin-flash-success-border);
+  background-color: var(--th-admin-flash-success-bg);
+  color: var(--th-admin-flash-success-fg);
+}
+.th-dash-health-probe--fail {
+  border-color: var(--th-admin-flash-error-border);
+  background-color: var(--th-admin-flash-error-bg);
+  color: var(--th-admin-flash-error-fg);
+}
+
 /* 兑换页：成功卡片与额度数字（变量由 themes-light 在 dawn/paper 下覆写） */
 .th-redeem-result {
   border-width: 1px;

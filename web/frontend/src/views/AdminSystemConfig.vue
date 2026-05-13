@@ -32,6 +32,7 @@ type SiteSettings = {
   default_new_user_balance_file?: number
   default_new_user_balance_db_set?: boolean
   default_new_user_balance_db_value?: string
+  api_public_base_url?: string
 }
 
 const form = reactive({
@@ -40,6 +41,7 @@ const form = reactive({
   loginCaptcha: false,
   operatorDisplayName: '',
   defaultNewUserBalance: 0,
+  apiPublicBaseUrl: '',
 })
 
 const busy = ref(true)
@@ -106,6 +108,7 @@ function applyPayload(d: SiteSettings) {
   form.defaultNewUserBalance = pickInt64ish(d.default_new_user_balance)
   defaultNewUserBalanceYaml.value = pickInt64ish(d.default_new_user_balance_file)
   defaultNewUserBalanceDbOverride.value = Boolean(d.default_new_user_balance_db_set)
+  form.apiPublicBaseUrl = typeof d.api_public_base_url === 'string' ? d.api_public_base_url : ''
 }
 
 async function load() {
@@ -250,6 +253,11 @@ async function save() {
       key: 'site.default_new_user_balance',
       value: String(Math.max(0, Math.trunc(Number(form.defaultNewUserBalance)) || 0)),
       description: t('adminSystem.descDefaultNewUserBalance'),
+    },
+    {
+      key: 'site.api.public_base_url',
+      value: form.apiPublicBaseUrl.trim(),
+      description: t('adminSystem.descApiPublicBaseUrl'),
     },
   ]
   try {
@@ -397,6 +405,24 @@ onMounted(() => void refresh())
           <p v-if="defaultNewUserBalanceDbOverride" class="mt-1 text-[11px] leading-relaxed text-amber-100/80">
             {{ t('adminSystem.hintDefaultNewUserDb') }}
           </p>
+        </div>
+      </section>
+
+      <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secApiPublic') }}</h2>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secApiPublicHint') }}</p>
+        <div class="mt-4 max-w-xl">
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+            t('adminSystem.lblApiPublicBaseUrl')
+          }}</label>
+          <input
+            v-model="form.apiPublicBaseUrl"
+            type="url"
+            class="th-input w-full font-mono text-sm"
+            autocomplete="off"
+            placeholder="https://api.example.com"
+          />
+          <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintApiPublicBaseUrl') }}</p>
         </div>
       </section>
 

@@ -542,6 +542,11 @@ export default {
     hintDefaultNewUserYaml:
       '配置文件中 site.default_new_user_balance 当前为：{n}（未在数据库覆盖时，注册即用该值；有覆盖则以数据库为准）。',
     hintDefaultNewUserDb: '数据库中已存在本项覆盖；下方数字保存后即写入数据库并优先生效。',
+    secApiPublic: '对外 API 地址（OpenAI Base URL）',
+    secApiPublicHint:
+      '留空则控制台「概览」与文档中的示例使用当前浏览器站点 + /v1。若对外网关域名与控制台不同（例如独立 API 子域），请填写 https 根地址（路径可留空或填 /v1）；保存后写入公开站点元数据，前端自动替换文档与概览中的 Base URL 与 cURL 示例。',
+    lblApiPublicBaseUrl: 'API 公网 Base URL',
+    hintApiPublicBaseUrl: '示例：https://api.example.com 或 https://api.example.com/v1（保存时会自动规范为含 /v1 的地址）。',
     secOps: '运维与探测',
     secOpsHint: '写入 /health、/ready 返回的 operator 字段；空则回退到配置文件 site.operator_display_name。',
     lblOperator: '运营方展示名（operator）',
@@ -550,7 +555,7 @@ export default {
     saveFail: '保存失败',
     resetDefaults: '恢复默认',
     resetDefaultsConfirm:
-      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、新用户默认额度、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
+      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、新用户默认额度、对外 API Base URL、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
     resetDefaultsDone: '已清除数据库覆盖项；站点名称与图标已按配置文件及内置默认生效（侧栏等若未变请整页刷新）。',
     resetDefaultsFail: '恢复默认失败',
     descBrandName: '站点对外展示名称',
@@ -558,5 +563,6 @@ export default {
     descLoginCaptcha: '登录图形验证码开关',
     descOperator: '健康检查 operator 展示名',
     descDefaultNewUserBalance: '新用户注册初始余额（额度单位）',
+    descApiPublicBaseUrl: '对外 OpenAI 兼容 Base URL（site.api.public_base_url）',
   },
 } as const

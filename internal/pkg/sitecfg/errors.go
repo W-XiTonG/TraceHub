@@ -14,4 +14,8 @@ var (
 	errDefaultNewUserBalanceEmpty   = errors.New("site.default_new_user_balance 不能为空")
 	errDefaultNewUserBalanceInvalid = errors.New("site.default_new_user_balance 须为非负十进制整数")
 	errDefaultNewUserBalanceRange   = errors.New("site.default_new_user_balance 超出允许范围")
+
+	errAPIPublicBaseURLInvalid = errors.New("site.api.public_base_url 须为 http(s) URL，路径仅可为空或 /v1")
+	errAPIPublicBaseURLPath    = errors.New("site.api.public_base_url 路径仅允许为空或 /v1")
+	errAPIPublicBaseURLTooLong = errors.New("site.api.public_base_url 过长")
 )

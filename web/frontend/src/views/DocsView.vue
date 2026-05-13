@@ -13,6 +13,11 @@ const siteMeta = useSiteMetaStore()
 const activeId = ref('doc-intro')
 const mobileTocOpen = ref(false)
 
+const docsChatCurlURL = computed(() => {
+  const b = siteMeta.effectiveOpenaiApiBase.replace(/\/+$/, '')
+  return `${b}/chat/completions`
+})
+
 const toc = computed(() => [
   { id: 'doc-intro', label: t('docs.tocIntro') },
   { id: 'doc-concepts', label: t('docs.tocConcepts') },
@@ -176,12 +181,12 @@ onUnmounted(() => {
                 <RouterLink to="/login" class="th-link-accent">{{ t('nav.login') }}</RouterLink>
                 {{ t('docs.q3after') }}
               </li>
-              <li>{{ t('docs.q4') }}</li>
+              <li>{{ t('docs.q4', { base: siteMeta.effectiveOpenaiApiBase }) }}</li>
             </ol>
             <p class="docs-callout mt-6">
               <strong class="text-slate-200">{{ t('docs.curlTitle') }}</strong>{{ t('docs.curlHint') }}
             </p>
-            <pre class="docs-pre mt-3">curl -sS "$BASE/v1/chat/completions" \
+            <pre class="docs-pre mt-3">curl -sS "{{ docsChatCurlURL }}" \
   -H "Authorization: Bearer $KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -384,7 +389,7 @@ onUnmounted(() => {
               <dt>{{ t('docs.fq1q') }}</dt>
               <dd>{{ t('docs.fq1a') }}</dd>
               <dt>{{ t('docs.fq2q') }}</dt>
-              <dd>{{ t('docs.fq2a') }}</dd>
+              <dd>{{ t('docs.fq2a', { base: siteMeta.effectiveOpenaiApiBase }) }}</dd>
               <dt>{{ t('docs.fq3q') }}</dt>
               <dd>{{ t('docs.fq3a') }}</dd>
               <dt>{{ t('docs.fq4q') }}</dt>

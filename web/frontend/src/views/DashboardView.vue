@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { http, type Envelope } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t, tm } = useI18n()
@@ -42,8 +43,13 @@ const usage = ref<UsagePayload | null>(null)
 const err = ref('')
 const exportBusy = ref(false)
 const auth = useAuthStore()
+const siteMeta = useSiteMetaStore()
 const announcements = ref<AnnouncementItem[]>([])
 const readyOk = ref<boolean | null>(null)
+const readyProbing = ref(false)
+/** 手动探测结束后的简短反馈，数秒后自动清除 */
+const healthProbeMsg = ref<'ok' | 'fail' | null>(null)
+let healthProbeMsgTimer: ReturnType<typeof setTimeout> | null = null
 const chartTab = ref<'cost_trend' | 'cost_dist' | 'req_dist' | 'req_rank'>('cost_trend')
 const openFaq = ref<number | null>(0)
 
@@ -59,9 +65,11 @@ const costDistTip = ref({ x: 0, y: 0 })
 const reqDistHoverModel = ref<string | null>(null)
 const reqDistTip = ref({ x: 0, y: 0 })
 
-const apiBase = computed(() => {
-  const o = window.location.origin.replace(/\/$/, '')
-  return `${o}/v1`
+const apiBase = computed(() => siteMeta.effectiveOpenaiApiBase)
+
+const consoleDocsHref = computed(() => {
+  if (typeof window === 'undefined') return '/docs'
+  return `${window.location.origin.replace(/\/$/, '')}/docs`
 })
 
 const greeting = computed(() => {
@@ -397,12 +405,34 @@ async function loadAnnouncements() {
   }
 }
 
-async function loadReady() {
+async function loadReady(): Promise<boolean> {
   try {
     const r = await fetch('/ready', { credentials: 'same-origin' })
     readyOk.value = r.ok
+    return r.ok
   } catch {
     readyOk.value = false
+    return false
+  }
+}
+
+async function probeReady() {
+  if (readyProbing.value) return
+  readyProbing.value = true
+  healthProbeMsg.value = null
+  if (healthProbeMsgTimer != null) {
+    clearTimeout(healthProbeMsgTimer)
+    healthProbeMsgTimer = null
+  }
+  try {
+    const ok = await loadReady()
+    healthProbeMsg.value = ok ? 'ok' : 'fail'
+    healthProbeMsgTimer = setTimeout(() => {
+      healthProbeMsg.value = null
+      healthProbeMsgTimer = null
+    }, 3200)
+  } finally {
+    readyProbing.value = false
   }
 }
 
@@ -436,6 +466,13 @@ watch(period, () => {
 })
 
 onMounted(loadAll)
+
+onUnmounted(() => {
+  if (healthProbeMsgTimer != null) {
+    clearTimeout(healthProbeMsgTimer)
+    healthProbeMsgTimer = null
+  }
+})
 </script>
 
 <template>
@@ -687,7 +724,7 @@ onMounted(loadAll)
               <code class="th-dash-code-mono mt-1 block break-all text-xs">{{ apiBase }}</code>
               <div class="mt-2 flex gap-2">
                 <button type="button" class="th-btn-secondary !px-2 !py-1 !text-[11px]" @click="copyText(apiBase)">{{ t('dashboard.copy') }}</button>
-                <a :href="apiBase.replace(/\/v1$/, '') + '/docs'" class="th-btn-secondary !inline-flex !items-center !px-2 !py-1 !text-[11px] no-underline">{{ t('dashboard.openDocs') }}</a>
+                <a :href="consoleDocsHref" class="th-btn-secondary !inline-flex !items-center !px-2 !py-1 !text-[11px] no-underline">{{ t('dashboard.openDocs') }}</a>
               </div>
             </div>
             <p class="mt-auto text-[11px] leading-relaxed text-slate-500">
@@ -696,13 +733,56 @@ onMounted(loadAll)
             </p>
           </div>
         </div>
-        <div class="th-glass shrink-0 rounded-[var(--th-radius-lg)] px-5 pb-4 pt-4">
-          <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.svcHealth') }}</h3>
+        <div
+          class="th-glass shrink-0 rounded-[var(--th-radius-lg)] px-5 pb-4 pt-4 transition-[box-shadow,ring-color] duration-300"
+          :class="readyProbing ? 'ring-1 ring-inset ring-cyan-500/45' : ''"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.svcHealth') }}</h3>
+            <button
+              type="button"
+              class="th-btn-secondary inline-flex shrink-0 items-center gap-1.5 !px-2.5 !py-1 !text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="readyProbing"
+              @click="probeReady"
+            >
+              <svg
+                v-if="readyProbing"
+                class="h-3.5 w-3.5 shrink-0 animate-spin text-cyan-400/90"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path
+                  class="opacity-90"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              {{ readyProbing ? t('dashboard.healthProbing') : t('dashboard.healthProbe') }}
+            </button>
+          </div>
           <div class="mt-2 flex items-center gap-2">
-            <span class="h-2 w-2 rounded-full" :class="readyOk === true ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : readyOk === false ? 'bg-rose-400' : 'bg-slate-500'" />
+            <span
+              class="h-2 w-2 shrink-0 rounded-full transition-transform duration-300"
+              :class="[
+                readyOk === true ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : readyOk === false ? 'bg-rose-400' : 'bg-slate-500',
+                readyProbing ? 'scale-125' : '',
+              ]"
+            />
             <span class="text-sm text-slate-200">{{ readyOk === true ? t('dashboard.healthOk') : readyOk === false ? t('dashboard.healthBad') : t('dashboard.healthCheck') }}</span>
           </div>
           <p class="mt-1.5 text-xs leading-snug text-slate-600">{{ t('dashboard.healthDesc') }}</p>
+          <p
+            v-if="healthProbeMsg"
+            class="mt-2 rounded-md border px-2.5 py-1.5 text-xs font-medium leading-snug"
+            :class="healthProbeMsg === 'ok' ? 'th-dash-health-probe--ok' : 'th-dash-health-probe--fail'"
+            role="status"
+            aria-live="polite"
+          >
+            {{ healthProbeMsg === 'ok' ? t('dashboard.healthProbeOk') : t('dashboard.healthProbeFail') }}
+          </p>
         </div>
       </div>
     </div>

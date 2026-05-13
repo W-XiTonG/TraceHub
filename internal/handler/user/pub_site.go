@@ -15,9 +15,13 @@ func PubSiteMeta(client *ent.Client) gin.HandlerFunc {
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
 		ctx := c.Request.Context()
-		httpx.OK(c, gin.H{
+		out := gin.H{
 			"brand_name":     sitecfg.EffectiveBrandName(ctx, client),
 			"brand_icon_url": sitecfg.EffectiveBrandIconURL(ctx, client),
-		})
+		}
+		if api := sitecfg.EffectiveAPIPublicBaseURL(ctx, client); api != "" {
+			out["api_public_base_url"] = api
+		}
+		httpx.OK(c, out)
 	}
 }

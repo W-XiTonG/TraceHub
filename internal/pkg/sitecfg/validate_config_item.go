@@ -22,6 +22,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateOperatorDisplayName(value)
 	case SystemConfigKeyDefaultNewUserBalance:
 		return ValidateDefaultNewUserBalance(value)
+	case SystemConfigKeyAPIPublicBaseURL:
+		return ValidateAPIPublicBaseURL(value)
 	default:
 		return nil
 	}

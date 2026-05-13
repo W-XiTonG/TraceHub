@@ -548,6 +548,11 @@ export default {
     hintDefaultNewUserYaml:
       'YAML site.default_new_user_balance is currently {n} (used when no DB override; if a DB row exists, that value wins).',
     hintDefaultNewUserDb: 'A database override exists; saving persists the number below and it takes precedence.',
+    secApiPublic: 'Public API base URL (OpenAI)',
+    secApiPublicHint:
+      'Leave empty to use the current browser origin + /v1 in the console overview and docs. If the gateway is served on another host (e.g. api.example.com), enter an https root (path empty or /v1). Saved to public site meta so docs and the dashboard example update automatically.',
+    lblApiPublicBaseUrl: 'Public OpenAI base URL',
+    hintApiPublicBaseUrl: 'Example: https://api.example.com or https://api.example.com/v1 (saved value is normalized to include /v1).',
     secOps: 'Ops & probes',
     secOpsHint: 'Populates the operator field in /health and /ready. Empty falls back to YAML site.operator_display_name.',
     lblOperator: 'Operator display name',
@@ -556,7 +561,7 @@ export default {
     saveFail: 'Save failed',
     resetDefaults: 'Restore defaults',
     resetDefaultsConfirm:
-      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
+      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, public API base URL, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
     resetDefaultsDone:
       'Database overrides cleared; name and icon now follow config and built-in defaults (hard refresh if the shell still looks stale).',
     resetDefaultsFail: 'Failed to restore defaults',
@@ -565,5 +570,6 @@ export default {
     descLoginCaptcha: 'Login CAPTCHA toggle',
     descOperator: 'Health check operator label',
     descDefaultNewUserBalance: 'Initial balance for new users (quota units)',
+    descApiPublicBaseUrl: 'Public OpenAI-compatible base URL (site.api.public_base_url)',
   },
 } as const

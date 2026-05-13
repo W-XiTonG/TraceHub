@@ -607,6 +607,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"default_new_user_balance_file":     cfg.Site.DefaultNewUserBalance,
 			"default_new_user_balance_db_set":   dbSetBal,
 			"default_new_user_balance_db_value": strings.TrimSpace(dbValBal),
+			"api_public_base_url":               sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
 		})
 	}
 }
@@ -622,6 +623,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyLoginCaptchaEnabled,
 			sitecfg.SystemConfigKeyOperatorDisplayName,
 			sitecfg.SystemConfigKeyDefaultNewUserBalance,
+			sitecfg.SystemConfigKeyAPIPublicBaseURL,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
@@ -657,9 +659,18 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 				httpx.BadRequest(c, err.Error())
 				return
 			}
+			val := strings.TrimSpace(it.Value)
+			if k == sitecfg.SystemConfigKeyAPIPublicBaseURL {
+				nv, err := sitecfg.NormalizeAPIPublicBaseURL(val)
+				if err != nil {
+					httpx.BadRequest(c, err.Error())
+					return
+				}
+				val = nv
+			}
 			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(k)).Only(ctx)
 			if ent.IsNotFound(err) {
-				cr := client.SystemConfig.Create().SetConfigKey(k).SetConfigValue(it.Value)
+				cr := client.SystemConfig.Create().SetConfigKey(k).SetConfigValue(val)
 				if it.Description != "" {
 					cr.SetDescription(it.Description)
 				}
@@ -671,7 +682,7 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 				httpx.ServerError(c, "查询失败")
 				return
 			} else {
-				up := client.SystemConfig.UpdateOne(ex).SetConfigValue(it.Value)
+				up := client.SystemConfig.UpdateOne(ex).SetConfigValue(val)
 				if it.Description != "" {
 					up.SetDescription(it.Description)
 				}

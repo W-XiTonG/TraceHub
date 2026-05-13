@@ -49,9 +49,10 @@ export default {
     q3before: '',
     q3after: 'then open the console, create an API key under “API Key” and copy it.',
     q4:
-      'Set your app Base URL to the gateway root (same origin as this site is fine; path prefix /v1) and send Authorization: Bearer <API Key>.',
+      'Set your OpenAI-compatible baseURL to {base} (includes the /v1 prefix) and send Authorization: Bearer <API Key>.',
     curlTitle: 'Minimal cURL (chat)',
-    curlHint: ' — replace $BASE with your service root (e.g. http://localhost:8080) and $KEY with the API key.',
+    curlHint:
+      ' — replace $KEY with your API key; the full URL below is the recommended gateway endpoint for this deployment.',
     streamNote:
       'For streaming set "stream": true and parse SSE lines like OpenAI (final line data: [DONE]).',
     consoleH2: 'Console sections',
@@ -162,7 +163,7 @@ export default {
     fq1q: 'Why is GET /v1/models empty?',
     fq1a: 'Usually no models are configured for your group, or channels/catalog are out of sync—ask an admin to check bindings.',
     fq2q: 'Can I use the official OpenAI SDK?',
-    fq2a: 'Yes. Point baseURL at your TraceHub root (keep the /v1 convention) and set apiKey to your console key.',
+    fq2a: 'Yes. Set baseURL to {base} and apiKey to your console-issued key.',
     fq3q: 'Streaming stops mid-way?',
     fq3a: 'Check client timeouts, reverse-proxy buffering (disable buffering for SSE) and upstream disconnects.',
     fq4q: 'Docs don’t match production?',
