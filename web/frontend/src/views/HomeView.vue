@@ -4,16 +4,19 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { homeModelVendors } from '../data/homeModelVendors'
 import { useAuthStore } from '../stores/auth'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
+const siteMeta = useSiteMetaStore()
 const version = ref('1.0.0')
 
 let revealObserver: IntersectionObserver | null = null
 
 onMounted(() => {
+  void siteMeta.ensureLoaded()
   void nextTick(() => {
     const nodes = document.querySelectorAll<HTMLElement>('.th-reveal')
     if (!nodes.length) return
@@ -234,10 +237,10 @@ function featureLink(to: string) {
       <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <div class="flex items-center gap-3">
           <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
-            <img src="/tracehub-icon.svg" alt="" width="36" height="36" decoding="async" />
+            <img :src="siteMeta.displayIconUrl" :alt="siteMeta.displayName" width="36" height="36" decoding="async" />
           </div>
           <div>
-            <span class="th-sidebar-brand block text-lg font-semibold tracking-tight text-white">TraceHub</span>
+            <span class="th-sidebar-brand block text-lg font-semibold tracking-tight text-white">{{ siteMeta.displayName }}</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('home.brandSub') }}</span>
           </div>
           <span class="ml-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-500">v{{ version }}</span>
@@ -263,7 +266,7 @@ function featureLink(to: string) {
       <section class="relative mx-auto max-w-6xl overflow-hidden px-5 pb-24 pt-20 text-center md:pt-28">
         <div class="th-hero-backdrop" aria-hidden="true" />
         <div class="relative z-10 th-stagger-children">
-        <p class="th-kicker mb-2"><span class="th-kicker-accent">TraceHub</span> · {{ t('home.heroKickerTail') }}</p>
+        <p class="th-kicker mb-2"><span class="th-kicker-accent">{{ siteMeta.displayName }}</span> · {{ t('home.heroKickerTail') }}</p>
         <h1 class="relative mx-auto max-w-4xl text-4xl font-semibold leading-[1.12] tracking-tight md:text-[3.25rem] md:leading-[1.1]">
           <span class="th-headline-gradient">{{ t('home.heroLine1') }}</span>
           <span class="text-slate-200">{{ t('home.heroLine2') }}</span>
@@ -660,9 +663,9 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
         <div class="max-w-sm">
           <div class="flex items-center gap-2">
             <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
-              <img src="/tracehub-icon.svg" alt="" width="36" height="36" decoding="async" />
+              <img :src="siteMeta.displayIconUrl" :alt="siteMeta.displayName" width="36" height="36" decoding="async" />
             </div>
-            <span class="th-sidebar-brand text-base font-semibold text-slate-200">TraceHub</span>
+            <span class="th-sidebar-brand text-base font-semibold text-slate-200">{{ siteMeta.displayName }}</span>
           </div>
           <p class="mt-3 text-sm leading-relaxed text-slate-500">
             {{ t('home.footerBlurb') }}

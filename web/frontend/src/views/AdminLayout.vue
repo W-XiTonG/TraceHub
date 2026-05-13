@@ -30,6 +30,7 @@ const { t } = useI18n()
         <RouterLink to="/admin/logs" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavLogs') }}</RouterLink>
         <RouterLink to="/admin/model-market" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavMarket') }}</RouterLink>
         <RouterLink to="/admin/announcements" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavAnnouncements') }}</RouterLink>
+        <RouterLink :to="{ name: 'admin-system' }" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavSystem') }}</RouterLink>
         <RouterLink to="/docs" class="th-nav-link th-nav-link--amber border-t border-white/[0.06] pt-3 mt-2">{{ t('layout.navDocs') }}</RouterLink>
       </nav>
       <div class="mt-4 flex flex-col gap-2 border-t border-white/[0.06] pt-4">

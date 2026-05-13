@@ -76,6 +76,8 @@ type SiteConfig struct {
 	OpenAIPassthrough              OpenAIPassthroughConfig `mapstructure:"openai_passthrough"`
 	// LoginCaptcha：登录页图形验证码；开启后密码登录与「发送邮箱登录验证码」需携带 captcha_id / captcha_answer，依赖 Redis。
 	LoginCaptcha SiteLoginCaptchaConfig `mapstructure:"login_captcha"`
+	// BrandUploadDir 管理后台本地上传品牌图标的磁盘目录（可写）；空则默认 data/site_brand。对外固定通过 /uploads/site-brand/ 访问。
+	BrandUploadDir string `mapstructure:"brand_upload_dir"`
 }
 
 // SiteLoginCaptchaConfig 控制台登录人机校验（图形验证码）。

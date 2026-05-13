@@ -3,11 +3,13 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
+const siteMeta = useSiteMetaStore()
 const activeId = ref('doc-intro')
 const mobileTocOpen = ref(false)
 
@@ -36,6 +38,7 @@ function scrollToSection(id: string) {
 }
 
 onMounted(() => {
+  void siteMeta.ensureLoaded()
   observer = new IntersectionObserver(
     (entries) => {
       const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
@@ -63,10 +66,10 @@ onUnmounted(() => {
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
         <RouterLink to="/" class="flex min-w-0 items-center gap-3 transition hover:opacity-90">
           <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
-            <img src="/tracehub-icon.svg" alt="" width="36" height="36" decoding="async" />
+            <img :src="siteMeta.displayIconUrl" :alt="siteMeta.displayName" width="36" height="36" decoding="async" />
           </div>
           <div class="min-w-0">
-            <span class="th-sidebar-brand block truncate text-lg font-semibold tracking-tight text-slate-100">TraceHub</span>
+            <span class="th-sidebar-brand block truncate text-lg font-semibold tracking-tight text-slate-100">{{ siteMeta.displayName }}</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('docs.center') }}</span>
           </div>
         </RouterLink>

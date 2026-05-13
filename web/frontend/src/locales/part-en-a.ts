@@ -35,6 +35,7 @@ export default {
     sending: 'Sending…',
     confirmDelete: 'Delete this item?',
     documentTitle: 'TraceHub — AI API Gateway · 循迹未来 (Xunji Future)',
+    documentTitleTpl: '{brand} — AI API Gateway · 循迹未来 (Xunji Future)',
   },
   announcement: {
     aria: 'Announcements',
@@ -45,7 +46,7 @@ export default {
   },
   login: {
     title: 'Welcome back',
-    subtitle: 'Sign in to TraceHub',
+    subtitle: 'Sign in to {brand}',
     hint: 'Session tokens are issued by the server. Use a trusted network and keep your password safe.',
     hintCode: 'A 6-digit code is sent to your registered email. Requires SMTP and Redis on the server.',
     modePassword: 'Password',
@@ -78,7 +79,7 @@ export default {
   },
   register: {
     title: 'Create account',
-    subtitle: 'Enable the console & API keys',
+    subtitle: 'Create your {brand} console & API keys',
     hint: 'By registering you accept billing and security policies. An admin may assign your group and quota later.',
     hintCode: 'Email verification is required: send a code to your address and enter the 6-digit code before signing up.',
     emailCodeNotReady:
@@ -146,6 +147,7 @@ export default {
     adminNavLogs: 'Logs',
     adminNavMarket: 'Model market',
     adminNavAnnouncements: 'Announcements',
+    adminNavSystem: 'Site settings',
     adminConsoleTitle: 'Switch to user console (usage, API keys, billing)',
     adminTopSubtitle: 'Admin',
     adminTopHint: 'Channels, users & model catalog',

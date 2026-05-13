@@ -41,3 +41,6 @@ Desktop.ini
 tmp/
 
 configs/config.yaml
+
+# 本地上传的品牌图标（由服务端写入，勿提交二进制）
+data/site_brand/

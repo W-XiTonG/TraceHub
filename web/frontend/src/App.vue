@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import ThemePicker from './components/ThemePicker.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
+import { useSiteMetaStore } from './stores/siteMeta'
 
 const route = useRoute()
 const { t, locale } = useI18n()
+const siteMeta = useSiteMetaStore()
+
+onMounted(() => {
+  void siteMeta.ensureLoaded()
+})
 
 watch(
-  [locale, () => t('common.documentTitle')],
+  [locale, () => t('common.documentTitleTpl'), () => siteMeta.displayName],
   () => {
-    document.title = t('common.documentTitle')
+    document.title = t('common.documentTitleTpl', { brand: siteMeta.displayName })
   },
   { immediate: true },
 )

@@ -12,6 +12,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
+	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/service/balancealert"
 	"tracehub/internal/service/billing"
 
@@ -53,9 +54,21 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	r.Use(middleware.ZapLogger(opt.Log))
 	r.Use(middleware.CORS(opt.Config.Site.CORSOrigins))
 
-	op := strings.TrimSpace(opt.Config.Site.OperatorDisplayName)
-	r.GET("/health", health.Liveness(op))
-	r.GET("/ready", health.Readiness(opt.Client, opt.Redis, op))
+	r.GET("/health", func(c *gin.Context) {
+		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)
+		health.Liveness(op)(c)
+	})
+	r.GET("/ready", func(c *gin.Context) {
+		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)
+		health.Readiness(opt.Client, opt.Redis, op)(c)
+	})
+	r.GET("/api/pub/site-meta", userhandler.PubSiteMeta(opt.Client))
+	uploadRoot := adminhandler.BrandUploadDir(opt.Config)
+	if mkErr := os.MkdirAll(uploadRoot, 0o755); mkErr != nil {
+		opt.Log.Warn("brand_upload_dir mkdir failed", zap.String("path", uploadRoot), zap.Error(mkErr))
+	} else {
+		r.Static(adminhandler.BrandIconPublicURLPrefix, uploadRoot)
+	}
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	balAlerts := balancealert.New(opt.Config, opt.Log)
@@ -249,6 +262,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/redeem-codes", adminhandler.BatchRedeemCodes(opt.Client))
 	a.DELETE("/redeem-codes/:id", adminhandler.RevokeRedeemCode(opt.Client))
 	a.GET("/config", adminhandler.GetSystemConfig(opt.Client))
+	a.GET("/site-settings", adminhandler.GetAdminSiteSettings(opt.Client, opt.Config))
+	a.POST("/site-upload/brand-icon", adminhandler.PostBrandIconUpload(opt.Client, opt.Config))
 	a.PUT("/config", adminhandler.PutSystemConfig(opt.Client))
 	a.POST("/config/reload", adminhandler.ReloadSystemConfig())
 	a.GET("/model-catalog/sources", adminhandler.ListModelCatalogSources(opt.Client))

@@ -511,6 +511,24 @@ func GetSystemConfig(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
+// GetAdminSiteSettings GET /api/admin/site-settings — 结构化站点配置（供系统配置页）；不含密钥。
+func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
+		httpx.OK(c, gin.H{
+			"brand_name":               sitecfg.EffectiveBrandName(ctx, client),
+			"brand_icon_url":           sitecfg.EffectiveBrandIconURL(ctx, client),
+			"login_captcha_enabled":    sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
+			"login_captcha_file":       cfg.Site.LoginCaptcha.Enabled,
+			"login_captcha_db_set":     dbSet,
+			"login_captcha_db_value":   strings.TrimSpace(dbVal),
+			"operator_display_name":    sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
+			"operator_display_file":    strings.TrimSpace(cfg.Site.OperatorDisplayName),
+		})
+	}
+}
+
 func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -531,11 +549,9 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			if k == "" {
 				continue
 			}
-			if k == sitecfg.SystemConfigKeyLoginCaptchaEnabled {
-				if _, err := strconv.ParseBool(strings.TrimSpace(it.Value)); err != nil {
-					httpx.BadRequest(c, sitecfg.SystemConfigKeyLoginCaptchaEnabled+" 须为 true 或 false")
-					return
-				}
+			if err := sitecfg.ValidateSystemConfigPut(k, it.Value); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
 			}
 			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(k)).Only(ctx)
 			if ent.IsNotFound(err) {
@@ -1171,6 +1187,7 @@ func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin
 			"cors_origins_count":        len(cfg.Site.CORSOrigins),
 			"realtime_call_mapping":     cfg.Site.RealtimeCallMappingEnabled,
 			"email_login_enabled":       cfg.Email.Enabled,
+			"brand_name":                sitecfg.EffectiveBrandName(ctx, client),
 			"login_captcha_enabled":     effectiveCaptcha,
 			"login_captcha_file":        cfg.Site.LoginCaptcha.Enabled,
 			"login_captcha_db_set":      dbCaptchaSet,

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import { http, type Envelope } from '../api/http'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import AnnouncementBell from '../components/AnnouncementBell.vue'
@@ -12,6 +13,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const siteMeta = useSiteMetaStore()
 
 const showAdminDenied = computed(() => route.query.denied === 'admin')
 
@@ -37,6 +39,7 @@ async function loadMeForBanner() {
 }
 
 onMounted(() => {
+  void siteMeta.ensureLoaded()
   void loadMeForBanner()
 })
 
@@ -65,10 +68,14 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         class="group mb-8 flex items-center gap-3 rounded-xl px-2 py-1.5 outline-none transition hover:bg-white/[0.05]"
       >
         <div class="th-logo-mark th-logo-mark--md th-logo-mark--image shrink-0 transition group-hover:brightness-105">
-          <img src="/tracehub-icon.svg" alt="" width="40" height="40" decoding="async" />
+          <img :src="siteMeta.displayIconUrl" :alt="siteMeta.displayName" width="40" height="40" decoding="async" />
         </div>
         <div class="min-w-0">
-          <p class="th-sidebar-brand text-sm font-semibold text-slate-100">{{ t('layout.consoleTitle') }}</p>
+          <p class="th-sidebar-brand text-sm font-semibold text-slate-100">
+            <span>{{ siteMeta.displayName }}</span>
+            <span class="font-normal text-slate-500"> · </span>
+            <span class="text-slate-200">{{ t('layout.consoleTitle') }}</span>
+          </p>
           <p class="text-[10px] uppercase tracking-[0.18em] text-slate-600">{{ t('layout.consoleUserTag') }}</p>
         </div>
       </RouterLink>

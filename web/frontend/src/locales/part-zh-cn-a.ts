@@ -39,6 +39,7 @@ export default {
     sending: '发送中…',
     confirmDelete: '确定删除？',
     documentTitle: 'TraceHub — AI API 网关 · 循迹未来',
+    documentTitleTpl: '{brand} — AI API 网关 · 循迹未来',
   },
   announcement: {
     aria: '站内公告',
@@ -49,7 +50,7 @@ export default {
   },
   login: {
     title: '欢迎回来',
-    subtitle: '登录 TraceHub 控制台',
+    subtitle: '登录 {brand} 控制台',
     hint: '会话令牌由服务端签发；请在可信网络环境下访问，并妥善保管密码。',
     hintCode: '向注册邮箱收取 6 位验证码；需管理员在服务端启用邮件并连接 Redis。',
     modePassword: '密码登录',
@@ -82,7 +83,7 @@ export default {
   },
   register: {
     title: '创建账号',
-    subtitle: '开通控制台与 API Key',
+    subtitle: '开通 {brand} 控制台与 API Key',
     hint: '注册即表示您理解平台计费与安全策略；管理员可后续为您分配分组与额度。',
     hintCode: '管理员已开启邮箱验证：请填写注册邮箱并收取 6 位验证码后再提交。',
     emailCodeNotReady:
@@ -150,6 +151,7 @@ export default {
     adminNavLogs: '调用日志',
     adminNavMarket: '模型市场',
     adminNavAnnouncements: '公告',
+    adminNavSystem: '系统配置',
     adminConsoleTitle: '切换到用户控制台（用量、API Key、充值等）',
     adminTopSubtitle: '管理端',
     adminTopHint: '渠道、用户与模型目录',

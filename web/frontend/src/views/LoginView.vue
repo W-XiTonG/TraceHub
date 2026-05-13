@@ -4,9 +4,11 @@ import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore, apiErrorMessage, type LoginCaptchaResponse } from '../stores/auth'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
 
 const { t, locale } = useI18n()
+const siteMeta = useSiteMetaStore()
 
 type LoginMode = 'password' | 'code'
 const mode = ref<LoginMode>('password')
@@ -109,6 +111,7 @@ watch(mode, () => {
 })
 
 onMounted(() => {
+  void siteMeta.ensureLoaded()
   void loadCaptcha()
 })
 
@@ -267,12 +270,12 @@ async function submit() {
       <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
         <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
         <div class="mb-8 flex justify-center">
-          <div class="th-logo-mark th-logo-mark--lg th-logo-mark--image" role="img" aria-label="TraceHub">
-            <img src="/tracehub-icon.svg" alt="" width="48" height="48" decoding="async" />
+          <div class="th-logo-mark th-logo-mark--lg th-logo-mark--image" role="img" :aria-label="siteMeta.displayName">
+            <img :src="siteMeta.displayIconUrl" alt="" width="48" height="48" decoding="async" />
           </div>
         </div>
         <h1 class="mb-1 text-center text-2xl font-semibold tracking-tight text-slate-100">{{ t('login.title') }}</h1>
-        <p class="mb-1 text-center text-sm text-slate-500">{{ t('login.subtitle') }}</p>
+        <p class="mb-1 text-center text-sm text-slate-500">{{ t('login.subtitle', { brand: siteMeta.displayName }) }}</p>
         <p class="mb-5 text-center text-[11px] leading-relaxed text-slate-600">
           {{ mode === 'code' ? t('login.hintCode') : t('login.hint') }}
         </p>
