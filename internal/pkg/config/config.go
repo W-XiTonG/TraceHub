@@ -74,6 +74,15 @@ type SiteConfig struct {
 	// OpenAIAccountAdminDenyPrefixes：在 block 开启时，相对 /v1/ 的额外拒绝前缀（不含前导 /）。
 	OpenAIAccountAdminDenyPrefixes []string `mapstructure:"openai_account_admin_deny_prefixes"`
 	OpenAIPassthrough              OpenAIPassthroughConfig `mapstructure:"openai_passthrough"`
+	// LoginCaptcha：登录页图形验证码；开启后密码登录与「发送邮箱登录验证码」需携带 captcha_id / captcha_answer，依赖 Redis。
+	LoginCaptcha SiteLoginCaptchaConfig `mapstructure:"login_captcha"`
+}
+
+// SiteLoginCaptchaConfig 控制台登录人机校验（图形验证码）。
+type SiteLoginCaptchaConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	// TTLSeconds 验证码在 Redis 中的存活时间（秒）；≤0 时默认 300。
+	TTLSeconds int `mapstructure:"ttl_seconds"`
 }
 
 // OpenAIPassthroughConfig 可选：将未显式注册的路径按白名单透传到 OpenAI 兼容上游（需配置 allow 前缀）。
@@ -115,6 +124,8 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.block_openai_account_admin_paths", true)
 	v.SetDefault("site.openai_passthrough.enabled", false)
 	v.SetDefault("site.openai_passthrough.patch_model_in_json", true)
+	v.SetDefault("site.login_captcha.enabled", true)
+	v.SetDefault("site.login_captcha.ttl_seconds", 300)
 	v.SetDefault("bootstrap.default_group_name", "基础分组")
 	v.SetDefault("email.smtp_port", 587)
 	v.SetDefault("email.starttls", true)
@@ -137,6 +148,11 @@ func Load(path string) (*Config, error) {
 	}
 	if c.Security.JWTSecret == "" {
 		c.Security.JWTSecret = v.GetString("security.jwt_secret")
+	}
+	// 嵌套 login_captcha 未在配置文件中写出时，Unmarshal 会得到零值；此处用 Get* 合并 SetDefault。
+	c.Site.LoginCaptcha.Enabled = v.GetBool("site.login_captcha.enabled")
+	if ts := v.GetInt("site.login_captcha.ttl_seconds"); ts > 0 {
+		c.Site.LoginCaptcha.TTLSeconds = ts
 	}
 	return &c, nil
 }

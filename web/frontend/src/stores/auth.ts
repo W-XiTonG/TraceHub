@@ -3,10 +3,13 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { http, type Envelope } from '../api/http'
 
-function apiErrorMessage(e: unknown, fallback: string) {
+export function apiErrorMessage(e: unknown, fallback: string) {
   if (axios.isAxiosError(e)) {
-    const d = e.response?.data as { message?: string } | undefined
-    if (d?.message) return d.message
+    const d = e.response?.data
+    if (d && typeof d === 'object' && 'message' in d) {
+      const m = (d as { message?: unknown }).message
+      if (typeof m === 'string' && m.trim()) return m.trim()
+    }
   }
   if (e instanceof Error) return e.message
   return fallback
@@ -30,6 +33,13 @@ export type RegisterEmailCodeMeta = {
   /** 已配置 smtp_host 与 from */
   smtp_ready?: boolean
 }
+
+/** GET /api/user/login-captcha */
+export type LoginCaptchaPayload = { captcha_id: string; captcha_answer: string }
+
+export type LoginCaptchaResponse =
+  | { enabled: false }
+  | { enabled: true; captcha_id: string; image_base64: string }
 
 function readStoredUser(): AuthUserBrief | null {
   try {
@@ -138,12 +148,20 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(LS_USER)
   }
 
-  /** account：邮箱或用户名（请求体仍使用字段名 email 以兼容后端） */
-  async function login(account: string, password: string) {
+  /** account：邮箱或用户名（请求体仍使用字段名 email 以兼容后端）；captcha 在服务端开启登录验证码时必填 */
+  async function login(account: string, password: string, captcha?: LoginCaptchaPayload) {
     try {
+      const body: Record<string, string> = {
+        email: account.trim(),
+        password,
+      }
+      if (captcha) {
+        body.captcha_id = captcha.captcha_id
+        body.captcha_answer = captcha.captcha_answer
+      }
       const { data } = await http.post<
         Envelope<{ access_token: string; user: typeof user.value }>
-      >('/api/user/login', { email: account.trim(), password })
+      >('/api/user/login', body)
       if (data.code !== 0) throw new Error(data.message || '登录失败')
       setSession(data.data.access_token, data.data.user)
     } catch (e) {
@@ -151,17 +169,39 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** 发送登录邮箱验证码（需后端启用 email 且 Redis 可用） */
-  async function sendLoginCode(email: string, locale?: string): Promise<number | undefined> {
+  async function fetchLoginCaptcha(): Promise<LoginCaptchaResponse> {
     try {
+      const { data } = await http.get<Envelope<LoginCaptchaResponse>>('/api/user/login-captcha')
+      if (data.code !== 0) throw new Error(data.message || '加载失败')
+      return data.data ?? { enabled: false }
+    } catch (e) {
+      throw new Error(apiErrorMessage(e, '加载失败'))
+    }
+  }
+
+  /** 发送登录邮箱验证码（需后端启用 email 且 Redis 可用）；captcha 在开启登录图形验证码时必填 */
+  async function sendLoginCode(
+    email: string,
+    locale?: string,
+    captcha?: LoginCaptchaPayload,
+  ): Promise<number | undefined> {
+    try {
+      const body: Record<string, string> = { email: email.trim() }
+      if (locale) body.locale = locale
+      if (captcha) {
+        body.captcha_id = captcha.captcha_id
+        body.captcha_answer = captcha.captcha_answer
+      }
       const { data } = await http.post<Envelope<{ next_resend_sec?: number }>>(
         '/api/user/login-code/send',
-        { email: email.trim(), ...(locale ? { locale } : {}) },
+        body,
       )
       if (data.code !== 0) throw new Error(data.message || '发送失败')
       return data.data?.next_resend_sec
     } catch (e) {
-      throw new Error(apiErrorMessage(e, '发送失败'))
+      // 保留 AxiosError，便于登录页按 HTTP 状态区分「图形验证码」与业务错误
+      if (axios.isAxiosError(e)) throw e
+      throw e instanceof Error ? e : new Error(apiErrorMessage(e, '发送失败'))
     }
   }
 
@@ -225,6 +265,7 @@ export const useAuthStore = defineStore('auth', () => {
     accountDisplay,
     avatarInitial,
     login,
+    fetchLoginCaptcha,
     sendLoginCode,
     loginWithEmailCode,
     fetchRegisterEmailCodeMeta,

@@ -188,6 +188,12 @@ html[data-th-theme="dawn"] {
   --th-home-facet-plane-1: rgba(2, 132, 199, 0.055);
   --th-home-facet-plane-2: rgba(56, 189, 248, 0.045);
   --th-home-facet-plane-3: rgba(186, 230, 253, 0.035);
+  /* 登录发码等：须在 --th-accent 之后，才能用 var(--th-accent) 混色 */
+  --th-btn-accent-soft-border: color-mix(in srgb, var(--th-accent) 36%, rgba(15, 23, 42, 0.14));
+  --th-btn-accent-soft-bg: color-mix(in srgb, var(--th-accent) 14%, #ffffff);
+  --th-btn-accent-soft-fg: #0f172a;
+  --th-btn-accent-soft-border-hover: color-mix(in srgb, var(--th-accent) 48%, rgba(15, 23, 42, 0.2));
+  --th-btn-accent-soft-bg-hover: color-mix(in srgb, var(--th-accent) 22%, #ffffff);
 }
 
 html[data-th-theme="paper"] {
@@ -241,6 +247,11 @@ html[data-th-theme="paper"] {
   --th-dash-code-bg: rgba(37, 99, 235, 0.08);
   --th-dash-code-border: rgba(37, 99, 235, 0.22);
   --th-dash-code-fg: #1d4ed8;
+  --th-btn-accent-soft-border: color-mix(in srgb, var(--th-accent) 36%, rgba(30, 41, 59, 0.14));
+  --th-btn-accent-soft-bg: color-mix(in srgb, var(--th-accent) 14%, #ffffff);
+  --th-btn-accent-soft-fg: #0f172a;
+  --th-btn-accent-soft-border-hover: color-mix(in srgb, var(--th-accent) 48%, rgba(30, 41, 59, 0.2));
+  --th-btn-accent-soft-bg-hover: color-mix(in srgb, var(--th-accent) 22%, #ffffff);
 }
 
 html[data-th-theme="dawn"] .th-page-shell::before,

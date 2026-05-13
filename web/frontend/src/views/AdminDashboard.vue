@@ -1417,6 +1417,10 @@ const showSkeleton = computed(() => !s.value && busy.value)
                     <dt class="text-slate-500">{{ t('adminDash.p4CfgEmail') }}</dt>
                     <dd>{{ ops.config_outline?.email_login_enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</dd>
                   </div>
+                  <div class="flex justify-between gap-2">
+                    <dt class="text-slate-500">{{ t('adminDash.p4CfgLoginCaptcha') }}</dt>
+                    <dd>{{ ops.config_outline?.login_captcha_enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</dd>
+                  </div>
                 </dl>
               </div>
               <div class="rounded-lg border border-dashed border-white/[0.12] bg-black/[0.06] p-4">

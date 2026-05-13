@@ -38,6 +38,10 @@ site:
   #
   # 可选：非空时写入 /health、/ready JSON 的 operator 字段，便于监控或对外展示运营方
   operator_display_name: "循迹未来"
+  # 登录页图形验证码（防脚本撞库、刷发登录邮件）。开启后依赖 Redis；本地无 Redis 时请改为 enabled: false
+  login_captcha:
+    enabled: true
+    ttl_seconds: 300
 
 email:
   enabled: false

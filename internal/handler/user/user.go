@@ -103,11 +103,13 @@ func Register(client *ent.Client, cfg *config.Config, rdb *redis.Client) gin.Han
 	}
 }
 
-func Login(client *ent.Client, cfg *config.Config, jwtSecret []byte) gin.HandlerFunc {
+func Login(client *ent.Client, cfg *config.Config, jwtSecret []byte, rdb *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
+			Email         string `json:"email"`
+			Password      string `json:"password"`
+			CaptchaID     string `json:"captcha_id"`
+			CaptchaAnswer string `json:"captcha_answer"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -116,6 +118,9 @@ func Login(client *ent.Client, cfg *config.Config, jwtSecret []byte) gin.Handler
 		id := strings.TrimSpace(req.Email)
 		if id == "" || req.Password == "" {
 			httpx.BadRequest(c, "邮箱或用户名与密码必填")
+			return
+		}
+		if !loginCaptchaOK(c, cfg, rdb, req.CaptchaID, req.CaptchaAnswer) {
 			return
 		}
 		ctx := c.Request.Context()

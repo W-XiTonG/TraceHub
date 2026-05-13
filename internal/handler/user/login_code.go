@@ -59,8 +59,10 @@ func SendLoginCode(client *ent.Client, cfg *config.Config, rdb *redis.Client) gi
 		}
 
 		var req struct {
-			Email  string `json:"email"`
-			Locale string `json:"locale"`
+			Email         string `json:"email"`
+			Locale        string `json:"locale"`
+			CaptchaID     string `json:"captcha_id"`
+			CaptchaAnswer string `json:"captcha_answer"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -69,6 +71,9 @@ func SendLoginCode(client *ent.Client, cfg *config.Config, rdb *redis.Client) gi
 		email := strings.TrimSpace(req.Email)
 		if email == "" || !strings.Contains(email, "@") {
 			httpx.BadRequest(c, "请输入有效邮箱")
+			return
+		}
+		if !loginCaptchaOK(c, cfg, rdb, req.CaptchaID, req.CaptchaAnswer) {
 			return
 		}
 

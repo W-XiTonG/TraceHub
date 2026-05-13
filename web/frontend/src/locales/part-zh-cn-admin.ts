@@ -116,6 +116,7 @@ export default {
     p4CfgCors: 'CORS 来源条数',
     p4CfgRealtime: 'Realtime 映射',
     p4CfgEmail: '邮件登录',
+    p4CfgLoginCaptcha: '登录图形验证码',
     p4AlertsTitle: '配额与外部告警',
     p4AlertsBody: '磁盘、队列、上游账户余额等需按部署接入监控；当前未连接外部告警，以下为预留维度。',
     tipUsersTitle: '用户规模',

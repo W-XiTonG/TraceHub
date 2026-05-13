@@ -20,6 +20,9 @@ site:
   cors_origins:
     - "*"
   operator_display_name: "循迹未来"
+  login_captcha:
+    enabled: true
+    ttl_seconds: 300
 
 email:
   enabled: false

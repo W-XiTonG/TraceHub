@@ -1162,6 +1162,7 @@ func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin
 			"cors_origins_count":        len(cfg.Site.CORSOrigins),
 			"realtime_call_mapping":     cfg.Site.RealtimeCallMappingEnabled,
 			"email_login_enabled":       cfg.Email.Enabled,
+			"login_captcha_enabled":     cfg.Site.LoginCaptcha.Enabled,
 			"liveness_path":             "/health",
 			"readiness_path":            "/ready",
 		}

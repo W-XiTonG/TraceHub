@@ -116,6 +116,7 @@ export default {
     p4CfgCors: 'CORS origin count',
     p4CfgRealtime: 'Realtime mapping',
     p4CfgEmail: 'Email login',
+    p4CfgLoginCaptcha: 'Login CAPTCHA',
     p4AlertsTitle: 'Quotas & external alerts',
     p4AlertsBody:
       'Disk, queues, upstream balances need deployment-specific monitoring; no external alert feed is connected. Placeholder dimensions below.',
