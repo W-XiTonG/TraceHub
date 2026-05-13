@@ -7,6 +7,7 @@ import (
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/pkg/config"
+	"tracehub/internal/pkg/sitecfg"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -51,7 +52,7 @@ func EnsureDefaults(ctx context.Context, client *ent.Client, cfg *config.Config,
 		SetEmail(cfg.Bootstrap.AdminEmail).
 		SetUsername("admin").
 		SetPasswordHash(string(hash)).
-		SetBalance(cfg.Site.DefaultNewUserBalance).
+		SetBalance(sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg)).
 		SetStatus(1).
 		SetRole("superadmin").
 		SetGroupID(g.ID).

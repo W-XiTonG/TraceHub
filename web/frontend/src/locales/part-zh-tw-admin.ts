@@ -402,7 +402,8 @@ export default {
   },
   adminSystem: {
     title: '系統設定',
-    intro: '以下寫入資料庫 system_configs，覆寫同名 YAML 預設；儲存後登入頁與 /health 等即生效（圖示與名稱依前端公開介面載入）。',
+    intro:
+      '以下寫入資料庫 system_configs，覆寫同名 YAML 預設；儲存後登入頁、/health、新註冊使用者初始額度等即生效（圖示與名稱依前端公開介面載入）。',
     secBrand: '品牌與展示',
     secBrandHint: '用於官網頂欄、文件頂欄、控制台側欄與登入／註冊頁。',
     lblBrandName: '專案名稱',
@@ -426,6 +427,13 @@ export default {
     secSecurity: '登入安全',
     secSecurityHint: '開啟後密碼登入與「傳送郵件登入驗證碼」需圖形驗證碼；須 Redis。',
     chkLoginCaptcha: '啟用登入圖形驗證碼',
+    secNewUser: '新使用者預設額度',
+    secNewUserHint:
+      '非負整數，單位為全站計費用的「額度」（與設定檔 site.currency_quota_per_yuan 一致）。儲存後僅影響新註冊使用者初始餘額；既有使用者不變。「恢復預設」將刪除資料庫中的本項覆寫並回到 site.default_new_user_balance。',
+    lblDefaultNewUserBalance: '新使用者初始餘額（額度）',
+    hintDefaultNewUserYaml:
+      '設定檔中 site.default_new_user_balance 目前為：{n}（未在資料庫覆寫時，註冊即用該值；有覆寫則以資料庫為準）。',
+    hintDefaultNewUserDb: '資料庫中已有本項覆寫；儲存後以下方數字寫入資料庫並優先生效。',
     secOps: '維運與探測',
     secOpsHint: '寫入 /health、/ready 的 operator；空則回到設定檔 site.operator_display_name。',
     lblOperator: '營運方展示名（operator）',
@@ -434,12 +442,13 @@ export default {
     saveFail: '儲存失敗',
     resetDefaults: '恢復預設',
     resetDefaultsConfirm:
-      '確定要清除本頁在資料庫中的站點設定覆寫嗎？品牌名、圖示、登入驗證碼、operator 將回到設定檔與內建預設值。磁碟上的本地上傳圖示不會刪除，仍可能出現在圖庫中。',
+      '確定要清除本頁在資料庫中的站點設定覆寫嗎？品牌名、圖示、登入驗證碼、新使用者預設額度、operator 將回到設定檔與內建預設值。磁碟上的本地上傳圖示不會刪除，仍可能出現在圖庫中。',
     resetDefaultsDone: '已清除資料庫覆寫項；站點名稱與圖示已依設定檔與內建預設生效（側欄等若未變請整頁重新整理）。',
     resetDefaultsFail: '恢復預設失敗',
     descBrandName: '站點對外展示名稱',
     descBrandIcon: '站點圖示 URL',
     descLoginCaptcha: '登入圖形驗證碼開關',
     descOperator: '健康檢查 operator 展示名',
+    descDefaultNewUserBalance: '新使用者註冊初始餘額（額度單位）',
   },
 } as const

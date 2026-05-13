@@ -20,6 +20,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateBrandIconURL(value)
 	case SystemConfigKeyOperatorDisplayName:
 		return ValidateOperatorDisplayName(value)
+	case SystemConfigKeyDefaultNewUserBalance:
+		return ValidateDefaultNewUserBalance(value)
 	default:
 		return nil
 	}

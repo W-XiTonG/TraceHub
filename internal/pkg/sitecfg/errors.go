@@ -10,4 +10,8 @@ var (
 	errBrandIconPath    = errors.New("site.brand.icon_url 相对路径不能包含 ..")
 	errBrandIconURL     = errors.New("site.brand.icon_url 须为以 / 开头的路径或 http(s) URL")
 	errOperatorTooLong  = errors.New("site.operator_display_name 长度不能超过 200 个字符")
+
+	errDefaultNewUserBalanceEmpty   = errors.New("site.default_new_user_balance 不能为空")
+	errDefaultNewUserBalanceInvalid = errors.New("site.default_new_user_balance 须为非负十进制整数")
+	errDefaultNewUserBalanceRange   = errors.New("site.default_new_user_balance 超出允许范围")
 )

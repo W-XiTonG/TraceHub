@@ -406,7 +406,7 @@ export default {
   adminSystem: {
     title: 'Site settings',
     intro:
-      'Values are stored in system_configs and override YAML defaults where applicable. Brand fields apply after the public meta endpoint is fetched; operator affects /health and /ready.',
+      'Values are stored in system_configs and override YAML defaults where applicable. Brand fields apply after the public meta endpoint is fetched; operator affects /health and /ready; default balance applies to newly registered users.',
     secBrand: 'Branding',
     secBrandHint: 'Used in the marketing header, docs header, console sidebar, and auth pages.',
     lblBrandName: 'Product name',
@@ -431,6 +431,13 @@ export default {
     secSecurity: 'Sign-in security',
     secSecurityHint: 'When enabled, password login and “send email login code” require image CAPTCHA; Redis is required.',
     chkLoginCaptcha: 'Enable login CAPTCHA',
+    secNewUser: 'New user default balance',
+    secNewUserHint:
+      'Non-negative integer in quota units (same notion as billing site.currency_quota_per_yuan). Applies to newly registered users only. “Restore defaults” removes the DB override and falls back to site.default_new_user_balance in YAML.',
+    lblDefaultNewUserBalance: 'Initial balance for new sign-ups (quota)',
+    hintDefaultNewUserYaml:
+      'YAML site.default_new_user_balance is currently {n} (used when no DB override; if a DB row exists, that value wins).',
+    hintDefaultNewUserDb: 'A database override exists; saving persists the number below and it takes precedence.',
     secOps: 'Ops & probes',
     secOpsHint: 'Populates the operator field in /health and /ready. Empty falls back to YAML site.operator_display_name.',
     lblOperator: 'Operator display name',
@@ -439,7 +446,7 @@ export default {
     saveFail: 'Save failed',
     resetDefaults: 'Restore defaults',
     resetDefaultsConfirm:
-      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
+      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
     resetDefaultsDone:
       'Database overrides cleared; name and icon now follow config and built-in defaults (hard refresh if the shell still looks stale).',
     resetDefaultsFail: 'Failed to restore defaults',
@@ -447,5 +454,6 @@ export default {
     descBrandIcon: 'Public logo URL',
     descLoginCaptcha: 'Login CAPTCHA toggle',
     descOperator: 'Health check operator label',
+    descDefaultNewUserBalance: 'Initial balance for new users (quota units)',
   },
 } as const

@@ -24,6 +24,7 @@ import (
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -88,7 +89,7 @@ func Register(client *ent.Client, cfg *config.Config, rdb *redis.Client) gin.Han
 		cr := client.User.Create().
 			SetEmail(strings.TrimSpace(req.Email)).
 			SetPasswordHash(string(hash)).
-			SetBalance(cfg.Site.DefaultNewUserBalance).
+			SetBalance(sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg)).
 			SetStatus(1).
 			SetRole("user").
 			SetGroupID(g.ID)

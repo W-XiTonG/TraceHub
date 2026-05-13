@@ -516,6 +516,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
+		dbSetBal, dbValBal := sitecfg.DefaultNewUserBalanceDBMeta(ctx, client)
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
@@ -527,7 +528,11 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"login_captcha_db_set":     dbSet,
 			"login_captcha_db_value":   strings.TrimSpace(dbVal),
 			"operator_display_name":    sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
-			"operator_display_file":    strings.TrimSpace(cfg.Site.OperatorDisplayName),
+			"operator_display_file":      strings.TrimSpace(cfg.Site.OperatorDisplayName),
+			"default_new_user_balance": sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg),
+			"default_new_user_balance_file":   cfg.Site.DefaultNewUserBalance,
+			"default_new_user_balance_db_set": dbSetBal,
+			"default_new_user_balance_db_value": strings.TrimSpace(dbValBal),
 		})
 	}
 }
@@ -542,6 +547,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyBrandIconURL,
 			sitecfg.SystemConfigKeyLoginCaptchaEnabled,
 			sitecfg.SystemConfigKeyOperatorDisplayName,
+			sitecfg.SystemConfigKeyDefaultNewUserBalance,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {

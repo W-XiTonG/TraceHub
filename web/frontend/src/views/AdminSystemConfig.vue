@@ -28,6 +28,10 @@ type SiteSettings = {
   login_captcha_db_value?: string
   operator_display_name?: string
   operator_display_file?: string
+  default_new_user_balance?: number
+  default_new_user_balance_file?: number
+  default_new_user_balance_db_set?: boolean
+  default_new_user_balance_db_value?: string
 }
 
 const form = reactive({
@@ -35,6 +39,7 @@ const form = reactive({
   brandIconUrl: '',
   loginCaptcha: false,
   operatorDisplayName: '',
+  defaultNewUserBalance: 0,
 })
 
 const busy = ref(true)
@@ -47,6 +52,10 @@ const deletingBrandFilename = ref<string | null>(null)
 const resettingDefaults = ref(false)
 /** 恢复默认后递增，配合预览图 :key 避免浏览器强缓存 */
 const brandPreviewNonce = ref(0)
+/** 配置文件 site.default_new_user_balance（仅展示说明） */
+const defaultNewUserBalanceYaml = ref(0)
+/** 数据库是否已有该键的覆盖 */
+const defaultNewUserBalanceDbOverride = ref(false)
 
 const brandIconPreviewSrc = computed(() => {
   const u = form.brandIconUrl.trim()
@@ -80,11 +89,23 @@ function isEnvelopeSuccess(body: unknown): body is { code: number } {
   return Number.isFinite(c) && c === 0
 }
 
+function pickInt64ish(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return Math.trunc(v)
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number.parseInt(v.trim(), 10)
+    if (Number.isFinite(n)) return n
+  }
+  return 0
+}
+
 function applyPayload(d: SiteSettings) {
   form.brandName = typeof d.brand_name === 'string' ? d.brand_name : ''
   form.brandIconUrl = typeof d.brand_icon_url === 'string' ? d.brand_icon_url : ''
   form.loginCaptcha = Boolean(d.login_captcha_enabled)
   form.operatorDisplayName = typeof d.operator_display_name === 'string' ? d.operator_display_name : ''
+  form.defaultNewUserBalance = pickInt64ish(d.default_new_user_balance)
+  defaultNewUserBalanceYaml.value = pickInt64ish(d.default_new_user_balance_file)
+  defaultNewUserBalanceDbOverride.value = Boolean(d.default_new_user_balance_db_set)
 }
 
 async function load() {
@@ -225,6 +246,11 @@ async function save() {
       value: form.operatorDisplayName.trim(),
       description: t('adminSystem.descOperator'),
     },
+    {
+      key: 'site.default_new_user_balance',
+      value: String(Math.max(0, Math.trunc(Number(form.defaultNewUserBalance)) || 0)),
+      description: t('adminSystem.descDefaultNewUserBalance'),
+    },
   ]
   try {
     const { data } = await http.put<Envelope<unknown>>('/api/admin/config', { items })
@@ -348,6 +374,30 @@ onMounted(() => void refresh())
           <input v-model="form.loginCaptcha" type="checkbox" class="h-4 w-4 shrink-0 rounded border-slate-600 text-cyan-500" />
           <span>{{ t('adminSystem.chkLoginCaptcha') }}</span>
         </label>
+      </section>
+
+      <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secNewUser') }}</h2>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secNewUserHint') }}</p>
+        <div class="mt-4 max-w-md">
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+            t('adminSystem.lblDefaultNewUserBalance')
+          }}</label>
+          <input
+            v-model.number="form.defaultNewUserBalance"
+            type="number"
+            min="0"
+            step="1"
+            class="th-input w-full font-mono text-sm"
+            autocomplete="off"
+          />
+          <p class="mt-2 text-[11px] leading-relaxed text-slate-500">
+            {{ t('adminSystem.hintDefaultNewUserYaml', { n: defaultNewUserBalanceYaml }) }}
+          </p>
+          <p v-if="defaultNewUserBalanceDbOverride" class="mt-1 text-[11px] leading-relaxed text-amber-100/80">
+            {{ t('adminSystem.hintDefaultNewUserDb') }}
+          </p>
+        </div>
       </section>
 
       <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">

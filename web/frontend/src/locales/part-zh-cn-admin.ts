@@ -402,7 +402,8 @@ export default {
   },
   adminSystem: {
     title: '系统配置',
-    intro: '以下项写入数据库 system_configs，覆盖同名 YAML 默认值；保存后立即对登录页、/health 等生效（图标与名称依赖前端拉取公开接口）。',
+    intro:
+      '以下项写入数据库 system_configs，覆盖同名 YAML 默认值；保存后立即对登录页、/health、新用户注册初始额度等生效（图标与名称依赖前端拉取公开接口）。',
     secBrand: '品牌与展示',
     secBrandHint: '用于官网顶栏、文档顶栏、控制台侧栏与登录/注册页。',
     lblBrandName: '项目名称',
@@ -426,6 +427,13 @@ export default {
     secSecurity: '登录安全',
     secSecurityHint: '开启后密码登录与「发送邮箱登录验证码」需图形验证码；需要 Redis。',
     chkLoginCaptcha: '启用登录图形验证码',
+    secNewUser: '新用户默认额度',
+    secNewUserHint:
+      '非负整数，单位为全站计费用的「额度」（与配置文件 site.currency_quota_per_yuan 一致）。保存后仅影响新注册用户初始余额；已存在用户不变。「恢复默认」将删除数据库中的本项覆盖并回退为 site.default_new_user_balance。',
+    lblDefaultNewUserBalance: '新用户初始余额（额度）',
+    hintDefaultNewUserYaml:
+      '配置文件中 site.default_new_user_balance 当前为：{n}（未在数据库覆盖时，注册即用该值；有覆盖则以数据库为准）。',
+    hintDefaultNewUserDb: '数据库中已存在本项覆盖；下方数字保存后即写入数据库并优先生效。',
     secOps: '运维与探测',
     secOpsHint: '写入 /health、/ready 返回的 operator 字段；空则回退到配置文件 site.operator_display_name。',
     lblOperator: '运营方展示名（operator）',
@@ -434,12 +442,13 @@ export default {
     saveFail: '保存失败',
     resetDefaults: '恢复默认',
     resetDefaultsConfirm:
-      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
+      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、新用户默认额度、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
     resetDefaultsDone: '已清除数据库覆盖项；站点名称与图标已按配置文件及内置默认生效（侧栏等若未变请整页刷新）。',
     resetDefaultsFail: '恢复默认失败',
     descBrandName: '站点对外展示名称',
     descBrandIcon: '站点图标 URL',
     descLoginCaptcha: '登录图形验证码开关',
     descOperator: '健康检查 operator 展示名',
+    descDefaultNewUserBalance: '新用户注册初始余额（额度单位）',
   },
 } as const
