@@ -292,6 +292,88 @@ html[data-th-theme="paper"] .th-glass--subtle {
   backdrop-filter: blur(10px);
 }
 
+html[data-th-theme="dawn"] .th-admin-compare-tile,
+html[data-th-theme="paper"] .th-admin-compare-tile {
+  border-color: rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.88) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 1px 2px rgba(15, 23, 42, 0.05);
+}
+html[data-th-theme="dawn"] .th-admin-compare-tile dd,
+html[data-th-theme="paper"] .th-admin-compare-tile dd {
+  color: #0f172a;
+}
+html[data-th-theme="dawn"] .th-admin-compare-tile dt,
+html[data-th-theme="paper"] .th-admin-compare-tile dt {
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-admin-divider-t,
+html[data-th-theme="paper"] .th-admin-divider-t {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+
+html[data-th-theme="dawn"] .th-admin-table-shell,
+html[data-th-theme="paper"] .th-admin-table-shell {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+html[data-th-theme="dawn"] .th-admin-table-head,
+html[data-th-theme="paper"] .th-admin-table-head {
+  background: rgba(241, 245, 249, 0.96);
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+html[data-th-theme="dawn"] .th-admin-table-body,
+html[data-th-theme="paper"] .th-admin-table-body {
+  color: #334155;
+}
+html[data-th-theme="dawn"] .th-admin-table-body tr + tr,
+html[data-th-theme="paper"] .th-admin-table-body tr + tr {
+  border-top-color: rgba(15, 23, 42, 0.07);
+}
+html[data-th-theme="dawn"] .th-admin-table-body tr:hover,
+html[data-th-theme="paper"] .th-admin-table-body tr:hover {
+  background: rgba(15, 23, 42, 0.035);
+}
+html[data-th-theme="dawn"] .th-admin-table-body td.text-slate-400,
+html[data-th-theme="paper"] .th-admin-table-body td.text-slate-400 {
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-admin-table-body .text-slate-300,
+html[data-th-theme="paper"] .th-admin-table-body .text-slate-300 {
+  color: #475569;
+}
+html[data-th-theme="dawn"] .th-admin-compare-tile--row,
+html[data-th-theme="paper"] .th-admin-compare-tile--row {
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #0f172a;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.85) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+}
+html[data-th-theme="dawn"] .th-admin-note-dashed,
+html[data-th-theme="paper"] .th-admin-note-dashed {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(248, 250, 252, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+html[data-th-theme="dawn"] .th-admin-quick-pill,
+html[data-th-theme="paper"] .th-admin-quick-pill {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  color: #334155;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+html[data-th-theme="dawn"] .th-admin-quick-pill:hover,
+html[data-th-theme="paper"] .th-admin-quick-pill:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(254, 243, 199, 0.55);
+  color: #92400e;
+}
+
 html[data-th-theme="dawn"] .th-sidebar,
 html[data-th-theme="paper"] .th-sidebar {
   border-right-color: rgba(15, 23, 42, 0.08);

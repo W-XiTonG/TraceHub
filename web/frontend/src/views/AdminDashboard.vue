@@ -614,42 +614,42 @@ const showSkeleton = computed(() => !s.value && busy.value)
       <span class="mr-1 w-full text-xs font-medium uppercase tracking-wider text-slate-500 sm:w-auto sm:self-center">{{ t('adminDash.p3QuickTitle') }}</span>
       <RouterLink
         to="/admin/users"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipUsers')"
       >{{ t('layout.adminNavUsers') }}</RouterLink>
       <RouterLink
         to="/admin/channels"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipChannels')"
       >{{ t('layout.adminNavChannels') }}</RouterLink>
       <RouterLink
         :to="{ name: 'admin-groups' }"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipGroups')"
       >{{ t('layout.adminNavGroups') }}</RouterLink>
       <RouterLink
         to="/admin/logs"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipLogs')"
       >{{ t('layout.adminNavLogs') }}</RouterLink>
       <RouterLink
         to="/admin/model-market"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipMarket')"
       >{{ t('layout.adminNavMarket') }}</RouterLink>
       <RouterLink
         to="/admin/announcements"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipAnnounce')"
       >{{ t('layout.adminNavAnnouncements') }}</RouterLink>
       <RouterLink
         :to="{ name: 'admin-system' }"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminSystem.title')"
       >{{ t('layout.adminNavSystem') }}</RouterLink>
       <RouterLink
         to="/docs"
-        class="rounded-lg border border-white/[0.08] bg-black/[0.08] px-3 py-1.5 text-xs text-slate-200 no-underline transition hover:border-amber-400/25 hover:bg-amber-950/20 hover:text-amber-100"
+        class="th-admin-quick-pill"
         :title="t('adminDash.quickTipDocs')"
       >{{ t('adminDash.p3NavDocs') }}</RouterLink>
     </div>
@@ -873,7 +873,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
         <h2 class="text-sm font-semibold tracking-tight text-slate-100">{{ t('adminDash.compareSection') }}</h2>
         <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminDash.last7dHint') }}</p>
 
-        <div class="mt-4 border-t border-white/[0.06] pt-4">
+        <div class="th-admin-divider-t mt-4 pt-4">
           <div class="flex flex-wrap items-center gap-2">
             <p class="text-xs font-medium uppercase tracking-wider text-slate-500">{{ t('adminDash.vsYesterdayLine') }}</p>
             <div class="group/vsh relative">
@@ -915,9 +915,9 @@ const showSkeleton = computed(() => !s.value && busy.value)
         </div>
 
         <div class="mt-6 grid gap-4 sm:grid-cols-2">
-          <div class="rounded-lg border border-white/[0.06] bg-black/[0.12] p-4">
+          <div class="th-admin-compare-tile">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.yesterday') }}</h3>
-            <dl class="mt-3 space-y-2 text-sm text-slate-200">
+            <dl class="mt-3 space-y-2 text-sm">
               <div class="flex justify-between gap-3">
                 <dt class="text-slate-500">{{ t('adminDash.lblRequests') }}</dt>
                 <dd class="font-mono tabular-nums">{{ fmtInt(s.yesterday_requests) }}</dd>
@@ -936,9 +936,9 @@ const showSkeleton = computed(() => !s.value && busy.value)
               </div>
             </dl>
           </div>
-          <div class="rounded-lg border border-white/[0.06] bg-black/[0.12] p-4">
+          <div class="th-admin-compare-tile">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.last7d') }}</h3>
-            <dl class="mt-3 space-y-2 text-sm text-slate-200">
+            <dl class="mt-3 space-y-2 text-sm">
               <div class="flex justify-between gap-3">
                 <dt class="text-slate-500">{{ t('adminDash.lblRequests') }}</dt>
                 <dd class="font-mono tabular-nums">{{ fmtInt(s.last_7d_requests) }}</dd>
@@ -1191,9 +1191,9 @@ const showSkeleton = computed(() => !s.value && busy.value)
         <p v-if="snapshotErr" class="mt-2 text-xs text-amber-300/95">{{ snapshotErr }}</p>
         <template v-if="snapshot">
           <div class="mt-5 grid gap-6 lg:grid-cols-3">
-            <div class="rounded-lg border border-white/[0.06] bg-black/[0.1] p-4">
+            <div class="th-admin-compare-tile">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p3UsersTitle') }}</h3>
-              <dl class="mt-3 space-y-2 text-sm text-slate-200">
+              <dl class="mt-3 space-y-2 text-sm">
                 <div class="flex justify-between gap-2">
                   <dt class="text-slate-500">{{ t('adminDash.p3DauToday') }}</dt>
                   <dd class="font-mono tabular-nums">{{ fmtInt(snapshot.users?.dau_today) }}</dd>
@@ -1220,12 +1220,12 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 </div>
               </dl>
             </div>
-            <div class="rounded-lg border border-white/[0.06] bg-black/[0.1] p-4">
+            <div class="th-admin-compare-tile">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p3HttpTitle') }}</h3>
               <div class="mt-3 space-y-4 text-sm">
                 <div>
                   <p class="text-xs text-slate-500">{{ t('adminDash.p3HttpToday') }}</p>
-                  <dl class="mt-2 space-y-1 text-slate-200">
+                  <dl class="mt-2 space-y-1">
                     <div class="flex justify-between gap-2">
                       <dt class="text-slate-500">{{ t('adminDash.p3HttpTotal') }}</dt>
                       <dd class="font-mono tabular-nums">{{ fmtInt(snapshot.http?.today?.total_requests) }}</dd>
@@ -1246,7 +1246,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 </div>
                 <div>
                   <p class="text-xs text-slate-500">{{ t('adminDash.p3Http7d') }}</p>
-                  <dl class="mt-2 space-y-1 text-slate-200">
+                  <dl class="mt-2 space-y-1">
                     <div class="flex justify-between gap-2">
                       <dt class="text-slate-500">{{ t('adminDash.p3HttpTotal') }}</dt>
                       <dd class="font-mono tabular-nums">{{ fmtInt(snapshot.http?.last_7d?.total_requests) }}</dd>
@@ -1267,7 +1267,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 </div>
               </div>
             </div>
-            <div class="rounded-lg border border-white/[0.06] bg-black/[0.1] p-4">
+            <div class="th-admin-compare-tile">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p3DraftAnnouncements') }}</h3>
               <ul class="mt-3 space-y-2 text-sm">
                 <li v-for="a in snapshot.draft_announcements ?? []" :key="'ann-' + a.id" class="min-w-0">
@@ -1288,19 +1288,19 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p3RecentLogs') }}</h3>
                 <RouterLink to="/admin/logs" class="text-xs text-amber-400/90 no-underline hover:underline">{{ t('layout.adminNavLogs') }} →</RouterLink>
               </div>
-              <div class="mt-3 overflow-x-auto rounded-lg border border-white/[0.06]">
+              <div class="th-admin-table-shell mt-3">
                 <table class="w-full min-w-[520px] text-left text-xs">
-                  <thead class="border-b border-white/[0.06] bg-black/[0.12] text-slate-500">
+                  <thead class="th-admin-table-head">
                     <tr>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p3ThTime') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p3ThModel') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p3ThUser') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p3ThStatus') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p3ThTokens') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p3ThTime') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p3ThModel') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p3ThUser') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p3ThStatus') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p3ThTokens') }}</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-white/[0.04] text-slate-200">
-                    <tr v-for="row in snapshot.recent_logs ?? []" :key="'log-' + row.id" class="hover:bg-white/[0.02]">
+                  <tbody class="th-admin-table-body">
+                    <tr v-for="row in snapshot.recent_logs ?? []" :key="'log-' + row.id">
                       <td class="whitespace-nowrap px-2 py-1.5 font-mono text-slate-400">{{ fmtLogTime(row.request_time) }}</td>
                       <td class="max-w-[10rem] truncate px-2 py-1.5 font-mono" :title="row.model">{{ row.model }}</td>
                       <td class="px-2 py-1.5 font-mono text-slate-400">{{ fmtInt(row.user_id) }}</td>
@@ -1319,8 +1319,12 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p3RecentChannels') }}</h3>
                 <RouterLink to="/admin/channels" class="text-xs text-amber-400/90 no-underline hover:underline">{{ t('layout.adminNavChannels') }} →</RouterLink>
               </div>
-              <ul class="mt-3 space-y-2 text-sm text-slate-200">
-                <li v-for="ch in snapshot.recent_channels ?? []" :key="'rch-' + ch.id" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-black/[0.08] px-3 py-2">
+              <ul class="mt-3 space-y-2 text-sm">
+                <li
+                  v-for="ch in snapshot.recent_channels ?? []"
+                  :key="'rch-' + ch.id"
+                  class="th-admin-compare-tile--row flex flex-wrap items-center justify-between gap-2"
+                >
                   <span class="min-w-0 truncate font-medium" :title="ch.channel_name">{{ ch.channel_name }}</span>
                   <span class="shrink-0 text-xs text-slate-500">{{ fmtLogTime(ch.updated_at) }}</span>
                   <span class="w-full text-[11px] text-slate-500 sm:w-auto">{{ t('adminDash.p3ThEnabled') }}: {{ ch.enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</span>
@@ -1339,21 +1343,21 @@ const showSkeleton = computed(() => !s.value && busy.value)
         <template v-if="ops">
           <p class="mt-3 text-xs leading-relaxed text-slate-500">{{ t('adminDash.p4AuditPermHint') }}</p>
           <div class="mt-6 grid gap-6 lg:grid-cols-3">
-            <div class="rounded-lg border border-white/[0.06] bg-black/[0.1] p-4 lg:col-span-2">
+            <div class="th-admin-compare-tile lg:col-span-2">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p4AuditTitle') }}</h3>
-              <div class="mt-3 overflow-x-auto rounded-lg border border-white/[0.06]">
+              <div class="th-admin-table-shell mt-3">
                 <table class="w-full min-w-[640px] text-left text-xs">
-                  <thead class="border-b border-white/[0.06] bg-black/[0.12] text-slate-500">
+                  <thead class="th-admin-table-head">
                     <tr>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p4ThTime') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p4ThActor') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p4ThAction') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p4ThResource') }}</th>
-                      <th class="px-2 py-2 font-medium">{{ t('adminDash.p4ThIp') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p4ThTime') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p4ThActor') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p4ThAction') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p4ThResource') }}</th>
+                      <th class="px-2 py-2 font-medium text-slate-500">{{ t('adminDash.p4ThIp') }}</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-white/[0.04] text-slate-200">
-                    <tr v-for="row in ops.recent_audit ?? []" :key="'aud-' + row.id" class="hover:bg-white/[0.02]">
+                  <tbody class="th-admin-table-body">
+                    <tr v-for="row in ops.recent_audit ?? []" :key="'aud-' + row.id">
                       <td class="whitespace-nowrap px-2 py-1.5 font-mono text-slate-400">{{ fmtLogTime(row.created_at) }}</td>
                       <td class="max-w-[10rem] truncate px-2 py-1.5" :title="row.admin_email || ''">
                         <span class="font-mono text-slate-400">#{{ row.admin_id }}</span>
@@ -1373,9 +1377,9 @@ const showSkeleton = computed(() => !s.value && busy.value)
               </div>
             </div>
             <div class="space-y-4">
-              <div class="rounded-lg border border-white/[0.06] bg-black/[0.1] p-4">
+              <div class="th-admin-compare-tile">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p4HealthTitle') }}</h3>
-                <dl class="mt-3 space-y-2 text-sm text-slate-200">
+                <dl class="mt-3 space-y-2 text-sm">
                   <div class="flex justify-between gap-2">
                     <dt class="text-slate-500">{{ t('adminDash.p4Db') }}</dt>
                     <dd class="max-w-[55%] truncate font-mono text-xs" :title="ops.health?.checks?.database">{{ ops.health?.checks?.database }}</dd>
@@ -1399,9 +1403,9 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 </dl>
                 <p class="mt-3 text-[11px] leading-relaxed text-slate-500">{{ t('adminDash.p4HealthPathsHint') }}</p>
               </div>
-              <div class="rounded-lg border border-white/[0.06] bg-black/[0.1] p-4">
+              <div class="th-admin-compare-tile">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p4ConfigTitle') }}</h3>
-                <dl class="mt-3 space-y-2 text-sm text-slate-200">
+                <dl class="mt-3 space-y-2 text-sm">
                   <div class="flex justify-between gap-2">
                     <dt class="text-slate-500">{{ t('adminDash.p4CfgMode') }}</dt>
                     <dd class="font-mono text-xs">{{ String(ops.config_outline?.server_mode ?? '') }}</dd>
@@ -1440,7 +1444,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
                   {{ t('adminDash.p4SysCfgLink') }} →
                 </RouterLink>
               </div>
-              <div class="rounded-lg border border-dashed border-white/[0.12] bg-black/[0.06] p-4">
+              <div class="th-admin-note-dashed">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p4AlertsTitle') }}</h3>
                 <p class="mt-2 text-xs leading-relaxed text-slate-400">{{ t('adminDash.p4AlertsBody') }}</p>
                 <p v-if="(ops.external_alerts?.scope ?? []).length" class="mt-2 font-mono text-[11px] text-slate-500">
