@@ -2,8 +2,8 @@ export default {
   home: {
     brandSub: 'AI Gateway',
     heroKickerTail: 'Enterprise AI API gateway',
-    heroLine1: 'One gateway',
-    heroLine2: ' OpenAI · Claude · Gemini · DeepSeek',
+    heroLine1: 'One OpenAI-compatible API surface, aggregating models across vendors',
+    heroLine2: '',
     heroDesc:
       'OpenAI-compatible APIs with unified auth and routing across providers—usage and logs in one place; optional self-hosted deployment and SLA extensions.',
     ctaConsole: 'Open console',

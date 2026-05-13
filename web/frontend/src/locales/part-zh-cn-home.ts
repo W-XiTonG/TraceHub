@@ -2,8 +2,8 @@ export default {
   home: {
     brandSub: 'AI Gateway',
     heroKickerTail: '企业级 AI API 网关',
-    heroLine1: '统一接入',
-    heroLine2: ' OpenAI · Claude · Gemini · DeepSeek',
+    heroLine1: '一套 OpenAI 兼容接口，聚合多厂商模型',
+    heroLine2: '',
     heroDesc:
       '一套 OpenAI 兼容接口：聚合多上游、统一鉴权与路由，用量与日志可查；支持私有化部署与 SLA 扩展。',
     ctaConsole: '进入控制台',

@@ -279,8 +279,7 @@ function featureLink(to: string) {
         <div class="relative z-10 th-stagger-children">
         <p class="th-kicker mb-2"><span class="th-kicker-accent">{{ siteMeta.displayName }}</span> · {{ t('home.heroKickerTail') }}</p>
         <h1 class="relative mx-auto max-w-4xl text-4xl font-semibold leading-[1.12] tracking-tight md:text-[3.25rem] md:leading-[1.1]">
-          <span class="th-headline-gradient">{{ t('home.heroLine1') }}</span>
-          <span class="text-slate-200">{{ t('home.heroLine2') }}</span>
+          <span class="th-headline-gradient">{{ t('home.heroLine1') }}</span><span v-if="t('home.heroLine2')" class="text-slate-200">{{ t('home.heroLine2') }}</span>
         </h1>
         <p class="relative mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-500 md:text-[1.0625rem] md:leading-relaxed">
           {{ t('home.heroDesc') }}
