@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import contactCardImg from '../assets/xunji-contact-card.png'
 
 const props = withDefaults(
   defineProps<{
@@ -39,7 +40,7 @@ const imgClass = computed(() => {
     </summary>
     <div :class="rowClass">
       <img
-        src="/xunji-contact-card.png"
+        :src="contactCardImg"
         :alt="t('home.contactCardAlt')"
         :width="compact ? 200 : 240"
         loading="lazy"

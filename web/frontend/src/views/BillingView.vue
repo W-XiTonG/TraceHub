@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
+import contactCardImg from '../assets/xunji-contact-card.png'
 
 const { t } = useI18n()
 </script>
@@ -30,7 +31,7 @@ const { t } = useI18n()
       <div class="mt-5 flex flex-col items-center gap-3 sm:items-start">
         <div class="rounded-xl border-2 border-white/10 bg-white/[0.04] p-3 shadow-inner ring-2 ring-cyan-500/25">
           <img
-            src="/xunji-contact-card.png"
+            :src="contactCardImg"
             :alt="t('home.contactCardAlt')"
             width="300"
             loading="eager"
