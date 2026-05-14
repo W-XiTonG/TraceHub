@@ -22,7 +22,7 @@ watch(
   { immediate: true },
 )
 
-/** 与「壳」 layout 绑定，避免 /console/*、/admin/* 子路由切换时整页 remount（只应由内层 RouterView 换右侧内容） */
+/** 与「壳」 layout 绑定：/console/*、/admin/* 使用稳定 key，避免子路由切换时外层误 remount（内层由各 Layout 的 RouterView 切换）。 */
 const shellKey = computed(() => {
   const p = route.path
   if (p.startsWith('/console')) return 'shell:console'
@@ -32,10 +32,9 @@ const shellKey = computed(() => {
 </script>
 
 <template>
+  <!-- 根级不用 Transition：避免 appear/duration 与路由异步组件在少数环境下触发控制台错误并导致整页不渲染 -->
   <RouterView v-slot="{ Component }">
-    <Transition name="th-page" mode="out-in">
-      <component :is="Component" :key="shellKey" />
-    </Transition>
+    <component :is="Component" :key="shellKey" />
   </RouterView>
   <ThemePicker />
   <LanguageSwitcher />

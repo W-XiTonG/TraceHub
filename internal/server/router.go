@@ -2,6 +2,7 @@ package server
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"database/sql"
@@ -26,10 +27,12 @@ import (
 
 type Options struct {
 	Config *config.Config
-	Client *ent.Client
-	StdDB  *sql.DB
-	Redis  *redis.Client
-	Log    *zap.Logger
+	// ConfigFilePath 为启动时 -config 的绝对路径，用于解析 web/frontend/dist（不依赖进程 cwd）。
+	ConfigFilePath string
+	Client         *ent.Client
+	StdDB          *sql.DB
+	Redis          *redis.Client
+	Log            *zap.Logger
 }
 
 func NewRouter(opt Options) (*gin.Engine, error) {
@@ -302,17 +305,82 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/feedbacks", adminhandler.ListFeedbacks(opt.Client))
 	a.PUT("/feedbacks/:id/review", adminhandler.ReviewFeedback(opt.Client))
 
-	registerSPA(r)
+	registerSPA(r, opt)
 	return r, nil
 }
 
-func registerSPA(r *gin.Engine) {
-	const root = "web/frontend/dist"
-	if st, err := os.Stat(root + "/index.html"); err != nil || st.IsDir() {
+// resolveFrontendDist 从配置文件所在目录向上查找含 web/frontend/dist/index.html 的仓库根，避免 go run 时 cwd 不在项目根导致静态资源错位或 index 与 assets 不一致。
+func resolveFrontendDist(configPath string) string {
+	const defaultRel = "web/frontend/dist"
+	if strings.TrimSpace(configPath) == "" {
+		return defaultRel
+	}
+	dir := filepath.Dir(configPath)
+	var err error
+	if !filepath.IsAbs(dir) {
+		dir, err = filepath.Abs(dir)
+		if err != nil {
+			return defaultRel
+		}
+	}
+	for i := 0; i < 24; i++ {
+		distDir := filepath.Join(dir, "web", "frontend", "dist")
+		idx := filepath.Join(distDir, "index.html")
+		if st, err := os.Stat(idx); err == nil && !st.IsDir() {
+			return distDir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return defaultRel
+}
+
+func registerSPA(r *gin.Engine, opt Options) {
+	root := resolveFrontendDist(opt.ConfigFilePath)
+	indexPath := filepath.Join(root, "index.html")
+	if st, err := os.Stat(indexPath); err != nil || st.IsDir() {
+		if opt.Log != nil {
+			opt.Log.Info("spa disabled: frontend dist missing", zap.String("path", indexPath))
+		}
 		return
 	}
-	r.Static("/assets", root+"/assets")
-	r.StaticFile("/vite.svg", root+"/vite.svg")
+	absRoot, absErr := filepath.Abs(root)
+	if absErr != nil {
+		absRoot = root
+	}
+	assetsDir := filepath.Join(root, "assets")
+	if opt.Log != nil {
+		opt.Log.Info("spa static root", zap.String("frontend_dist", absRoot))
+	}
+	if ent, err := os.ReadDir(assetsDir); err != nil || len(ent) == 0 {
+		if opt.Log != nil {
+			fields := []zap.Field{zap.String("assets_dir", assetsDir)}
+			if err != nil {
+				fields = append(fields, zap.Error(err))
+			}
+			opt.Log.Warn(
+				"frontend dist has no assets directory or it is empty — run `npm run build` in web/frontend; otherwise /assets/*.js may 404 and the UI will be blank",
+				fields...,
+			)
+		}
+	}
+	r.Static("/assets", assetsDir)
+	entries, err := os.ReadDir(root)
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if name == "index.html" {
+				continue
+			}
+			r.StaticFile("/"+name, filepath.Join(root, name))
+		}
+	}
 	r.NoRoute(func(c *gin.Context) {
 		p := c.Request.URL.Path
 		if strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/v1/") ||
@@ -320,6 +388,11 @@ func registerSPA(r *gin.Engine) {
 			c.JSON(404, gin.H{"code": 40400, "message": "not_found"})
 			return
 		}
-		c.File(root + "/index.html")
+		// 勿将 SPA HTML 当作 JS/CSS 返回（否则控制台 SyntaxError、整页白屏）
+		if strings.HasPrefix(p, "/assets/") {
+			c.JSON(404, gin.H{"code": 40400, "message": "not_found"})
+			return
+		}
+		c.File(indexPath)
 	})
 }

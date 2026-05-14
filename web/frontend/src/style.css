@@ -17,9 +17,16 @@
   --th-accent-dim: rgba(56, 189, 248, 0.14);
   --th-radius-lg: 0.875rem;
   --th-radius-xl: 1rem;
-  --th-font-display: "Outfit", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
-  --th-font-body: "Noto Sans SC", "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --th-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* 系统栈优先，避免依赖外网 Webfont（与 index.html 不加载 Google Fonts 一致） */
+  --th-font-display:
+    ui-sans-serif, system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+  --th-font-body:
+    ui-sans-serif, system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+  --th-font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Cascadia Code", "Cascadia Mono",
+    "Liberation Mono", "Courier New", monospace;
   --th-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --th-dur-enter: 0.62s;
   /* 主题可切换：主按钮 / 强调 / 首页光斑等 */
@@ -321,6 +328,7 @@
   background-image: radial-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse 88% 72% at 50% 42%, black 0%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 88% 72% at 50% 42%, black 0%, transparent 72%);
 }
 
 /* 官网首屏：柔光 + 细网格，增强空间纵深 */
@@ -721,8 +729,9 @@
   animation-delay: 0.52s;
 }
 
+/* 不使用 animation-fill-mode: both：与根级 RouterView Transition 叠加时，少数环境下子树会长时间保持 keyframes 起始 opacity:0 */
 .th-auth-card-reveal {
-  animation: th-enter-soft 0.72s var(--th-ease-out) both;
+  animation: th-enter-soft 0.55s var(--th-ease-out) forwards;
 }
 
 /* —— 官网：顶栏入场、首屏信任条、区块内阶梯显现、定价行、页脚 —— */

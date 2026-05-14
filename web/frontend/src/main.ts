@@ -9,6 +9,9 @@ import './themes.css'
 import './themes-light.css'
 
 const app = createApp(App)
+app.config.errorHandler = (err, _instance, info) => {
+  console.error('[TraceHub Vue]', info, err)
+}
 app.use(createPinia())
 app.use(i18n)
 app.use(router)

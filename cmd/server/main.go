@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -32,6 +33,10 @@ func main() {
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
 		zlog.Fatal("failed to load config", zap.Error(err), zap.String("path", *cfgPath))
+	}
+	cfgAbs, err := filepath.Abs(*cfgPath)
+	if err != nil {
+		zlog.Fatal("failed to resolve config path", zap.Error(err), zap.String("path", *cfgPath))
 	}
 
 	ctx := context.Background()
@@ -90,11 +95,12 @@ func main() {
 	}
 
 	r, err := server.NewRouter(server.Options{
-		Config: cfg,
-		Client: client,
-		StdDB:  sqldb,
-		Redis:  rdb,
-		Log:    zlog,
+		Config:         cfg,
+		ConfigFilePath: cfgAbs,
+		Client:         client,
+		StdDB:          sqldb,
+		Redis:          rdb,
+		Log:            zlog,
 	})
 	if err != nil {
 		zlog.Fatal("router init failed", zap.Error(err))
