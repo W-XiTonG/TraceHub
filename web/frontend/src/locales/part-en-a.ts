@@ -34,8 +34,11 @@ export default {
     loggingIn: 'Signing in…',
     sending: 'Sending…',
     confirmDelete: 'Delete this item?',
-    documentTitle: '迹径 · TraceHub — 循迹未来 (Xunji Future)',
-    documentTitleTpl: '{brand} · TraceHub — 循迹未来 (Xunji Future)',
+    documentTitle: '迹径 · TraceHub — Xunji Future',
+    documentTitleTpl: '{brand} · TraceHub — {tagline}',
+    documentTitleTplTraceHubSingle: 'TraceHub — {tagline}',
+    documentTitleTagline: '迹径',
+    documentTitleTaglineAlt: 'Xunji Future',
   },
   announcement: {
     aria: 'Announcements',

@@ -10,14 +10,38 @@ const route = useRoute()
 const { t, locale } = useI18n()
 const siteMeta = useSiteMetaStore()
 
+/** 与标题后缀「迹径」同义时避免重复，改用 common.documentTitleTaglineAlt */
+const titleBrandDupesProductMark = (brand: string) => {
+  const b = brand.trim()
+  return b === '迹径' || b === '跡徑' || b === '跡径'
+}
+
+/** 站点名与产品代号 TraceHub 相同时，不再写「{brand} · TraceHub」，避免出现两个 TraceHub */
+const titleBrandIsTraceHubCode = (brand: string) => brand.trim().toLowerCase() === 'tracehub'
+
 onMounted(() => {
   void siteMeta.ensureLoaded()
 })
 
 watch(
-  [locale, () => t('common.documentTitleTpl'), () => siteMeta.displayName],
+  [
+    locale,
+    () => t('common.documentTitleTpl'),
+    () => t('common.documentTitleTplTraceHubSingle'),
+    () => t('common.documentTitleTagline'),
+    () => t('common.documentTitleTaglineAlt'),
+    () => siteMeta.displayName,
+  ],
   () => {
-    document.title = t('common.documentTitleTpl', { brand: siteMeta.displayName })
+    const brand = siteMeta.displayName
+    const tagline = titleBrandDupesProductMark(brand)
+      ? t('common.documentTitleTaglineAlt')
+      : t('common.documentTitleTagline')
+    if (titleBrandIsTraceHubCode(brand)) {
+      document.title = t('common.documentTitleTplTraceHubSingle', { tagline })
+    } else {
+      document.title = t('common.documentTitleTpl', { brand, tagline })
+    }
   },
   { immediate: true },
 )

@@ -39,7 +39,10 @@ export default {
     sending: '发送中…',
     confirmDelete: '确定删除？',
     documentTitle: '迹径 · TraceHub — 循迹未来',
-    documentTitleTpl: '{brand} · TraceHub — 循迹未来',
+    documentTitleTpl: '{brand} · TraceHub — {tagline}',
+    documentTitleTplTraceHubSingle: 'TraceHub — {tagline}',
+    documentTitleTagline: '迹径',
+    documentTitleTaglineAlt: '循迹未来',
   },
   announcement: {
     aria: '站内公告',
