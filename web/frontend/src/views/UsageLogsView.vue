@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import { copyTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
 
@@ -150,7 +151,7 @@ const tsvHeader = computed(() =>
 async function copyText(text: string) {
   if (!text.trim()) return
   try {
-    await navigator.clipboard.writeText(text)
+    await copyTextToClipboard(text)
     flash.value = t('logsPage.copied')
     window.setTimeout(() => {
       if (flash.value === t('logsPage.copied')) flash.value = ''

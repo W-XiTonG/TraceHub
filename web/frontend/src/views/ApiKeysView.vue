@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import { copyTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
 
@@ -193,13 +194,15 @@ async function runQuery() {
 async function copyText(text: string) {
   if (!text.trim()) return
   try {
-    await navigator.clipboard.writeText(text)
+    await copyTextToClipboard(text)
+    err.value = ''
     flash.value = t('apiKeys.copied')
     window.setTimeout(() => {
       if (flash.value === t('apiKeys.copied')) flash.value = ''
     }, 2200)
   } catch {
-    flash.value = t('apiKeys.copyFail')
+    flash.value = ''
+    err.value = t('apiKeys.copyFail')
   }
 }
 

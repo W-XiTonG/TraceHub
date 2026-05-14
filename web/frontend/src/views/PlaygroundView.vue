@@ -6,6 +6,8 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import * as pgw from '../api/playgroundGateway'
 import type { PlaygroundModelRow } from '../api/playgroundGateway'
+import { copyTextToClipboard } from '../utils/clipboard'
+import { randomUUID } from '../utils/randomId'
 
 marked.use({
   async: false,
@@ -170,7 +172,7 @@ const editingId = ref<string | null>(null)
 const editDraft = ref('')
 
 function uid() {
-  return crypto.randomUUID()
+  return randomUUID()
 }
 
 function parseErr(text: string) {
@@ -764,7 +766,7 @@ function persistConversation() {
 }
 
 function copyText(s: string) {
-  void navigator.clipboard.writeText(s)
+  void copyTextToClipboard(s)
 }
 
 function removeMessage(id: string) {

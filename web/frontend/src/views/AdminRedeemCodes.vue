@@ -3,6 +3,7 @@ import axios from 'axios'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import { copyTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
 
@@ -103,10 +104,15 @@ async function generateBatch() {
   }
 }
 
-function copyBatch() {
+async function copyBatch() {
   if (!lastBatchCodes.value) return
-  void navigator.clipboard.writeText(lastBatchCodes.value)
-  msg.value = t('adminRedeem.copied')
+  err.value = ''
+  try {
+    await copyTextToClipboard(lastBatchCodes.value)
+    msg.value = t('adminRedeem.copied')
+  } catch {
+    err.value = t('adminUsers.copyFail')
+  }
 }
 
 function prevPage() {

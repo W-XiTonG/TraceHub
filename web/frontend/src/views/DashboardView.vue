@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { http, type Envelope } from '../api/http'
+import { copyTextToClipboard } from '../utils/clipboard'
 import { useAuthStore } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
@@ -381,7 +382,7 @@ function shortDate(s?: string) {
 
 async function copyText(text: string) {
   try {
-    await navigator.clipboard.writeText(text)
+    await copyTextToClipboard(text)
   } catch {
     /* ignore */
   }

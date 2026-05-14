@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { http, type Envelope } from '../api/http'
+import { copyTextToClipboard } from '../utils/clipboard'
 import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n()
@@ -307,7 +308,7 @@ async function copyEmails() {
   }
   err.value = ''
   try {
-    await navigator.clipboard.writeText(emails.join('\n'))
+    await copyTextToClipboard(emails.join('\n'))
     flash.value = t('adminUsers.copied')
     window.setTimeout(() => {
       if (flash.value === t('adminUsers.copied')) flash.value = ''
