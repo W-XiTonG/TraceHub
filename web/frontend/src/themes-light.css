@@ -643,6 +643,60 @@ html[data-th-theme="paper"] .th-site-nav-link {
   color: var(--th-text-muted);
 }
 
+/* 官网顶栏 · 推广通知铃铛：与 th-btn-secondary / 顶栏字色一致；红点用略深青 + 白描边（浅色底上更清晰） */
+html[data-th-theme="dawn"] .th-site-promo-bell--header,
+html[data-th-theme="paper"] .th-site-promo-bell--header {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-site-promo-bell--header:hover,
+html[data-th-theme="paper"] .th-site-promo-bell--header:hover {
+  border-color: rgba(14, 165, 233, 0.32);
+  background: rgba(224, 242, 254, 0.75);
+  color: #0369a1;
+}
+html[data-th-theme="dawn"] .th-site-promo-bell__dot--header,
+html[data-th-theme="paper"] .th-site-promo-bell__dot--header {
+  background: #0e7490;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header,
+html[data-th-theme="paper"] .th-site-promo-panel--header {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.14);
+  color: #1e293b;
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header .th-site-promo-panel__title,
+html[data-th-theme="paper"] .th-site-promo-panel--header .th-site-promo-panel__title {
+  color: #0f172a;
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header .th-site-promo-panel__body,
+html[data-th-theme="paper"] .th-site-promo-panel--header .th-site-promo-panel__body {
+  color: #475569;
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header .th-site-promo-panel__close,
+html[data-th-theme="paper"] .th-site-promo-panel--header .th-site-promo-panel__close {
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header .th-site-promo-panel__close:hover,
+html[data-th-theme="paper"] .th-site-promo-panel--header .th-site-promo-panel__close:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.06);
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header .th-site-promo-panel__cta,
+html[data-th-theme="paper"] .th-site-promo-panel--header .th-site-promo-panel__cta {
+  color: #0c4a6e;
+  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(224, 242, 254, 0.9);
+}
+html[data-th-theme="dawn"] .th-site-promo-panel--header .th-site-promo-panel__cta:hover,
+html[data-th-theme="paper"] .th-site-promo-panel--header .th-site-promo-panel__cta:hover {
+  border-color: rgba(6, 182, 212, 0.55);
+  background: rgba(186, 230, 253, 0.95);
+}
+
 html[data-th-theme="dawn"] .th-logo-mark:not(.th-logo-mark--amber),
 html[data-th-theme="paper"] .th-logo-mark:not(.th-logo-mark--amber) {
   color: #020617;

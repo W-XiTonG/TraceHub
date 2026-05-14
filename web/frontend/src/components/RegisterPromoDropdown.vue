@@ -81,7 +81,8 @@ onBeforeUnmount(() => {
   >
     <button
       type="button"
-      class="relative flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-500/10 hover:text-cyan-100"
+      class="th-site-promo-bell relative flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-500/10 hover:text-cyan-100"
+      :class="variant === 'header' ? 'th-site-promo-bell--header' : 'th-site-promo-bell--card'"
       :aria-label="t('sitePromo.aria')"
       :aria-expanded="open"
       :title="t('sitePromo.aria')"
@@ -94,33 +95,37 @@ onBeforeUnmount(() => {
       </svg>
       <span
         v-if="showUnreadDot"
-        class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_0_2px_rgba(15,23,42,0.85)]"
+        class="th-site-promo-bell__dot absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_0_2px_rgba(15,23,42,0.85)]"
+        :class="variant === 'header' ? 'th-site-promo-bell__dot--header' : 'th-site-promo-bell__dot--card'"
         aria-hidden="true"
       />
     </button>
 
     <div
       v-if="open"
-      class="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] origin-top-right rounded-xl border border-white/[0.1] bg-slate-950/95 p-4 shadow-xl backdrop-blur-md"
+      class="th-site-promo-panel absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] origin-top-right rounded-xl border border-white/[0.1] bg-slate-950/95 p-4 shadow-xl backdrop-blur-md"
+      :class="variant === 'header' ? 'th-site-promo-panel--header' : 'th-site-promo-panel--card'"
       role="dialog"
       :aria-label="t('sitePromo.panelTitle')"
       @click.stop
     >
       <div class="mb-3 flex items-start justify-between gap-2">
-        <p class="text-sm font-semibold text-slate-100">{{ t('sitePromo.panelTitle') }}</p>
+        <p class="th-site-promo-panel__title text-sm font-semibold text-slate-100">{{ t('sitePromo.panelTitle') }}</p>
         <button
           type="button"
-          class="rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white/10 hover:text-slate-300"
+          class="th-site-promo-panel__close rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white/10 hover:text-slate-300"
           @click="open = false"
         >
           {{ t('common.close') }}
         </button>
       </div>
-      <p class="max-h-48 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-300">{{ text.trim() }}</p>
+      <p class="th-site-promo-panel__body max-h-48 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-300">
+        {{ text.trim() }}
+      </p>
       <div class="mt-4 flex justify-end">
         <button
           type="button"
-          class="rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/25"
+          class="th-site-promo-panel__cta rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/25"
           @click="onGotIt"
         >
           {{ t('sitePromo.gotIt') }}
