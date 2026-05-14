@@ -414,7 +414,8 @@ export default {
     billingHint:
       'Requests from this page are billed like production: each successful completion counts toward usage and debits the account tied to this API key per gateway rules (input and output tokens).',
     customBody: 'Custom request JSON',
-    customBodyHint: 'Edit the full payload; on send we append your input to messages if that array exists.',
+    customBodyHint:
+      'Edit the full payload; on send we append your input to the end of messages if that array exists. Note: existing messages are sent as-is—if any entry includes multimodal parts (e.g. image_url), text-only models may return a non-VLM error; remove vision parts or pick a VLM-capable model.',
     customBodyWarn: 'Provide model and messages in JSON; invalid payloads will fail.',
     apiKey: 'API key',
     apiKeyPh: 'sk-th-…',
@@ -475,6 +476,9 @@ export default {
     regen: 'Regenerate',
     asUser: 'As user',
     clear: 'Clear chat',
+    newSession: 'New chat',
+    newSessionHint:
+      'Clears the conversation and local chat cache. With custom JSON on, resets the messages array in your payload to [] (other fields kept).',
     inputPh: 'Message… (Enter to send)',
     stop: 'Stop',
     send: 'Send',

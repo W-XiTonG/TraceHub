@@ -83,7 +83,8 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		// Realtime 会话按固定占位计费（上游 usage 在 WS 帧内，不在此解析）。
 		const promptToks = 4096
 		const compToks = 4096
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, compToks)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(compToks), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 			return
@@ -168,12 +169,12 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		}
 		defer upConn.Close()
 
-		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, compToks)
+		cost := br.Cost(promptToks, compToks, 0)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			slog.Warn("realtime ws deduct failed", "user_id", u.ID, "err", err)
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compToks, cost, c.ClientIP(), 200, nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compToks, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 
 		t0 := time.Now()
 		bridgeWebSockets(c.Request.Context(), clientConn, upConn)

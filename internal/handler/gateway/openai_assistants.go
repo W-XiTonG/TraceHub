@@ -468,7 +468,7 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 	if imgTok < 128 {
 		imgTok = 128
 	}
-	u, k, sel, secret, baseURL, ct, ok2 := enterpriseResolveUpstream(c, d, model, imgTok, 2048)
+	u, k, sel, secret, baseURL, ct, ok2, br := enterpriseResolveUpstream(c, d, model, imgTok, 2048)
 	if !ok2 {
 		return
 	}
@@ -497,19 +497,17 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 		c.Data(resp.StatusCode, "application/json", raw)
 		return
 	}
-	pt2, ct2 := parseUsageFlexible(raw)
-	if pt2 == 0 {
-		pt2 = imgTok
-	}
-	if ct2 == 0 {
-		ct2 = 2048
-	}
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
-	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
-		return
-	}
-	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		usage := parseUsageFlexible(raw)
+		if usage.PromptTokens == 0 {
+			usage.PromptTokens = imgTok
+		}
+		applyCompletionFallback(&usage, 2048)
+		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+			return
+		}
+		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	c.Data(resp.StatusCode, "application/json", raw)
 }
 

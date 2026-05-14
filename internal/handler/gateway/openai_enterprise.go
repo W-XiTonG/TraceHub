@@ -15,6 +15,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
 	"tracehub/internal/pkg/openaicompat"
+	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelsecret"
 
 	"github.com/gin-gonic/gin"
@@ -75,7 +76,7 @@ func safeOpenAIResourceID(id string) bool {
 }
 
 func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, prePrompt, preComp int) (
-	u *ent.User, k *ent.APIKey, sel *router.Selected, secret, baseURL, ct string, ok bool,
+	u *ent.User, k *ent.APIKey, sel *router.Selected, secret, baseURL, ct string, ok bool, br billing.ModelBillRates,
 ) {
 	uAny, _ := c.Get(middleware.CtxGateUserKey)
 	kAny, _ := c.Get(middleware.CtxGateAPIKeyKey)
@@ -85,7 +86,7 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	fresh, err := d.Client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(c.Request.Context())
 	if err != nil {
 		middleware.WriteOpenAIError(c, 500, "api_error", "用户状态异常")
-		return nil, nil, nil, "", "", "", false
+		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
 	u = fresh
 
@@ -96,18 +97,18 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	gid := u.GroupID
 	if gid <= 0 {
 		middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
-		return nil, nil, nil, "", "", "", false
+		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
 	sel, err2 := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, routingModel, sticky)
 	if err2 != nil {
 		middleware.WriteOpenAIError(c, 403, "permission_error", err2.Error())
-		return nil, nil, nil, "", "", "", false
+		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
 	ch := sel.Channel
 	ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
 	if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
 		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持该 OpenAI 企业管理接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
-		return nil, nil, nil, "", "", "", false
+		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
 
 	if prePrompt < 1 {
@@ -116,10 +117,15 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	if preComp < 0 {
 		preComp = 0
 	}
-	costPre, _ := d.Billing.Charge(c.Request.Context(), u, routingModel, prePrompt, preComp)
+	br, billErr := d.Billing.ModelBillRates(c.Request.Context(), u, routingModel)
+	if billErr != nil {
+		middleware.WriteOpenAIError(c, 500, "api_error", "计费状态异常")
+		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
+	}
+	costPre := br.Cost(prePrompt, completionTokensFallback(preComp), 0)
 	if u.Balance < costPre {
 		middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
-		return nil, nil, nil, "", "", "", false
+		return nil, nil, nil, "", "", "", false, br
 	}
 
 	baseURL = strings.TrimSpace(ch.APIBaseURL)
@@ -138,9 +144,9 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	}
 	if strings.TrimSpace(secret) == "" {
 		middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
-		return nil, nil, nil, "", "", "", false
+		return nil, nil, nil, "", "", "", false, br
 	}
-	return u, k, sel, secret, baseURL, ct, true
+	return u, k, sel, secret, baseURL, ct, true, br
 }
 
 func enterpriseForwardJSON(
@@ -152,7 +158,7 @@ func enterpriseForwardJSON(
 	patchModel bool,
 	useLongClient bool,
 ) {
-	u, k, sel, secret, baseURL, ct, ok := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
+	u, k, sel, secret, baseURL, ct, ok, br := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
 	if !ok {
 		return
 	}
@@ -198,19 +204,15 @@ func enterpriseForwardJSON(
 		c.Data(resp.StatusCode, outCT, raw)
 		return
 	}
-	pt2, ct2 := parseUsageFlexible(raw)
-	if pt2 == 0 {
-		pt2 = prePrompt
-	}
-	if ct2 == 0 {
-		ct2 = preComp
-	}
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+	usage := parseUsageFlexible(raw)
+	applyPromptFallback(&usage, prePrompt)
+	applyCompletionFallback(&usage, preComp)
+	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	outCT := resp.Header.Get("Content-Type")
 	if outCT == "" {
 		outCT = "application/json"
@@ -224,7 +226,7 @@ func enterpriseForwardStream(
 	prePrompt, preComp int,
 	method, relPath, rawQuery string,
 ) {
-	u, k, sel, secret, baseURL, ct, ok := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
+	u, k, sel, secret, baseURL, ct, ok, br := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
 	if !ok {
 		return
 	}
@@ -275,9 +277,10 @@ func enterpriseForwardStream(
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+	streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
 	pt := streamPT
 	comp := streamCT
+	cached := streamCached
 	if pt < 1 {
 		pt = prePrompt
 	}
@@ -285,22 +288,22 @@ func enterpriseForwardStream(
 		comp = 0
 	}
 	if streamPT == 0 && streamCT == 0 {
-		comp = preComp
+		comp = completionTokensFallback(preComp)
 	}
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+	cost := br.Cost(pt, comp, cached)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
 
 // enterpriseForwardPostSSE POST JSON 且上游返回 text/event-stream（如 Thread Run 流式）。
 func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, prePrompt, preComp int, relPath, rawQuery string, body []byte) {
-	u, k, sel, secret, baseURL, ct, ok := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
+	u, k, sel, secret, baseURL, ct, ok, br := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
 	if !ok {
 		return
 	}
@@ -360,9 +363,10 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+	streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
 	pt := streamPT
 	comp := streamCT
+	cached := streamCached
 	if pt < 1 {
 		pt = prePrompt
 	}
@@ -370,17 +374,17 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 		comp = 0
 	}
 	if streamPT == 0 && streamCT == 0 {
-		comp = preComp
+		comp = completionTokensFallback(preComp)
 	}
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+	cost := br.Cost(pt, comp, cached)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
 
 func enterpriseForwardBinaryDownload(
@@ -389,7 +393,7 @@ func enterpriseForwardBinaryDownload(
 	prePrompt, preComp int,
 	relPath, rawQuery string,
 ) {
-	u, k, sel, secret, baseURL, ct, ok := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
+	u, k, sel, secret, baseURL, ct, ok, br := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
 	if !ok {
 		return
 	}
@@ -444,15 +448,15 @@ func enterpriseForwardBinaryDownload(
 		}
 	}
 	comp := preComp
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+	cost := br.Cost(pt, comp, 0)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, 0, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, 0, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
 
 // --- Files ---
@@ -498,7 +502,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 		if imgTok < 128 {
 			imgTok = 128
 		}
-		u, k, sel, secret, baseURL, ct, ok2 := enterpriseResolveUpstream(c, d, model, imgTok, 2048)
+		u, k, sel, secret, baseURL, ct, ok2, br := enterpriseResolveUpstream(c, d, model, imgTok, 2048)
 		if !ok2 {
 			return
 		}
@@ -529,19 +533,17 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 			c.Data(resp.StatusCode, "application/json", raw)
 			return
 		}
-		pt2, ct2 := parseUsageFlexible(raw)
-		if pt2 == 0 {
-			pt2 = imgTok
+		usage := parseUsageFlexible(raw)
+		if usage.PromptTokens == 0 {
+			usage.PromptTokens = imgTok
 		}
-		if ct2 == 0 {
-			ct2 = 2048
-		}
-		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+		applyCompletionFallback(&usage, 2048)
+		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		c.Data(resp.StatusCode, "application/json", raw)
 	}
 }

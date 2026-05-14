@@ -17,6 +17,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
 	"tracehub/internal/pkg/openaicompat"
+	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelsecret"
 
 	"github.com/gin-gonic/gin"
@@ -126,8 +127,10 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 		}
 
 		var costPre int64
+		var br billing.ModelBillRates
 		if promptToks > 0 {
-			costPre, _ = d.Billing.Charge(c.Request.Context(), u, route.LogicalModel, promptToks, maxComp)
+			br, _ = d.Billing.ModelBillRates(c.Request.Context(), u, route.LogicalModel)
+			costPre = br.Cost(promptToks, completionTokensFallback(maxComp), 0)
 			if u.Balance < costPre {
 				middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 				return
@@ -187,18 +190,16 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 		}
 
 		if promptToks > 0 {
-			pt2, ct2 := parseUsageFlexible(raw)
-			if pt2 == 0 {
-				pt2 = promptToks
+			usage := parseUsageFlexible(raw)
+			applyPromptFallback(&usage, promptToks)
+			if maxComp > 0 {
+				applyCompletionFallback(&usage, maxComp)
 			}
-			if ct2 == 0 && maxComp > 0 {
-				ct2 = maxComp
-			}
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, route.LogicalModel, pt2, ct2)
+			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, route.LogicalModel, route.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, route.LogicalModel, route.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		}
 
 		metrics.GatewayRequests.WithLabelValues(route.LogicalModel, ct, "200").Inc()

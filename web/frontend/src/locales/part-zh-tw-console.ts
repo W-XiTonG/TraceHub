@@ -415,7 +415,8 @@ export default {
     billingHint:
       '試玩中的請求與正式呼叫相同：每次成功對話會計入用量，並依閘道規則從該 API Key 所屬帳戶額度中扣費（含輸入與輸出 token）。',
     customBody: '自訂請求 JSON',
-    customBodyHint: '開啟後直接編輯完整請求體；送出時會在 messages 陣列末尾附加目前輸入（若存在該陣列）。',
+    customBodyHint:
+      '開啟後直接編輯完整請求體；送出時會在 messages 陣列末尾附加目前輸入（若存在該陣列）。注意：陣列內既有訊息會原樣送出——若任一則含 image_url 等多模態欄位，純文字模型（如 Instruct）可能回報「非 VLM」錯誤；請移除多模態內容或改用視覺模型。',
     customBodyWarn: '自訂模式請在 JSON 中填寫 model 與 messages；結構錯誤將導致請求失敗。',
     apiKey: 'API Key',
     apiKeyPh: 'sk-th-…',
@@ -475,6 +476,8 @@ export default {
     regen: '重新產生',
     asUser: '轉為使用者',
     clear: '清空對話',
+    newSession: '新對話',
+    newSessionHint: '清空右側對話與本機快取；若啟用自訂 JSON，會將其中 messages 設為空陣列（其餘欄位保留）。',
     inputPh: '輸入訊息…（Enter 傳送）',
     stop: '停止',
     send: '傳送',

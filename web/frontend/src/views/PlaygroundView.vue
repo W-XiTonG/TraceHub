@@ -746,14 +746,29 @@ function stopStream() {
   abortCtrl.value?.abort()
 }
 
-function clearChat() {
+/** 新建会话：清空右侧消息与本地缓存；自定义 JSON 模式下同时把请求体里的 messages 置空，避免旧多模态历史仍被发出。 */
+function startNewPlaygroundSession() {
   messages.value = []
+  input.value = ''
   lastResponse.value = ''
   streamLog.value = ''
+  useImage.value = false
+  imageUrl.value = ''
   try {
     localStorage.removeItem(LS_MSG)
   } catch {
     /* ignore */
+  }
+  if (customBody.value) {
+    try {
+      const j = JSON.parse(customBodyJson.value) as Record<string, unknown>
+      if (Array.isArray(j.messages)) {
+        j.messages = []
+        customBodyJson.value = JSON.stringify(j, null, 2)
+      }
+    } catch {
+      /* 保留用户 JSON，不强行改写 */
+    }
   }
 }
 
@@ -1329,6 +1344,14 @@ function fmtNum(n: number) {
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="th-pg-btn-ghost px-3 py-1.5 text-xs font-medium"
+            :title="t('playground.newSessionHint')"
+            @click="startNewPlaygroundSession"
+          >
+            {{ t('playground.newSession') }}
+          </button>
           <div
             class="th-pg-seg"
             role="group"
@@ -1519,8 +1542,9 @@ function fmtNum(n: number) {
           <button
             type="button"
             class="th-pg-btn-ghost th-pg-btn-ghost--icon th-pg-btn-ghost--danger"
-            :title="t('playground.clear')"
-            @click="clearChat"
+            :title="t('playground.newSessionHint')"
+            :aria-label="t('playground.newSession')"
+            @click="startNewPlaygroundSession"
           >
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path

@@ -118,7 +118,8 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			promptToks = 1
 		}
 		maxComp := 2048
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxComp)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(maxComp), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 			return
@@ -195,9 +196,10 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			if f, ok := c.Writer.(http.Flusher); ok {
 				f.Flush()
 			}
-			streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+			streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
 			pt := streamPT
 			comp := streamCT
+			cached := streamCached
 			if pt < 1 {
 				pt = promptToks
 			}
@@ -205,34 +207,30 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 				comp = 0
 			}
 			if streamPT == 0 && streamCT == 0 {
-				comp = maxComp
+				comp = completionTokensFallback(maxComp)
 			}
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+			cost := br.Cost(pt, comp, cached)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, chType, "deduct_err").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			return
 		}
 
 		raw, _ := io.ReadAll(resp.Body)
-		pt2, ct2 := parseUsageFlexible(raw)
-		if pt2 == 0 {
-			pt2 = promptToks
-		}
-		if ct2 == 0 {
-			ct2 = maxComp
-		}
-		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+		usage := parseUsageFlexible(raw)
+		applyPromptFallback(&usage, promptToks)
+		applyCompletionFallback(&usage, maxComp)
+		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 
 		outCT := resp.Header.Get("Content-Type")
 		if outCT == "" {
@@ -298,7 +296,8 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		if compEst < 512 {
 			compEst = 512
 		}
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, compEst)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(compEst), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 			return
@@ -356,7 +355,8 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		pt2, ct2 := parseUsageFlexible(raw)
+		usage := parseUsageFlexible(raw)
+		pt2, ct2 := usage.PromptTokens, usage.CompletionTokens
 		if pt2 == 0 {
 			pt2 = promptToks
 		}
@@ -368,13 +368,14 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			if ct2 < compEst {
 				ct2 = compEst
 			}
+			ct2 = completionTokensFallback(ct2)
 		}
-		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+		cost := br.Cost(pt2, ct2, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 
 		outCT := resp.Header.Get("Content-Type")
 		if outCT == "" {
@@ -469,37 +470,6 @@ func multipartTextFieldsForBilling(form *multipart.Form, skipField string) strin
 		}
 	}
 	return b.String()
-}
-
-// parseUsageFlexible 解析 OpenAI 及兼容上游在音频等接口中可能返回的 usage（含 duration / input_tokens 等）。
-func parseUsageFlexible(raw []byte) (promptTokens, completionTokens int) {
-	pt, ct := parseUsageFromOpenAIResponse(raw)
-	if pt > 0 || ct > 0 {
-		return pt, ct
-	}
-	var wrap struct {
-		Usage struct {
-			PromptTokens     int     `json:"prompt_tokens"`
-			CompletionTokens int     `json:"completion_tokens"`
-			InputTokens      int     `json:"input_tokens"`
-			OutputTokens     int     `json:"output_tokens"`
-			TotalTokens      int     `json:"total_tokens"`
-			Seconds          float64 `json:"seconds"`
-		} `json:"usage"`
-	}
-	if json.Unmarshal(raw, &wrap) != nil {
-		return 0, 0
-	}
-	if wrap.Usage.TotalTokens > 0 {
-		return wrap.Usage.TotalTokens, 0
-	}
-	if wrap.Usage.InputTokens > 0 || wrap.Usage.OutputTokens > 0 {
-		return wrap.Usage.InputTokens, wrap.Usage.OutputTokens
-	}
-	if wrap.Usage.Seconds > 0 {
-		return int(wrap.Usage.Seconds * 100), 0
-	}
-	return 0, 0
 }
 
 // openAIPassthroughHeaders 透传 OpenAI 官方可选头（组织 / 项目 / beta 功能等）。

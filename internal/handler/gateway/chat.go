@@ -27,9 +27,9 @@ import (
 
 // RealtimeCallGatewayConfig 控制 Realtime 通话子资源（accept/reject/hangup/refer）的映射与计费策略。
 type RealtimeCallGatewayConfig struct {
-	MappingEnabled       bool
-	MappingTTLSec        int
-	BillRejectHangup     bool
+	MappingEnabled   bool
+	MappingTTLSec    int
+	BillRejectHangup bool
 }
 
 type ChatDeps struct {
@@ -40,7 +40,7 @@ type ChatDeps struct {
 	RTCall  RealtimeCallGatewayConfig
 	// OpenAICompatExtras 为除 openai/deepseek 外、仍走 OpenAI 兼容 relay 的渠道类型名（见配置 site.openai_compat_channel_types）。
 	OpenAICompatExtras []string
-	Passthrough          OpenAIPassthroughSettings
+	Passthrough        OpenAIPassthroughSettings
 }
 
 func ChatCompletions(d ChatDeps) gin.HandlerFunc {
@@ -96,7 +96,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		if promptToks < 1 {
 			promptToks = 1
 		}
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", balancePrecheck402Message())
 			return
@@ -172,9 +173,10 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
 				}
-				streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+				streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
 				pt := streamPT
 				comp := streamCT
+				cached := streamCached
 				if pt < 1 {
 					pt = promptToks
 				}
@@ -182,17 +184,17 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					comp = 0
 				}
 				if streamPT == 0 && streamCT == 0 {
-					comp = maxOut
+					comp = completionTokensFallback(maxOut)
 				}
-				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+				cost := br.Cost(pt, comp, cached)
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 				return
 			}
 
@@ -205,19 +207,15 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				c.Data(resp.StatusCode, "application/json", out)
 				return
 			}
-			pt2, ct2 := parseUsageFromOpenAIResponse(raw)
-			if pt2 == 0 {
-				pt2 = promptToks
-			}
-			if ct2 == 0 {
-				ct2 = maxOut
-			}
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+			usage := ParseOpenAIUsageJSON(raw)
+			applyPromptFallback(&usage, promptToks)
+			applyCompletionFallback(&usage, maxOut)
+			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			c.Data(resp.StatusCode, "application/json", raw)
 
 		case ct == "claude":
@@ -244,17 +242,17 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					pt2 = promptToks
 				}
 				if ct2 == 0 {
-					ct2 = maxOut
+					ct2 = completionTokensFallback(maxOut)
 				}
-				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+				cost := br.Cost(pt2, ct2, 0)
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, &em, time.Since(start))
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, nil, time.Since(start))
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 				return
 			}
 			out, status, err := relay.CallClaudeMessages(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
@@ -268,13 +266,15 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 				return
 			}
-			pt2, ct2 := parseUsageFromOpenAIResponse(out)
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+			usage := ParseOpenAIUsageJSON(out)
+			applyPromptFallback(&usage, promptToks)
+			applyCompletionFallback(&usage, maxOut)
+			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), status, nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
 			c.Data(status, "application/json", out)
 
 		case ct == "gemini":
@@ -301,17 +301,17 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					pt2 = promptToks
 				}
 				if ct2 == 0 {
-					ct2 = maxOut
+					ct2 = completionTokensFallback(maxOut)
 				}
-				cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+				cost := br.Cost(pt2, ct2, 0)
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, &em, time.Since(start))
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), 200, nil, time.Since(start))
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 				return
 			}
 			out, status, err := relay.CallGeminiGenerateContent(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
@@ -325,13 +325,15 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 				return
 			}
-			pt2, ct2 := parseUsageFromOpenAIResponse(out)
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+			usage := ParseOpenAIUsageJSON(out)
+			applyPromptFallback(&usage, promptToks)
+			applyCompletionFallback(&usage, maxOut)
+			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), status, nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
 			c.Data(status, "application/json", out)
 
 		default:
@@ -401,47 +403,34 @@ func injectStreamUsageJSON(body []byte) ([]byte, error) {
 
 // copyOpenAIChatSSEWithUsage 透传 OpenAI 兼容 SSE，并解析各 data 行中最后一个非空 usage（依赖 stream_options.include_usage）。
 // 写入经 WriterFlushWrap，与 copyStreamFlushing 一致，避免缓冲导致流式卡顿。
-func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptTokens, completionTokens int) {
+func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptTokens, completionTokens, cachedPromptTokens int) {
 	out := WriterFlushWrap(w)
 	br := bufio.NewReader(r)
 	for {
 		line, err := br.ReadString('\n')
 		if _, werr := io.WriteString(out, line); werr != nil {
-			return promptTokens, completionTokens
+			return promptTokens, completionTokens, cachedPromptTokens
 		}
 		s := strings.TrimSpace(line)
 		if strings.HasPrefix(s, "data:") {
 			payload := strings.TrimSpace(strings.TrimPrefix(s, "data:"))
 			if payload != "" && payload != "[DONE]" {
-				pt, ct := parseUsageFromOpenAIResponse([]byte(payload))
-				if pt > 0 || ct > 0 {
-					promptTokens, completionTokens = pt, ct
+				u := ParseOpenAIUsageJSON([]byte(payload))
+				if u.PromptTokens > 0 || u.CompletionTokens > 0 || u.CachedPromptTokens > 0 {
+					promptTokens, completionTokens, cachedPromptTokens = u.PromptTokens, u.CompletionTokens, u.CachedPromptTokens
 				}
 			}
 		}
 		if err != nil {
 			if err == io.EOF {
-				return promptTokens, completionTokens
+				return promptTokens, completionTokens, cachedPromptTokens
 			}
-			return promptTokens, completionTokens
+			return promptTokens, completionTokens, cachedPromptTokens
 		}
 	}
 }
 
-func parseUsageFromOpenAIResponse(raw []byte) (promptTokens, completionTokens int) {
-	var wrap struct {
-		Usage struct {
-			PromptTokens     int `json:"prompt_tokens"`
-			CompletionTokens int `json:"completion_tokens"`
-		} `json:"usage"`
-	}
-	if json.Unmarshal(raw, &wrap) == nil {
-		return wrap.Usage.PromptTokens, wrap.Usage.CompletionTokens
-	}
-	return 0, 0
-}
-
-func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration) {
+func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration) {
 	ctx := context.Background()
 	ms := int(elapsed.Milliseconds())
 	creator := client.UsageLog.Create().
@@ -456,7 +445,9 @@ func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, m
 		SetTotalCost(cost).
 		SetResponseTimeMs(ms).
 		SetNillableStatusCode(&status).
-		SetNillableIPAddress(&ip)
+		SetNillableIPAddress(&ip).
+		SetIsCached(cachedPrompt > 0).
+		SetCachedTokens(cachedPrompt)
 	if requestID != "" {
 		creator.SetRequestID(requestID)
 	}

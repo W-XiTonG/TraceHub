@@ -114,7 +114,12 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	if preComp < 0 {
 		preComp = 0
 	}
-	costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, preComp)
+	preChargeComp := preComp
+	if preChargeComp > 0 {
+		preChargeComp = completionTokensFallback(preChargeComp)
+	}
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+	costPre := br.Cost(promptToks, preChargeComp, 0)
 	if u.Balance < costPre {
 		middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 		return
@@ -165,19 +170,17 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 		c.Data(resp.StatusCode, "application/json", raw)
 		return
 	}
-	pt2, ct2 := parseUsageFlexible(raw)
-	if pt2 == 0 {
-		pt2 = promptToks
+	usage := parseUsageFlexible(raw)
+	applyPromptFallback(&usage, promptToks)
+	if maxCompFallback > 0 {
+		applyCompletionFallback(&usage, maxCompFallback)
 	}
-	if ct2 == 0 && maxCompFallback > 0 {
-		ct2 = maxCompFallback
-	}
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	c.Data(resp.StatusCode, "application/json", raw)
 }
 

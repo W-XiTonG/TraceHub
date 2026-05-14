@@ -415,7 +415,8 @@ export default {
     billingHint:
       '试玩中的请求与正式调用相同：每次成功对话会计入用量，并按网关规则从该 API Key 所属账户额度中扣费（含输入与输出 token）。',
     customBody: '自定义请求 JSON',
-    customBodyHint: '开启后直接编辑完整请求体；发送时在 messages 末尾追加当前输入（若存在 messages 数组）。',
+    customBodyHint:
+      '开启后直接编辑完整请求体；发送时在 messages 末尾追加当前输入（若存在 messages 数组）。注意：数组里已有条目会原样提交——若任一条含 image_url 等多模态字段，纯文本模型（如 Instruct）会上报「非 VLM」类错误；请删净多模态或改用视觉模型。',
     customBodyWarn: '自定义模式下请在 JSON 中填写 model 与 messages；错误结构将导致请求失败。',
     apiKey: 'API Key',
     apiKeyPh: 'sk-th-…',
@@ -475,6 +476,8 @@ export default {
     regen: '重新生成',
     asUser: '转为用户',
     clear: '清空对话',
+    newSession: '新建会话',
+    newSessionHint: '清空右侧对话与本地缓存；若开启自定义 JSON，会将其中 messages 置为空数组（其它字段保留）。',
     inputPh: '输入消息…（Enter 发送）',
     stop: '停止',
     send: '发送',

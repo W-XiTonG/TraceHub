@@ -104,7 +104,8 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 
 	promptToks := 64
 	maxOut := 512
-	costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+	costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
 	if u.Balance < costPre {
 		middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 		return
@@ -159,19 +160,15 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 		c.Data(resp.StatusCode, outCT, raw)
 		return
 	}
-	pt2, ct2 := parseUsageFlexible(raw)
-	if pt2 == 0 {
-		pt2 = promptToks
-	}
-	if ct2 == 0 {
-		ct2 = maxOut
-	}
-	cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+	usage := parseUsageFlexible(raw)
+	applyPromptFallback(&usage, promptToks)
+	applyCompletionFallback(&usage, maxOut)
+	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	outCT := resp.Header.Get("Content-Type")
 	if outCT == "" {
 		outCT = "application/json"

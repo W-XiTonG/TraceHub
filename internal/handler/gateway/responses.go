@@ -84,7 +84,8 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 		if promptToks < 1 {
 			promptToks = 1
 		}
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", balancePrecheck402Message())
 			return
@@ -148,9 +149,10 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			if f, ok := c.Writer.(http.Flusher); ok {
 				f.Flush()
 			}
-			streamPT, streamCT := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+			streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
 			pt := streamPT
 			comp := streamCT
+			cached := streamCached
 			if pt < 1 {
 				pt = promptToks
 			}
@@ -158,17 +160,17 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 				comp = 0
 			}
 			if streamPT == 0 && streamCT == 0 {
-				comp = maxOut
+				comp = completionTokensFallback(maxOut)
 			}
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt, comp)
+			cost := br.Cost(pt, comp, cached)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			return
 		}
 
@@ -179,19 +181,15 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			c.Data(resp.StatusCode, "application/json", raw)
 			return
 		}
-		pt2, ct2 := parseUsageFlexible(raw)
-		if pt2 == 0 {
-			pt2 = promptToks
-		}
-		if ct2 == 0 {
-			ct2 = maxOut
-		}
-		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+		usage := parseUsageFlexible(raw)
+		applyPromptFallback(&usage, promptToks)
+		applyCompletionFallback(&usage, maxOut)
+		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		c.Data(resp.StatusCode, "application/json", raw)
 	}
 }

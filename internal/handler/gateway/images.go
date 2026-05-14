@@ -138,7 +138,8 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 			promptToks = 1
 		}
 		maxOut := imageGenDefaultCompletionTokens
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 			return
@@ -199,22 +200,18 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 		}
 		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 		raw := buf.Bytes()
-		pt2, ct2 := parseUsageFromOpenAIResponse(raw)
-		if pt2 == 0 {
-			pt2 = promptToks
-		}
-		if ct2 == 0 {
-			ct2 = maxOut
-		}
-		cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+		usage := ParseOpenAIUsageJSON(raw)
+		applyPromptFallback(&usage, promptToks)
+		applyCompletionFallback(&usage, maxOut)
+		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			em := err.Error()
 			metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 	}
 }
 
@@ -268,7 +265,8 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			promptToks = 1
 		}
 		maxOut := imageGenDefaultCompletionTokens
-		costPre, _ := d.Billing.Charge(c.Request.Context(), u, model, promptToks, maxOut)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 			return
@@ -336,22 +334,18 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			}
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			raw := buf.Bytes()
-			pt2, ct2 := parseUsageFromOpenAIResponse(raw)
-			if pt2 == 0 {
-				pt2 = promptToks
-			}
-			if ct2 == 0 {
-				ct2 = maxOut
-			}
-			cost, _ := d.Billing.Charge(c.Request.Context(), u, model, pt2, ct2)
+			usage := ParseOpenAIUsageJSON(raw)
+			applyPromptFallback(&usage, promptToks)
+			applyCompletionFallback(&usage, maxOut)
+			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 
 		default:
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
