@@ -3,6 +3,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { copyTextToClipboard } from '../utils/clipboard'
+import { apiErrorMessage } from '../stores/auth'
+import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
+import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 
 const { t } = useI18n()
 
@@ -34,9 +37,10 @@ const selectedIds = ref<number[]>([])
 const filters = reactive({
   model: '',
   status_code: '',
-  start_time: '',
-  end_time: '',
 })
+
+const startLocal = ref('')
+const endLocal = ref('')
 
 const displayItems = computed(() => {
   const q = quickSearch.value.trim().toLowerCase()
@@ -93,8 +97,8 @@ async function load() {
         page_size: pageSize,
         model: filters.model || undefined,
         status_code: filters.status_code || undefined,
-        start_time: filters.start_time || undefined,
-        end_time: filters.end_time || undefined,
+        start_time: localDateTimeToRFC3339(startLocal.value),
+        end_time: localDateTimeToRFC3339(endLocal.value),
       },
     })
     if (data.code !== 0) throw new Error(data.message || t('modelsPage.loadFail'))
@@ -102,7 +106,7 @@ async function load() {
     total.value = data.data.total
     pruneSelection()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('modelsPage.loadFail')
+    err.value = apiErrorMessage(e, t('modelsPage.loadFail'))
   }
 }
 
@@ -114,8 +118,8 @@ function applyFilters() {
 function resetFilters() {
   filters.model = ''
   filters.status_code = ''
-  filters.start_time = ''
-  filters.end_time = ''
+  startLocal.value = ''
+  endLocal.value = ''
   quickSearch.value = ''
   page.value = 1
   void load()
@@ -213,7 +217,7 @@ onMounted(() => {
           <input
             v-model="filters.model"
             :placeholder="t('logsPage.modelPh')"
-            class="th-input text-sm"
+            class="th-input h-10 text-sm"
           />
         </label>
         <label class="flex flex-col gap-1 text-xs">
@@ -221,25 +225,30 @@ onMounted(() => {
           <input
             v-model="filters.status_code"
             :placeholder="t('logsPage.statusPh')"
-            class="th-input !w-20 shrink-0 text-sm"
+            class="th-input h-10 !w-20 shrink-0 text-sm"
           />
         </label>
-        <label class="flex flex-col gap-1 text-xs">
-          <span class="text-slate-500">{{ t('logsPage.start') }}</span>
-          <input v-model="filters.start_time" class="th-input !w-44 shrink-0 text-sm" />
-        </label>
-        <label class="flex flex-col gap-1 text-xs">
-          <span class="text-slate-500">{{ t('logsPage.end') }}</span>
-          <input v-model="filters.end_time" class="th-input !w-44 shrink-0 text-sm" />
-        </label>
-        <button type="button" class="th-btn-primary-flat px-3 py-2 text-sm" @click="applyFilters">
+        <div class="flex flex-col gap-1 text-xs">
+          <label for="usage-dt-start" class="block cursor-pointer text-slate-500">{{ t('logsPage.start') }}</label>
+          <DateTimeLocalFilterInput
+            v-model="startLocal"
+            input-id="usage-dt-start"
+            :aria-label="t('logsPage.start')"
+          />
+        </div>
+        <div class="flex flex-col gap-1 text-xs">
+          <label for="usage-dt-end" class="block cursor-pointer text-slate-500">{{ t('logsPage.end') }}</label>
+          <DateTimeLocalFilterInput
+            v-model="endLocal"
+            input-id="usage-dt-end"
+            :aria-label="t('logsPage.end')"
+          />
+        </div>
+        <button type="button" class="th-btn-primary-flat h-10 px-4 text-sm" @click="applyFilters">
           {{ t('logsPage.filterBtn') }}
         </button>
-        <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300" @click="resetFilters">
+        <button type="button" class="th-ghost-hover h-10 rounded-lg border border-slate-600 px-4 text-sm text-slate-300" @click="resetFilters">
           {{ t('logsPage.resetBtn') }}
-        </button>
-        <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400" @click="load">
-          {{ t('logsPage.query') }}
         </button>
       </div>
       <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

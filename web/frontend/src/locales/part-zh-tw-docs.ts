@@ -138,7 +138,7 @@ export default {
     uaKeysPut: '更新 Key 元数据',
     uaKeysDel: '刪除 Key',
     uaRedeem: '兌換碼充值',
-    uaRedeemLedger: '兌換入帳流水（分頁）',
+    uaRedeemLedger: '兌換入帳流水（分頁）；可選 start_time、end_time（RFC3339）、redeem_code（脫敏子串或完整碼）。',
     uaPwd: '修改密碼',
     uaBind: '绑定资料（昵称等）',
     uaIp: '帳号级 IP 白名單',
@@ -168,7 +168,5 @@ export default {
     fq3a: '检查客户端超时、反向代理缓冲（需关闭对 SSE 的缓冲）、以及上游是否提前结束连接。',
     fq4q: '文件与線上行为不一致？',
     fq4a: '以您部署的版本与配置为准；升级后请关注發布說明或对比仓库路由代碼。',
-    readMore:
-      '仓库延伸阅读：README.zh-CN.md、docs/产品文件.md、docs/development-docs/deployment-ops.md（部署与运維）。',
   },
 } as const

@@ -14,6 +14,7 @@ import (
 	"tracehub/internal/pkg/alertconfig"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/service/availmodels"
 
 	"github.com/gin-gonic/gin"
@@ -203,6 +204,7 @@ func countGateway(items []availmodels.ConsoleModel) int {
 }
 
 // ListRedeemLedger 当前用户兑换入账流水（分页，按时间倒序）。
+// 可选查询：start_time、end_time（RFC3339，按 created_at 含界过滤）、redeem_code（脱敏片段子串或完整兑换码精确匹配）。
 func ListRedeemLedger(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -216,6 +218,22 @@ func ListRedeemLedger(client *ent.Client) gin.HandlerFunc {
 		}
 		ctx := c.Request.Context()
 		q := client.RedeemLedger.Query().Where(redeemledger.UserIDEQ(u.ID))
+		if st := strings.TrimSpace(c.Query("start_time")); st != "" {
+			if t0, err := time.Parse(time.RFC3339, st); err == nil {
+				q = q.Where(redeemledger.CreatedAtGTE(t0))
+			}
+		}
+		if et := strings.TrimSpace(c.Query("end_time")); et != "" {
+			if t0, err := time.Parse(time.RFC3339, et); err == nil {
+				q = q.Where(redeemledger.CreatedAtLTE(t0))
+			}
+		}
+		if codeStr := strings.TrimSpace(c.Query("redeem_code")); codeStr != "" {
+			q = q.Where(redeemledger.Or(
+				redeemledger.CodeHintContainsFold(codeStr),
+				redeemledger.HasRedeemCodeWith(redeemutil.CodeMatchPredicate(codeStr)),
+			))
+		}
 		total, err := q.Clone().Count(ctx)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")

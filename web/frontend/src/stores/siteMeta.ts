@@ -3,12 +3,44 @@ import { computed, ref } from 'vue'
 import axios from 'axios'
 import { http, type Envelope } from '../api/http'
 
+/** 与 /api/pub/site-meta 中 public_contact 一致 */
+export type PublicContactPayload = {
+  title?: string
+  qr_items?: Array<{ label?: string; image_url?: string }>
+  emails?: string[]
+}
+
 type PubSiteMeta = {
   brand_name?: string
   brand_icon_url?: string
   api_public_base_url?: string
   /** 注册推广说明（纯文本）；空或未返回则不展示 */
   register_promo_text?: string
+  /** 官网页脚「联系我们」；未返回或空则不展示 */
+  public_contact?: PublicContactPayload | null
+}
+
+function normalizePublicContact(raw: unknown): PublicContactPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const title = typeof o.title === 'string' ? o.title.trim() : ''
+  const qrRaw = Array.isArray(o.qr_items) ? o.qr_items : []
+  const qr_items: Array<{ label: string; image_url: string }> = []
+  for (const x of qrRaw) {
+    if (!x || typeof x !== 'object') continue
+    const r = x as Record<string, unknown>
+    const label = typeof r.label === 'string' ? r.label.trim() : ''
+    const image_url = typeof r.image_url === 'string' ? r.image_url.trim() : ''
+    if (!image_url) continue
+    qr_items.push({ label, image_url })
+  }
+  const emRaw = Array.isArray(o.emails) ? o.emails : []
+  const emails: string[] = []
+  for (const e of emRaw) {
+    if (typeof e === 'string' && e.trim()) emails.push(e.trim())
+  }
+  if (!title && qr_items.length === 0 && emails.length === 0) return null
+  return { title, qr_items, emails }
 }
 
 /** 与后端 sitecfg.DefaultBrandIconURL 一致；接口返回该值时存为空串表示「无自定义」 */
@@ -21,6 +53,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   const apiPublicBaseUrl = ref('')
   /** 注册页 / 官网展示的推广文案（来自站点配置） */
   const registerPromoText = ref('')
+  /** 官网页脚联系我们（来自站点配置） */
+  const publicContact = ref<PublicContactPayload | null>(null)
   const loaded = ref(false)
   let inflight: Promise<void> | null = null
 
@@ -42,6 +76,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     }
     return '/v1'
   })
+
+  const hasPublicContact = computed(() => publicContact.value != null)
 
   async function pullPubSiteMeta(): Promise<void> {
     try {
@@ -66,6 +102,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
         } else {
           registerPromoText.value = ''
         }
+        publicContact.value = normalizePublicContact(data.data.public_contact)
       }
     } catch (e: unknown) {
       if (!axios.isAxiosError(e) || e.response?.status !== 404) {
@@ -97,6 +134,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     brandIconUrl.value = ''
     apiPublicBaseUrl.value = ''
     registerPromoText.value = ''
+    publicContact.value = null
     inflight = (async () => {
       try {
         await pullPubSiteMeta()
@@ -113,6 +151,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     brandIconUrl,
     apiPublicBaseUrl,
     registerPromoText,
+    publicContact,
+    hasPublicContact,
     loaded,
     displayName,
     displayIconUrl,

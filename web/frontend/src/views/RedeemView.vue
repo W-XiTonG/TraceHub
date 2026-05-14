@@ -2,12 +2,16 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import { apiErrorMessage } from '../stores/auth'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
+import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
+import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 
 const { t } = useI18n()
 
 const code = ref('')
 const msg = ref('')
+const msgTone = ref<'success' | 'error'>('success')
 const result = ref<{ amount_added?: number; new_balance?: number } | null>(null)
 
 type LedgerRow = {
@@ -26,20 +30,43 @@ const ledgerPageSize = 20
 const ledgerErr = ref('')
 const ledgerLoading = ref(false)
 
+const ledgerStartLocal = ref('')
+const ledgerEndLocal = ref('')
+const ledgerCodeFilter = ref('')
+
 const ledgerTotalPages = () => Math.max(1, Math.ceil(ledgerTotal.value / ledgerPageSize))
+
+/** 列表时间与日期筛选均为「本机时区」语义；勿与表格内原始 UTC 字符串逐字对照。 */
+function fmtLedgerTime(iso: string | undefined | null) {
+  if (iso == null || String(iso).trim() === '') return '—'
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return String(iso)
+    return d.toLocaleString()
+  } catch {
+    return String(iso)
+  }
+}
 
 async function loadLedger() {
   ledgerErr.value = ''
   ledgerLoading.value = true
   try {
+    const codeQ = ledgerCodeFilter.value.trim()
     const { data } = await http.get<Envelope<{ items: LedgerRow[]; total: number }>>('/api/user/redeem-ledger', {
-      params: { page: ledgerPage.value, page_size: ledgerPageSize },
+      params: {
+        page: ledgerPage.value,
+        page_size: ledgerPageSize,
+        start_time: localDateTimeToRFC3339(ledgerStartLocal.value),
+        end_time: localDateTimeToRFC3339(ledgerEndLocal.value),
+        redeem_code: codeQ || undefined,
+      },
     })
     if (data.code !== 0) throw new Error(data.message || t('redeemPage.fail'))
     ledgerRows.value = data.data?.items ?? []
     ledgerTotal.value = data.data?.total ?? 0
   } catch (e: unknown) {
-    ledgerErr.value = e instanceof Error ? e.message : t('redeemPage.fail')
+    ledgerErr.value = apiErrorMessage(e, t('redeemPage.fail'))
     ledgerRows.value = []
     ledgerTotal.value = 0
   } finally {
@@ -61,6 +88,19 @@ function ledgerNext() {
   }
 }
 
+function applyLedgerFilters() {
+  ledgerPage.value = 1
+  void loadLedger()
+}
+
+function resetLedgerFilters() {
+  ledgerStartLocal.value = ''
+  ledgerEndLocal.value = ''
+  ledgerCodeFilter.value = ''
+  ledgerPage.value = 1
+  void loadLedger()
+}
+
 async function redeem() {
   msg.value = ''
   result.value = null
@@ -69,12 +109,14 @@ async function redeem() {
       code: code.value,
     })
     if (data.code !== 0) throw new Error(data.message || t('redeemPage.fail'))
+    msgTone.value = 'success'
     msg.value = data.message || t('redeemPage.success')
     result.value = data.data
     ledgerPage.value = 1
     void loadLedger()
   } catch (e: unknown) {
-    msg.value = e instanceof Error ? e.message : t('redeemPage.fail')
+    msgTone.value = 'error'
+    msg.value = apiErrorMessage(e, t('redeemPage.fail'))
   }
 }
 
@@ -87,9 +129,23 @@ onMounted(() => {
   <div class="max-w-3xl space-y-10">
     <section>
       <h1 class="mb-6 text-2xl font-bold">{{ t('redeemPage.title') }}</h1>
-      <input v-model="code" :placeholder="t('redeemPage.ph')" class="th-input mb-4 w-full max-w-md" />
-      <button type="button" class="th-btn-primary-flat max-w-md py-2.5 text-sm" @click="redeem">{{ t('redeemPage.submit') }}</button>
-      <p class="mt-4 text-sm text-slate-400">{{ msg }}</p>
+      <div class="flex w-full max-w-md min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
+        <input
+          v-model="code"
+          :placeholder="t('redeemPage.ph')"
+          class="th-input min-w-0 flex-1"
+          autocomplete="one-time-code"
+          @keydown.enter.prevent="redeem"
+        />
+        <button type="button" class="th-btn-primary-flat shrink-0 py-2.5 text-sm sm:px-6" @click="redeem">{{ t('redeemPage.submit') }}</button>
+      </div>
+      <p
+        v-if="msg"
+        class="mt-3 text-sm"
+        :class="msgTone === 'error' ? 'text-rose-400' : 'text-emerald-300/95'"
+      >
+        {{ msg }}
+      </p>
       <div v-if="result" class="th-redeem-result mt-4 max-w-md space-y-2 rounded-lg p-4 text-sm">
         <p v-if="result.amount_added != null">
           <span class="th-redeem-result__label">{{ t('redeemPage.amountAdded') }}</span>
@@ -117,6 +173,51 @@ onMounted(() => {
           {{ t('redeemPage.ledgerRefresh') }}
         </button>
       </div>
+
+      <div
+        class="th-console-muted-bar mb-4 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2"
+      >
+        <div class="flex flex-col gap-1 text-xs">
+          <label for="redeem-ledger-dt-start" class="block cursor-pointer text-slate-500">{{ t('redeemPage.ledgerFilterStart') }}</label>
+          <DateTimeLocalFilterInput
+            v-model="ledgerStartLocal"
+            input-id="redeem-ledger-dt-start"
+            :aria-label="t('redeemPage.ledgerFilterStart')"
+          />
+        </div>
+        <div class="flex flex-col gap-1 text-xs">
+          <label for="redeem-ledger-dt-end" class="block cursor-pointer text-slate-500">{{ t('redeemPage.ledgerFilterEnd') }}</label>
+          <DateTimeLocalFilterInput
+            v-model="ledgerEndLocal"
+            input-id="redeem-ledger-dt-end"
+            :aria-label="t('redeemPage.ledgerFilterEnd')"
+          />
+        </div>
+        <label class="flex min-w-[10rem] flex-1 flex-col gap-1 text-xs sm:max-w-xs">
+          <span class="text-slate-500">{{ t('redeemPage.ledgerFilterCode') }}</span>
+          <input
+            v-model="ledgerCodeFilter"
+            type="search"
+            autocomplete="off"
+            class="th-input h-10 text-sm"
+            :placeholder="t('redeemPage.ledgerFilterCodePh')"
+            @keydown.enter.prevent="applyLedgerFilters"
+          />
+        </label>
+        <div class="flex h-10 shrink-0 items-stretch gap-2">
+          <button type="button" class="th-btn-primary-flat h-10 px-4 text-sm" @click="applyLedgerFilters">
+            {{ t('redeemPage.ledgerFilterBtn') }}
+          </button>
+          <button
+            type="button"
+            class="th-ghost-hover h-10 rounded-lg border border-slate-600 px-4 text-sm text-slate-300"
+            @click="resetLedgerFilters"
+          >
+            {{ t('redeemPage.ledgerFilterReset') }}
+          </button>
+        </div>
+      </div>
+      <p class="mb-2 text-[11px] leading-relaxed text-slate-500">{{ t('redeemPage.ledgerFilterTimeHint') }}</p>
       <p v-if="ledgerErr" class="mb-2 text-sm text-rose-400">{{ ledgerErr }}</p>
       <p v-else-if="!ledgerLoading && ledgerRows.length === 0" class="text-sm text-slate-500">{{ t('redeemPage.ledgerEmpty') }}</p>
       <div v-else class="overflow-x-auto rounded-lg border border-slate-800/80">
@@ -132,7 +233,7 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr v-for="r in ledgerRows" :key="r.id" class="border-b border-slate-800/60 hover:bg-white/[0.02]">
-              <td class="px-3 py-2 font-mono text-xs text-slate-400">{{ r.created_at || '—' }}</td>
+              <td class="px-3 py-2 font-mono text-xs text-slate-400">{{ fmtLedgerTime(r.created_at) }}</td>
               <td class="px-3 py-2 font-mono text-xs text-slate-300">{{ r.code_hint || '—' }}</td>
               <td class="px-3 py-2 font-mono text-base font-semibold tabular-nums th-redeem-quota-fg">{{ r.amount }}</td>
               <td class="px-3 py-2 font-mono text-slate-300">{{ r.balance_after }}</td>

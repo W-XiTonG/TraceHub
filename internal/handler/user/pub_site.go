@@ -26,6 +26,17 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		if api := sitecfg.EffectiveAPIPublicBaseURL(ctx, client); api != "" {
 			out["api_public_base_url"] = api
 		}
+		if pc := sitecfg.EffectivePublicContactData(ctx, client); sitecfg.PublicContactHasVisibleContent(pc) {
+			qr := make([]gin.H, 0, len(pc.QRItems))
+			for _, it := range pc.QRItems {
+				qr = append(qr, gin.H{"label": it.Label, "image_url": it.ImageURL})
+			}
+			out["public_contact"] = gin.H{
+				"title":    pc.Title,
+				"qr_items": qr,
+				"emails":   pc.Emails,
+			}
+		}
 		httpx.OK(c, out)
 	}
 }

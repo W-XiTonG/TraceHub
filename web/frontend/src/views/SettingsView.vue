@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
-import { useAuthStore } from '../stores/auth'
+import { apiErrorMessage, useAuthStore } from '../stores/auth'
 
 const { t } = useI18n()
 
@@ -32,8 +32,30 @@ type Me = {
 
 const auth = useAuthStore()
 const me = ref<Me | null>(null)
-const err = ref('')
-const ok = ref('')
+const loadErr = ref('')
+const bindOk = ref('')
+const bindErr = ref('')
+const balanceOk = ref('')
+const balanceErr = ref('')
+const customOk = ref('')
+const customErr = ref('')
+const ipOk = ref('')
+const ipErr = ref('')
+const pwdOk = ref('')
+const pwdErr = ref('')
+
+function clearAllSaveFeedback() {
+  bindOk.value = ''
+  bindErr.value = ''
+  balanceOk.value = ''
+  balanceErr.value = ''
+  customOk.value = ''
+  customErr.value = ''
+  ipOk.value = ''
+  ipErr.value = ''
+  pwdOk.value = ''
+  pwdErr.value = ''
+}
 
 const pwd = reactive({ old: '', new1: '', new2: '' })
 const bind = reactive({ username: '', webhook_url: '' })
@@ -88,7 +110,7 @@ function syncAuthFromMe() {
 }
 
 async function load() {
-  err.value = ''
+  loadErr.value = ''
   try {
     const { data } = await http.get<Envelope<Me>>('/api/user/me')
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.loadFail'))
@@ -100,13 +122,12 @@ async function load() {
     applyCustomFromMe(data.data)
     syncAuthFromMe()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.loadFail')
+    loadErr.value = apiErrorMessage(e, t('settingsPage.loadFail'))
   }
 }
 
 async function saveBind() {
-  ok.value = ''
-  err.value = ''
+  clearAllSaveFeedback()
   try {
     const body: Record<string, unknown> = {
       username: bind.username.trim() || undefined,
@@ -119,21 +140,20 @@ async function saveBind() {
 
     const { data } = await http.put<Envelope<null>>('/api/user/bind', body)
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.saveFail'))
-    ok.value = t('settingsPage.bindOk')
+    bindOk.value = t('settingsPage.bindOk')
     bindGenericSign.value = ''
     clearGenericSign.value = false
     await load()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.saveFail')
+    bindErr.value = apiErrorMessage(e, t('settingsPage.saveFail'))
   }
 }
 
 async function saveBalanceAlert() {
-  ok.value = ''
-  err.value = ''
+  clearAllSaveFeedback()
   const n = Math.trunc(Number(balanceAlertThreshold.value))
   if (Number.isNaN(n) || n < 0) {
-    err.value = t('settingsPage.saveFail')
+    balanceErr.value = t('settingsPage.saveFail')
     return
   }
   try {
@@ -141,10 +161,10 @@ async function saveBalanceAlert() {
       balance_alert_threshold: n,
     })
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.saveFail'))
-    ok.value = t('settingsPage.balanceAlertOk')
+    balanceOk.value = t('settingsPage.balanceAlertOk')
     await load()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.saveFail')
+    balanceErr.value = apiErrorMessage(e, t('settingsPage.saveFail'))
   }
 }
 
@@ -162,8 +182,7 @@ function buildCustomPayload(): CustomAlertConfig {
 }
 
 async function saveCustomAlert() {
-  ok.value = ''
-  err.value = ''
+  clearAllSaveFeedback()
   try {
     const payload = buildCustomPayload()
     const body: Record<string, unknown> = { custom_alert_config: payload }
@@ -178,7 +197,7 @@ async function saveCustomAlert() {
 
     const { data } = await http.put<Envelope<null>>('/api/user/bind', body)
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.saveFail'))
-    ok.value = t('settingsPage.customAlertOk')
+    customOk.value = t('settingsPage.customAlertOk')
     secretDing.value = ''
     secretFeishu.value = ''
     secretWecom.value = ''
@@ -187,28 +206,26 @@ async function saveCustomAlert() {
     clearWecomSign.value = false
     await load()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.saveFail')
+    customErr.value = apiErrorMessage(e, t('settingsPage.saveFail'))
   }
 }
 
 async function clearCustomAlert() {
-  ok.value = ''
-  err.value = ''
+  clearAllSaveFeedback()
   try {
     const { data } = await http.put<Envelope<null>>('/api/user/bind', {
       custom_alert_config: null,
     })
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.saveFail'))
-    ok.value = t('settingsPage.customAlertCleared')
+    customOk.value = t('settingsPage.customAlertCleared')
     await load()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.saveFail')
+    customErr.value = apiErrorMessage(e, t('settingsPage.saveFail'))
   }
 }
 
 async function saveIp() {
-  ok.value = ''
-  err.value = ''
+  clearAllSaveFeedback()
   const lines = ipText.value
     .split(/[\n,]+/)
     .map((s) => s.trim())
@@ -216,17 +233,16 @@ async function saveIp() {
   try {
     const { data } = await http.put<Envelope<null>>('/api/user/ip_whitelist', { ip_whitelist: lines })
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.saveFail'))
-    ok.value = t('settingsPage.ipOk')
+    ipOk.value = t('settingsPage.ipOk')
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.saveFail')
+    ipErr.value = apiErrorMessage(e, t('settingsPage.saveFail'))
   }
 }
 
 async function changePwd() {
-  ok.value = ''
-  err.value = ''
+  clearAllSaveFeedback()
   if (pwd.new1 !== pwd.new2) {
-    err.value = t('settingsPage.pwdMismatch')
+    pwdErr.value = t('settingsPage.pwdMismatch')
     return
   }
   try {
@@ -235,12 +251,12 @@ async function changePwd() {
       new_password: pwd.new1,
     })
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.pwdChangeFail'))
-    ok.value = t('settingsPage.pwdOk')
+    pwdOk.value = t('settingsPage.pwdOk')
     pwd.old = ''
     pwd.new1 = ''
     pwd.new2 = ''
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('settingsPage.pwdChangeFail')
+    pwdErr.value = apiErrorMessage(e, t('settingsPage.pwdChangeFail'))
   }
 }
 
@@ -253,8 +269,7 @@ onMounted(load)
       <h1 class="mb-2 text-2xl font-bold">{{ t('settingsPage.title') }}</h1>
       <p class="text-sm text-slate-500">{{ t('settingsPage.desc') }}</p>
     </div>
-    <p v-if="ok" class="text-sm text-emerald-400">{{ ok }}</p>
-    <p v-if="err" class="text-sm text-red-400">{{ err }}</p>
+    <p v-if="loadErr" class="text-sm text-red-400">{{ loadErr }}</p>
 
     <section v-if="me" class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
       <h2 class="mb-3 text-sm font-semibold text-slate-300">{{ t('settingsPage.secInfo') }}</h2>
@@ -289,6 +304,8 @@ onMounted(load)
         {{ t('settingsPage.bindClearGenericSign') }}
       </label>
       <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="saveBind">{{ t('settingsPage.saveBind') }}</button>
+      <p v-if="bindErr" class="mt-2 text-sm text-red-400">{{ bindErr }}</p>
+      <p v-if="bindOk" class="mt-2 text-sm text-emerald-400">{{ bindOk }}</p>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
@@ -306,6 +323,8 @@ onMounted(load)
         {{ t('settingsPage.balanceAlertYuanHint', { yuan: thresholdYuan, unit: currencyUnit }) }}
       </p>
       <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="saveBalanceAlert">{{ t('settingsPage.balanceAlertSave') }}</button>
+      <p v-if="balanceErr" class="mt-2 text-sm text-red-400">{{ balanceErr }}</p>
+      <p v-if="balanceOk" class="mt-2 text-sm text-emerald-400">{{ balanceOk }}</p>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
@@ -378,6 +397,8 @@ onMounted(load)
           {{ t('settingsPage.customAlertClear') }}
         </button>
       </div>
+      <p v-if="customErr" class="mt-2 text-sm text-red-400">{{ customErr }}</p>
+      <p v-if="customOk" class="mt-2 text-sm text-emerald-400">{{ customOk }}</p>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
@@ -385,6 +406,8 @@ onMounted(load)
       <p class="mb-3 text-xs text-slate-500">{{ t('settingsPage.ipHint') }}</p>
       <textarea v-model="ipText" rows="5" class="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" :placeholder="t('settingsPage.ipPh')" />
       <button type="button" class="th-btn-primary-flat mt-3 px-4 py-2 text-sm" @click="saveIp">{{ t('settingsPage.saveIp') }}</button>
+      <p v-if="ipErr" class="mt-2 text-sm text-red-400">{{ ipErr }}</p>
+      <p v-if="ipOk" class="mt-2 text-sm text-emerald-400">{{ ipOk }}</p>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
@@ -401,7 +424,9 @@ onMounted(load)
         <span class="text-slate-500">{{ t('settingsPage.newPwd2') }}</span>
         <input v-model="pwd.new2" type="password" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2" />
       </label>
-      <button type="button" class="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600" @click="changePwd">{{ t('settingsPage.updatePwdBtn') }}</button>
+      <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="changePwd">{{ t('settingsPage.updatePwdBtn') }}</button>
+      <p v-if="pwdErr" class="mt-2 text-sm text-red-400">{{ pwdErr }}</p>
+      <p v-if="pwdOk" class="mt-2 text-sm text-emerald-400">{{ pwdOk }}</p>
     </section>
   </div>
 </template>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import { apiErrorMessage } from '../stores/auth'
+import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
+import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 
 const { t } = useI18n()
 
@@ -22,6 +25,15 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 20
 const err = ref('')
+
+const filters = reactive({
+  entry_type: '',
+  direction: '' as '' | 'in' | 'out',
+})
+
+/** `datetime-local` 绑定值，请求时转为 RFC3339 */
+const startLocal = ref('')
+const endLocal = ref('')
 
 function entryTypeLabel(kind: string) {
   switch (kind) {
@@ -96,14 +108,35 @@ async function load() {
   err.value = ''
   try {
     const { data } = await http.get<Envelope<{ items: LedgerRow[]; total: number }>>('/api/user/balance-ledger', {
-      params: { page: page.value, page_size: pageSize },
+      params: {
+        page: page.value,
+        page_size: pageSize,
+        entry_type: filters.entry_type || undefined,
+        direction: filters.direction || undefined,
+        start_time: localDateTimeToRFC3339(startLocal.value),
+        end_time: localDateTimeToRFC3339(endLocal.value),
+      },
     })
     if (data.code !== 0) throw new Error(data.message || t('ledgerPage.loadFail'))
     items.value = data.data.items
     total.value = data.data.total
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : t('ledgerPage.loadFail')
+    err.value = apiErrorMessage(e, t('ledgerPage.loadFail'))
   }
+}
+
+function applyFilters() {
+  page.value = 1
+  void load()
+}
+
+function resetFilters() {
+  filters.entry_type = ''
+  filters.direction = ''
+  startLocal.value = ''
+  endLocal.value = ''
+  page.value = 1
+  void load()
 }
 
 function prevPage() {
@@ -126,6 +159,65 @@ onMounted(() => void load())
     <p class="text-xs font-medium uppercase tracking-wider text-slate-500">{{ t('ledgerPage.pageKicker') }}</p>
     <h1 class="mt-1 text-2xl font-bold">{{ t('ledgerPage.title') }}</h1>
     <p class="mt-2 max-w-3xl text-sm text-slate-400">{{ t('ledgerPage.desc') }}</p>
+
+    <div
+      class="th-console-muted-bar mt-6 flex flex-col gap-3 px-4 py-3 md:flex-row md:flex-wrap md:items-end md:justify-between md:gap-x-4 md:gap-y-2"
+    >
+      <div
+        class="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,11rem)_minmax(0,11rem)_minmax(0,11.5rem)_minmax(0,11.5rem)_auto] lg:items-end"
+      >
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="text-slate-500">{{ t('ledgerPage.filterEntryType') }}</span>
+          <select v-model="filters.entry_type" class="th-input h-10 w-full text-sm">
+            <option value="">{{ t('ledgerPage.optEntryAll') }}</option>
+            <option value="api_usage">{{ t('ledgerPage.typeApiUsage') }}</option>
+            <option value="redeem">{{ t('ledgerPage.typeRedeem') }}</option>
+            <option value="admin_adjust">{{ t('ledgerPage.typeAdminAdjust') }}</option>
+            <option value="feedback_reward">{{ t('ledgerPage.typeFeedbackReward') }}</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="text-slate-500">{{ t('ledgerPage.filterDirection') }}</span>
+          <select v-model="filters.direction" class="th-input h-10 w-full text-sm">
+            <option value="">{{ t('ledgerPage.optDirAll') }}</option>
+            <option value="in">{{ t('ledgerPage.directionIn') }}</option>
+            <option value="out">{{ t('ledgerPage.directionOut') }}</option>
+          </select>
+        </label>
+        <div class="flex flex-col gap-1 text-xs lg:col-span-1">
+          <label for="ledger-dt-start" class="block cursor-pointer text-slate-500">{{ t('ledgerPage.start') }}</label>
+          <DateTimeLocalFilterInput
+            v-model="startLocal"
+            input-id="ledger-dt-start"
+            :aria-label="t('ledgerPage.start')"
+          />
+        </div>
+        <div class="flex flex-col gap-1 text-xs lg:col-span-1">
+          <label for="ledger-dt-end" class="block cursor-pointer text-slate-500">{{ t('ledgerPage.end') }}</label>
+          <DateTimeLocalFilterInput
+            v-model="endLocal"
+            input-id="ledger-dt-end"
+            :aria-label="t('ledgerPage.end')"
+          />
+        </div>
+        <div class="flex h-10 items-stretch gap-2 lg:col-span-1 lg:shrink-0">
+          <button
+            type="button"
+            class="th-btn-primary-flat h-10 px-4 text-sm sm:px-4"
+            @click="applyFilters"
+          >
+            {{ t('ledgerPage.filterBtn') }}
+          </button>
+          <button
+            type="button"
+            class="th-ghost-hover h-10 rounded-lg border border-slate-600 px-4 text-sm text-slate-300"
+            @click="resetFilters"
+          >
+            {{ t('ledgerPage.resetBtn') }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <p v-if="err" class="mt-4 text-sm text-red-400">{{ err }}</p>
 
@@ -150,11 +242,13 @@ onMounted(() => void load())
             class="border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02]"
           >
             <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-300">{{ fmtTime(row.event_time) }}</td>
-            <td class="px-4 py-3">
-              <span class="rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-xs text-slate-300">{{
-                entryTypeLabel(row.entry_type)
-              }}</span>
-              <span class="ml-2 text-[11px] text-slate-600">{{ directionLabel(row.direction) }}</span>
+            <td class="px-4 py-3 align-top">
+              <div class="flex max-w-[14rem] flex-col gap-1.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1">
+                <span
+                  class="inline-flex w-fit shrink-0 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-xs text-slate-300"
+                  >{{ entryTypeLabel(row.entry_type) }}</span>
+                <span class="text-[11px] text-slate-500 sm:text-slate-600">{{ directionLabel(row.direction) }}</span>
+              </div>
             </td>
             <td
               class="whitespace-nowrap px-4 py-3 font-mono text-sm"

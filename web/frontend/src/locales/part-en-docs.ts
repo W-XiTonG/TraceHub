@@ -139,7 +139,7 @@ export default {
     uaKeysPut: 'Update key metadata',
     uaKeysDel: 'Delete key',
     uaRedeem: 'Redeem code',
-    uaRedeemLedger: 'Redeem ledger (paged credit history)',
+    uaRedeemLedger: 'Redeem credit history (paged); optional start_time, end_time (RFC3339), redeem_code (masked hint substring or full code).',
     uaPwd: 'Change password',
     uaBind: 'Bind profile (display name, etc.)',
     uaIp: 'Account IP allowlist',
@@ -169,7 +169,5 @@ export default {
     fq3a: 'Check client timeouts, reverse-proxy buffering (disable buffering for SSE) and upstream disconnects.',
     fq4q: 'Docs don’t match production?',
     fq4a: 'Follow your deployed version and config; after upgrades read release notes and compare router code.',
-    readMore:
-      'Further reading: README.zh-CN.md, docs/产品文档.md, docs/development-docs/deployment-ops.md (deploy & ops).',
   },
 } as const

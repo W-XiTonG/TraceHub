@@ -26,6 +26,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateAPIPublicBaseURL(value)
 	case SystemConfigKeyRegisterPromoText:
 		return ValidateRegisterPromoText(value)
+	case SystemConfigKeyPublicContactJSON:
+		return ValidatePublicContactJSON(value)
 	default:
 		return nil
 	}

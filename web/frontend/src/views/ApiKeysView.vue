@@ -454,7 +454,9 @@ onMounted(() => {
       </button>
     </div>
 
-    <div class="th-console-muted-bar mb-6 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+    <div
+      class="th-console-muted-bar mb-6 flex flex-col gap-3 px-4 py-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-4 md:gap-y-2"
+    >
       <div class="flex flex-wrap items-center gap-2">
         <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="openCreateModal">
           {{ t('apiKeys.newKey') }}
@@ -466,24 +468,34 @@ onMounted(() => {
           {{ t('apiKeys.bulkDelete') }}
         </button>
       </div>
-      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+      <div
+        class="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,11rem)_auto] sm:items-center md:max-w-2xl md:flex-1 lg:max-w-3xl"
+      >
         <input
           v-model="filterName"
           type="search"
           :placeholder="t('apiKeys.toolbarSearchPh')"
-          class="th-input w-full min-w-[10rem] sm:max-w-[14rem]"
+          class="th-input min-w-0 w-full text-sm"
         />
         <input
           v-model="filterPrefix"
           type="search"
           :placeholder="t('apiKeys.toolbarPrefixPh')"
-          class="th-input w-full min-w-[8rem] font-mono text-xs sm:max-w-[12rem]"
+          class="th-input min-w-0 w-full font-mono text-xs"
         />
-        <div class="flex gap-2">
-          <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="runQuery">
+        <div class="flex items-stretch gap-2 sm:shrink-0">
+          <button
+            type="button"
+            class="th-ghost-hover min-h-[2.5rem] flex-1 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 sm:min-h-0 sm:flex-none sm:px-4"
+            @click="runQuery"
+          >
             {{ t('apiKeys.query') }}
           </button>
-          <button type="button" class="th-ghost-hover rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400" @click="resetFilters">
+          <button
+            type="button"
+            class="th-ghost-hover min-h-[2.5rem] flex-1 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-400 sm:min-h-0 sm:flex-none sm:px-4"
+            @click="resetFilters"
+          >
             {{ t('apiKeys.reset') }}
           </button>
         </div>

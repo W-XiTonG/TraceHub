@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strconv"
+	"strings"
+	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/middleware"
@@ -35,12 +37,36 @@ func BalanceLedger(db *sql.DB) gin.HandlerFunc {
 		uid := u.ID
 		rid := strconv.Itoa(uid)
 
-		total, err := countBalanceLedger(ctx, db, uid, rid)
+		entryType := strings.TrimSpace(c.Query("entry_type"))
+		if entryType != "" {
+			switch entryType {
+			case "api_usage", "redeem", "admin_adjust", "feedback_reward":
+			default:
+				entryType = ""
+			}
+		}
+		dir := strings.TrimSpace(c.Query("direction"))
+		if dir != "" && dir != "in" && dir != "out" {
+			dir = ""
+		}
+		var startPtr, endPtr *time.Time
+		if st := strings.TrimSpace(c.Query("start_time")); st != "" {
+			if t0, err := time.Parse(time.RFC3339, st); err == nil {
+				startPtr = &t0
+			}
+		}
+		if et := strings.TrimSpace(c.Query("end_time")); et != "" {
+			if t0, err := time.Parse(time.RFC3339, et); err == nil {
+				endPtr = &t0
+			}
+		}
+
+		total, err := countBalanceLedger(ctx, db, uid, rid, entryType, startPtr, endPtr, dir)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")
 			return
 		}
-		rows, err := queryBalanceLedgerPage(ctx, db, uid, rid, ps, offset)
+		rows, err := queryBalanceLedgerPage(ctx, db, uid, rid, entryType, startPtr, endPtr, dir, ps, offset)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")
 			return
@@ -49,31 +75,78 @@ func BalanceLedger(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func countBalanceLedger(ctx context.Context, db *sql.DB, userID int, resourceID string) (int64, error) {
+func countBalanceLedger(ctx context.Context, db *sql.DB, userID int, resourceID, entryType string, start, end *time.Time, direction string) (int64, error) {
+	var startArg any
+	if start != nil {
+		startArg = *start
+	}
+	var endArg any
+	if end != nil {
+		endArg = *end
+	}
 	const q = `
 SELECT COUNT(*) FROM (
-  SELECT 1 FROM usage_logs ul WHERE ul.user_id = $1 AND ul.total_cost <> 0
-  UNION ALL
-  SELECT 1 FROM redeem_ledgers rl WHERE rl.user_id = $1
-  UNION ALL
-  SELECT 1 FROM admin_audit_logs aal
-   WHERE aal.action = 'user.balance'
-     AND aal.resource = 'user'
-     AND aal.resource_id = $2
-     AND aal.detail ? 'delta'
-     AND COALESCE(NULLIF(trim(aal.detail->>'delta'), ''), '0')::numeric <> 0
-  UNION ALL
-  SELECT 1 FROM feedbacks f
-   WHERE f.user_id = $1 AND f.review_state = 3 AND f.reward_points <> 0
+  SELECT event_time, entry_type, delta
+  FROM (
+    SELECT
+      ul.request_time AS event_time,
+      'api_usage'::text AS entry_type,
+      (-ul.total_cost)::bigint AS delta
+    FROM usage_logs ul
+    WHERE ul.user_id = $1 AND ul.total_cost <> 0
+
+    UNION ALL
+
+    SELECT
+      rl.created_at,
+      'redeem',
+      rl.amount::bigint
+    FROM redeem_ledgers rl
+    WHERE rl.user_id = $1
+
+    UNION ALL
+
+    SELECT
+      aal.created_at,
+      'admin_adjust',
+      COALESCE(NULLIF(trim(aal.detail->>'delta'), ''), '0')::numeric::bigint
+    FROM admin_audit_logs aal
+    WHERE aal.action = 'user.balance'
+      AND aal.resource = 'user'
+      AND aal.resource_id = $2
+      AND aal.detail ? 'delta'
+      AND COALESCE(NULLIF(trim(aal.detail->>'delta'), ''), '0')::numeric <> 0
+
+    UNION ALL
+
+    SELECT
+      COALESCE(f.reviewed_at, f.updated_at) AS event_time,
+      'feedback_reward'::text AS entry_type,
+      f.reward_points AS delta
+    FROM feedbacks f
+    WHERE f.user_id = $1 AND f.review_state = 3 AND f.reward_points <> 0
+  ) u
+  WHERE ($3::text = '' OR entry_type = $3)
+    AND ($4::timestamptz IS NULL OR event_time >= $4::timestamptz)
+    AND ($5::timestamptz IS NULL OR event_time <= $5::timestamptz)
+    AND ($6::text = '' OR ($6 = 'in' AND delta > 0) OR ($6 = 'out' AND delta < 0))
 ) c`
 	var n int64
-	if err := db.QueryRowContext(ctx, q, userID, resourceID).Scan(&n); err != nil {
+	if err := db.QueryRowContext(ctx, q, userID, resourceID, entryType, startArg, endArg, direction).Scan(&n); err != nil {
 		return 0, err
 	}
 	return n, nil
 }
 
-func queryBalanceLedgerPage(ctx context.Context, db *sql.DB, userID int, resourceID string, limit, offset int) ([]gin.H, error) {
+func queryBalanceLedgerPage(ctx context.Context, db *sql.DB, userID int, resourceID, entryType string, start, end *time.Time, direction string, limit, offset int) ([]gin.H, error) {
+	var startArg any
+	if start != nil {
+		startArg = *start
+	}
+	var endArg any
+	if end != nil {
+		endArg = *end
+	}
 	const q = `
 SELECT event_time, entry_type, delta, balance_after, sort_src, sort_id, detail
 FROM (
@@ -156,10 +229,14 @@ FROM (
   FROM feedbacks f
   WHERE f.user_id = $1 AND f.review_state = 3 AND f.reward_points <> 0
 ) x
+WHERE ($3::text = '' OR entry_type = $3)
+  AND ($4::timestamptz IS NULL OR event_time >= $4::timestamptz)
+  AND ($5::timestamptz IS NULL OR event_time <= $5::timestamptz)
+  AND ($6::text = '' OR ($6 = 'in' AND delta > 0) OR ($6 = 'out' AND delta < 0))
 ORDER BY event_time DESC, sort_src ASC, sort_id DESC
-LIMIT $3 OFFSET $4`
+LIMIT $7 OFFSET $8`
 
-	rs, err := db.QueryContext(ctx, q, userID, resourceID, limit, offset)
+	rs, err := db.QueryContext(ctx, q, userID, resourceID, entryType, startArg, endArg, direction, limit, offset)
 	if err != nil {
 		return nil, err
 	}

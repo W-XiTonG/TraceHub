@@ -613,6 +613,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"register_promo_text_db_set":        dbSetPromo,
 			"register_promo_text_db_value":      strings.TrimSpace(dbValPromo),
 			"api_public_base_url":               sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
+			"public_contact":                    sitecfg.EffectivePublicContactData(ctx, client),
 		})
 	}
 }
@@ -630,6 +631,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyDefaultNewUserBalance,
 			sitecfg.SystemConfigKeyRegisterPromoText,
 			sitecfg.SystemConfigKeyAPIPublicBaseURL,
+			sitecfg.SystemConfigKeyPublicContactJSON,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
@@ -673,6 +675,14 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 					return
 				}
 				val = nv
+			}
+			if k == sitecfg.SystemConfigKeyPublicContactJSON {
+				canon, err := sitecfg.CanonicalPublicContactJSON(it.Value)
+				if err != nil {
+					httpx.BadRequest(c, err.Error())
+					return
+				}
+				val = canon
 			}
 			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(k)).Only(ctx)
 			if ent.IsNotFound(err) {

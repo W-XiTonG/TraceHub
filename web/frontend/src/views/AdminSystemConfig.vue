@@ -3,7 +3,7 @@ import axios from 'axios'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
-import { useSiteMetaStore } from '../stores/siteMeta'
+import { useSiteMetaStore, type PublicContactPayload } from '../stores/siteMeta'
 
 const { t } = useI18n()
 const siteMeta = useSiteMetaStore()
@@ -37,6 +37,7 @@ type SiteSettings = {
   register_promo_text_db_set?: boolean
   register_promo_text_db_value?: string
   api_public_base_url?: string
+  public_contact?: PublicContactPayload | null
 }
 
 const form = reactive({
@@ -49,6 +50,11 @@ const form = reactive({
   apiPublicBaseUrl: '',
 })
 
+const contactTitle = ref('')
+const contactEmailsText = ref('')
+const contactQRs = ref<Array<{ label: string; image_url: string }>>([])
+const contactPickQrIndex = ref<number | null>(null)
+const uploadingContactRow = ref<number | null>(null)
 const busy = ref(true)
 const saving = ref(false)
 const uploadingIcon = ref(false)
@@ -83,6 +89,8 @@ const brandIconsForUi = computed((): BrandLibIcon[] => {
   }
   return [head, ...rest]
 })
+
+const brandIconsUploadedOnly = computed(() => brandIcons.value)
 
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
@@ -121,6 +129,29 @@ function applyPayload(d: SiteSettings) {
   registerPromoTextYaml.value = typeof d.register_promo_text_file === 'string' ? d.register_promo_text_file : ''
   registerPromoTextDbOverride.value = Boolean(d.register_promo_text_db_set)
   form.apiPublicBaseUrl = typeof d.api_public_base_url === 'string' ? d.api_public_base_url : ''
+  const pc = d.public_contact
+  if (pc && typeof pc === 'object') {
+    contactTitle.value = typeof pc.title === 'string' ? pc.title.trim() : ''
+    contactEmailsText.value = Array.isArray(pc.emails)
+      ? pc.emails.filter((e): e is string => typeof e === 'string' && e.trim()).join('\n')
+      : ''
+    contactQRs.value = Array.isArray(pc.qr_items)
+      ? pc.qr_items
+          .map((x) => {
+            if (!x || typeof x !== 'object') return { label: '', image_url: '' }
+            const o = x as { label?: unknown; image_url?: unknown }
+            return {
+              label: typeof o.label === 'string' ? o.label : '',
+              image_url: typeof o.image_url === 'string' ? o.image_url : '',
+            }
+          })
+          .filter((x) => x.image_url.trim() !== '')
+      : []
+  } else {
+    contactTitle.value = ''
+    contactEmailsText.value = ''
+    contactQRs.value = []
+  }
 }
 
 async function load() {
@@ -172,6 +203,7 @@ function isBrandIconTileSelected(ico: BrandLibIcon): boolean {
 }
 
 function selectBrandIcon(ico: BrandLibIcon) {
+  contactPickQrIndex.value = null
   if (ico.is_builtin_default) {
     form.brandIconUrl = ''
     return
@@ -205,6 +237,72 @@ async function confirmDeleteBrandIcon(ico: BrandLibIcon) {
   }
 }
 
+function addContactQrRow() {
+  contactPickQrIndex.value = null
+  contactQRs.value.push({ label: '', image_url: '' })
+}
+
+function removeContactQrRow(i: number) {
+  contactQRs.value.splice(i, 1)
+  if (contactPickQrIndex.value === i) contactPickQrIndex.value = null
+  else if (contactPickQrIndex.value !== null && contactPickQrIndex.value > i) contactPickQrIndex.value -= 1
+}
+
+function startPickContactLibrary(rowIdx: number) {
+  contactPickQrIndex.value = contactPickQrIndex.value === rowIdx ? null : rowIdx
+}
+
+function applyContactLibraryIcon(ico: BrandLibIcon) {
+  const idx = contactPickQrIndex.value
+  if (idx === null || ico.is_builtin_default) return
+  const row = contactQRs.value[idx]
+  if (!row) return
+  row.image_url = ico.url.trim()
+  contactPickQrIndex.value = null
+  msg.value = t('adminSystem.contactPickedFromLibrary')
+}
+
+async function uploadContactQr(ev: Event, rowIdx: number) {
+  const input = ev.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  uploadingContactRow.value = rowIdx
+  err.value = ''
+  msg.value = ''
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const { data } = await http.post<Envelope<{ url?: string }>>('/api/admin/site-upload/contact-qr', fd)
+    if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.contactQrUploadFail'))
+    const u = data.data && typeof data.data.url === 'string' ? data.data.url.trim() : ''
+    if (!u) throw new Error(t('adminSystem.contactQrUploadFail'))
+    const row = contactQRs.value[rowIdx]
+    if (row) row.image_url = u
+    await loadBrandIcons()
+    msg.value = t('adminSystem.contactQrUploaded')
+  } catch (e: unknown) {
+    err.value = httpErr(e)
+  } finally {
+    uploadingContactRow.value = null
+  }
+}
+
+function buildPublicContactPayload(): {
+  title: string
+  qr_items: { label: string; image_url: string }[]
+  emails: string[]
+} {
+  const emails = contactEmailsText.value
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const qr_items = contactQRs.value
+    .map((r) => ({ label: r.label.trim(), image_url: r.image_url.trim() }))
+    .filter((r) => r.label !== '' || r.image_url !== '')
+  return { title: contactTitle.value.trim(), qr_items, emails }
+}
+
 async function refresh() {
   await load()
   await loadBrandIcons()
@@ -215,6 +313,7 @@ async function uploadBrandIcon(ev: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
+  contactPickQrIndex.value = null
   uploadingIcon.value = true
   err.value = ''
   msg.value = ''
@@ -240,6 +339,14 @@ async function save() {
   saving.value = true
   err.value = ''
   msg.value = ''
+  const contactPayload = buildPublicContactPayload()
+  for (const r of contactPayload.qr_items) {
+    if (r.label && !r.image_url) {
+      err.value = t('adminSystem.contactQrLabelNeedsUrl')
+      saving.value = false
+      return
+    }
+  }
   const items = [
     {
       key: 'site.brand.name',
@@ -275,6 +382,11 @@ async function save() {
       key: 'site.api.public_base_url',
       value: form.apiPublicBaseUrl.trim(),
       description: t('adminSystem.descApiPublicBaseUrl'),
+    },
+    {
+      key: 'site.public_contact',
+      value: JSON.stringify(contactPayload),
+      description: t('adminSystem.descPublicContact'),
     },
   ]
   try {
@@ -435,12 +547,9 @@ onMounted(() => void refresh())
             autocomplete="off"
           />
           <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintRegisterPromoYaml') }}</p>
-          <p
-            v-if="registerPromoTextYaml.trim()"
-            class="mt-1 whitespace-pre-wrap rounded border border-white/[0.06] bg-black/20 px-2 py-1.5 text-[11px] leading-relaxed text-slate-400"
-          >
-            {{ registerPromoTextYaml }}
-          </p>
+          <dl v-if="registerPromoTextYaml.trim()" class="mt-1 th-admin-compare-tile">
+            <dd class="m-0 whitespace-pre-wrap text-[11px] leading-relaxed">{{ registerPromoTextYaml }}</dd>
+          </dl>
           <p v-if="registerPromoTextDbOverride" class="mt-2 text-[11px] leading-relaxed text-amber-100/80">
             {{ t('adminSystem.hintRegisterPromoDb') }}
           </p>
@@ -462,6 +571,97 @@ onMounted(() => void refresh())
             placeholder="https://api.example.com"
           />
           <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintApiPublicBaseUrl') }}</p>
+        </div>
+      </section>
+
+      <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secContact') }}</h2>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secContactHint') }}</p>
+        <div class="mt-4 max-w-xl space-y-3">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+              t('adminSystem.lblContactTitle')
+            }}</label>
+            <input v-model="contactTitle" type="text" class="th-input w-full" autocomplete="off" :placeholder="t('adminSystem.phContactTitle')" />
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+              t('adminSystem.lblContactEmails')
+            }}</label>
+            <textarea
+              v-model="contactEmailsText"
+              rows="3"
+              class="th-input w-full resize-y font-mono text-sm"
+              :placeholder="t('adminSystem.phContactEmails')"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+        <div class="mt-6 border-t border-white/[0.06] pt-6">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs font-medium text-slate-400">{{ t('adminSystem.lblContactQrRows') }}</p>
+            <button type="button" class="text-xs font-medium text-cyan-400/90 hover:underline" @click="addContactQrRow">
+              {{ t('adminSystem.contactQrAddRow') }}
+            </button>
+          </div>
+          <p v-if="contactPickQrIndex !== null" class="mt-2 text-[11px] text-amber-100/90">{{ t('adminSystem.contactPickActive') }}</p>
+          <div v-if="!contactQRs.length" class="mt-2 text-[11px] text-slate-600">{{ t('adminSystem.contactQrEmpty') }}</div>
+          <div v-for="(row, idx) in contactQRs" :key="idx" class="mt-4 th-admin-compare-tile">
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('adminSystem.contactQrRow', { n: idx + 1 }) }}</span>
+              <button type="button" class="text-[11px] text-rose-300/90 hover:underline" @click="removeContactQrRow(idx)">
+                {{ t('adminSystem.contactQrRemove') }}
+              </button>
+            </div>
+            <label class="mb-2 block text-xs text-slate-400">
+              <span class="mb-1 block text-slate-500">{{ t('adminSystem.lblContactQrLabel') }}</span>
+              <input v-model="row.label" type="text" class="th-input w-full text-sm" autocomplete="off" />
+            </label>
+            <label class="mb-2 block text-xs text-slate-400">
+              <span class="mb-1 block text-slate-500">{{ t('adminSystem.lblContactQrUrl') }}</span>
+              <input v-model="row.image_url" type="text" class="th-input w-full font-mono text-xs" autocomplete="off" />
+            </label>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <label class="th-btn-secondary inline-flex cursor-pointer items-center px-3 py-1.5 text-[11px] font-medium select-none">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  class="sr-only"
+                  :disabled="uploadingContactRow !== null || saving"
+                  @change="uploadContactQr($event, idx)"
+                />
+                {{ uploadingContactRow === idx ? t('adminSystem.contactQrUploading') : t('adminSystem.contactQrUpload') }}
+              </label>
+              <button
+                type="button"
+                class="rounded border border-white/10 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-white/[0.06]"
+                :class="contactPickQrIndex === idx ? 'border-cyan-500/50 ring-1 ring-cyan-500/30' : ''"
+                @click="startPickContactLibrary(idx)"
+              >
+                {{ t('adminSystem.contactQrPickLibrary') }}
+              </button>
+            </div>
+            <div v-if="row.image_url.trim()" class="mt-2">
+              <img :src="row.image_url.trim()" alt="" class="h-16 w-16 rounded border border-white/10 object-contain" />
+            </div>
+          </div>
+        </div>
+        <div class="mt-6">
+          <p class="text-[11px] font-medium text-slate-400">{{ t('adminSystem.contactLibraryForQr') }}</p>
+          <p class="mt-0.5 text-[11px] text-slate-500">{{ t('adminSystem.contactLibraryForQrHint') }}</p>
+          <div class="mt-2 flex max-w-xl flex-wrap gap-2">
+            <button
+              v-for="ico in brandIconsUploadedOnly"
+              :key="ico.url"
+              type="button"
+              :title="ico.filename || ico.url"
+              class="h-11 w-11 overflow-hidden rounded-md th-admin-compare-tile--row !p-0 transition-colors hover:border-cyan-500/40"
+              @click="applyContactLibraryIcon(ico)"
+            >
+              <img :src="ico.url.trim()" alt="" class="h-full w-full object-contain" />
+            </button>
+          </div>
+          <p v-if="!brandIconsUploadedOnly.length" class="mt-2 text-[11px] text-slate-600">{{ t('adminSystem.contactLibraryEmpty') }}</p>
         </div>
       </section>
 
@@ -493,7 +693,8 @@ onMounted(() => void refresh())
             busy ||
             resettingDefaults ||
             uploadingIcon ||
-            deletingBrandFilename !== null
+            deletingBrandFilename !== null ||
+            contactPickQrIndex !== null
           "
           @click="void resetDefaults()"
         >

@@ -61,7 +61,7 @@ func brandIconPublicURL(filename string) string {
 	return BrandIconPublicURLPrefix + "/" + filename
 }
 
-func isBrandLibraryFilename(name string) bool {
+func isSiteUploadLibraryFilename(name string) bool {
 	if name == "" || strings.Contains(name, "..") {
 		return false
 	}
@@ -73,7 +73,12 @@ func isBrandLibraryFilename(name string) bool {
 	default:
 		return false
 	}
-	return strings.HasPrefix(name, "site-brand-")
+	return strings.HasPrefix(name, "site-brand-") || strings.HasPrefix(name, "site-contact-qr-")
+}
+
+// isBrandLibraryFilename 兼容旧名：本地上传图库中的栅格图文件名。
+func isBrandLibraryFilename(name string) bool {
+	return isSiteUploadLibraryFilename(name)
 }
 
 // GetBrandIconLibrary GET /api/admin/site-brand/icons — 列出本地上传目录内保留的品牌图标（按修改时间新到旧）。
@@ -100,7 +105,7 @@ func GetBrandIconLibrary(cfg *config.Config) gin.HandlerFunc {
 				continue
 			}
 			name := e.Name()
-			if !isBrandLibraryFilename(name) {
+			if !isSiteUploadLibraryFilename(name) {
 				continue
 			}
 			info, err := e.Info()
@@ -140,7 +145,7 @@ func DeleteBrandIcon(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		filename := strings.TrimSpace(c.Param("filename"))
-		if filename == "" || !isBrandLibraryFilename(filename) {
+		if filename == "" || !isSiteUploadLibraryFilename(filename) {
 			httpx.BadRequest(c, "无效的文件名")
 			return
 		}
@@ -268,6 +273,69 @@ func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc
 		}
 
 		auditLog(client, adm.ID, "site.brand_icon_upload", "system_config", sitecfg.SystemConfigKeyBrandIconURL, map[string]any{"url": url}, c)
+		httpx.OK(c, gin.H{"url": url})
+	}
+}
+
+// PostContactQRUpload POST /api/admin/site-upload/contact-qr — 上传联系我们二维码图片；仅返回 URL，不修改站点图标配置。
+func PostContactQRUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		if err := c.Request.ParseMultipartForm(brandIconMaxBytes + 1); err != nil {
+			httpx.BadRequest(c, "无法解析上传表单")
+			return
+		}
+		fh, err := c.FormFile("file")
+		if err != nil || fh == nil {
+			httpx.BadRequest(c, "缺少文件字段 file")
+			return
+		}
+		if fh.Size > brandIconMaxBytes {
+			httpx.BadRequest(c, "文件过大（最大 2MB）")
+			return
+		}
+		src, err := fh.Open()
+		if err != nil {
+			httpx.BadRequest(c, "无法读取上传文件")
+			return
+		}
+		defer func() { _ = src.Close() }()
+
+		data, err := io.ReadAll(io.LimitReader(src, brandIconMaxBytes+1))
+		if err != nil {
+			httpx.ServerError(c, "读取文件失败")
+			return
+		}
+		if len(data) > brandIconMaxBytes {
+			httpx.BadRequest(c, "文件过大（最大 2MB）")
+			return
+		}
+		ext, ok := detectBrandUploadExt(data)
+		if !ok {
+			httpx.BadRequest(c, "仅支持 PNG、JPEG、GIF、WebP 图片")
+			return
+		}
+
+		root := BrandUploadDir(cfg)
+		if err := os.MkdirAll(root, 0o755); err != nil {
+			httpx.ServerError(c, "无法创建上传目录："+err.Error())
+			return
+		}
+
+		filename := "site-contact-qr-" + uuid.New().String() + ext
+		dest := filepath.Join(root, filename)
+		if err := os.WriteFile(dest, data, 0o644); err != nil {
+			httpx.ServerError(c, "保存文件失败："+err.Error())
+			return
+		}
+
+		url := brandIconPublicURL(filename)
+		if err := sitecfg.ValidateBrandIconURL(url); err != nil {
+			httpx.ServerError(c, "内部错误：生成 URL 无效")
+			return
+		}
+
+		auditLog(client, adm.ID, "site.contact_qr_upload", "site_brand", filename, map[string]any{"url": url}, c)
 		httpx.OK(c, gin.H{"url": url})
 	}
 }

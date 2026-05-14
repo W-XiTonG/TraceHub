@@ -573,7 +573,7 @@ export default {
   adminSystem: {
     title: 'Site settings',
     intro:
-      'Values are stored in system_configs and override YAML defaults where applicable. Brand fields apply after the public meta endpoint is fetched; operator affects /health and /ready; default balance applies to newly registered users; register promo text appears on the marketing home and sign-up page.',
+      'Values are stored in system_configs and override YAML defaults where applicable. Brand fields apply after the public meta endpoint is fetched; operator affects /health and /ready; default balance applies to newly registered users; register promo text appears on the marketing home and sign-up page; the marketing footer “Contact us” block is driven by site.public_contact.',
     secBrand: 'Branding',
     secBrandHint: 'Used in the marketing header, docs header, console sidebar, and auth pages.',
     lblBrandName: 'Product name',
@@ -615,6 +615,32 @@ export default {
       'Leave empty to use the current browser origin + /v1 in the console overview and docs. If the gateway is served on another host (e.g. api.example.com), enter an https root (path empty or /v1). Saved to public site meta so docs and the dashboard example update automatically.',
     lblApiPublicBaseUrl: 'Public OpenAI base URL',
     hintApiPublicBaseUrl: 'Example: https://api.example.com or https://api.example.com/v1 (saved value is normalized to include /v1).',
+    secContact: 'Marketing site “Contact us”',
+    secContactHint:
+      'Shown above the footer on the public home page: optional heading, multiple QR images (upload locally or use same-origin paths), and multiple support emails. Stored as JSON in site.public_contact and published via /api/pub/site-meta to anonymous visitors.',
+    lblContactTitle: 'Section heading (optional)',
+    phContactTitle: 'Leave empty to use the default “Contact us” on the home page',
+    lblContactEmails: 'Contact emails (one per line)',
+    phContactEmails: "support{'@'}example.com",
+    lblContactQrRows: 'QR codes',
+    contactQrAddRow: 'Add QR row',
+    contactQrRow: 'QR #{n}',
+    contactQrRemove: 'Remove',
+    lblContactQrLabel: 'Caption (optional)',
+    lblContactQrUrl: 'Image URL (required)',
+    contactQrUpload: 'Upload image',
+    contactQrUploading: 'Uploading…',
+    contactQrPickLibrary: 'Pick from gallery',
+    contactPickActive: 'Pick-from-gallery mode: click a thumbnail below to fill the image URL for the highlighted row.',
+    contactQrEmpty: 'No QR rows yet; add multiple for WeCom, WeChat official account, etc.',
+    contactLibraryForQr: 'Uploaded gallery (same folder as brand logos)',
+    contactLibraryForQrHint:
+      'Click “Pick from gallery” on a row, then choose a thumbnail; or use “Upload image” on that row.',
+    contactLibraryEmpty: 'No uploads yet; upload in “Branding” above, then pick here.',
+    contactQrUploaded: 'QR uploaded and filled for this row',
+    contactQrUploadFail: 'QR upload failed',
+    contactPickedFromLibrary: 'Image URL filled from gallery (click Save to persist)',
+    contactQrLabelNeedsUrl: 'If you enter a caption, you must provide an image URL (upload or pick from gallery).',
     secOps: 'Ops & probes',
     secOpsHint: 'Populates the operator field in /health and /ready. Empty falls back to YAML site.operator_display_name.',
     lblOperator: 'Operator display name',
@@ -623,7 +649,7 @@ export default {
     saveFail: 'Save failed',
     resetDefaults: 'Restore defaults',
     resetDefaultsConfirm:
-      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, register promo text, public API base URL, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
+      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, register promo text, public API base URL, operator, and the marketing “Contact us” block will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
     resetDefaultsDone:
       'Database overrides cleared; name and icon now follow config and built-in defaults (hard refresh if the shell still looks stale).',
     resetDefaultsFail: 'Failed to restore defaults',
@@ -634,5 +660,6 @@ export default {
     descDefaultNewUserBalance: 'Initial balance for new users (quota units)',
     descRegisterPromo: 'Promo copy on marketing home and register page (site.register_promo_text)',
     descApiPublicBaseUrl: 'Public OpenAI-compatible base URL (site.api.public_base_url)',
+    descPublicContact: 'Marketing footer contact JSON (site.public_contact)',
   },
 } as const

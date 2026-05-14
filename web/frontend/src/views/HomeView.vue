@@ -15,6 +15,33 @@ const auth = useAuthStore()
 const siteMeta = useSiteMetaStore()
 const version = ref('1.0.0')
 
+type ContactQrLightboxPayload = { url: string; label: string }
+const contactQrLightbox = ref<ContactQrLightboxPayload | null>(null)
+let contactQrEscHandler: ((e: KeyboardEvent) => void) | null = null
+
+function bindContactQrEsc() {
+  contactQrEscHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') closeContactQrLightbox()
+  }
+  window.addEventListener('keydown', contactQrEscHandler)
+}
+
+function openContactQrLightbox(url: string, rawLabel?: string) {
+  const label = typeof rawLabel === 'string' ? rawLabel.trim() : ''
+  contactQrLightbox.value = { url, label }
+  document.body.style.overflow = 'hidden'
+  bindContactQrEsc()
+}
+
+function closeContactQrLightbox() {
+  if (contactQrEscHandler) {
+    window.removeEventListener('keydown', contactQrEscHandler)
+    contactQrEscHandler = null
+  }
+  contactQrLightbox.value = null
+  document.body.style.overflow = ''
+}
+
 let revealObserver: IntersectionObserver | null = null
 
 onMounted(() => {
@@ -44,6 +71,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  closeContactQrLightbox()
   revealObserver?.disconnect()
   revealObserver = null
 })
@@ -772,41 +800,85 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
             {{ t('home.footerBlurb') }}
           </p>
         </div>
-        <div class="grid grid-cols-2 gap-10 sm:grid-cols-3 md:gap-14">
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.product') }}</p>
-            <ul class="mt-3 space-y-2 text-sm text-slate-400">
-              <li><a href="#why" class="transition hover:text-cyan-400/90">{{ t('home.footerWhy') }}</a></li>
-              <li><a href="#steps" class="transition hover:text-cyan-400/90">{{ t('home.footerSteps') }}</a></li>
-              <li><a href="#features" class="transition hover:text-cyan-400/90">{{ t('home.footerFeat') }}</a></li>
-              <li><a href="#integration" class="transition hover:text-cyan-400/90">{{ t('home.footerInteg') }}</a></li>
-              <li><a href="#models" class="transition hover:text-cyan-400/90">{{ t('home.footerModels') }}</a></li>
-              <li><a href="#pricing" class="transition hover:text-cyan-400/90">{{ t('nav.pricing') }}</a></li>
-              <li>
-                <RouterLink to="/docs#doc-console" class="transition hover:text-cyan-400/90">{{ t('home.footerDocsConsole') }}</RouterLink>
+        <div class="flex min-w-0 flex-1 flex-col gap-10 lg:flex-row lg:items-start lg:justify-between lg:gap-12 xl:gap-14">
+          <div class="grid grid-cols-2 gap-10 sm:grid-cols-3 md:gap-14 lg:min-w-0 lg:flex-1">
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.product') }}</p>
+              <ul class="mt-3 space-y-2 text-sm text-slate-400">
+                <li><a href="#why" class="transition hover:text-cyan-400/90">{{ t('home.footerWhy') }}</a></li>
+                <li><a href="#steps" class="transition hover:text-cyan-400/90">{{ t('home.footerSteps') }}</a></li>
+                <li><a href="#features" class="transition hover:text-cyan-400/90">{{ t('home.footerFeat') }}</a></li>
+                <li><a href="#integration" class="transition hover:text-cyan-400/90">{{ t('home.footerInteg') }}</a></li>
+                <li><a href="#models" class="transition hover:text-cyan-400/90">{{ t('home.footerModels') }}</a></li>
+                <li><a href="#pricing" class="transition hover:text-cyan-400/90">{{ t('nav.pricing') }}</a></li>
+                <li>
+                  <RouterLink to="/docs#doc-console" class="transition hover:text-cyan-400/90">{{ t('home.footerDocsConsole') }}</RouterLink>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.account') }}</p>
+              <ul class="mt-3 space-y-2 text-sm text-slate-400">
+                <li><RouterLink to="/register" class="transition hover:text-cyan-400/90">{{ t('nav.register') }}</RouterLink></li>
+                <li><RouterLink to="/login" class="transition hover:text-cyan-400/90">{{ t('nav.login') }}</RouterLink></li>
+                <li><RouterLink to="/console" class="transition hover:text-cyan-400/90">{{ t('userMenu.console') }}</RouterLink></li>
+              </ul>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.docCol') }}</p>
+              <ul class="mt-3 space-y-2 text-sm text-slate-400">
+                <li class="leading-relaxed">
+                  <RouterLink to="/docs" class="font-medium text-cyan-400/90 hover:text-cyan-300 hover:underline">
+                    {{ t('home.footerDocLink') }}
+                  </RouterLink>
+                  <span class="text-slate-500"> · {{ t('home.footerDocHint') }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <section
+            v-if="siteMeta.hasPublicContact && siteMeta.publicContact"
+            class="shrink-0 border-t border-white/[0.06] pt-8 lg:max-w-[17.5rem] lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0 xl:max-w-xs xl:pl-12"
+          >
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">
+              {{ (siteMeta.publicContact.title && siteMeta.publicContact.title.trim()) || t('home.contactUsTitle') }}
+            </h2>
+            <div v-if="siteMeta.publicContact.qr_items?.length" class="mt-4 flex flex-wrap gap-4">
+              <div
+                v-for="(qr, idx) in siteMeta.publicContact.qr_items"
+                :key="`qr-${idx}-${qr.image_url}`"
+                class="flex max-w-[7.5rem] flex-col items-start gap-1.5"
+              >
+                <button
+                  type="button"
+                  class="group overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.03] p-1 shadow-inner outline-none ring-cyan-500/0 transition hover:border-cyan-500/30 hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-cyan-500/40"
+                  :title="t('home.contactUsQrEnlarge')"
+                  :aria-label="t('home.contactUsQrEnlarge')"
+                  @click="openContactQrLightbox(qr.image_url, qr.label)"
+                >
+                  <img
+                    :src="qr.image_url"
+                    :alt="(qr.label && qr.label.trim()) || t('home.contactUsQrAlt')"
+                    class="pointer-events-none h-20 w-20 object-contain sm:h-[5.25rem] sm:w-[5.25rem]"
+                    width="84"
+                    height="84"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </button>
+                <p v-if="qr.label && qr.label.trim()" class="max-w-[7.5rem] text-[11px] leading-relaxed text-slate-400">{{ qr.label }}</p>
+              </div>
+            </div>
+            <ul v-if="siteMeta.publicContact.emails?.length" class="mt-4 space-y-1.5 text-sm">
+              <li v-for="(em, i) in siteMeta.publicContact.emails" :key="`em-${i}-${em}`">
+                <a :href="`mailto:${em}`" class="break-all text-cyan-400/90 hover:text-cyan-300 hover:underline">{{ em }}</a>
               </li>
             </ul>
-          </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.account') }}</p>
-            <ul class="mt-3 space-y-2 text-sm text-slate-400">
-              <li><RouterLink to="/register" class="transition hover:text-cyan-400/90">{{ t('nav.register') }}</RouterLink></li>
-              <li><RouterLink to="/login" class="transition hover:text-cyan-400/90">{{ t('nav.login') }}</RouterLink></li>
-              <li><RouterLink to="/console" class="transition hover:text-cyan-400/90">{{ t('userMenu.console') }}</RouterLink></li>
-            </ul>
-          </div>
-          <div class="col-span-2 sm:col-span-1">
-            <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-600">{{ t('nav.docCol') }}</p>
-            <ul class="mt-3 space-y-2 text-sm text-slate-400">
-              <li>
-                <span class="leading-relaxed">{{ t('home.footerDocLine1') }}</span>
-                <code class="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[11px] text-slate-500">docs/</code>
-                <span class="leading-relaxed">{{ t('home.footerDocLine2') }}</span>
-              </li>
-            </ul>
-          </div>
+          </section>
         </div>
       </div>
+
       <p class="mx-auto mt-10 max-w-6xl border-t border-white/[0.05] px-5 pt-8 text-center text-xs leading-relaxed text-slate-600">
         {{ t('home.footerLegal') }}
       </p>
@@ -814,5 +886,35 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
         {{ t('home.companyCredit') }}
       </p>
     </footer>
+
+    <Teleport to="body">
+      <div
+        v-if="contactQrLightbox"
+        class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/75 p-4 backdrop-blur-[2px]"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('home.contactUsQrEnlarge')"
+        @click.self="closeContactQrLightbox"
+      >
+        <div class="relative w-full max-w-lg rounded-xl border border-white/10 bg-slate-950/95 p-3 shadow-2xl ring-1 ring-white/10">
+          <button
+            type="button"
+            class="absolute right-2 top-2 rounded-md border border-white/10 bg-slate-900/90 px-2.5 py-1 text-[11px] font-medium text-slate-200 hover:bg-slate-800"
+            @click="closeContactQrLightbox"
+          >
+            {{ t('common.close') }}
+          </button>
+          <div class="thin-scrollbar max-h-[min(78vh,32rem)] overflow-auto">
+            <img
+              :src="contactQrLightbox.url"
+              :alt="contactQrLightbox.label || t('home.contactUsQrAlt')"
+              class="mx-auto max-h-[min(72vh,28rem)] w-auto max-w-full object-contain"
+              decoding="async"
+            />
+          </div>
+          <p v-if="contactQrLightbox.label" class="mt-2 text-center text-sm text-slate-300">{{ contactQrLightbox.label }}</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -10,8 +10,18 @@ export function apiErrorMessage(e: unknown, fallback: string) {
       const m = (d as { message?: unknown }).message
       if (typeof m === 'string' && m.trim()) return m.trim()
     }
+    const raw = e.message ?? ''
+    if (raw.startsWith('Request failed with status code')) {
+      return fallback.trim() ? fallback : ''
+    }
+    return raw || fallback
   }
-  if (e instanceof Error) return e.message
+  if (e instanceof Error) {
+    if (e.message.startsWith('Request failed with status code')) {
+      return fallback.trim() ? fallback : ''
+    }
+    return e.message
+  }
   return fallback
 }
 

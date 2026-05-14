@@ -286,6 +286,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/site-brand/icons", adminhandler.GetBrandIconLibrary(opt.Config))
 	a.DELETE("/site-brand/icons/:filename", adminhandler.DeleteBrandIcon(opt.Client, opt.Config))
 	a.POST("/site-upload/brand-icon", adminhandler.PostBrandIconUpload(opt.Client, opt.Config))
+	a.POST("/site-upload/contact-qr", adminhandler.PostContactQRUpload(opt.Client, opt.Config))
 	a.PUT("/config", adminhandler.PutSystemConfig(opt.Client))
 	a.POST("/config/reload", adminhandler.ReloadSystemConfig())
 	a.GET("/model-catalog/sources", adminhandler.ListModelCatalogSources(opt.Client))

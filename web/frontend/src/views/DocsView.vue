@@ -400,10 +400,6 @@ onUnmounted(() => {
               <ContactCardDisclosure align="start" summary-key="home.contactHintDocsFaq" />
             </div>
           </section>
-
-          <section class="th-glass--subtle rounded-[var(--th-radius-lg)] p-5 text-xs leading-relaxed text-slate-500">
-            {{ t('docs.readMore') }}
-          </section>
         </article>
       </main>
     </div>
