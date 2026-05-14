@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { copyTextToClipboard } from '../utils/clipboard'
+import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
 
 const { t } = useI18n()
 
@@ -735,11 +736,13 @@ onMounted(() => {
                     </button>
                   </div>
                   <div v-if="expiryPreset === 'custom'" class="mt-3">
-                    <input
+                    <DateTimeLocalFilterInput
                       v-model="expiryCustom"
-                      type="datetime-local"
+                      input-id="api-keys-expiry-custom"
+                      :aria-label="t('apiKeys.expiryCustom')"
                       :min="minDatetimeLocal"
-                      class="th-input w-full"
+                      variant="field"
+                      wrapper-class="max-w-none"
                     />
                     <p class="mt-1.5 text-[11px] text-slate-600">{{ t('apiKeys.expiryCustomHint') }}</p>
                   </div>

@@ -493,6 +493,12 @@ html[data-th-theme="paper"] .th-datetime-local {
   color-scheme: light;
 }
 
+html[data-th-theme="dawn"] .th-datetime-local-empty-hint,
+html[data-th-theme="paper"] .th-datetime-local-empty-hint {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
 html[data-th-theme="dawn"] .th-select,
 html[data-th-theme="paper"] .th-select {
   background-color: rgba(255, 255, 255, 0.92);

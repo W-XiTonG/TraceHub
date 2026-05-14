@@ -2467,6 +2467,24 @@
   opacity: 0.02;
 }
 
+/*
+ * datetime-local 空态：部分引擎把原生控件画在兄弟节点之上，`z-index` 叠字也盖不住；
+ * 空值时让 input `opacity: 0` 叠在最上层接点击，本层承担边框/底色与格式提示（与 .th-input 一致）。
+ */
+.th-datetime-local-empty-hint {
+  box-sizing: border-box;
+  border: 1px solid var(--th-border-strong);
+  border-radius: 0.5rem;
+  background: rgba(2, 6, 23, 0.72);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.th-datetime-local-wrap:focus-within .th-datetime-local-empty-hint {
+  border-color: var(--th-input-focus-border);
+  box-shadow: 0 0 0 3px var(--th-input-focus-ring);
+}
+
 /* 原生 select：与控制台表单、频道管理等页下拉风格一致 */
 .th-select {
   width: 100%;
