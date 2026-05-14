@@ -26,7 +26,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
 
   const displayName = computed(() => {
     const s = brandName.value.trim()
-    return s || 'TraceHub'
+    return s || '迹径'
   })
 
   const displayIconUrl = computed(() => {

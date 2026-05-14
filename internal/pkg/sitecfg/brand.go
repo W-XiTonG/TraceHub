@@ -17,7 +17,7 @@ const (
 )
 
 const (
-	DefaultBrandName    = "TraceHub"
+	DefaultBrandName    = "迹径"
 	DefaultBrandIconURL = "/tracehub-icon.svg"
 )
 

@@ -1,7 +1,7 @@
 export default {
   home: {
     brandSub: 'AI Gateway',
-    heroKickerTail: '企業級 AI API 網關',
+    heroKickerTail: '企業級 AI 統一接入',
     heroLine1: '一套 OpenAI 相容介面，聚合多廠商模型',
     heroLine2: '',
     heroDesc:
@@ -24,7 +24,7 @@ export default {
       '上游金鑰加密存储，用戶 API Key 仅存哈希；支持 HTTPS、金鑰轮换與私有化部署，便于纳入现有安全体系。',
     why4Title: '可扩展交付形态',
     why4Desc:
-      '开源可自建；管理后台涵盖渠道、分組與模型目录，适合PoC、生产與对内交付。',
+      '支援私有化與自建部署；管理後台涵蓋渠道、分組與模型目錄，適合 PoC、生產與對內交付。',
     stepsSectionTitle: '三步接入',
     stepsSectionSubtitle: '无需改写业务语义：换 Base URL、换 Key，其余沿用 OpenAI 兼容呼叫习惯。',
     step1Title: '註冊帳号',
@@ -116,7 +116,7 @@ export default {
       '支援兌換碼等營運能力；儲值檔位與活動優惠以本站「儲值中心」為準，可依營運節奏靈活拉新與回饋。',
     faqTitle: '常见問題',
     footerBlurb:
-      '开源 AI API 网关：統一 OpenAI 兼容入口、用量观测与用戶控制台，可按仓库文件私有化部署。',
+      'OpenAI 相容接入與用戶控制台：統一入口、用量觀測，可依部署方提供的文件完成私有化安裝。',
     footerProduct: '产品',
     footerWhy: '為何選擇',
     footerSteps: '三步接入',

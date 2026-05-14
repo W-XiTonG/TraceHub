@@ -1,7 +1,7 @@
 export default {
   home: {
     brandSub: 'AI Gateway',
-    heroKickerTail: 'Enterprise AI API gateway',
+    heroKickerTail: 'Enterprise AI integration',
     heroLine1: 'One OpenAI-compatible API surface, aggregating models across vendors',
     heroLine2: '',
     heroDesc:
@@ -25,7 +25,7 @@ export default {
       'Upstream secrets encrypted at rest; user keys stored as hashes. HTTPS, rotation and private deployment supported.',
     why4Title: 'Flexible delivery',
     why4Desc:
-      'Open source and self-hosted; admin tools for channels, groups and catalog—fits PoC, production and internal rollouts.',
+      'Self-hostable with full admin tooling for channels, groups and catalog—fits PoC, production and internal rollouts.',
     stepsSectionTitle: 'Three steps to start',
     stepsSectionSubtitle: 'Keep your SDK semantics: change Base URL and API key, keep the rest.',
     step1Title: 'Create an account',
@@ -40,7 +40,7 @@ export default {
     step3Badge: 'OpenAI SDK compatible',
     featuresTitle: 'More than a proxy: console & governance',
     featuresDesc:
-      'From solo developers to teams, TraceHub covers keys, usage, routing and ops on both user and admin sides; aligned with the open-source implementation.',
+      'From solo developers to teams, TraceHub covers keys, usage, routing and ops on both user and admin sides; reflects the capabilities shipped in this product.',
     integrationKicker: 'Integration',
     integrationTitle: 'Same calling style as the OpenAI SDK',
     integrationDesc:
@@ -117,7 +117,7 @@ export default {
       'Redeem codes and billing center offers depend on how this site is configured—flexible promos without changing your integration.',
     faqTitle: 'FAQ',
     footerBlurb:
-      'Open-source AI API gateway: OpenAI-compatible entry, observability and user console; deploy privately per repo docs.',
+      'OpenAI-compatible access and user console: unified entry, observability; private deployment supported—follow your operator’s documentation.',
     footerProduct: 'Product',
     footerWhy: 'Why TraceHub',
     footerSteps: 'Quick start',
