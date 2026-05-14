@@ -770,6 +770,35 @@ html[data-th-theme="paper"] .th-home-feature-icon--fuchsia {
   color: #a21caf;
 }
 
+/* 官网「为什么选择」四宫格图标：与功能卡同理，浅色下避免 text-*-200 + 淡底几乎不可见 */
+html[data-th-theme="dawn"] .th-home-why-icon--violet,
+html[data-th-theme="paper"] .th-home-why-icon--violet {
+  background-color: rgba(139, 92, 246, 0.16);
+  color: #6d28d9;
+  --tw-ring-color: rgba(109, 40, 217, 0.22);
+}
+
+html[data-th-theme="dawn"] .th-home-why-icon--cyan,
+html[data-th-theme="paper"] .th-home-why-icon--cyan {
+  background-color: rgba(14, 165, 233, 0.14);
+  color: #0369a1;
+  --tw-ring-color: rgba(3, 105, 161, 0.22);
+}
+
+html[data-th-theme="dawn"] .th-home-why-icon--emerald,
+html[data-th-theme="paper"] .th-home-why-icon--emerald {
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #047857;
+  --tw-ring-color: rgba(4, 120, 87, 0.22);
+}
+
+html[data-th-theme="dawn"] .th-home-why-icon--amber,
+html[data-th-theme="paper"] .th-home-why-icon--amber {
+  background-color: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+  --tw-ring-color: rgba(180, 83, 9, 0.22);
+}
+
 /* 首页 #models 厂商条：浅色主题下原浅灰图标与淡底对比不足 */
 html[data-th-theme="dawn"] .th-home-vendor-tile-inner,
 html[data-th-theme="paper"] .th-home-vendor-tile-inner {

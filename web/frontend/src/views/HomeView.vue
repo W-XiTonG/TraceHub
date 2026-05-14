@@ -79,7 +79,7 @@ const features = computed<
   }>
 >(() => [
   {
-    iconId: 'plug',
+    iconId: 'link',
     tag: t('home.f0tag'),
     title: t('home.f0title'),
     desc: t('home.f0desc'),
@@ -329,8 +329,8 @@ function featureLink(to: string) {
               class="th-home-value-card flex flex-col rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/35 p-6 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.65)]"
             >
               <span
-                class="inline-flex h-12 w-12 items-center justify-center rounded-xl ring-1 [&>svg]:h-6 [&>svg]:w-6"
-                :class="whyIconWrap[w.accent]"
+                class="th-home-why-icon inline-flex h-12 w-12 items-center justify-center rounded-xl ring-1 [&>svg]:h-6 [&>svg]:w-6"
+                :class="[whyIconWrap[w.accent], `th-home-why-icon--${w.accent}`]"
               >
                 <svg aria-hidden="true"><use :href="`#th-icon-${w.iconId}`" /></svg>
               </span>
@@ -454,11 +454,19 @@ function featureLink(to: string) {
               d="M6 12 3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L6 12Zm0 0h7.5"
             />
           </symbol>
-          <symbol id="th-icon-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75v-6z" />
+          <symbol id="th-icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+            />
           </symbol>
           <symbol id="th-icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H3.75v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25z"
+            />
           </symbol>
           <symbol id="th-icon-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
