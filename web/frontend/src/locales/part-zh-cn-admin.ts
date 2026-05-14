@@ -567,7 +567,7 @@ export default {
   adminSystem: {
     title: '系统配置',
     intro:
-      '以下项写入数据库 system_configs，覆盖同名 YAML 默认值；保存后立即对登录页、/health、新用户注册初始额度等生效（图标与名称依赖前端拉取公开接口）。',
+      '以下项写入数据库 system_configs，覆盖同名 YAML 默认值；保存后立即对登录页、/health、新用户注册初始额度、注册推广文案、公开站点元数据等生效（图标与名称依赖前端拉取公开接口）。',
     secBrand: '品牌与展示',
     secBrandHint: '用于官网顶栏、文档顶栏、控制台侧栏与登录/注册页。',
     lblBrandName: '项目名称',
@@ -598,6 +598,10 @@ export default {
     hintDefaultNewUserYaml:
       '配置文件中 site.default_new_user_balance 当前为：{n}（未在数据库覆盖时，注册即用该值；有覆盖则以数据库为准）。',
     hintDefaultNewUserDb: '数据库中已存在本项覆盖；下方数字保存后即写入数据库并优先生效。',
+    lblRegisterPromo: '注册推广文案',
+    phRegisterPromo: '展示在官网首页与注册页；纯文本，可含换行。',
+    hintRegisterPromoYaml: '以下为配置文件 site.register_promo_text 的当前值（无数据库覆盖时与官网首页、注册页展示一致）。',
+    hintRegisterPromoDb: '数据库中已存在本项覆盖；下方文案保存后即写入数据库并优先生效。',
     secApiPublic: '对外 API 地址（OpenAI Base URL）',
     secApiPublicHint:
       '留空则控制台「概览」与文档中的示例使用当前浏览器站点 + /v1。若对外网关域名与控制台不同（例如独立 API 子域），请填写 https 根地址（路径可留空或填 /v1）；保存后写入公开站点元数据，前端自动替换文档与概览中的 Base URL 与 cURL 示例。',
@@ -611,7 +615,7 @@ export default {
     saveFail: '保存失败',
     resetDefaults: '恢复默认',
     resetDefaultsConfirm:
-      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、新用户默认额度、对外 API Base URL、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
+      '确定要清除本页在数据库中的站点配置覆盖吗？品牌名、图标、登录验证码、新用户默认额度、注册推广文案、对外 API Base URL、operator 将回退为配置文件及内置默认值。磁盘上的本地上传图标不会被删除，仍可出现在图库中。',
     resetDefaultsDone: '已清除数据库覆盖项；站点名称与图标已按配置文件及内置默认生效（侧栏等若未变请整页刷新）。',
     resetDefaultsFail: '恢复默认失败',
     descBrandName: '站点对外展示名称',
@@ -619,6 +623,7 @@ export default {
     descLoginCaptcha: '登录图形验证码开关',
     descOperator: '健康检查 operator 展示名',
     descDefaultNewUserBalance: '新用户注册初始余额（额度单位）',
+    descRegisterPromo: '注册页与官网首页展示的推广说明（site.register_promo_text）',
     descApiPublicBaseUrl: '对外 OpenAI 兼容 Base URL（site.api.public_base_url）',
   },
 } as const

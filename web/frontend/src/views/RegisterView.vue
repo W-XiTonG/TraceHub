@@ -6,6 +6,7 @@ import axios from 'axios'
 import { useAuthStore, apiErrorMessage, type RegisterEmailCodeMeta, type LoginCaptchaResponse } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
+import RegisterPromoDropdown from '../components/RegisterPromoDropdown.vue'
 
 const { t, locale } = useI18n()
 const siteMeta = useSiteMetaStore()
@@ -229,6 +230,7 @@ async function submit() {
       <AuthFeatureAside class="hidden lg:block lg:flex-1" />
       <div class="w-full shrink-0 lg:w-[min(100%,26rem)]">
       <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
+        <RegisterPromoDropdown variant="card" :text="siteMeta.registerPromoText" />
         <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
         <div class="mb-6 flex justify-center">
           <div class="th-logo-mark th-logo-mark--lg th-logo-mark--image" role="img" :aria-label="siteMeta.displayName">

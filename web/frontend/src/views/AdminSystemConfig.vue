@@ -32,6 +32,10 @@ type SiteSettings = {
   default_new_user_balance_file?: number
   default_new_user_balance_db_set?: boolean
   default_new_user_balance_db_value?: string
+  register_promo_text?: string
+  register_promo_text_file?: string
+  register_promo_text_db_set?: boolean
+  register_promo_text_db_value?: string
   api_public_base_url?: string
 }
 
@@ -41,6 +45,7 @@ const form = reactive({
   loginCaptcha: false,
   operatorDisplayName: '',
   defaultNewUserBalance: 0,
+  registerPromoText: '',
   apiPublicBaseUrl: '',
 })
 
@@ -58,6 +63,10 @@ const brandPreviewNonce = ref(0)
 const defaultNewUserBalanceYaml = ref(0)
 /** 数据库是否已有该键的覆盖 */
 const defaultNewUserBalanceDbOverride = ref(false)
+/** 配置文件 site.register_promo_text（仅展示说明） */
+const registerPromoTextYaml = ref('')
+/** 数据库是否已有注册推广文案的覆盖 */
+const registerPromoTextDbOverride = ref(false)
 
 const brandIconPreviewSrc = computed(() => {
   const u = form.brandIconUrl.trim()
@@ -108,6 +117,9 @@ function applyPayload(d: SiteSettings) {
   form.defaultNewUserBalance = pickInt64ish(d.default_new_user_balance)
   defaultNewUserBalanceYaml.value = pickInt64ish(d.default_new_user_balance_file)
   defaultNewUserBalanceDbOverride.value = Boolean(d.default_new_user_balance_db_set)
+  form.registerPromoText = typeof d.register_promo_text === 'string' ? d.register_promo_text : ''
+  registerPromoTextYaml.value = typeof d.register_promo_text_file === 'string' ? d.register_promo_text_file : ''
+  registerPromoTextDbOverride.value = Boolean(d.register_promo_text_db_set)
   form.apiPublicBaseUrl = typeof d.api_public_base_url === 'string' ? d.api_public_base_url : ''
 }
 
@@ -253,6 +265,11 @@ async function save() {
       key: 'site.default_new_user_balance',
       value: String(Math.max(0, Math.trunc(Number(form.defaultNewUserBalance)) || 0)),
       description: t('adminSystem.descDefaultNewUserBalance'),
+    },
+    {
+      key: 'site.register_promo_text',
+      value: form.registerPromoText.trim(),
+      description: t('adminSystem.descRegisterPromo'),
     },
     {
       key: 'site.api.public_base_url',
@@ -404,6 +421,28 @@ onMounted(() => void refresh())
           </p>
           <p v-if="defaultNewUserBalanceDbOverride" class="mt-1 text-[11px] leading-relaxed text-amber-100/80">
             {{ t('adminSystem.hintDefaultNewUserDb') }}
+          </p>
+        </div>
+        <div class="mt-6 max-w-2xl border-t border-white/[0.06] pt-6">
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+            t('adminSystem.lblRegisterPromo')
+          }}</label>
+          <textarea
+            v-model="form.registerPromoText"
+            rows="4"
+            class="th-input w-full resize-y font-sans text-sm leading-relaxed"
+            :placeholder="t('adminSystem.phRegisterPromo')"
+            autocomplete="off"
+          />
+          <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintRegisterPromoYaml') }}</p>
+          <p
+            v-if="registerPromoTextYaml.trim()"
+            class="mt-1 whitespace-pre-wrap rounded border border-white/[0.06] bg-black/20 px-2 py-1.5 text-[11px] leading-relaxed text-slate-400"
+          >
+            {{ registerPromoTextYaml }}
+          </p>
+          <p v-if="registerPromoTextDbOverride" class="mt-2 text-[11px] leading-relaxed text-amber-100/80">
+            {{ t('adminSystem.hintRegisterPromoDb') }}
           </p>
         </div>
       </section>

@@ -24,6 +24,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateDefaultNewUserBalance(value)
 	case SystemConfigKeyAPIPublicBaseURL:
 		return ValidateAPIPublicBaseURL(value)
+	case SystemConfigKeyRegisterPromoText:
+		return ValidateRegisterPromoText(value)
 	default:
 		return nil
 	}

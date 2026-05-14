@@ -48,6 +48,11 @@ export default {
     recent: '更多公告',
     loadFail: '載入公告失敗',
   },
+  sitePromo: {
+    aria: '站點通知',
+    panelTitle: '溫馨提示',
+    gotIt: '我知道了',
+  },
   login: {
     title: '欢迎回来',
     subtitle: '登入 {brand} 控制台',

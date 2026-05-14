@@ -7,6 +7,8 @@ type PubSiteMeta = {
   brand_name?: string
   brand_icon_url?: string
   api_public_base_url?: string
+  /** 注册推广说明（纯文本）；空或未返回则不展示 */
+  register_promo_text?: string
 }
 
 /** 与后端 sitecfg.DefaultBrandIconURL 一致；接口返回该值时存为空串表示「无自定义」 */
@@ -17,6 +19,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   const brandIconUrl = ref('')
   /** 管理员配置的 OpenAI 兼容 Base URL（含 /v1）；空则 effectiveOpenaiApiBase 回退为当前站点 origin + /v1 */
   const apiPublicBaseUrl = ref('')
+  /** 注册页 / 官网展示的推广文案（来自站点配置） */
+  const registerPromoText = ref('')
   const loaded = ref(false)
   let inflight: Promise<void> | null = null
 
@@ -57,6 +61,11 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
         } else {
           apiPublicBaseUrl.value = ''
         }
+        if (typeof data.data.register_promo_text === 'string') {
+          registerPromoText.value = data.data.register_promo_text.trim()
+        } else {
+          registerPromoText.value = ''
+        }
       }
     } catch (e: unknown) {
       if (!axios.isAxiosError(e) || e.response?.status !== 404) {
@@ -87,6 +96,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     brandName.value = ''
     brandIconUrl.value = ''
     apiPublicBaseUrl.value = ''
+    registerPromoText.value = ''
     inflight = (async () => {
       try {
         await pullPubSiteMeta()
@@ -102,6 +112,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     brandName,
     brandIconUrl,
     apiPublicBaseUrl,
+    registerPromoText,
     loaded,
     displayName,
     displayIconUrl,

@@ -18,14 +18,14 @@ type Config struct {
 
 // EmailConfig 用于发送登录验证码等系统邮件；未启用时仍可密码登录。
 type EmailConfig struct {
-	Enabled            bool   `mapstructure:"enabled"`
-	SMTPHost           string `mapstructure:"smtp_host"`
-	SMTPPort           int    `mapstructure:"smtp_port"`
-	SMTPUser           string `mapstructure:"smtp_user"`
-	SMTPPassword       string `mapstructure:"smtp_password"`
-	From               string `mapstructure:"from"`
-	StartTLS           bool   `mapstructure:"starttls"`
-	InsecureSkipVerify bool   `mapstructure:"insecure_skip_verify"`
+	Enabled             bool   `mapstructure:"enabled"`
+	SMTPHost            string `mapstructure:"smtp_host"`
+	SMTPPort            int    `mapstructure:"smtp_port"`
+	SMTPUser            string `mapstructure:"smtp_user"`
+	SMTPPassword        string `mapstructure:"smtp_password"`
+	From                string `mapstructure:"from"`
+	StartTLS            bool   `mapstructure:"starttls"`
+	InsecureSkipVerify  bool   `mapstructure:"insecure_skip_verify"`
 	LoginCodeSubject    string `mapstructure:"login_code_subject"`
 	RegisterCodeSubject string `mapstructure:"register_code_subject"`
 	LoginCodeTTLMin     int    `mapstructure:"login_code_ttl_minutes"`
@@ -73,12 +73,14 @@ type SiteConfig struct {
 	// BlockOpenAIAccountAdminPaths：拦截 OpenAI 控制台/账号类路径（组织、账单等），避免用户 Key 误代转发；默认 true。
 	BlockOpenAIAccountAdminPaths bool `mapstructure:"block_openai_account_admin_paths"`
 	// OpenAIAccountAdminDenyPrefixes：在 block 开启时，相对 /v1/ 的额外拒绝前缀（不含前导 /）。
-	OpenAIAccountAdminDenyPrefixes []string `mapstructure:"openai_account_admin_deny_prefixes"`
+	OpenAIAccountAdminDenyPrefixes []string                `mapstructure:"openai_account_admin_deny_prefixes"`
 	OpenAIPassthrough              OpenAIPassthroughConfig `mapstructure:"openai_passthrough"`
 	// LoginCaptcha：登录页图形验证码；开启后密码登录与「发送邮箱登录验证码」需携带 captcha_id / captcha_answer，依赖 Redis。
 	LoginCaptcha SiteLoginCaptchaConfig `mapstructure:"login_captcha"`
 	// BrandUploadDir 管理后台本地上传品牌图标的磁盘目录（可写）；空则默认 data/site_brand。对外固定通过 /uploads/site-brand/ 访问。
 	BrandUploadDir string `mapstructure:"brand_upload_dir"`
+	// RegisterPromoText 注册页与官网展示的推广说明（纯文本，可含换行）；空则不展示。
+	RegisterPromoText string `mapstructure:"register_promo_text"`
 }
 
 // SiteLoginCaptchaConfig 控制台登录人机校验（图形验证码）。
@@ -129,6 +131,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.openai_passthrough.patch_model_in_json", true)
 	v.SetDefault("site.login_captcha.enabled", true)
 	v.SetDefault("site.login_captcha.ttl_seconds", 300)
+	v.SetDefault("site.register_promo_text", "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。")
 	v.SetDefault("bootstrap.default_group_name", "基础分组")
 	v.SetDefault("email.smtp_port", 587)
 	v.SetDefault("email.starttls", true)

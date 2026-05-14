@@ -420,14 +420,14 @@ func ListRedeemLedger(client *ent.Client) gin.HandlerFunc {
 				email = row.Edges.User.Email
 			}
 			items = append(items, gin.H{
-				"id":              row.ID,
-				"user_id":         row.UserID,
-				"user_email":      email,
-				"redeem_code_id":  row.RedeemCodeID,
-				"amount":          row.Amount,
-				"balance_after":   row.BalanceAfter,
-				"code_hint":       row.CodeHint,
-				"created_at":      row.CreatedAt,
+				"id":             row.ID,
+				"user_id":        row.UserID,
+				"user_email":     email,
+				"redeem_code_id": row.RedeemCodeID,
+				"amount":         row.Amount,
+				"balance_after":  row.BalanceAfter,
+				"code_hint":      row.CodeHint,
+				"created_at":     row.CreatedAt,
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
@@ -591,6 +591,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		ctx := c.Request.Context()
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
 		dbSetBal, dbValBal := sitecfg.DefaultNewUserBalanceDBMeta(ctx, client)
+		dbSetPromo, dbValPromo := sitecfg.RegisterPromoTextDBMeta(ctx, client)
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
@@ -607,6 +608,10 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"default_new_user_balance_file":     cfg.Site.DefaultNewUserBalance,
 			"default_new_user_balance_db_set":   dbSetBal,
 			"default_new_user_balance_db_value": strings.TrimSpace(dbValBal),
+			"register_promo_text":               sitecfg.EffectiveRegisterPromoText(ctx, client, cfg),
+			"register_promo_text_file":          strings.TrimSpace(cfg.Site.RegisterPromoText),
+			"register_promo_text_db_set":        dbSetPromo,
+			"register_promo_text_db_value":      strings.TrimSpace(dbValPromo),
 			"api_public_base_url":               sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
 		})
 	}
@@ -623,6 +628,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyLoginCaptchaEnabled,
 			sitecfg.SystemConfigKeyOperatorDisplayName,
 			sitecfg.SystemConfigKeyDefaultNewUserBalance,
+			sitecfg.SystemConfigKeyRegisterPromoText,
 			sitecfg.SystemConfigKeyAPIPublicBaseURL,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)

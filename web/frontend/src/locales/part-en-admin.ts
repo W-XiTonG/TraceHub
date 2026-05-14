@@ -573,7 +573,7 @@ export default {
   adminSystem: {
     title: 'Site settings',
     intro:
-      'Values are stored in system_configs and override YAML defaults where applicable. Brand fields apply after the public meta endpoint is fetched; operator affects /health and /ready; default balance applies to newly registered users.',
+      'Values are stored in system_configs and override YAML defaults where applicable. Brand fields apply after the public meta endpoint is fetched; operator affects /health and /ready; default balance applies to newly registered users; register promo text appears on the marketing home and sign-up page.',
     secBrand: 'Branding',
     secBrandHint: 'Used in the marketing header, docs header, console sidebar, and auth pages.',
     lblBrandName: 'Product name',
@@ -605,6 +605,11 @@ export default {
     hintDefaultNewUserYaml:
       'YAML site.default_new_user_balance is currently {n} (used when no DB override; if a DB row exists, that value wins).',
     hintDefaultNewUserDb: 'A database override exists; saving persists the number below and it takes precedence.',
+    lblRegisterPromo: 'Sign-up promo text',
+    phRegisterPromo: 'Shown on the marketing home and register page; plain text, line breaks allowed.',
+    hintRegisterPromoYaml:
+      'Current YAML site.register_promo_text (matches the public site meta when no DB override exists).',
+    hintRegisterPromoDb: 'A database override exists; saving persists the text below and it takes precedence.',
     secApiPublic: 'Public API base URL (OpenAI)',
     secApiPublicHint:
       'Leave empty to use the current browser origin + /v1 in the console overview and docs. If the gateway is served on another host (e.g. api.example.com), enter an https root (path empty or /v1). Saved to public site meta so docs and the dashboard example update automatically.',
@@ -618,7 +623,7 @@ export default {
     saveFail: 'Save failed',
     resetDefaults: 'Restore defaults',
     resetDefaultsConfirm:
-      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, public API base URL, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
+      'Clear database overrides for this page? Brand name, icon, login CAPTCHA, new-user default balance, register promo text, public API base URL, and operator will fall back to YAML and built-in defaults. Locally uploaded icon files on disk are not removed and may still appear in the gallery.',
     resetDefaultsDone:
       'Database overrides cleared; name and icon now follow config and built-in defaults (hard refresh if the shell still looks stale).',
     resetDefaultsFail: 'Failed to restore defaults',
@@ -627,6 +632,7 @@ export default {
     descLoginCaptcha: 'Login CAPTCHA toggle',
     descOperator: 'Health check operator label',
     descDefaultNewUserBalance: 'Initial balance for new users (quota units)',
+    descRegisterPromo: 'Promo copy on marketing home and register page (site.register_promo_text)',
     descApiPublicBaseUrl: 'Public OpenAI-compatible base URL (site.api.public_base_url)',
   },
 } as const

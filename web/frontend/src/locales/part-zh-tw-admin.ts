@@ -569,7 +569,7 @@ export default {
   adminSystem: {
     title: '系統設定',
     intro:
-      '以下寫入資料庫 system_configs，覆寫同名 YAML 預設；儲存後登入頁、/health、新註冊使用者初始額度等即生效（圖示與名稱依前端公開介面載入）。',
+      '以下寫入資料庫 system_configs，覆寫同名 YAML 預設；儲存後登入頁、/health、新註冊使用者初始額度、註冊推廣文案、公開站點中繼資料等即生效（圖示與名稱依前端公開介面載入）。',
     secBrand: '品牌與展示',
     secBrandHint: '用於官網頂欄、文件頂欄、控制台側欄與登入／註冊頁。',
     lblBrandName: '專案名稱',
@@ -600,6 +600,11 @@ export default {
     hintDefaultNewUserYaml:
       '設定檔中 site.default_new_user_balance 目前為：{n}（未在資料庫覆寫時，註冊即用該值；有覆寫則以資料庫為準）。',
     hintDefaultNewUserDb: '資料庫中已有本項覆寫；儲存後以下方數字寫入資料庫並優先生效。',
+    lblRegisterPromo: '註冊推廣文案',
+    phRegisterPromo: '顯示於官網首頁與註冊頁；純文字，可換行。',
+    hintRegisterPromoYaml:
+      '以下為設定檔 site.register_promo_text 的目前值（無資料庫覆寫時與官網首頁、註冊頁展示一致）。',
+    hintRegisterPromoDb: '資料庫中已有本項覆寫；儲存後以下方文案寫入資料庫並優先生效。',
     secApiPublic: '對外 API 位址（OpenAI Base URL）',
     secApiPublicHint:
       '留空則控制台「概覽」與文件中的範例使用目前瀏覽器站點 + /v1。若對外閘道網域與控制台不同（例如獨立 API 子網域），請填 https 根位址（路徑可留空或填 /v1）；儲存後寫入公開站點中繼資料，前端會自動替換文件與概覽中的 Base URL 與 cURL 範例。',
@@ -613,7 +618,7 @@ export default {
     saveFail: '儲存失敗',
     resetDefaults: '恢復預設',
     resetDefaultsConfirm:
-      '確定要清除本頁在資料庫中的站點設定覆寫嗎？品牌名、圖示、登入驗證碼、新使用者預設額度、對外 API Base URL、operator 將回到設定檔與內建預設值。磁碟上的本地上傳圖示不會刪除，仍可能出現在圖庫中。',
+      '確定要清除本頁在資料庫中的站點設定覆寫嗎？品牌名、圖示、登入驗證碼、新使用者預設額度、註冊推廣文案、對外 API Base URL、operator 將回到設定檔與內建預設值。磁碟上的本地上傳圖示不會刪除，仍可能出現在圖庫中。',
     resetDefaultsDone: '已清除資料庫覆寫項；站點名稱與圖示已依設定檔與內建預設生效（側欄等若未變請整頁重新整理）。',
     resetDefaultsFail: '恢復預設失敗',
     descBrandName: '站點對外展示名稱',
@@ -621,6 +626,7 @@ export default {
     descLoginCaptcha: '登入圖形驗證碼開關',
     descOperator: '健康檢查 operator 展示名',
     descDefaultNewUserBalance: '新使用者註冊初始餘額（額度單位）',
+    descRegisterPromo: '註冊頁與官網首頁展示的推廣說明（site.register_promo_text）',
     descApiPublicBaseUrl: '對外 OpenAI 相容 Base URL（site.api.public_base_url）',
   },
 } as const

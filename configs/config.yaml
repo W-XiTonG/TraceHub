@@ -17,6 +17,8 @@ site:
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
   default_new_user_balance: 5000
+  # 注册页与官网展示的推广说明（可被管理后台 system_configs 覆盖）；空字符串则不展示
+  register_promo_text: "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。"
   cors_origins:
     - "*"
 

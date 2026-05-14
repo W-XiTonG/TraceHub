@@ -44,6 +44,11 @@ export default {
     recent: 'More',
     loadFail: 'Failed to load announcements',
   },
+  sitePromo: {
+    aria: 'Site notice',
+    panelTitle: 'Heads-up',
+    gotIt: 'Got it',
+  },
   login: {
     title: 'Welcome back',
     subtitle: 'Sign in to {brand}',

@@ -8,6 +8,7 @@ import { useAuthStore } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
+import RegisterPromoDropdown from '../components/RegisterPromoDropdown.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -264,6 +265,7 @@ function featureLink(to: string) {
           <a href="#pricing" class="th-site-nav-link hidden sm:inline">{{ t('nav.pricing') }}</a>
           <a href="#faq" class="th-site-nav-link">{{ t('nav.faq') }}</a>
           <RouterLink to="/docs" class="th-site-nav-link">{{ t('nav.docs') }}</RouterLink>
+          <RegisterPromoDropdown v-if="!auth.isLoggedIn" :text="siteMeta.registerPromoText" />
           <template v-if="!auth.isLoggedIn">
             <RouterLink to="/login" class="th-site-nav-link text-slate-300">{{ t('nav.login') }}</RouterLink>
             <RouterLink to="/register" class="th-btn-primary !px-4 !py-2 text-sm">{{ t('nav.register') }}</RouterLink>

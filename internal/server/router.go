@@ -68,7 +68,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)
 		health.Readiness(opt.Client, opt.Redis, op)(c)
 	})
-	r.GET("/api/pub/site-meta", userhandler.PubSiteMeta(opt.Client))
+	r.GET("/api/pub/site-meta", userhandler.PubSiteMeta(opt.Client, opt.Config))
 	uploadRoot := adminhandler.BrandUploadDir(opt.Config)
 	if mkErr := os.MkdirAll(uploadRoot, 0o755); mkErr != nil {
 		opt.Log.Warn("brand_upload_dir mkdir failed", zap.String("path", uploadRoot), zap.Error(mkErr))
