@@ -28,6 +28,8 @@ type ChatMsg = {
   imageUrl?: string
   /** 文生图：展示用 URL 或 data URL，避免把超长 base64 塞进 Markdown */
   imageOutputs?: string[]
+  /** 语音合成：浏览器 blob URL，仅本会话有效 */
+  audioUrl?: string
 }
 
 const apiKey = ref('')
@@ -123,8 +125,10 @@ const filteredPlaygroundModels = computed(() => {
   })
 })
 
-/** 对话补全 vs 文生图（POST /v1/images/generations） */
-const playMode = ref<'chat' | 'image'>('chat')
+/** 对话补全 / 文生图 / 音频（OpenAI 兼容 /v1/audio/*） */
+const playMode = ref<'chat' | 'image' | 'audio'>('chat')
+/** 音频试玩子模式 */
+const audioPlaySub = ref<'speech' | 'transcribe' | 'translate'>('speech')
 const imageGenSize = ref('1024x1024')
 const imageResponseFormat = ref<'url' | 'b64_json'>('url')
 
@@ -138,10 +142,19 @@ const imageUrl = ref('')
 /** 本地上传错误提示（与 modelsErr 分离，避免混在模型区） */
 const imageUploadErr = ref('')
 const imageFileInputRef = ref<HTMLInputElement | null>(null)
+const audioFileInputRef = ref<HTMLInputElement | null>(null)
 
 const PG_IMAGE_MAX_BYTES = 15 * 1024 * 1024
+const PG_AUDIO_MAX_BYTES = 25 * 1024 * 1024
 const PG_IMAGE_ACCEPT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const PG_IMAGE_GEN_SIZES = ['256x256', '512x512', '1024x1024', '1024x1792', '1792x1024'] as const
+
+/** 语音合成：音色、语速（与上游 OpenAI 风格字段一致） */
+const audioSpeechVoice = ref('alloy')
+const audioSpeechSpeed = ref(1)
+const sttLanguage = ref('')
+const audioFile = ref<File | null>(null)
+const audioUploadErr = ref('')
 
 const useTemp = ref(true)
 const temperature = ref(0.7)
@@ -255,7 +268,7 @@ watch(customBody, (on, prev) => {
 })
 
 watch(playMode, (m) => {
-  if (m === 'image') {
+  if (m === 'image' || m === 'audio') {
     customBody.value = false
     useStream.value = false
   }
@@ -287,6 +300,10 @@ watch(useImage, (on) => {
   if (!on) imageUploadErr.value = ''
 })
 
+watch(playMode, () => {
+  audioUploadErr.value = ''
+})
+
 watch(imageUrl, () => {
   imageUploadErr.value = ''
 })
@@ -310,7 +327,12 @@ function loadSettings() {
     if (typeof j.useMaxTokens === 'boolean') useMaxTokens.value = j.useMaxTokens
     if (typeof j.useStream === 'boolean') useStream.value = j.useStream
     if (typeof j.useImage === 'boolean') useImage.value = j.useImage
-    if (j.playMode === 'chat' || j.playMode === 'image') playMode.value = j.playMode
+    if (j.playMode === 'chat' || j.playMode === 'image' || j.playMode === 'audio') playMode.value = j.playMode
+    if (j.audioPlaySub === 'speech' || j.audioPlaySub === 'transcribe' || j.audioPlaySub === 'translate')
+      audioPlaySub.value = j.audioPlaySub
+    if (typeof j.audioSpeechVoice === 'string') audioSpeechVoice.value = j.audioSpeechVoice
+    if (typeof j.audioSpeechSpeed === 'number' && j.audioSpeechSpeed > 0) audioSpeechSpeed.value = j.audioSpeechSpeed
+    if (typeof j.sttLanguage === 'string') sttLanguage.value = j.sttLanguage
     if (typeof j.imageGenSize === 'string' && (PG_IMAGE_GEN_SIZES as readonly string[]).includes(j.imageGenSize))
       imageGenSize.value = j.imageGenSize
     if (j.imageResponseFormat === 'url' || j.imageResponseFormat === 'b64_json')
@@ -340,6 +362,10 @@ function persistSettings() {
     useStream: useStream.value,
     useImage: useImage.value,
     playMode: playMode.value,
+    audioPlaySub: audioPlaySub.value,
+    audioSpeechVoice: audioSpeechVoice.value,
+    audioSpeechSpeed: audioSpeechSpeed.value,
+    sttLanguage: sttLanguage.value,
     imageGenSize: imageGenSize.value,
     imageResponseFormat: imageResponseFormat.value,
     useSeed: useSeed.value,
@@ -370,6 +396,10 @@ watch(
     useStream,
     useImage,
     playMode,
+    audioPlaySub,
+    audioSpeechVoice,
+    audioSpeechSpeed,
+    sttLanguage,
     imageGenSize,
     imageResponseFormat,
     useSeed,
@@ -445,6 +475,156 @@ function onPlaygroundImageFile(ev: Event) {
     imageUploadErr.value = t('playground.imageUploadReadFail')
   }
   reader.readAsDataURL(file)
+}
+
+function revokeMsgAudio(m: ChatMsg) {
+  const u = m.audioUrl
+  if (u?.startsWith('blob:')) URL.revokeObjectURL(u)
+}
+
+function openPlaygroundAudioPicker() {
+  audioUploadErr.value = ''
+  audioFileInputRef.value?.click()
+}
+
+function onPlaygroundAudioFile(ev: Event) {
+  const el = ev.target as HTMLInputElement
+  const file = el.files?.[0]
+  el.value = ''
+  audioUploadErr.value = ''
+  if (!file) {
+    audioFile.value = null
+    return
+  }
+  if (file.size > PG_AUDIO_MAX_BYTES) {
+    audioUploadErr.value = t('playground.audioUploadSize', { maxMb: Math.floor(PG_AUDIO_MAX_BYTES / 1024 / 1024) })
+    audioFile.value = null
+    return
+  }
+  audioFile.value = file
+}
+
+function parseTranscriptionJson(raw: string): string {
+  try {
+    const j = JSON.parse(raw) as { text?: string }
+    if (typeof j.text === 'string') return j.text
+  } catch {
+    /* ignore */
+  }
+  return raw
+}
+
+async function sendAudioSpeech(text: string) {
+  const k = apiKey.value.trim()
+  if (!k) {
+    modelsErr.value = t('playground.needKey')
+    return
+  }
+  if (!model.value.trim()) {
+    modelsErr.value = t('playground.needModel')
+    return
+  }
+
+  const body: Record<string, unknown> = {
+    model: model.value.trim(),
+    input: text,
+    voice: audioSpeechVoice.value.trim() || 'alloy',
+  }
+  const sp = Number(audioSpeechSpeed.value)
+  if (Number.isFinite(sp) && sp > 0 && sp !== 1) body.speed = sp
+
+  messages.value = [...messages.value, { id: uid(), role: 'user', content: text }]
+  input.value = ''
+
+  const assistantId = uid()
+  messages.value = [...messages.value, { id: assistantId, role: 'assistant', content: '' }]
+
+  lastRequest.value = JSON.stringify(body, null, 2)
+  lastResponse.value = ''
+  streamLog.value = ''
+  modelsErr.value = ''
+  sending.value = true
+
+  try {
+    const r = await pgw.audioSpeech(k, stickySession.value, body)
+    const blobUrl = URL.createObjectURL(r.blob)
+    patchAssistantAudio(assistantId, t('playground.audioSpeechDoneCaption'), blobUrl)
+    lastResponse.value = `[audio] ${r.contentType}; ${r.blob.size} bytes`
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    modelsErr.value = msg
+    patchAssistantAudio(assistantId, `【${t('playground.error')}】\n\n${msg}`, undefined)
+  } finally {
+    sending.value = false
+  }
+}
+
+async function sendAudioMultipart() {
+  const k = apiKey.value.trim()
+  if (!k) {
+    modelsErr.value = t('playground.needKey')
+    return
+  }
+  if (!model.value.trim()) {
+    modelsErr.value = t('playground.needModel')
+    return
+  }
+  const file = audioFile.value
+  if (!file) {
+    modelsErr.value = t('playground.audioNeedFile')
+    return
+  }
+
+  const promptOpt = input.value.trim()
+  const userLine = promptOpt
+    ? `${t('playground.audioFile')}: ${file.name}\n${t('playground.audioSttPrompt')}: ${promptOpt}`
+    : `${t('playground.audioFile')}: ${file.name}`
+
+  messages.value = [...messages.value, { id: uid(), role: 'user', content: userLine }]
+  input.value = ''
+
+  const assistantId = uid()
+  messages.value = [...messages.value, { id: assistantId, role: 'assistant', content: '' }]
+
+  const rel = audioPlaySub.value === 'translate' ? 'audio/translations' : 'audio/transcriptions'
+  const fdPreview = {
+    model: model.value.trim(),
+    file: file.name,
+    language: sttLanguage.value.trim() || undefined,
+    prompt: promptOpt || undefined,
+  }
+  lastRequest.value = `[multipart ${rel}]\n${JSON.stringify(fdPreview, null, 2)}`
+  lastResponse.value = ''
+  streamLog.value = ''
+  modelsErr.value = ''
+  sending.value = true
+
+  try {
+    const r = await pgw.audioMultipart(k, stickySession.value, rel, {
+      model: model.value.trim(),
+      file,
+      language: sttLanguage.value.trim() || undefined,
+      prompt: promptOpt || undefined,
+    })
+    lastResponse.value = r.raw
+    const text = parseTranscriptionJson(r.raw)
+    patchAssistant(assistantId, text)
+    audioFile.value = null
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    modelsErr.value = msg
+    patchAssistant(assistantId, `【${t('playground.error')}】\n\n${msg}`)
+  } finally {
+    sending.value = false
+  }
+}
+
+function patchAssistantAudio(id: string, content: string, audioUrl?: string) {
+  messages.value = messages.value.map((m) => {
+    if (m.id !== id) return m
+    revokeMsgAudio(m)
+    return { ...m, content, audioUrl }
+  })
 }
 
 function buildOpenAIMessagesForHistory(): Array<Record<string, unknown>> {
@@ -571,8 +751,21 @@ async function sendImageGeneration(prompt: string) {
 }
 
 async function sendMessage() {
+  if (sending.value) return
+
+  if (playMode.value === 'audio' && audioPlaySub.value === 'speech') {
+    const t0 = input.value.trim()
+    if (!t0) return
+    await sendAudioSpeech(t0)
+    return
+  }
+  if (playMode.value === 'audio' && (audioPlaySub.value === 'transcribe' || audioPlaySub.value === 'translate')) {
+    await sendAudioMultipart()
+    return
+  }
+
   const text = input.value.trim()
-  if (!text || sending.value) return
+  if (!text) return
 
   if (playMode.value === 'image') {
     await sendImageGeneration(text)
@@ -748,12 +941,15 @@ function stopStream() {
 
 /** 新建会话：清空右侧消息与本地缓存；自定义 JSON 模式下同时把请求体里的 messages 置空，避免旧多模态历史仍被发出。 */
 function startNewPlaygroundSession() {
+  for (const m of messages.value) revokeMsgAudio(m)
   messages.value = []
   input.value = ''
   lastResponse.value = ''
   streamLog.value = ''
   useImage.value = false
   imageUrl.value = ''
+  audioFile.value = null
+  audioUploadErr.value = ''
   try {
     localStorage.removeItem(LS_MSG)
   } catch {
@@ -774,7 +970,12 @@ function startNewPlaygroundSession() {
 
 function persistConversation() {
   try {
-    localStorage.setItem(LS_MSG, JSON.stringify(messages.value))
+    const safe = messages.value.map((m) => {
+      const { audioUrl, ...rest } = m
+      if (audioUrl?.startsWith('blob:')) return rest
+      return m
+    })
+    localStorage.setItem(LS_MSG, JSON.stringify(safe))
   } catch {
     /* ignore */
   }
@@ -785,6 +986,8 @@ function copyText(s: string) {
 }
 
 function removeMessage(id: string) {
+  const target = messages.value.find((m) => m.id === id)
+  if (target) revokeMsgAudio(target)
   messages.value = messages.value.filter((m) => m.id !== id)
 }
 
@@ -848,6 +1051,10 @@ function exportSettings() {
             customBody: customBody.value,
             assistantMarkdown: assistantMarkdown.value,
             playMode: playMode.value,
+            audioPlaySub: audioPlaySub.value,
+            audioSpeechVoice: audioSpeechVoice.value,
+            audioSpeechSpeed: audioSpeechSpeed.value,
+            sttLanguage: sttLanguage.value,
             imageGenSize: imageGenSize.value,
             imageResponseFormat: imageResponseFormat.value,
           },
@@ -907,7 +1114,12 @@ function importSettings(ev: Event) {
       if (typeof f.useImage === 'boolean') useImage.value = f.useImage
       if (typeof f.customBody === 'boolean') customBody.value = f.customBody
       if (typeof f.assistantMarkdown === 'boolean') assistantMarkdown.value = f.assistantMarkdown
-      if (f.playMode === 'chat' || f.playMode === 'image') playMode.value = f.playMode
+      if (f.playMode === 'chat' || f.playMode === 'image' || f.playMode === 'audio') playMode.value = f.playMode
+      if (f.audioPlaySub === 'speech' || f.audioPlaySub === 'transcribe' || f.audioPlaySub === 'translate')
+        audioPlaySub.value = f.audioPlaySub
+      if (typeof f.audioSpeechVoice === 'string') audioSpeechVoice.value = f.audioSpeechVoice
+      if (typeof f.audioSpeechSpeed === 'number' && f.audioSpeechSpeed > 0) audioSpeechSpeed.value = f.audioSpeechSpeed
+      if (typeof f.sttLanguage === 'string') sttLanguage.value = f.sttLanguage
       if (typeof f.imageGenSize === 'string' && (PG_IMAGE_GEN_SIZES as readonly string[]).includes(f.imageGenSize))
         imageGenSize.value = f.imageGenSize
       if (f.imageResponseFormat === 'url' || f.imageResponseFormat === 'b64_json')
@@ -936,9 +1148,73 @@ function downloadBlob(blob: Blob, name: string) {
   URL.revokeObjectURL(url)
 }
 
-const canSend = computed(() => apiKey.value.trim().length > 0 && !sending.value)
-
 const chatScrollEl = ref<HTMLElement | null>(null)
+
+const sidebarPlaygroundDesc = computed(() => {
+  if (playMode.value === 'image') return t('playground.descImage')
+  if (playMode.value === 'audio') {
+    if (audioPlaySub.value === 'speech') return t('playground.descAudioSpeech')
+    if (audioPlaySub.value === 'transcribe') return t('playground.descAudioTranscribe')
+    return t('playground.descAudioTranslate')
+  }
+  return t('playground.desc')
+})
+
+const chatHeaderTitle = computed(() => {
+  if (playMode.value === 'image') return t('playground.chatTitleImage')
+  if (playMode.value === 'audio') {
+    if (audioPlaySub.value === 'speech') return t('playground.chatTitleAudioSpeech')
+    if (audioPlaySub.value === 'transcribe') return t('playground.chatTitleAudioTranscribe')
+    return t('playground.chatTitleAudioTranslate')
+  }
+  return t('playground.chatTitle')
+})
+
+const chatHeaderSubtitle = computed(() => {
+  if (playMode.value === 'image') {
+    return `${model.value || '—'} · ${imageGenSize.value} · ${
+      imageResponseFormat.value === 'url' ? t('playground.imageFormatUrl') : t('playground.imageFormatB64')
+    }`
+  }
+  if (playMode.value === 'audio') {
+    if (audioPlaySub.value === 'speech')
+      return `${model.value || '—'} · ${t('playground.audioVoice')}: ${audioSpeechVoice.value.trim() || 'alloy'}`
+    return `${model.value || '—'} · ${t('playground.audioLanguage')}: ${sttLanguage.value.trim() || t('playground.audioLangAuto')}`
+  }
+  return `${model.value || '—'} · ${useStream.value ? t('playground.streamOn') : t('playground.streamOff')}`
+})
+
+const emptyPanelHint = computed(() => {
+  if (playMode.value === 'image') return t('playground.emptyImage')
+  if (playMode.value === 'audio' && audioPlaySub.value === 'speech') return t('playground.emptyAudioSpeech')
+  if (playMode.value === 'audio' && audioPlaySub.value === 'transcribe') return t('playground.emptyAudioTranscribe')
+  if (playMode.value === 'audio') return t('playground.emptyAudioTranslate')
+  return t('playground.emptyChat')
+})
+
+const inputFooterPh = computed(() => {
+  if (playMode.value === 'image') return t('playground.inputPhImage')
+  if (playMode.value === 'audio' && audioPlaySub.value === 'speech') return t('playground.inputPhAudioSpeech')
+  if (playMode.value === 'audio' && audioPlaySub.value === 'transcribe') return t('playground.inputPhAudioStt')
+  if (playMode.value === 'audio') return t('playground.inputPhAudioTranslate')
+  return t('playground.inputPh')
+})
+
+const showRegenerateForCurrentMode = computed(
+  () =>
+    playMode.value === 'chat' ||
+    playMode.value === 'image' ||
+    (playMode.value === 'audio' && audioPlaySub.value === 'speech'),
+)
+
+const sendDisabled = computed(() => {
+  if (!apiKey.value.trim() || sending.value) return true
+  if (playMode.value === 'audio') {
+    if (audioPlaySub.value === 'speech') return !input.value.trim()
+    return !audioFile.value
+  }
+  return !input.value.trim()
+})
 
 function scrollChatToBottom() {
   nextTick(() => {
@@ -966,7 +1242,7 @@ function fmtNum(n: number) {
         <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ t('playground.configKicker') }}</p>
         <h1 class="text-lg font-semibold text-slate-100">{{ t('playground.title') }}</h1>
         <p class="mt-1 text-xs leading-relaxed text-slate-500">
-          {{ playMode === 'image' ? t('playground.descImage') : t('playground.desc') }}
+          {{ sidebarPlaygroundDesc }}
         </p>
         <p class="mt-2 border-l-2 border-cyan-500/45 pl-2.5 text-[11px] leading-relaxed th-pg-muted">
           {{ t('playground.billingHint') }}
@@ -994,6 +1270,44 @@ function fmtNum(n: number) {
               @click="playMode = 'image'"
             >
               {{ t('playground.modeImage') }}
+            </button>
+            <button
+              type="button"
+              class="th-pg-seg__btn min-w-0 flex-1 text-xs"
+              :class="{ 'th-pg-seg__btn--active': playMode === 'audio' }"
+              :aria-pressed="playMode === 'audio'"
+              @click="playMode = 'audio'"
+            >
+              {{ t('playground.modeAudio') }}
+            </button>
+          </div>
+          <div v-if="playMode === 'audio'" class="th-pg-seg mt-2 flex w-full" role="group" :aria-label="t('playground.audioSubAria')">
+            <button
+              type="button"
+              class="th-pg-seg__btn min-w-0 flex-1 text-[11px] leading-tight"
+              :class="{ 'th-pg-seg__btn--active': audioPlaySub === 'speech' }"
+              :aria-pressed="audioPlaySub === 'speech'"
+              @click="audioPlaySub = 'speech'"
+            >
+              {{ t('playground.audioSubSpeech') }}
+            </button>
+            <button
+              type="button"
+              class="th-pg-seg__btn min-w-0 flex-1 text-[11px] leading-tight"
+              :class="{ 'th-pg-seg__btn--active': audioPlaySub === 'transcribe' }"
+              :aria-pressed="audioPlaySub === 'transcribe'"
+              @click="audioPlaySub = 'transcribe'"
+            >
+              {{ t('playground.audioSubTranscribe') }}
+            </button>
+            <button
+              type="button"
+              class="th-pg-seg__btn min-w-0 flex-1 text-[11px] leading-tight"
+              :class="{ 'th-pg-seg__btn--active': audioPlaySub === 'translate' }"
+              :aria-pressed="audioPlaySub === 'translate'"
+              @click="audioPlaySub = 'translate'"
+            >
+              {{ t('playground.audioSubTranslate') }}
             </button>
           </div>
         </div>
@@ -1167,6 +1481,60 @@ function fmtNum(n: number) {
             </div>
           </div>
 
+          <div v-if="playMode === 'audio'" class="th-pg-card space-y-3 p-3">
+            <template v-if="audioPlaySub === 'speech'">
+              <div>
+                <label class="text-xs text-slate-500">{{ t('playground.audioVoice') }}</label>
+                <input
+                  v-model="audioSpeechVoice"
+                  type="text"
+                  class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+                  :placeholder="t('playground.audioVoicePh')"
+                />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">{{ t('playground.audioSpeed') }}</label>
+                <input
+                  v-model.number="audioSpeechSpeed"
+                  type="number"
+                  min="0.25"
+                  max="4"
+                  step="0.05"
+                  class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+                />
+                <p class="mt-1 text-[11px] th-pg-muted">{{ t('playground.audioSpeedHint') }}</p>
+              </div>
+            </template>
+            <template v-else>
+              <div>
+                <label class="text-xs text-slate-500">{{ t('playground.audioLanguage') }}</label>
+                <input
+                  v-model="sttLanguage"
+                  type="text"
+                  class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+                  :placeholder="t('playground.audioLanguagePh')"
+                />
+                <p class="mt-1 text-[11px] th-pg-muted">{{ t('playground.audioLanguageHint') }}</p>
+              </div>
+              <input
+                ref="audioFileInputRef"
+                type="file"
+                class="sr-only"
+                accept="audio/*,.mp3,.wav,.m4a,.webm,.flac,.ogg,.mpeg"
+                :aria-label="t('playground.audioUpload')"
+                @change="onPlaygroundAudioFile"
+              />
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" class="th-pg-btn-ghost px-2 py-1 text-xs" @click="openPlaygroundAudioPicker">
+                  {{ t('playground.audioPickFile') }}
+                </button>
+                <span v-if="audioFile" class="truncate font-mono text-[11px] text-slate-300">{{ audioFile.name }}</span>
+              </div>
+              <p v-if="audioUploadErr" class="text-[11px] text-rose-400/95">{{ audioUploadErr }}</p>
+              <p class="text-[11px] th-pg-muted">{{ t('playground.audioFileHint', { maxMb: Math.floor(PG_AUDIO_MAX_BYTES / 1024 / 1024) }) }}</p>
+            </template>
+          </div>
+
           <template v-if="playMode === 'chat'">
           <div>
             <label class="text-xs text-slate-500">{{ t('playground.system') }}</label>
@@ -1331,16 +1699,10 @@ function fmtNum(n: number) {
       <header class="th-pg-chat-head flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div>
           <p class="text-sm font-semibold text-slate-100">
-            {{ playMode === 'image' ? t('playground.chatTitleImage') : t('playground.chatTitle') }}
+            {{ chatHeaderTitle }}
           </p>
           <p class="text-[11px] text-slate-500">
-            <template v-if="playMode === 'chat'">
-              {{ model || '—' }} · {{ useStream ? t('playground.streamOn') : t('playground.streamOff') }}
-            </template>
-            <template v-else>
-              {{ model || '—' }} · {{ imageGenSize }} ·
-              {{ imageResponseFormat === 'url' ? t('playground.imageFormatUrl') : t('playground.imageFormatB64') }}
-            </template>
+            {{ chatHeaderSubtitle }}
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -1402,7 +1764,7 @@ function fmtNum(n: number) {
       >
         <div class="flex flex-col gap-3">
         <div v-if="!messages.length" class="flex flex-1 flex-col items-center justify-center py-16 text-center text-sm text-slate-500">
-          <p>{{ playMode === 'image' ? t('playground.emptyImage') : t('playground.emptyChat') }}</p>
+          <p>{{ emptyPanelHint }}</p>
         </div>
         <div
           v-for="m in messages"
@@ -1418,6 +1780,9 @@ function fmtNum(n: number) {
               class="th-pg-msg flex min-w-0 flex-col gap-0 rounded-2xl border px-3.5 py-2 text-sm"
               :class="m.role === 'user' ? 'th-pg-msg--user' : 'th-pg-msg--assistant'"
             >
+              <div v-if="m.role === 'assistant' && m.audioUrl" class="mb-2 w-full max-w-md">
+                <audio :src="m.audioUrl" controls class="w-full rounded-lg border border-white/10 bg-slate-950/80" />
+              </div>
               <div v-if="m.role === 'assistant' && m.imageOutputs?.length" class="mb-2 flex flex-col gap-2">
                 <img
                   v-for="(src, ix) in m.imageOutputs"
@@ -1504,7 +1869,7 @@ function fmtNum(n: number) {
                 </svg>
               </button>
               <button
-                v-if="m.role === 'assistant'"
+                v-if="m.role === 'assistant' && showRegenerateForCurrentMode"
                 type="button"
                 class="th-pg-icon-btn th-pg-icon-btn--regen"
                 :title="t('playground.regen')"
@@ -1558,7 +1923,7 @@ function fmtNum(n: number) {
             v-model="input"
             rows="2"
             class="min-h-[3rem] flex-1 resize-y rounded-xl border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600"
-            :placeholder="playMode === 'image' ? t('playground.inputPhImage') : t('playground.inputPh')"
+            :placeholder="inputFooterPh"
             @keydown.enter.exact.prevent="sendMessage"
           />
           <div class="flex flex-col gap-1">
@@ -1572,7 +1937,7 @@ function fmtNum(n: number) {
             </button>
             <button
               type="button"
-              :disabled="!canSend || !input.trim()"
+              :disabled="sendDisabled"
               class="th-pg-btn-primary th-pg-btn-primary--md w-full min-w-[5.5rem] justify-center rounded-xl"
               @click="sendMessage"
             >

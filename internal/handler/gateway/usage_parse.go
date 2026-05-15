@@ -22,6 +22,9 @@ type ParsedOpenAIUsage struct {
 	PromptTokens       int
 	CompletionTokens   int
 	CachedPromptTokens int
+	// SuppressCompletionFallback is set when prompt-like usage came from non-chat shapes
+	// (e.g. usage.seconds or usage.total_tokens alone) so we do not fabricate completion_tokens.
+	SuppressCompletionFallback bool
 }
 
 // ParseOpenAIUsageJSON reads usage from a full response object or a stream chunk.
@@ -89,6 +92,7 @@ func parseUsageFlexible(raw []byte) ParsedOpenAIUsage {
 	out := ParsedOpenAIUsage{}
 	if wrap.Usage.TotalTokens > 0 {
 		out.PromptTokens = wrap.Usage.TotalTokens
+		out.SuppressCompletionFallback = true
 		return out
 	}
 	if wrap.Usage.InputTokens > 0 || wrap.Usage.OutputTokens > 0 {
@@ -98,6 +102,7 @@ func parseUsageFlexible(raw []byte) ParsedOpenAIUsage {
 	}
 	if wrap.Usage.Seconds > 0 {
 		out.PromptTokens = int(wrap.Usage.Seconds * 100)
+		out.SuppressCompletionFallback = true
 		return out
 	}
 	// Rare path: same struct as ParseOpenAIUsageJSON but zero prompt/completion — still attach cache if present
@@ -118,6 +123,9 @@ func parseUsageFlexible(raw []byte) ParsedOpenAIUsage {
 // applyCompletionFallback sets CompletionTokens when zero, using capped max requested tokens.
 func applyCompletionFallback(u *ParsedOpenAIUsage, maxRequested int) {
 	if u == nil || u.CompletionTokens > 0 {
+		return
+	}
+	if u.SuppressCompletionFallback {
 		return
 	}
 	if maxRequested <= 0 {

@@ -415,9 +415,15 @@ func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptToken
 		if strings.HasPrefix(s, "data:") {
 			payload := strings.TrimSpace(strings.TrimPrefix(s, "data:"))
 			if payload != "" && payload != "[DONE]" {
-				u := ParseOpenAIUsageJSON([]byte(payload))
+				rawPayload := []byte(payload)
+				u := ParseOpenAIUsageJSON(rawPayload)
 				if u.PromptTokens > 0 || u.CompletionTokens > 0 || u.CachedPromptTokens > 0 {
 					promptTokens, completionTokens, cachedPromptTokens = u.PromptTokens, u.CompletionTokens, u.CachedPromptTokens
+				} else {
+					flex := parseUsageFlexible(rawPayload)
+					if flex.PromptTokens > 0 || flex.CompletionTokens > 0 || flex.CachedPromptTokens > 0 {
+						promptTokens, completionTokens, cachedPromptTokens = flex.PromptTokens, flex.CompletionTokens, flex.CachedPromptTokens
+					}
 				}
 			}
 		}

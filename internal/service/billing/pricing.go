@@ -21,6 +21,11 @@ var DefaultQuotaPer1K = map[string]struct {
 	"gemini-1.5-pro":             {250, 1000},
 	"deepseek-chat":              {40, 120},
 	"deepseek-reasoner":          {120, 360},
+	// Audio: built-in per-1k quota hints; operators may override. Longer keys should sort before shorter ones for prefix matching (longestPrefixPricingKey).
+	"tts-1-hd":      {80, 600},
+	"gpt-4o-mini-tts": {50, 200},
+	"tts-1":         {50, 400},
+	"whisper-1":     {25, 100},
 }
 
 // openAIModelDateSuffix matches trailing snapshot dates on OpenAI model IDs, e.g. gpt-4o-2024-08-06.

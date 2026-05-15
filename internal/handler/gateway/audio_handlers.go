@@ -112,14 +112,24 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		if audioTok < 80 {
 			audioTok = 80
 		}
+		// Preflight only: scale file contribution to prompt (~2x) without decoding audio, so balance checks
+		// stay ahead of post-upstream debit paths (e.g. usage.seconds) and reduce post-402 deduct failures.
+		audioTokPre := int((totalFile*2 + 255) / 256)
+		if audioTokPre < 80 {
+			audioTokPre = 80
+		}
 		textTok, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptEst)
 		promptToks := textTok + audioTok
+		promptToksPre := textTok + audioTokPre
 		if promptToks < 1 {
 			promptToks = 1
 		}
+		if promptToksPre < 1 {
+			promptToksPre = 1
+		}
 		maxComp := 2048
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
-		costPre := br.Cost(promptToks, completionTokensFallback(maxComp), 0)
+		costPre := br.Cost(promptToksPre, completionTokensFallback(maxComp), 0)
 		if u.Balance < costPre {
 			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
 			return

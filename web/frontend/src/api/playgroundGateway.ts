@@ -115,3 +115,56 @@ export async function imageGenerations(
   }
   return { raw, imageOutputs }
 }
+
+/** POST /v1/audio/speech（JSON；响应多为音频二进制） */
+export async function audioSpeech(
+  apiKey: string,
+  sticky: string,
+  body: Record<string, unknown>,
+): Promise<{ blob: Blob; contentType: string }> {
+  const res = await fetch('/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey.trim()}`,
+      'Content-Type': 'application/json',
+      Accept: '*/*',
+      [STICKY_HDR]: sticky,
+    },
+    body: JSON.stringify(body),
+  })
+  const contentType = res.headers.get('Content-Type')?.trim() || 'application/octet-stream'
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error((parseOpenAIError(text) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  const blob = await res.blob()
+  return { blob, contentType }
+}
+
+/** POST /v1/audio/transcriptions 或 /v1/audio/translations（multipart，与 OpenAI 一致） */
+export async function audioMultipart(
+  apiKey: string,
+  sticky: string,
+  relPath: 'audio/transcriptions' | 'audio/translations',
+  opts: { model: string; file: File; language?: string; prompt?: string },
+): Promise<{ raw: string }> {
+  const fd = new FormData()
+  fd.append('model', opts.model.trim())
+  fd.append('file', opts.file, opts.file.name)
+  if (opts.language?.trim()) fd.append('language', opts.language.trim())
+  if (opts.prompt?.trim()) fd.append('prompt', opts.prompt.trim())
+
+  const res = await fetch(`/v1/${relPath}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey.trim()}`,
+      [STICKY_HDR]: sticky,
+    },
+    body: fd,
+  })
+  const raw = await res.text()
+  if (!res.ok) {
+    throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  return { raw }
+}
