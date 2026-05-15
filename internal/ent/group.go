@@ -30,6 +30,10 @@ type Group struct {
 	RpmLimit int `json:"rpm_limit,omitempty"`
 	// ModelRouting holds the value of the "model_routing" field.
 	ModelRouting map[string][]int64 `json:"model_routing,omitempty"`
+	// empty=inherit global; weighted_random|priority|fixed_order
+	RoutingStrategy string `json:"routing_strategy,omitempty"`
+	// per-group routing option overrides
+	RoutingOptions map[string]interface{} `json:"routing_options,omitempty"`
 	// DefaultModel holds the value of the "default_model" field.
 	DefaultModel string `json:"default_model,omitempty"`
 	// Enabled holds the value of the "enabled" field.
@@ -100,7 +104,7 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case group.FieldModelRouting:
+		case group.FieldModelRouting, group.FieldRoutingOptions:
 			values[i] = new([]byte)
 		case group.FieldEnabled:
 			values[i] = new(sql.NullBool)
@@ -108,7 +112,7 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case group.FieldID, group.FieldRpmLimit:
 			values[i] = new(sql.NullInt64)
-		case group.FieldName, group.FieldDescription, group.FieldSubscriptionType, group.FieldDefaultModel:
+		case group.FieldName, group.FieldDescription, group.FieldSubscriptionType, group.FieldRoutingStrategy, group.FieldDefaultModel:
 			values[i] = new(sql.NullString)
 		case group.FieldCreatedAt, group.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -169,6 +173,20 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.ModelRouting); err != nil {
 					return fmt.Errorf("unmarshal field model_routing: %w", err)
+				}
+			}
+		case group.FieldRoutingStrategy:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field routing_strategy", values[i])
+			} else if value.Valid {
+				_m.RoutingStrategy = value.String
+			}
+		case group.FieldRoutingOptions:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field routing_options", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.RoutingOptions); err != nil {
+					return fmt.Errorf("unmarshal field routing_options: %w", err)
 				}
 			}
 		case group.FieldDefaultModel:
@@ -268,6 +286,12 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_routing=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ModelRouting))
+	builder.WriteString(", ")
+	builder.WriteString("routing_strategy=")
+	builder.WriteString(_m.RoutingStrategy)
+	builder.WriteString(", ")
+	builder.WriteString("routing_options=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RoutingOptions))
 	builder.WriteString(", ")
 	builder.WriteString("default_model=")
 	builder.WriteString(_m.DefaultModel)

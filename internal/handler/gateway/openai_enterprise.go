@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -159,53 +160,80 @@ func enterpriseForwardJSON(
 	patchModel bool,
 	useLongClient bool,
 ) {
-	u, k, sel, secret, baseURL, ct, ok, br := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
+	u, k, sel, _, _, ct, ok, br := enterpriseResolveUpstream(c, d, routingModel, prePrompt, preComp)
 	if !ok {
 		return
 	}
-	ch := sel.Channel
 	model := routingModel
-	if patchModel && len(body) > 0 && extractJSONModelField(body) != "" {
-		patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
-			return
-		}
-		body = patched
+
+	sticky := c.GetHeader("X-TraceHub-Session")
+	if sticky == "" {
+		sticky = c.GetHeader("X-Sticky-Session")
 	}
+	gid := u.GroupID
 
 	reqID, _ := c.Get("request_id")
 	rid, _ := reqID.(string)
 	start := time.Now()
 	h := openAIPassthroughHeaders(c)
+	routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
-	var resp *http.Response
+	forwardHTTP := func(ctx context.Context, sel *router.Selected, upBody []byte) (*router.UpstreamResult, error) {
+		secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+		if !ok {
+			return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+		}
+		var resp *http.Response
+		var ferr error
+		if useLongClient {
+			resp, ferr = relay.ForwardOpenAIHTTPLong(ctx, baseURL, secret, method, relPath, upBody, rawQuery, h)
+		} else {
+			resp, ferr = relay.ForwardOpenAIHTTP(ctx, baseURL, secret, method, relPath, upBody, rawQuery, h)
+		}
+		return HTTPResponseToUpstreamResult(resp, ferr)
+	}
+
+	var res *router.UpstreamResult
 	var err error
-	if useLongClient {
-		resp, err = relay.ForwardOpenAIHTTPLong(c.Request.Context(), baseURL, secret, method, relPath, body, rawQuery, h)
+	if len(body) == 0 {
+		sel, res, err = ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, routingModel, sticky, sel,
+			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
+				return forwardHTTP(ctx, sel, nil)
+			})
 	} else {
-		resp, err = relay.ForwardOpenAIHTTP(c.Request.Context(), baseURL, secret, method, relPath, body, rawQuery, h)
+		var patchFn func([]byte, string) ([]byte, error)
+		if patchModel && extractJSONModelField(body) != "" {
+			patchFn = router.PatchModelInBody
+		} else {
+			patchFn = func(b []byte, _ string) ([]byte, error) { return b, nil }
+		}
+		sel, res, err = ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, routingModel, sticky, false, sel, body, patchFn, nil,
+			func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
+				return forwardHTTP(ctx, sel, patched)
+			})
 	}
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
 		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 		return
 	}
-	defer relay.DrainBody(resp.Body)
+	ch := sel.Channel
+	ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
 	metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-		logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-		outCT := resp.Header.Get("Content-Type")
-		if outCT == "" {
-			outCT = "application/json"
+	if res.StatusCode >= 400 {
+		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+		logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+		outCT := "application/json"
+		if res.Headers != nil {
+			if h := res.Headers.Get("Content-Type"); h != "" {
+				outCT = h
+			}
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		c.Data(res.StatusCode, outCT, res.Body)
 		return
 	}
-	usage := parseUsageFlexible(raw)
+	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, prePrompt)
 	applyCompletionFallback(&usage, preComp)
 	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
@@ -213,12 +241,14 @@ func enterpriseForwardJSON(
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-	outCT := resp.Header.Get("Content-Type")
-	if outCT == "" {
-		outCT = "application/json"
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+	outCT := "application/json"
+	if res.Headers != nil {
+		if h := res.Headers.Get("Content-Type"); h != "" {
+			outCT = h
+		}
 	}
-	c.Data(resp.StatusCode, outCT, raw)
+	c.Data(res.StatusCode, outCT, res.Body)
 }
 
 func enterpriseForwardStream(

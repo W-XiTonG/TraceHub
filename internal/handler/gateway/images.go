@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -260,6 +261,10 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
+		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			return
+		}
 
 		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptText)
 		if promptToks < 1 {
@@ -274,84 +279,54 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		baseURL := strings.TrimSpace(ch.APIBaseURL)
-		if baseURL == "" {
-			baseURL = router.DefaultBaseURL(ch.ChannelType)
-		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
-			baseURL = nb
-		}
-		var secret string
-		switch ch.AuthType {
-		case channel.AuthTypeAPIKey:
-			secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
-		case channel.AuthTypeOauth:
-			secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
-		case channel.AuthTypeSetupToken:
-			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
-		}
-		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
-			return
-		}
-
-		patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
-			return
-		}
-		patched, err = patchImageGenUpstreamJSON(patched)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
-			return
-		}
-
 		reqID, _ := c.Get("request_id")
 		rid, _ := reqID.(string)
 
 		start := time.Now()
-		switch {
-		case router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras):
-			resp, err := relay.ForwardOpenAIImageGenerations(c.Request.Context(), baseURL, secret, patched)
+		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
+		patchImageGen := func(body []byte, upstream string) ([]byte, error) {
+			patched, err := router.PatchModelInBody(body, upstream)
 			if err != nil {
-				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
-				return
+				return nil, err
 			}
-			defer relay.DrainBody(resp.Body)
-
-			if resp.StatusCode >= 400 {
-				raw, _ := io.ReadAll(resp.Body)
-				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-				c.Data(resp.StatusCode, "application/json", raw)
-				return
-			}
-			var buf bytes.Buffer
-			if err := streamUpstreamImageSuccessBody(c.Writer, resp, &buf); err != nil {
-				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				slog.Warn("image generations body copy", "err", err)
-				return
-			}
-			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-			raw := buf.Bytes()
-			usage := ParseOpenAIUsageJSON(raw)
-			applyPromptFallback(&usage, promptToks)
-			applyCompletionFallback(&usage, maxOut)
-			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
-			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
-				em := err.Error()
-				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
-				return
-			}
-			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-
-		default:
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			return patchImageGenUpstreamJSON(patched)
 		}
+		sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, patchImageGen, nil,
+			func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
+				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+				if !ok {
+					return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+				}
+				resp, ferr := relay.ForwardOpenAIImageGenerations(ctx, baseURL, secret, patched)
+				return HTTPResponseToUpstreamResult(resp, ferr)
+			})
+		if err != nil {
+			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			return
+		}
+		ch = sel.Channel
+		ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
+		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+		if res.StatusCode >= 400 {
+			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+			c.Data(res.StatusCode, "application/json", res.Body)
+			return
+		}
+		usage := ParseOpenAIUsageJSON(res.Body)
+		applyPromptFallback(&usage, promptToks)
+		applyCompletionFallback(&usage, maxOut)
+		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
+			em := err.Error()
+			metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+			return
+		}
+		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+		c.Data(res.StatusCode, "application/json", res.Body)
 	}
 }
 

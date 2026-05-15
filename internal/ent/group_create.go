@@ -92,6 +92,26 @@ func (_c *GroupCreate) SetModelRouting(v map[string][]int64) *GroupCreate {
 	return _c
 }
 
+// SetRoutingStrategy sets the "routing_strategy" field.
+func (_c *GroupCreate) SetRoutingStrategy(v string) *GroupCreate {
+	_c.mutation.SetRoutingStrategy(v)
+	return _c
+}
+
+// SetNillableRoutingStrategy sets the "routing_strategy" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableRoutingStrategy(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetRoutingStrategy(*v)
+	}
+	return _c
+}
+
+// SetRoutingOptions sets the "routing_options" field.
+func (_c *GroupCreate) SetRoutingOptions(v map[string]interface{}) *GroupCreate {
+	_c.mutation.SetRoutingOptions(v)
+	return _c
+}
+
 // SetDefaultModel sets the "default_model" field.
 func (_c *GroupCreate) SetDefaultModel(v string) *GroupCreate {
 	_c.mutation.SetDefaultModel(v)
@@ -293,6 +313,11 @@ func (_c *GroupCreate) check() error {
 	if _, ok := _c.mutation.RpmLimit(); !ok {
 		return &ValidationError{Name: "rpm_limit", err: errors.New(`ent: missing required field "Group.rpm_limit"`)}
 	}
+	if v, ok := _c.mutation.RoutingStrategy(); ok {
+		if err := group.RoutingStrategyValidator(v); err != nil {
+			return &ValidationError{Name: "routing_strategy", err: fmt.Errorf(`ent: validator failed for field "Group.routing_strategy": %w`, err)}
+		}
+	}
 	if v, ok := _c.mutation.DefaultModel(); ok {
 		if err := group.DefaultModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_model": %w`, err)}
@@ -356,6 +381,14 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModelRouting(); ok {
 		_spec.SetField(group.FieldModelRouting, field.TypeJSON, value)
 		_node.ModelRouting = value
+	}
+	if value, ok := _c.mutation.RoutingStrategy(); ok {
+		_spec.SetField(group.FieldRoutingStrategy, field.TypeString, value)
+		_node.RoutingStrategy = value
+	}
+	if value, ok := _c.mutation.RoutingOptions(); ok {
+		_spec.SetField(group.FieldRoutingOptions, field.TypeJSON, value)
+		_node.RoutingOptions = value
 	}
 	if value, ok := _c.mutation.DefaultModel(); ok {
 		_spec.SetField(group.FieldDefaultModel, field.TypeString, value)

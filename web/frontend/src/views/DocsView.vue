@@ -26,6 +26,7 @@ const toc = computed(() => [
   { id: 'doc-auth', label: t('docs.tocAuth') },
   { id: 'doc-gateway', label: t('docs.tocGateway') },
   { id: 'doc-headers', label: t('docs.tocHeaders') },
+  { id: 'doc-routing', label: t('docs.tocRouting') },
   { id: 'doc-user-api', label: t('docs.tocUserApi') },
   { id: 'doc-admin-api', label: t('docs.tocAdminApi') },
   { id: 'doc-ops', label: t('docs.tocOps') },
@@ -320,6 +321,110 @@ onUnmounted(() => {
             <p class="mt-4 text-sm text-slate-500">{{ t('docs.hdrFoot') }}</p>
           </section>
 
+          <section id="doc-routing" class="docs-section th-glass rounded-[var(--th-radius-lg)] p-6 md:p-8">
+            <h2>{{ t('docs.routingH2') }}</h2>
+            <p class="mt-3 text-sm text-slate-400">{{ t('docs.routingIntro') }}</p>
+
+            <h3 class="mt-8">{{ t('docs.routingUserH3') }}</h3>
+            <p class="mt-3 text-sm text-slate-400">{{ t('docs.routingP1') }}</p>
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingLi1') }}</li>
+              <li>{{ t('docs.routingLi2') }}</li>
+              <li>{{ t('docs.routingLi3') }}</li>
+              <li>{{ t('docs.routingLi4') }}</li>
+              <li>{{ t('docs.routingLi5') }}</li>
+            </ul>
+            <p class="mt-4 text-sm text-slate-500">{{ t('docs.routingUserFoot') }}</p>
+
+            <h3 class="mt-8">{{ t('docs.routingFlowH3') }}</h3>
+            <ol class="docs-ol mt-3 text-sm text-slate-400">
+              <li>{{ t('docs.routingFlow1') }}</li>
+              <li>{{ t('docs.routingFlow2') }}</li>
+              <li>{{ t('docs.routingFlow3') }}</li>
+              <li>{{ t('docs.routingFlow4') }}</li>
+              <li>{{ t('docs.routingFlow5') }}</li>
+            </ol>
+
+            <h3 class="mt-8">{{ t('docs.routingStratH3') }}</h3>
+            <table class="docs-table mt-4 text-sm">
+              <thead>
+                <tr>
+                  <th>{{ t('docs.routingStratTh1') }}</th>
+                  <th>{{ t('docs.routingStratTh2') }}</th>
+                  <th>{{ t('docs.routingStratTh3') }}</th>
+                </tr>
+              </thead>
+              <tbody class="text-slate-400">
+                <tr>
+                  <td class="font-mono text-slate-300">{{ t('docs.routingStratRow1n') }}</td>
+                  <td>{{ t('docs.routingStratRow1d') }}</td>
+                  <td>{{ t('docs.routingStratRow1p') }}</td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-slate-300">{{ t('docs.routingStratRow2n') }}</td>
+                  <td>{{ t('docs.routingStratRow2d') }}</td>
+                  <td>{{ t('docs.routingStratRow2p') }}</td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-slate-300">{{ t('docs.routingStratRow3n') }}</td>
+                  <td>{{ t('docs.routingStratRow3d') }}</td>
+                  <td>{{ t('docs.routingStratRow3p') }}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3 class="mt-8">{{ t('docs.routingFailoverH3') }}</h3>
+            <p class="mt-3 text-sm text-slate-400">{{ t('docs.routingFailoverP') }}</p>
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingFailoverLi1') }}</li>
+              <li>{{ t('docs.routingFailoverLi2') }}</li>
+              <li>{{ t('docs.routingFailoverLi3') }}</li>
+            </ul>
+
+            <h3 class="mt-8">{{ t('docs.routingHealthH3') }}</h3>
+            <p class="mt-3 text-sm text-slate-400">{{ t('docs.routingHealthP') }}</p>
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingHealthLi1') }}</li>
+              <li>{{ t('docs.routingHealthLi2') }}</li>
+            </ul>
+
+            <h3 class="mt-8">{{ t('docs.routingStickyH3') }}</h3>
+            <p class="mt-3 text-sm text-slate-400">{{ t('docs.routingStickyP') }}</p>
+
+            <h3 class="mt-8">{{ t('docs.routingAdminH3') }}</h3>
+            <p class="mt-3 text-sm text-slate-400">{{ t('docs.routingAdminIntro') }}</p>
+            <h4 class="mt-6 text-sm font-medium text-slate-300">{{ t('docs.routingAdminGlobalH4') }}</h4>
+            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingAdminGlobal1') }}</li>
+              <li>{{ t('docs.routingAdminGlobal2') }}</li>
+              <li>{{ t('docs.routingAdminGlobal3') }}</li>
+              <li>{{ t('docs.routingAdminGlobal4') }}</li>
+              <li>{{ t('docs.routingAdminGlobal5') }}</li>
+              <li>{{ t('docs.routingAdminGlobal6') }}</li>
+            </ul>
+            <h4 class="mt-6 text-sm font-medium text-slate-300">{{ t('docs.routingAdminGroupH4') }}</h4>
+            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingAdminGroup1') }}</li>
+              <li>{{ t('docs.routingAdminGroup2') }}</li>
+              <li>{{ t('docs.routingAdminGroup3') }}</li>
+              <li>{{ t('docs.routingAdminGroup4') }}</li>
+            </ul>
+            <h4 class="mt-6 text-sm font-medium text-slate-300">{{ t('docs.routingAdminChannelH4') }}</h4>
+            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingAdminChannel1') }}</li>
+              <li>{{ t('docs.routingAdminChannel2') }}</li>
+              <li>{{ t('docs.routingAdminChannel3') }}</li>
+            </ul>
+
+            <h3 class="mt-8">{{ t('docs.routingLimitH3') }}</h3>
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.routingLimitLi1') }}</li>
+              <li>{{ t('docs.routingLimitLi2') }}</li>
+              <li>{{ t('docs.routingLimitLi3') }}</li>
+            </ul>
+            <p class="mt-4 text-sm text-slate-500">{{ t('docs.routingFoot') }}</p>
+          </section>
+
           <section id="doc-user-api" class="docs-section th-glass rounded-[var(--th-radius-lg)] p-6 md:p-8">
             <h2>{{ t('docs.userApiH2') }}</h2>
             <p class="text-sm text-slate-400">{{ t('docs.userApiSub') }}</p>
@@ -395,6 +500,10 @@ onUnmounted(() => {
               <dd>{{ t('docs.fq3a') }}</dd>
               <dt>{{ t('docs.fq4q') }}</dt>
               <dd>{{ t('docs.fq4a') }}</dd>
+              <dt>{{ t('docs.fq5q') }}</dt>
+              <dd>{{ t('docs.fq5a') }}</dd>
+              <dt>{{ t('docs.fq6q') }}</dt>
+              <dd>{{ t('docs.fq6a') }}</dd>
             </dl>
             <div class="mt-6 border-t border-white/[0.06] pt-6">
               <ContactCardDisclosure align="start" summary-key="home.contactHintDocsFaq" />

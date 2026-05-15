@@ -13,6 +13,7 @@ export default {
     models: 'Models',
     pricing: 'Billing',
     whyTraceHub: 'Why TraceHub',
+    routing: 'Smart routing',
     quickStart: 'Quick start',
     faq: 'FAQ',
     backHome: 'Back to home',

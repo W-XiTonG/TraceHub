@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -161,95 +162,108 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		baseURL := strings.TrimSpace(ch.APIBaseURL)
-		if baseURL == "" {
-			baseURL = router.DefaultBaseURL(ch.ChannelType)
-		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
-			baseURL = nb
-		}
-		var secret string
-		switch ch.AuthType {
-		case channel.AuthTypeAPIKey:
-			secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
-		case channel.AuthTypeOauth:
-			secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
-		case channel.AuthTypeSetupToken:
-			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
-		}
-		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
-			return
-		}
-
-		upBody := body
-		if cfg.PatchModelInJSON && len(body) > 0 && json.Valid(body) {
-			patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
-			if err != nil {
-				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
-				return
-			}
-			upBody = patched
-		}
-
 		reqID, _ := c.Get("request_id")
 		rid, _ := reqID.(string)
 		start := time.Now()
 		rawQuery := c.Request.URL.RawQuery
+		wantsStream := passthroughWantsStream(c, body)
 
-		resp, err := relay.ForwardOpenAIHTTP(c.Request.Context(), baseURL, secret, method, rest, upBody, rawQuery, openAIPassthroughHeaders(c))
-		if err != nil {
-			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
-			return
-		}
-		defer relay.DrainBody(resp.Body)
-		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-
-		ctOut := resp.Header.Get("Content-Type")
-		streamLike := strings.Contains(strings.ToLower(ctOut), "text/event-stream")
-
-		if streamLike && resp.StatusCode < 400 {
-			for _, k := range []string{"Content-Type", "Cache-Control"} {
-				if v := resp.Header.Get(k); v != "" {
-					c.Writer.Header().Set(k, v)
+		if wantsStream {
+			baseURL := strings.TrimSpace(ch.APIBaseURL)
+			if baseURL == "" {
+				baseURL = router.DefaultBaseURL(ch.ChannelType)
+			} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
+				baseURL = nb
+			}
+			var secret string
+			switch ch.AuthType {
+			case channel.AuthTypeAPIKey:
+				secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
+			case channel.AuthTypeOauth:
+				secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
+			case channel.AuthTypeSetupToken:
+				secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
+			}
+			if strings.TrimSpace(secret) == "" {
+				middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+				return
+			}
+			upBody := body
+			if cfg.PatchModelInJSON && len(body) > 0 && json.Valid(body) {
+				patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
+				if err != nil {
+					middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
+					return
 				}
+				upBody = patched
 			}
-			if c.Writer.Header().Get("X-Accel-Buffering") == "" {
-				c.Writer.Header().Set("X-Accel-Buffering", "no")
+			resp, err := relay.ForwardOpenAIHTTP(c.Request.Context(), baseURL, secret, method, rest, upBody, rawQuery, openAIPassthroughHeaders(c))
+			if err != nil {
+				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				return
 			}
-			c.Writer.WriteHeader(resp.StatusCode)
-			if f, ok := c.Writer.(http.Flusher); ok {
-				f.Flush()
+			defer relay.DrainBody(resp.Body)
+			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+
+			ctOut := resp.Header.Get("Content-Type")
+			if resp.StatusCode < 400 && strings.Contains(strings.ToLower(ctOut), "text/event-stream") {
+				for _, k := range []string{"Content-Type", "Cache-Control"} {
+					if v := resp.Header.Get(k); v != "" {
+						c.Writer.Header().Set(k, v)
+					}
+				}
+				if c.Writer.Header().Get("X-Accel-Buffering") == "" {
+					c.Writer.Header().Set("X-Accel-Buffering", "no")
+				}
+				c.Writer.WriteHeader(resp.StatusCode)
+				if f, ok := c.Writer.(http.Flusher); ok {
+					f.Flush()
+				}
+				streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+				pt := streamPT
+				comp := streamCT
+				cached := streamCached
+				if pt < 1 {
+					pt = promptToks
+				}
+				if comp < 0 {
+					comp = 0
+				}
+				if streamPT == 0 && streamCT == 0 {
+					comp = completionTokensFallback(maxComp)
+				}
+				cost := br.Cost(pt, comp, cached)
+				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
+					em := err.Error()
+					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, &em, time.Since(start))
+					return
+				}
+				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+				return
 			}
-			streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-			pt := streamPT
-			comp := streamCT
-			cached := streamCached
-			if pt < 1 {
-				pt = promptToks
+			out, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode >= 400 {
+				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
+				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, out)
+				oct := ctOut
+				if oct == "" {
+					oct = "application/json"
+				}
+				c.Data(resp.StatusCode, oct, out)
+				return
 			}
-			if comp < 0 {
-				comp = 0
-			}
-			if streamPT == 0 && streamCT == 0 {
-				comp = completionTokensFallback(maxComp)
-			}
-			cost := br.Cost(pt, comp, cached)
-			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
-				em := err.Error()
-				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, &em, time.Since(start))
+			usage := parseUsageFlexible(out)
+			applyPromptFallback(&usage, promptToks)
+			applyCompletionFallback(&usage, maxComp)
+			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
-			return
-		}
-
-		out, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode >= 400 {
-			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, out)
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
 			oct := ctOut
 			if oct == "" {
 				oct = "application/json"
@@ -258,7 +272,46 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		usage := parseUsageFlexible(out)
+		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
+		patchJSON := cfg.PatchModelInJSON
+		sel, res, err := ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, sel,
+			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
+				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+				if !ok {
+					return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+				}
+				upBody := body
+				if patchJSON && len(body) > 0 && json.Valid(body) {
+					patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
+					if err != nil {
+						return nil, err
+					}
+					upBody = patched
+				}
+				resp, ferr := relay.ForwardOpenAIHTTP(ctx, baseURL, secret, method, rest, upBody, rawQuery, openAIPassthroughHeaders(c))
+				return HTTPResponseToUpstreamResult(resp, ferr)
+			})
+		if err != nil {
+			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			return
+		}
+		ch = sel.Channel
+		ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
+		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+		if res.StatusCode >= 400 {
+			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+			oct := "application/json"
+			if res.Headers != nil {
+				if h := res.Headers.Get("Content-Type"); h != "" {
+					oct = h
+				}
+			}
+			c.Data(res.StatusCode, oct, res.Body)
+			return
+		}
+		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxComp)
 		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
@@ -266,13 +319,33 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
-		oct := ctOut
-		if oct == "" {
-			oct = "application/json"
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+		oct := "application/json"
+		if res.Headers != nil {
+			if h := res.Headers.Get("Content-Type"); h != "" {
+				oct = h
+			}
 		}
-		c.Data(resp.StatusCode, oct, out)
+		c.Data(res.StatusCode, oct, res.Body)
 	}
+}
+
+func passthroughWantsStream(c *gin.Context, body []byte) bool {
+	if strings.Contains(strings.ToLower(c.GetHeader("Accept")), "text/event-stream") {
+		return true
+	}
+	if len(body) > 0 && json.Valid(body) {
+		var m map[string]json.RawMessage
+		if json.Unmarshal(body, &m) == nil {
+			if raw, ok := m["stream"]; ok {
+				var b bool
+				if json.Unmarshal(raw, &b) == nil && b {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func passthroughMaxCompletionHints(body []byte) int {

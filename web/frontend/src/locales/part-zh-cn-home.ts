@@ -18,7 +18,7 @@ export default {
       '一套 /v1 接口对接多上游与自建端点；控制台签发 API Key 即可调用，减少多平台账号与接入碎片化。',
     why2Title: '路由与观测一体化',
     why2Desc:
-      '渠道路由、可用模型列表与健康检查可配置；调用日志与用量汇总便于排障与内部分析（按部署开启）。',
+      '支持加权分流、优先级与固定顺序等多渠道路由策略，可选故障转移与健康联动；调用日志与用量汇总便于排障与内部分析。',
     why3Title: '安全与合规取向',
     why3Desc:
       '上游密钥加密存储，用户 API Key 仅存哈希；支持 HTTPS、密钥轮换与私有化部署，便于纳入现有安全体系。',
@@ -38,7 +38,27 @@ export default {
     step3Badge: '兼容 OpenAI SDK',
     featuresTitle: '不只是转发：控制台与治理能力',
     featuresDesc:
-      '从个人开发者到团队交付，TraceHub 在用户端与管理端覆盖密钥、用量、路由与运维配置；以下为与仓库实现一致的核心能力展示。',
+      '从个人开发者到团队交付，TraceHub 在用户端与管理端覆盖密钥、用量、智能路由与运维配置；以下为与仓库实现一致的核心能力展示。',
+    routingKicker: '智能路由',
+    routingTitle: '多上游，一条链路：稳定、可配置、可观测',
+    routingDesc:
+      '同一模型可对接多条上游渠道。TraceHub 在网关层按策略自动选路，并在上游异常时可选切换备用渠道——您无需改 SDK，只需使用统一的 OpenAI 兼容接口。',
+    routingCap1Title: '三种选路策略',
+    routingCap1Desc:
+      '加权随机分担流量、按优先级主备切换、或为每个模型指定固定渠道顺序；分组可继承全局策略，也可单独覆盖。',
+    routingCap2Title: '故障转移与粘性会话',
+    routingCap2Desc:
+      '上游 5xx 或超时时可自动换渠道重试（可配置）；多轮对话可开启粘性会话，连续请求尽量落在同一上游，体验更连贯。',
+    routingCap3Title: '健康感知与错误反馈',
+    routingCap3Desc:
+      '结合渠道健康状态与错误计数，优先选择更稳定的线路；可选将上游探测结果联动为健康标记，减少「列表有模型却调不通」。',
+    routingCap4Title: '分组级治理',
+    routingCap4Desc:
+      '用户按分组隔离模型池与路由策略，管理员在后台统一配置渠道、权重与优先级，适合团队交付与企业内控。',
+    routingFootnote:
+      '具体策略与 failover 开关由部署方在管理后台配置；用户侧仍通过 GET /v1/models 查看当前账号可用模型，调用方式与 OpenAI SDK 一致。',
+    routingCtaConsole: '查看我的分组',
+    routingCtaDocs: '阅读路由说明',
     integrationKicker: 'Integration',
     integrationTitle: '与现有 OpenAI SDK 同一套调用方式',
     integrationDesc:
@@ -110,7 +130,7 @@ export default {
       '按日、按模型汇总消费；调用日志可追溯每一笔。支持 CSV / JSON 导出，团队对账与成本归因更省力。',
     billCard3Title: '团队分组与成本策略',
     billCard3Desc:
-      '账户可按团队分组，管理员在后台统一管理模型可见性与路由。不同团队可采用不同成本策略，具体以登录后控制台为准。',
+      '账户可按团队分组，管理员在后台统一管理模型可见性、路由策略与渠道权重。不同团队可采用不同成本与稳定性策略，具体以登录后控制台为准。',
     billCard4Title: '兑换码与充值随站点配置',
     billCard4Desc:
       '支持兑换码等运营能力；充值档位与活动优惠以本站「充值中心」为准，可按运营节奏灵活拉新与回馈。',
@@ -120,6 +140,7 @@ export default {
     footerProduct: '产品',
     footerWhy: '为何选择',
     footerSteps: '三步接入',
+    footerRouting: '智能路由',
     footerFeat: '功能亮点',
     footerInteg: '接入说明',
     footerModels: '模型说明',
@@ -149,10 +170,10 @@ export default {
     faq2a: '上游密钥 AES-GCM 加密存储，API Key 仅保存哈希；支持私有化部署与审计日志扩展。',
     faq3q: '控制台能做什么？',
     faq3a:
-      '可用模型查询、创建/轮换 API Key、按周期查看调用日志、分组与路由策略、账户与兑换码、用量导出（CSV/JSON），管理员另有渠道与模型市场等后台能力。',
+      '可用模型查询、创建/轮换 API Key、按周期查看调用日志、分组与可配置路由策略（加权/优先级/固定顺序、故障转移）、账户与兑换码、用量导出（CSV/JSON），管理员另有渠道与模型市场等后台能力。',
     faq4q: '和直接调用上游有什么区别？',
     faq4a:
-      '统一域名与鉴权、按账号聚合用量、渠道路由与加权选择、可选 Redis 会话粘性；便于团队治理与后续配额、审计扩展。',
+      '统一域名与鉴权、按账号聚合用量、多渠道路由（加权/优先级/固定顺序）与可选故障转移、粘性会话；便于团队治理、稳定交付与后续配额、审计扩展。',
     f0tag: 'Gateway',
     f0title: 'OpenAI 兼容接入',
     f0desc:
@@ -167,8 +188,8 @@ export default {
     f2desc: '仪表盘按日/模型聚合消费，调用日志可追溯；支持一键导出 CSV / JSON 便于内部分析。',
     f2cta: '查看调用日志',
     f3tag: '治理',
-    f3title: '分组与路由',
-    f3desc: '用户归属分组；模型可见性与上游路由在管理端可配，便于团队统一治理与配额策略。',
+    f3title: '分组与智能路由',
+    f3desc: '用户归属分组；支持加权分流、优先级、固定顺序与可选故障转移，模型可见性与上游路由在管理端可配。',
     f3cta: '我的分组',
     f4tag: '账户',
     f4title: '账户与额度',
@@ -187,5 +208,7 @@ export default {
     t2hint: '便于审计',
     t3label: '渠道密钥 AES-GCM',
     t3hint: '存储加密',
+    t4label: '智能多渠道路由',
+    t4hint: '可配置 failover',
   },
 } as const

@@ -16,6 +16,7 @@ type Log = {
   channel_id?: number | null
   channel_name?: string
   channel_type?: string
+  model_upstream?: string | null
   request_id?: string
   model: string
   prompt_tokens: number
@@ -34,6 +35,7 @@ const err = ref('')
 const filterUserId = ref('')
 const filterEmail = ref('')
 const filterModel = ref('')
+const filterChannelId = ref('')
 
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
@@ -73,13 +75,14 @@ function apiKeyCell(l: Log): string {
 }
 
 function channelCell(l: Log): string {
+  const id = l.channel_id
+  const idPart = id != null && id > 0 ? `#${id}` : ''
   const n = (l.channel_name ?? '').trim()
   const ty = (l.channel_type ?? '').trim()
-  if (n && ty) return `${n} · ${ty}`
-  if (n) return n
-  if (ty) return ty
-  const id = l.channel_id
-  if (id != null && id > 0) return `#${id}`
+  const meta = [n, ty].filter(Boolean).join(' · ')
+  if (idPart && meta) return `${idPart} · ${meta}`
+  if (idPart) return idPart
+  if (meta) return meta
   return '—'
 }
 
@@ -98,6 +101,8 @@ async function load() {
     if (em !== '') params.email = em
     const m = filterModel.value.trim()
     if (m !== '') params.model = m
+    const ch = filterChannelId.value.trim()
+    if (ch !== '') params.channel_id = ch
     const { data } = await http.get<Envelope<{ items: Log[]; total: number }>>('/api/admin/logs', { params })
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     items.value = data.data?.items ?? []
@@ -116,6 +121,7 @@ function clearFilters() {
   filterUserId.value = ''
   filterEmail.value = ''
   filterModel.value = ''
+  filterChannelId.value = ''
   page.value = 1
   void load()
 }
@@ -157,6 +163,10 @@ onMounted(() => void load())
         <label class="mb-1 block text-xs text-slate-500">{{ t('adminLogs.lblFilterModel') }}</label>
         <input v-model="filterModel" class="th-input w-44 text-sm" :placeholder="t('adminLogs.phFilterModel')" />
       </div>
+      <div>
+        <label class="mb-1 block text-xs text-slate-500">{{ t('adminLogs.lblFilterChannel') }}</label>
+        <input v-model="filterChannelId" type="text" inputmode="numeric" class="th-input w-28 font-mono text-sm" :placeholder="t('adminLogs.phFilterChannel')" />
+      </div>
       <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="applyFilters">{{ t('adminLogs.apply') }}</button>
       <button type="button" class="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.05]" @click="clearFilters">
         {{ t('adminLogs.clear') }}
@@ -169,7 +179,7 @@ onMounted(() => void load())
     <p v-if="err" class="text-sm text-rose-400">{{ err }}</p>
 
     <div class="overflow-x-auto rounded-lg border border-white/[0.06]">
-      <table class="w-full min-w-[72rem] text-left text-xs text-slate-300">
+      <table class="w-full min-w-[80rem] text-left text-xs text-slate-300">
         <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
           <tr>
             <th class="px-3 py-2">{{ t('adminLogs.thTime') }}</th>
@@ -178,6 +188,7 @@ onMounted(() => void load())
             <th class="px-3 py-2">{{ t('adminLogs.thChannel') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thRequestId') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thModel') }}</th>
+            <th class="px-3 py-2">{{ t('adminLogs.thUpstreamModel') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thToken') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thCost') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thStatus') }}</th>
@@ -191,6 +202,9 @@ onMounted(() => void load())
             <td class="max-w-[10rem] px-3 py-2 break-all text-[11px] text-slate-500">{{ channelCell(l) }}</td>
             <td class="max-w-[8rem] px-3 py-2 font-mono text-[10px] text-slate-500" :title="l.request_id || ''">{{ ridShort(l.request_id) }}</td>
             <td class="max-w-[10rem] truncate px-3 py-2 text-slate-300" :title="l.model">{{ l.model }}</td>
+            <td class="max-w-[9rem] truncate px-3 py-2 font-mono text-[10px] text-slate-500" :title="(l.model_upstream ?? '').trim()">
+              {{ (l.model_upstream ?? '').trim() || '—' }}
+            </td>
             <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-400">{{ l.prompt_tokens }} / {{ l.completion_tokens }}</td>
             <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-300">{{ l.total_cost }}</td>
             <td class="whitespace-nowrap px-3 py-2 font-mono text-slate-400">{{ l.status_code ?? '—' }}</td>

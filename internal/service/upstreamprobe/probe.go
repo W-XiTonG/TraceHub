@@ -8,6 +8,8 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/pkg/sitecfg"
+	"tracehub/internal/service/channelhealth"
 	"tracehub/internal/service/channelsecret"
 )
 
@@ -132,7 +134,10 @@ func ProbeChannel(ctx context.Context, client *ent.Client, aesKey []byte, ch *en
 			"error":      err.Error(),
 			"checked_at": now,
 		}
-		return client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(merged).Exec(ctx)
+		if e := client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(merged).Exec(ctx); e != nil {
+			return e
+		}
+		return applyProbeHealthIfEnabled(ctx, client, ch.ID, false)
 	}
 
 	ids, _, err := FetchUpstreamModelIDs(ctx, ch.APIBaseURL, bearer)
@@ -142,7 +147,10 @@ func ProbeChannel(ctx context.Context, client *ent.Client, aesKey []byte, ch *en
 			"error":      err.Error(),
 			"checked_at": now,
 		}
-		return client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(merged).Exec(ctx)
+		if e := client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(merged).Exec(ctx); e != nil {
+			return e
+		}
+		return applyProbeHealthIfEnabled(ctx, client, ch.ID, false)
 	}
 
 	upstream := make(map[string]struct{})
@@ -165,5 +173,16 @@ func ProbeChannel(ctx context.Context, client *ent.Client, aesKey []byte, ch *en
 			"checked_at":       now,
 		}
 	}
-	return client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(out).Exec(ctx)
+	if e := client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(out).Exec(ctx); e != nil {
+		return e
+	}
+	return applyProbeHealthIfEnabled(ctx, client, ch.ID, true)
+}
+
+func applyProbeHealthIfEnabled(ctx context.Context, client *ent.Client, channelID int, probeOK bool) error {
+	defaults := sitecfg.EffectiveRoutingDefaults(ctx, client)
+	if !defaults.AutoHealthFromProbe {
+		return nil
+	}
+	return channelhealth.ApplyProbeHealth(ctx, client, channelID, probeOK, defaults.ProbeFailThreshold)
 }

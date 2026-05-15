@@ -20,6 +20,7 @@ import (
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/service/channelhealth"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -369,6 +370,8 @@ func ListChannels(client *ent.Client) gin.HandlerFunc {
 				"enabled":               ch.Enabled,
 				"health_status":         ch.HealthStatus,
 				"schedulable":           ch.Schedulable,
+				"error_count":           ch.ErrorCount,
+				"last_error_msg":        ch.LastErrorMsg,
 				"has_api_secret":        ch.APIKey != "" || ch.OauthToken != "",
 			})
 		}
@@ -481,7 +484,9 @@ func UpdateChannel(d ChannelDeps) gin.HandlerFunc {
 			Concurrency *int              `json:"concurrency"`
 			Enabled     *bool             `json:"enabled"`
 			Schedulable *bool             `json:"schedulable"`
-			Health      *int              `json:"health_status"`
+			Health       *int              `json:"health_status"`
+			ErrorCount   *int              `json:"error_count"`
+			ResetErrors  *bool             `json:"reset_error_count"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -523,6 +528,14 @@ func UpdateChannel(d ChannelDeps) gin.HandlerFunc {
 		}
 		if req.Health != nil {
 			up.SetHealthStatus(*req.Health)
+		}
+		if req.ResetErrors != nil && *req.ResetErrors {
+			if err := channelhealth.ResetErrorCount(ctx, d.Client, id); err != nil {
+				httpx.ServerError(c, "重置错误计数失败")
+				return
+			}
+		} else if req.ErrorCount != nil {
+			up.SetErrorCount(*req.ErrorCount)
 		}
 		if req.APIKey != nil && *req.APIKey != "" {
 			enc, err := cryptokey.EncryptGCM(d.AESKey, []byte(*req.APIKey))
@@ -574,13 +587,15 @@ func CreateGroup(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			Name           string             `json:"name"`
-			Description    string             `json:"description"`
-			RateMultiplier float64            `json:"rate_multiplier"`
-			RPMLimit       int                `json:"rpm_limit"`
-			ModelRouting   map[string][]int64 `json:"model_routing"`
-			DefaultModel   string             `json:"default_model"`
-			Enabled        bool               `json:"enabled"`
+			Name            string             `json:"name"`
+			Description     string             `json:"description"`
+			RateMultiplier  float64            `json:"rate_multiplier"`
+			RPMLimit        int                `json:"rpm_limit"`
+			ModelRouting    map[string][]int64 `json:"model_routing"`
+			RoutingStrategy string             `json:"routing_strategy"`
+			RoutingOptions  map[string]any     `json:"routing_options"`
+			DefaultModel    string             `json:"default_model"`
+			Enabled         bool               `json:"enabled"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 			httpx.BadRequest(c, "参数无效")
@@ -596,6 +611,20 @@ func CreateGroup(client *ent.Client) gin.HandlerFunc {
 			SetEnabled(req.Enabled)
 		if len(req.ModelRouting) > 0 {
 			cr.SetModelRouting(req.ModelRouting)
+		}
+		if req.RoutingStrategy != "" {
+			if err := validateGroupRoutingStrategy(req.RoutingStrategy); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+			cr.SetRoutingStrategy(req.RoutingStrategy)
+		}
+		if len(req.RoutingOptions) > 0 {
+			if err := validateGroupRoutingOptions(req.RoutingOptions); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+			cr.SetRoutingOptions(req.RoutingOptions)
 		}
 		g, err := cr.Save(ctx)
 		if err != nil {

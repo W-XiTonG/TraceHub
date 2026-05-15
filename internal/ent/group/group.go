@@ -26,6 +26,10 @@ const (
 	FieldRpmLimit = "rpm_limit"
 	// FieldModelRouting holds the string denoting the model_routing field in the database.
 	FieldModelRouting = "model_routing"
+	// FieldRoutingStrategy holds the string denoting the routing_strategy field in the database.
+	FieldRoutingStrategy = "routing_strategy"
+	// FieldRoutingOptions holds the string denoting the routing_options field in the database.
+	FieldRoutingOptions = "routing_options"
 	// FieldDefaultModel holds the string denoting the default_model field in the database.
 	FieldDefaultModel = "default_model"
 	// FieldEnabled holds the string denoting the enabled field in the database.
@@ -83,6 +87,8 @@ var Columns = []string{
 	FieldSubscriptionType,
 	FieldRpmLimit,
 	FieldModelRouting,
+	FieldRoutingStrategy,
+	FieldRoutingOptions,
 	FieldDefaultModel,
 	FieldEnabled,
 	FieldCreatedAt,
@@ -110,6 +116,8 @@ var (
 	SubscriptionTypeValidator func(string) error
 	// DefaultRpmLimit holds the default value on creation for the "rpm_limit" field.
 	DefaultRpmLimit int
+	// RoutingStrategyValidator is a validator for the "routing_strategy" field. It is called by the builders before save.
+	RoutingStrategyValidator func(string) error
 	// DefaultModelValidator is a validator for the "default_model" field. It is called by the builders before save.
 	DefaultModelValidator func(string) error
 	// DefaultEnabled holds the default value on creation for the "enabled" field.
@@ -153,6 +161,11 @@ func BySubscriptionType(opts ...sql.OrderTermOption) OrderOption {
 // ByRpmLimit orders the results by the rpm_limit field.
 func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRpmLimit, opts...).ToFunc()
+}
+
+// ByRoutingStrategy orders the results by the routing_strategy field.
+func ByRoutingStrategy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRoutingStrategy, opts...).ToFunc()
 }
 
 // ByDefaultModel orders the results by the default_model field.

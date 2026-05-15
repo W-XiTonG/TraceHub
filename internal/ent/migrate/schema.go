@@ -300,6 +300,8 @@ var (
 		{Name: "subscription_type", Type: field.TypeString, Size: 50, Default: "pay_as_you_go"},
 		{Name: "rpm_limit", Type: field.TypeInt, Default: 0},
 		{Name: "model_routing", Type: field.TypeJSON, Nullable: true},
+		{Name: "routing_strategy", Type: field.TypeString, Nullable: true, Size: 32},
+		{Name: "routing_options", Type: field.TypeJSON, Nullable: true},
 		{Name: "default_model", Type: field.TypeString, Nullable: true, Size: 255},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "created_at", Type: field.TypeTime},

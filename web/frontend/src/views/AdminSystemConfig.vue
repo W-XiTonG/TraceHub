@@ -44,6 +44,12 @@ type SiteSettings = {
   upstream_model_probe_enabled_db_value?: string
   upstream_model_probe_interval_db_set?: boolean
   upstream_model_probe_interval_db_value?: string
+  routing_strategy_default?: string
+  routing_failover_enabled_default?: boolean
+  routing_failover_max_attempts_default?: number
+  routing_sticky_enabled_default?: boolean
+  routing_auto_health_from_probe?: boolean
+  routing_probe_fail_threshold?: number
 }
 
 const form = reactive({
@@ -56,6 +62,12 @@ const form = reactive({
   apiPublicBaseUrl: '',
   upstreamProbeEnabled: false,
   upstreamProbeInterval: 360,
+  routingStrategy: 'weighted_random',
+  routingFailoverEnabled: false,
+  routingFailoverMaxAttempts: 2,
+  routingStickyEnabled: true,
+  routingAutoHealthFromProbe: false,
+  routingProbeFailThreshold: 3,
 })
 
 const contactTitle = ref('')
@@ -146,6 +158,15 @@ function applyPayload(d: SiteSettings) {
   form.upstreamProbeInterval = iv >= 15 && iv <= 1440 ? iv : 360
   upstreamProbeEnabledDbOverride.value = Boolean(d.upstream_model_probe_enabled_db_set)
   upstreamProbeIntervalDbOverride.value = Boolean(d.upstream_model_probe_interval_db_set)
+  form.routingStrategy =
+    typeof d.routing_strategy_default === 'string' && d.routing_strategy_default.trim()
+      ? d.routing_strategy_default
+      : 'weighted_random'
+  form.routingFailoverEnabled = Boolean(d.routing_failover_enabled_default)
+  form.routingFailoverMaxAttempts = pickInt64ish(d.routing_failover_max_attempts_default) || 2
+  form.routingStickyEnabled = d.routing_sticky_enabled_default !== false
+  form.routingAutoHealthFromProbe = Boolean(d.routing_auto_health_from_probe)
+  form.routingProbeFailThreshold = pickInt64ish(d.routing_probe_fail_threshold) || 3
   const pc = d.public_contact
   if (pc && typeof pc === 'object') {
     contactTitle.value = typeof pc.title === 'string' ? pc.title.trim() : ''
@@ -415,6 +436,36 @@ async function save() {
       value: String(Math.min(1440, Math.max(15, Math.trunc(Number(form.upstreamProbeInterval)) || 360))),
       description: t('adminSystem.descUpstreamProbeInterval'),
     },
+    {
+      key: 'gateway.routing.strategy_default',
+      value: form.routingStrategy,
+      description: t('adminSystem.descRoutingStrategy'),
+    },
+    {
+      key: 'gateway.routing.failover_enabled_default',
+      value: form.routingFailoverEnabled ? 'true' : 'false',
+      description: t('adminSystem.descRoutingFailover'),
+    },
+    {
+      key: 'gateway.routing.failover_max_attempts_default',
+      value: String(Math.min(5, Math.max(1, Math.trunc(Number(form.routingFailoverMaxAttempts)) || 2))),
+      description: t('adminSystem.descRoutingFailoverMax'),
+    },
+    {
+      key: 'gateway.routing.sticky_enabled_default',
+      value: form.routingStickyEnabled ? 'true' : 'false',
+      description: t('adminSystem.descRoutingSticky'),
+    },
+    {
+      key: 'gateway.routing.auto_health_from_probe',
+      value: form.routingAutoHealthFromProbe ? 'true' : 'false',
+      description: t('adminSystem.descRoutingAutoHealth'),
+    },
+    {
+      key: 'gateway.routing.probe_fail_threshold',
+      value: String(Math.min(20, Math.max(1, Math.trunc(Number(form.routingProbeFailThreshold)) || 3))),
+      description: t('adminSystem.descRoutingProbeThreshold'),
+    },
   ]
   try {
     const { data } = await http.put<Envelope<unknown>>('/api/admin/config', { items })
@@ -598,6 +649,43 @@ onMounted(() => void refresh())
             placeholder="https://api.example.com"
           />
           <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintApiPublicBaseUrl') }}</p>
+        </div>
+      </section>
+
+      <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secGatewayRouting') }}</h2>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secGatewayRoutingHint') }}</p>
+        <div class="mt-5 max-w-xl space-y-4">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+              t('adminSystem.lblRoutingStrategy')
+            }}</label>
+            <select v-model="form.routingStrategy" class="th-input max-w-md text-sm">
+              <option value="weighted_random">{{ t('adminSystem.routingWeighted') }}</option>
+              <option value="priority">{{ t('adminSystem.routingPriority') }}</option>
+              <option value="fixed_order">{{ t('adminSystem.routingFixedOrder') }}</option>
+            </select>
+          </div>
+          <label class="flex cursor-pointer items-start gap-3">
+            <input v-model="form.routingFailoverEnabled" type="checkbox" class="mt-1" />
+            <span class="text-xs text-slate-300">{{ t('adminSystem.lblRoutingFailover') }}</span>
+          </label>
+          <div v-if="form.routingFailoverEnabled">
+            <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminSystem.lblRoutingFailoverMax') }}</label>
+            <input v-model.number="form.routingFailoverMaxAttempts" type="number" min="1" max="5" class="th-input max-w-xs font-mono text-sm" />
+          </div>
+          <label class="flex cursor-pointer items-start gap-3">
+            <input v-model="form.routingStickyEnabled" type="checkbox" class="mt-1" />
+            <span class="text-xs text-slate-300">{{ t('adminSystem.lblRoutingSticky') }}</span>
+          </label>
+          <label class="flex cursor-pointer items-start gap-3">
+            <input v-model="form.routingAutoHealthFromProbe" type="checkbox" class="mt-1" />
+            <span class="text-xs text-slate-300">{{ t('adminSystem.lblRoutingAutoHealth') }}</span>
+          </label>
+          <div v-if="form.routingAutoHealthFromProbe">
+            <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminSystem.lblRoutingProbeThreshold') }}</label>
+            <input v-model.number="form.routingProbeFailThreshold" type="number" min="1" max="20" class="th-input max-w-xs font-mono text-sm" />
+          </div>
         </div>
       </section>
 

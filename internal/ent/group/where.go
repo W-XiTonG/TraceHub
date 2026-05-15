@@ -80,6 +80,11 @@ func RpmLimit(v int) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRpmLimit, v))
 }
 
+// RoutingStrategy applies equality check predicate on the "routing_strategy" field. It's identical to RoutingStrategyEQ.
+func RoutingStrategy(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldRoutingStrategy, v))
+}
+
 // DefaultModel applies equality check predicate on the "default_model" field. It's identical to DefaultModelEQ.
 func DefaultModel(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDefaultModel, v))
@@ -393,6 +398,91 @@ func ModelRoutingIsNil() predicate.Group {
 // ModelRoutingNotNil applies the NotNil predicate on the "model_routing" field.
 func ModelRoutingNotNil() predicate.Group {
 	return predicate.Group(sql.FieldNotNull(FieldModelRouting))
+}
+
+// RoutingStrategyEQ applies the EQ predicate on the "routing_strategy" field.
+func RoutingStrategyEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyNEQ applies the NEQ predicate on the "routing_strategy" field.
+func RoutingStrategyNEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyIn applies the In predicate on the "routing_strategy" field.
+func RoutingStrategyIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldRoutingStrategy, vs...))
+}
+
+// RoutingStrategyNotIn applies the NotIn predicate on the "routing_strategy" field.
+func RoutingStrategyNotIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldRoutingStrategy, vs...))
+}
+
+// RoutingStrategyGT applies the GT predicate on the "routing_strategy" field.
+func RoutingStrategyGT(v string) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyGTE applies the GTE predicate on the "routing_strategy" field.
+func RoutingStrategyGTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyLT applies the LT predicate on the "routing_strategy" field.
+func RoutingStrategyLT(v string) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyLTE applies the LTE predicate on the "routing_strategy" field.
+func RoutingStrategyLTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyContains applies the Contains predicate on the "routing_strategy" field.
+func RoutingStrategyContains(v string) predicate.Group {
+	return predicate.Group(sql.FieldContains(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyHasPrefix applies the HasPrefix predicate on the "routing_strategy" field.
+func RoutingStrategyHasPrefix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasPrefix(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyHasSuffix applies the HasSuffix predicate on the "routing_strategy" field.
+func RoutingStrategyHasSuffix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasSuffix(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyIsNil applies the IsNil predicate on the "routing_strategy" field.
+func RoutingStrategyIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldRoutingStrategy))
+}
+
+// RoutingStrategyNotNil applies the NotNil predicate on the "routing_strategy" field.
+func RoutingStrategyNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldRoutingStrategy))
+}
+
+// RoutingStrategyEqualFold applies the EqualFold predicate on the "routing_strategy" field.
+func RoutingStrategyEqualFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldEqualFold(FieldRoutingStrategy, v))
+}
+
+// RoutingStrategyContainsFold applies the ContainsFold predicate on the "routing_strategy" field.
+func RoutingStrategyContainsFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldContainsFold(FieldRoutingStrategy, v))
+}
+
+// RoutingOptionsIsNil applies the IsNil predicate on the "routing_options" field.
+func RoutingOptionsIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldRoutingOptions))
+}
+
+// RoutingOptionsNotNil applies the NotNil predicate on the "routing_options" field.
+func RoutingOptionsNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldRoutingOptions))
 }
 
 // DefaultModelEQ applies the EQ predicate on the "default_model" field.

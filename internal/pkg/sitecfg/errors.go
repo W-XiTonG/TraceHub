@@ -33,4 +33,13 @@ var (
 	errInvalidUpstreamProbeEnabled = errors.New("upstream_model_probe.enabled 须为 true 或 false")
 	errInvalidUpstreamProbeInterval = errors.New("upstream_model_probe.interval_minutes 须为整数")
 	errUpstreamProbeIntervalRange    = errors.New("upstream_model_probe.interval_minutes 须在 15–1440 之间")
+
+	errRoutingStrategyInvalid        = errors.New("gateway.routing.strategy_default 须为 weighted_random、priority 或 fixed_order")
+	errRoutingFailoverBool           = errors.New("gateway.routing.failover_enabled_default 须为 true 或 false")
+	errRoutingFailoverAttempts       = errors.New("gateway.routing.failover_max_attempts_default 须为整数")
+	errRoutingFailoverAttemptsRange  = errors.New("gateway.routing.failover_max_attempts_default 须在 1–5 之间")
+	errRoutingStickyBool             = errors.New("gateway.routing.sticky_enabled_default 须为 true 或 false")
+	errRoutingAutoHealthBool         = errors.New("gateway.routing.auto_health_from_probe 须为 true 或 false")
+	errRoutingProbeThreshold         = errors.New("gateway.routing.probe_fail_threshold 须为整数")
+	errRoutingProbeThresholdRange    = errors.New("gateway.routing.probe_fail_threshold 须在 1–20 之间")
 )

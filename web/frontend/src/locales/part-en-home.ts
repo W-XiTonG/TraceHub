@@ -19,7 +19,7 @@ export default {
       'A single /v1-style API across vendors and custom endpoints; console-issued API keys reduce fragmented integrations.',
     why2Title: 'Routing plus observability',
     why2Desc:
-      'Configurable channels, model discovery and health endpoints; logs and usage rollups help debug and review traffic.',
+      'Weighted, priority and fixed-order routing across channels, optional failover and health linkage; logs and usage rollups help debug and review traffic.',
     why3Title: 'Security-minded defaults',
     why3Desc:
       'Upstream secrets encrypted at rest; user keys stored as hashes. HTTPS, rotation and private deployment supported.',
@@ -40,7 +40,27 @@ export default {
     step3Badge: 'OpenAI SDK compatible',
     featuresTitle: 'More than a proxy: console & governance',
     featuresDesc:
-      'From solo developers to teams, TraceHub covers keys, usage, routing and ops on both user and admin sides; reflects the capabilities shipped in this product.',
+      'From solo developers to teams, TraceHub covers keys, usage, smart routing and ops on both user and admin sides; reflects the capabilities shipped in this product.',
+    routingKicker: 'Smart routing',
+    routingTitle: 'Many upstreams, one path: stable, configurable, observable',
+    routingDesc:
+      'The same model ID can be served by multiple upstream channels. TraceHub picks a route at the gateway and can optionally fail over when an upstream errors—you keep the same OpenAI-compatible SDK.',
+    routingCap1Title: 'Three routing strategies',
+    routingCap1Desc:
+      'Weighted random for load share, priority for active/standby, or a fixed channel order per model. Groups inherit global defaults or override locally.',
+    routingCap2Title: 'Failover & sticky sessions',
+    routingCap2Desc:
+      'Retry on another channel after upstream 5xx or timeouts (configurable). Optional sticky sessions keep multi-turn traffic on the same upstream when needed.',
+    routingCap3Title: 'Health-aware selection',
+    routingCap3Desc:
+      'Channel health and error counts bias traffic toward stable lines. Optional upstream probes can mark unhealthy channels before users hit them.',
+    routingCap4Title: 'Group-level governance',
+    routingCap4Desc:
+      'Users are isolated by group with its own model pool and routing policy; operators configure channels, weights and priorities in admin.',
+    routingFootnote:
+      'Exact policies and failover toggles are set by your operator in admin. End users still call GET /v1/models and use the OpenAI SDK as usual.',
+    routingCtaConsole: 'View my group',
+    routingCtaDocs: 'Routing docs',
     integrationKicker: 'Integration',
     integrationTitle: 'Same calling style as the OpenAI SDK',
     integrationDesc:
@@ -111,7 +131,7 @@ export default {
       'Roll up spend by day and model; every request is traceable in logs. Export CSV / JSON for finance, chargebacks, or team reviews.',
     billCard3Title: 'Team groups & spend policies',
     billCard3Desc:
-      'Accounts can be organized into teams; admins manage model visibility and routing in one place. Different teams can follow different cost policies—see your console after sign-in for what applies to you.',
+      'Accounts can be organized into teams; admins manage model visibility, routing policies and channel weights. Policies differ per group—see your console after sign-in.',
     billCard4Title: 'Redeem codes & top-ups (site config)',
     billCard4Desc:
       'Redeem codes and billing center offers depend on how this site is configured—flexible promos without changing your integration.',
@@ -121,6 +141,7 @@ export default {
     footerProduct: 'Product',
     footerWhy: 'Why TraceHub',
     footerSteps: 'Quick start',
+    footerRouting: 'Smart routing',
     footerFeat: 'Highlights',
     footerInteg: 'Integration',
     footerModels: 'Models',
@@ -150,10 +171,10 @@ export default {
     faq2a: 'Upstream secrets are stored with AES-GCM; API keys are hashed only; self-hosting and audit extensions are supported.',
     faq3q: 'What can I do in the console?',
     faq3a:
-      'List models, create/rotate API keys, browse request logs by period, inspect group policies, manage account and redeem codes, export usage (CSV/JSON); admins also get channels and model market.',
+      'List models, create/rotate API keys, browse request logs by period, group policies and routing (weighted/priority/fixed order, optional failover), account and redeem codes, export usage (CSV/JSON); admins also get channels and model market.',
     faq4q: 'Why not call the vendor API directly?',
     faq4a:
-      'One domain and credential model, aggregated usage per account, channel routing and weights, optional Redis sticky sessions—better for teams, quotas and audits.',
+      'One domain and credential model, aggregated usage per account, multi-channel routing with optional failover and sticky sessions—better for teams, reliability and audits.',
     f0tag: 'Gateway',
     f0title: 'OpenAI-compatible access',
     f0desc: '/v1/chat/completions and /v1/models across upstreams; SSE streaming and optional passthrough (site config).',
@@ -167,8 +188,8 @@ export default {
     f2desc: 'Dashboards by day/model; traceable logs; one-click CSV / JSON export for analysis and auditing.',
     f2cta: 'View logs',
     f3tag: 'Governance',
-    f3title: 'Groups & routing',
-    f3desc: 'Users belong to groups; model visibility and upstream routing are configurable in admin for predictable governance.',
+    f3title: 'Groups & smart routing',
+    f3desc: 'Users belong to groups; weighted, priority or fixed-order routing with optional failover—model visibility configured in admin.',
     f3cta: 'My group',
     f4tag: 'Account',
     f4title: 'Account & quota',
@@ -186,5 +207,7 @@ export default {
     t2hint: 'Audit-ready',
     t3label: 'Channel secrets AES-GCM',
     t3hint: 'Encrypted at rest',
+    t4label: 'Smart multi-channel routing',
+    t4hint: 'Configurable failover',
   },
 } as const

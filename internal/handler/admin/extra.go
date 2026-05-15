@@ -24,6 +24,7 @@ import (
 	"tracehub/internal/ent/user"
 	"tracehub/internal/handler/health"
 	"tracehub/internal/middleware"
+	"tracehub/internal/gateway/router"
 	"tracehub/internal/pkg/alertconfig"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
@@ -217,13 +218,15 @@ func UpdateGroup(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		var req struct {
-			Name           *string            `json:"name"`
-			Description    *string            `json:"description"`
-			RateMultiplier *float64           `json:"rate_multiplier"`
-			RPMLimit       *int               `json:"rpm_limit"`
-			ModelRouting   map[string][]int64 `json:"model_routing"`
-			DefaultModel   *string            `json:"default_model"`
-			Enabled        *bool              `json:"enabled"`
+			Name            *string            `json:"name"`
+			Description     *string            `json:"description"`
+			RateMultiplier  *float64           `json:"rate_multiplier"`
+			RPMLimit        *int               `json:"rpm_limit"`
+			ModelRouting    map[string][]int64 `json:"model_routing"`
+			RoutingStrategy *string            `json:"routing_strategy"`
+			RoutingOptions  map[string]any     `json:"routing_options"`
+			DefaultModel    *string            `json:"default_model"`
+			Enabled         *bool              `json:"enabled"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -249,7 +252,33 @@ func UpdateGroup(client *ent.Client) gin.HandlerFunc {
 			up.SetRpmLimit(*req.RPMLimit)
 		}
 		if req.ModelRouting != nil {
+			if err := validateGroupModelRouting(ctx, client, id, req.ModelRouting); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
 			up.SetModelRouting(req.ModelRouting)
+		}
+		if req.RoutingStrategy != nil {
+			if err := validateGroupRoutingStrategy(*req.RoutingStrategy); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+			if *req.RoutingStrategy == "" {
+				up.ClearRoutingStrategy()
+			} else {
+				up.SetRoutingStrategy(*req.RoutingStrategy)
+			}
+		}
+		if req.RoutingOptions != nil {
+			if err := validateGroupRoutingOptions(req.RoutingOptions); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+			if len(req.RoutingOptions) == 0 {
+				up.ClearRoutingOptions()
+			} else {
+				up.SetRoutingOptions(req.RoutingOptions)
+			}
 		}
 		if req.DefaultModel != nil {
 			up.SetDefaultModel(*req.DefaultModel)
@@ -261,6 +290,7 @@ func UpdateGroup(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "更新失败")
 			return
 		}
+		router.InvalidateRoutingCache(id)
 		auditLog(client, adm.ID, "group.update", "group", strconv.Itoa(id), map[string]any{"body": req}, c)
 		httpx.OKMsg(c, "已更新", nil)
 	}
@@ -597,6 +627,12 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			httpx.ServerError(c, "读取探测配置失败")
 			return
 		}
+		routingMeta, routingMetaErr := sitecfg.RoutingDBMeta(ctx, client)
+		if routingMetaErr != nil {
+			httpx.ServerError(c, "读取路由配置失败")
+			return
+		}
+		routingDefaults := sitecfg.EffectiveRoutingDefaults(ctx, client)
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
@@ -625,6 +661,13 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"upstream_model_probe_enabled_db_value":  strings.TrimSpace(probeEnVal),
 			"upstream_model_probe_interval_db_set":   probeIntSet,
 			"upstream_model_probe_interval_db_value": strings.TrimSpace(probeIntVal),
+			"routing_strategy_default":               routingDefaults.Strategy,
+			"routing_failover_enabled_default":       routingDefaults.FailoverEnabled,
+			"routing_failover_max_attempts_default":  routingDefaults.FailoverMaxAttempts,
+			"routing_sticky_enabled_default":         routingDefaults.StickyEnabled,
+			"routing_auto_health_from_probe":         routingDefaults.AutoHealthFromProbe,
+			"routing_probe_fail_threshold":           routingDefaults.ProbeFailThreshold,
+			"routing_db_meta":                        routingMeta,
 		})
 	}
 }
@@ -643,6 +686,12 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyRegisterPromoText,
 			sitecfg.SystemConfigKeyAPIPublicBaseURL,
 			sitecfg.SystemConfigKeyPublicContactJSON,
+			sitecfg.SystemConfigKeyRoutingStrategyDefault,
+			sitecfg.SystemConfigKeyRoutingFailoverEnabledDefault,
+			sitecfg.SystemConfigKeyRoutingFailoverMaxAttempts,
+			sitecfg.SystemConfigKeyRoutingStickyEnabledDefault,
+			sitecfg.SystemConfigKeyRoutingAutoHealthFromProbe,
+			sitecfg.SystemConfigKeyRoutingProbeFailThreshold,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
@@ -719,6 +768,7 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 				}
 			}
 		}
+		router.InvalidateAllRoutingCache()
 		auditLog(client, adm.ID, "config.update", "system_config", "", map[string]any{"count": len(req.Items)}, c)
 		httpx.OKMsg(c, "已保存", nil)
 	}

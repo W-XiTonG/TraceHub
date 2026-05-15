@@ -8789,6 +8789,8 @@ type GroupMutation struct {
 	rpm_limit                *int
 	addrpm_limit             *int
 	model_routing            *map[string][]int64
+	routing_strategy         *string
+	routing_options          *map[string]interface{}
 	default_model            *string
 	enabled                  *bool
 	created_at               *time.Time
@@ -9189,6 +9191,104 @@ func (m *GroupMutation) ModelRoutingCleared() bool {
 func (m *GroupMutation) ResetModelRouting() {
 	m.model_routing = nil
 	delete(m.clearedFields, group.FieldModelRouting)
+}
+
+// SetRoutingStrategy sets the "routing_strategy" field.
+func (m *GroupMutation) SetRoutingStrategy(s string) {
+	m.routing_strategy = &s
+}
+
+// RoutingStrategy returns the value of the "routing_strategy" field in the mutation.
+func (m *GroupMutation) RoutingStrategy() (r string, exists bool) {
+	v := m.routing_strategy
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRoutingStrategy returns the old "routing_strategy" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldRoutingStrategy(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRoutingStrategy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRoutingStrategy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRoutingStrategy: %w", err)
+	}
+	return oldValue.RoutingStrategy, nil
+}
+
+// ClearRoutingStrategy clears the value of the "routing_strategy" field.
+func (m *GroupMutation) ClearRoutingStrategy() {
+	m.routing_strategy = nil
+	m.clearedFields[group.FieldRoutingStrategy] = struct{}{}
+}
+
+// RoutingStrategyCleared returns if the "routing_strategy" field was cleared in this mutation.
+func (m *GroupMutation) RoutingStrategyCleared() bool {
+	_, ok := m.clearedFields[group.FieldRoutingStrategy]
+	return ok
+}
+
+// ResetRoutingStrategy resets all changes to the "routing_strategy" field.
+func (m *GroupMutation) ResetRoutingStrategy() {
+	m.routing_strategy = nil
+	delete(m.clearedFields, group.FieldRoutingStrategy)
+}
+
+// SetRoutingOptions sets the "routing_options" field.
+func (m *GroupMutation) SetRoutingOptions(value map[string]interface{}) {
+	m.routing_options = &value
+}
+
+// RoutingOptions returns the value of the "routing_options" field in the mutation.
+func (m *GroupMutation) RoutingOptions() (r map[string]interface{}, exists bool) {
+	v := m.routing_options
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRoutingOptions returns the old "routing_options" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldRoutingOptions(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRoutingOptions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRoutingOptions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRoutingOptions: %w", err)
+	}
+	return oldValue.RoutingOptions, nil
+}
+
+// ClearRoutingOptions clears the value of the "routing_options" field.
+func (m *GroupMutation) ClearRoutingOptions() {
+	m.routing_options = nil
+	m.clearedFields[group.FieldRoutingOptions] = struct{}{}
+}
+
+// RoutingOptionsCleared returns if the "routing_options" field was cleared in this mutation.
+func (m *GroupMutation) RoutingOptionsCleared() bool {
+	_, ok := m.clearedFields[group.FieldRoutingOptions]
+	return ok
+}
+
+// ResetRoutingOptions resets all changes to the "routing_options" field.
+func (m *GroupMutation) ResetRoutingOptions() {
+	m.routing_options = nil
+	delete(m.clearedFields, group.FieldRoutingOptions)
 }
 
 // SetDefaultModel sets the "default_model" field.
@@ -9598,7 +9698,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.name != nil {
 		fields = append(fields, group.FieldName)
 	}
@@ -9616,6 +9716,12 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.model_routing != nil {
 		fields = append(fields, group.FieldModelRouting)
+	}
+	if m.routing_strategy != nil {
+		fields = append(fields, group.FieldRoutingStrategy)
+	}
+	if m.routing_options != nil {
+		fields = append(fields, group.FieldRoutingOptions)
 	}
 	if m.default_model != nil {
 		fields = append(fields, group.FieldDefaultModel)
@@ -9649,6 +9755,10 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.RpmLimit()
 	case group.FieldModelRouting:
 		return m.ModelRouting()
+	case group.FieldRoutingStrategy:
+		return m.RoutingStrategy()
+	case group.FieldRoutingOptions:
+		return m.RoutingOptions()
 	case group.FieldDefaultModel:
 		return m.DefaultModel()
 	case group.FieldEnabled:
@@ -9678,6 +9788,10 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRpmLimit(ctx)
 	case group.FieldModelRouting:
 		return m.OldModelRouting(ctx)
+	case group.FieldRoutingStrategy:
+		return m.OldRoutingStrategy(ctx)
+	case group.FieldRoutingOptions:
+		return m.OldRoutingOptions(ctx)
 	case group.FieldDefaultModel:
 		return m.OldDefaultModel(ctx)
 	case group.FieldEnabled:
@@ -9736,6 +9850,20 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelRouting(v)
+		return nil
+	case group.FieldRoutingStrategy:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRoutingStrategy(v)
+		return nil
+	case group.FieldRoutingOptions:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRoutingOptions(v)
 		return nil
 	case group.FieldDefaultModel:
 		v, ok := value.(string)
@@ -9828,6 +9956,12 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldModelRouting) {
 		fields = append(fields, group.FieldModelRouting)
 	}
+	if m.FieldCleared(group.FieldRoutingStrategy) {
+		fields = append(fields, group.FieldRoutingStrategy)
+	}
+	if m.FieldCleared(group.FieldRoutingOptions) {
+		fields = append(fields, group.FieldRoutingOptions)
+	}
 	if m.FieldCleared(group.FieldDefaultModel) {
 		fields = append(fields, group.FieldDefaultModel)
 	}
@@ -9850,6 +9984,12 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldModelRouting:
 		m.ClearModelRouting()
+		return nil
+	case group.FieldRoutingStrategy:
+		m.ClearRoutingStrategy()
+		return nil
+	case group.FieldRoutingOptions:
+		m.ClearRoutingOptions()
 		return nil
 	case group.FieldDefaultModel:
 		m.ClearDefaultModel()
@@ -9879,6 +10019,12 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldModelRouting:
 		m.ResetModelRouting()
+		return nil
+	case group.FieldRoutingStrategy:
+		m.ResetRoutingStrategy()
+		return nil
+	case group.FieldRoutingOptions:
+		m.ResetRoutingOptions()
 		return nil
 	case group.FieldDefaultModel:
 		m.ResetDefaultModel()

@@ -22,6 +22,8 @@ func (Group) Fields() []ent.Field {
 		field.String("subscription_type").Default("pay_as_you_go").MaxLen(50),
 		field.Int("rpm_limit").Default(0),
 		field.JSON("model_routing", map[string][]int64{}).Optional(),
+		field.String("routing_strategy").Optional().MaxLen(32).Comment("empty=inherit global; weighted_random|priority|fixed_order"),
+		field.JSON("routing_options", map[string]any{}).Optional().Comment("per-group routing option overrides"),
 		field.String("default_model").Optional().MaxLen(255),
 		field.Bool("enabled").Default(true),
 		field.Time("created_at").Default(time.Now).Immutable(),

@@ -1,20 +1,17 @@
 package gateway
 
 import (
-	"io"
+	"context"
 	"net/http"
 	"strings"
 	"time"
 
 	"tracehub/internal/ent"
-	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/gateway/relay"
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
-	"tracehub/internal/pkg/openaicompat"
-	"tracehub/internal/service/channelsecret"
 
 	"github.com/gin-gonic/gin"
 )
@@ -90,14 +87,13 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 		middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
 		return
 	}
-	sel, err := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, model, sticky)
+	previewSel, err := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, model, sticky)
 	if err != nil {
 		middleware.WriteOpenAIError(c, 403, "permission_error", err.Error())
 		return
 	}
-	ch := sel.Channel
-	ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-	if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+	ctPreview := strings.ToLower(strings.TrimSpace(previewSel.Channel.ChannelType))
+	if !router.IsOpenAICompatChannelType(ctPreview, d.OpenAICompatExtras) {
 		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Responses 资源接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
 		return
 	}
@@ -112,26 +108,6 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 		return
 	}
 
-	baseURL := strings.TrimSpace(ch.APIBaseURL)
-	if baseURL == "" {
-		baseURL = router.DefaultBaseURL(ch.ChannelType)
-	} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
-		baseURL = nb
-	}
-	var secret string
-	switch ch.AuthType {
-	case channel.AuthTypeAPIKey:
-		secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
-	case channel.AuthTypeOauth:
-		secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
-	case channel.AuthTypeSetupToken:
-		secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
-	}
-	if strings.TrimSpace(secret) == "" {
-		middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
-		return
-	}
-
 	rel := "responses/" + id
 	if tail == "cancel" {
 		rel += "/cancel"
@@ -140,28 +116,39 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 	reqID, _ := c.Get("request_id")
 	rid, _ := reqID.(string)
 	start := time.Now()
+	routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
-	resp, err := relay.ForwardOpenAIHTTP(c.Request.Context(), baseURL, secret, method, rel, nil, "", openAIPassthroughHeaders(c))
+	sel, res, err := ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
+		func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
+			secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+			if !ok {
+				return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+			}
+			resp, ferr := relay.ForwardOpenAIHTTP(ctx, baseURL, secret, method, rel, nil, "", openAIPassthroughHeaders(c))
+			return HTTPResponseToUpstreamResult(resp, ferr)
+		})
 	if err != nil {
-		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+		metrics.GatewayRequests.WithLabelValues(model, ctPreview, "transport_err").Inc()
 		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 		return
 	}
-	defer relay.DrainBody(resp.Body)
+	ch := sel.Channel
+	ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 	metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-		logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-		outCT := resp.Header.Get("Content-Type")
-		if outCT == "" {
-			outCT = "application/json"
+	if res.StatusCode >= 400 {
+		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+		logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+		outCT := "application/json"
+		if res.Headers != nil {
+			if h := res.Headers.Get("Content-Type"); h != "" {
+				outCT = h
+			}
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		c.Data(res.StatusCode, outCT, res.Body)
 		return
 	}
-	usage := parseUsageFlexible(raw)
+	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, promptToks)
 	applyCompletionFallback(&usage, maxOut)
 	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
@@ -169,10 +156,12 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-	outCT := resp.Header.Get("Content-Type")
-	if outCT == "" {
-		outCT = "application/json"
+	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+	outCT := "application/json"
+	if res.Headers != nil {
+		if h := res.Headers.Get("Content-Type"); h != "" {
+			outCT = h
+		}
 	}
-	c.Data(resp.StatusCode, outCT, raw)
+	c.Data(res.StatusCode, outCT, res.Body)
 }

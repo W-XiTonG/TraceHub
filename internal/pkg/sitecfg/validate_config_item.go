@@ -32,6 +32,18 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateUpstreamModelProbeEnabled(value)
 	case SystemConfigKeyUpstreamModelProbeIntervalMinutes:
 		return ValidateUpstreamModelProbeIntervalMinutes(value)
+	case SystemConfigKeyRoutingStrategyDefault:
+		return ValidateRoutingStrategy(value)
+	case SystemConfigKeyRoutingFailoverEnabledDefault:
+		return ValidateRoutingFailoverEnabled(value)
+	case SystemConfigKeyRoutingFailoverMaxAttempts:
+		return ValidateRoutingFailoverMaxAttempts(value)
+	case SystemConfigKeyRoutingStickyEnabledDefault:
+		return ValidateRoutingStickyEnabled(value)
+	case SystemConfigKeyRoutingAutoHealthFromProbe:
+		return ValidateRoutingAutoHealthFromProbe(value)
+	case SystemConfigKeyRoutingProbeFailThreshold:
+		return ValidateRoutingProbeFailThreshold(value)
 	default:
 		return nil
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -20,6 +20,7 @@ import (
 type Selected struct {
 	Channel       *ent.Channel
 	UpstreamModel string
+	Config        RoutingConfig
 }
 
 // MatchModelOnChannel 判断渠道是否支持该逻辑模型名（含别名表），并返回上游模型名。
@@ -61,10 +62,27 @@ func stickyKey(userID int64, session string) string {
 
 // SelectChannel 根据分组、模型与粘性会话挑选渠道。
 func SelectChannel(ctx context.Context, rdb *redis.Client, client *ent.Client, userID int64, userGroupID int, requestedModel string, stickySession string) (*Selected, error) {
+	return SelectChannelExcluding(ctx, rdb, client, userID, userGroupID, requestedModel, stickySession, nil)
+}
+
+// SelectChannelExcluding 在排除指定渠道 ID 后选路（供 failover 使用）。
+func SelectChannelExcluding(ctx context.Context, rdb *redis.Client, client *ent.Client, userID int64, userGroupID int, requestedModel string, stickySession string, excludeIDs []int) (*Selected, error) {
 	requestedModel = strings.TrimSpace(requestedModel)
 	if userGroupID <= 0 {
 		return nil, errors.New("用户未分配分组")
 	}
+	cfg, err := ResolveRoutingConfig(ctx, client, userGroupID)
+	if err != nil {
+		return nil, err
+	}
+	if !cfg.StickyEnabled {
+		stickySession = ""
+	}
+	exclude := make(map[int]struct{}, len(excludeIDs))
+	for _, id := range excludeIDs {
+		exclude[id] = struct{}{}
+	}
+
 	channels, err := client.Channel.Query().
 		Where(
 			channel.Enabled(true),
@@ -76,21 +94,19 @@ func SelectChannel(ctx context.Context, rdb *redis.Client, client *ent.Client, u
 	if err != nil {
 		return nil, err
 	}
-	type cand struct {
-		ch       *ent.Channel
-		upstream string
-	}
-	var candidates []cand
+	var candidates []candidate
 	for _, ch := range channels {
+		if _, skip := exclude[ch.ID]; skip {
+			continue
+		}
 		if up, ok := modelMatch(ch, requestedModel); ok {
-			candidates = append(candidates, cand{ch: ch, upstream: up})
+			candidates = append(candidates, candidate{ch: ch, upstream: up})
 		}
 	}
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("没有可用渠道支持模型 %s", requestedModel)
 	}
 
-	// 粘性会话：命中 Redis 则固定渠道（仍需支持该模型）
 	if rdb != nil && stickySession != "" {
 		key := stickyKey(userID, stickySession)
 		if idStr, err := rdb.Get(ctx, key).Result(); err == nil && idStr != "" {
@@ -98,62 +114,20 @@ func SelectChannel(ctx context.Context, rdb *redis.Client, client *ent.Client, u
 			_, _ = fmt.Sscanf(idStr, "%d", &cid)
 			for _, c := range candidates {
 				if c.ch.ID == cid {
-					return &Selected{Channel: c.ch, UpstreamModel: c.upstream}, nil
+					return &Selected{Channel: c.ch, UpstreamModel: c.upstream, Config: cfg}, nil
 				}
 			}
 		}
 	}
 
-	// 多渠道路由同一模型时：优先 error_count 更低的候选，减少「列表有模型但某条渠道上游 ID 配错」时的随机踩雷。
-	minErr := -1
-	for _, c := range candidates {
-		ec := c.ch.ErrorCount
-		if minErr < 0 || ec < minErr {
-			minErr = ec
-		}
-	}
-	var pool []cand
-	for _, c := range candidates {
-		if c.ch.ErrorCount == minErr {
-			pool = append(pool, c)
-		}
-	}
-	if len(pool) == 0 {
-		pool = candidates
-	}
-
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	total := 0
-	for _, c := range pool {
-		w := c.ch.Weight
-		if w <= 0 {
-			w = 1
-		}
-		total += w
-	}
-	pick := rng.Intn(total)
-	acc := 0
-	var chosen cand
-	for _, c := range pool {
-		w := c.ch.Weight
-		if w <= 0 {
-			w = 1
-		}
-		acc += w
-		if pick < acc {
-			chosen = c
-			break
-		}
-	}
-	if chosen.ch == nil {
-		chosen = pool[len(pool)-1]
-	}
+	rng := newRNG()
+	chosen := applyStrategy(cfg, candidates, requestedModel, rng)
 
 	if rdb != nil && stickySession != "" {
 		_ = rdb.Set(ctx, stickyKey(userID, stickySession), strconv.Itoa(chosen.ch.ID), time.Hour).Err()
 	}
 
-	return &Selected{Channel: chosen.ch, UpstreamModel: chosen.upstream}, nil
+	return &Selected{Channel: chosen.ch, UpstreamModel: chosen.upstream, Config: cfg}, nil
 }
 
 // PatchModelInBody 将请求 JSON 中的 model 替换为上游模型名。
@@ -183,4 +157,12 @@ func DefaultBaseURL(chType string) string {
 	default:
 		return ""
 	}
+}
+
+// StrategyName 返回生效策略名（供调试头）。
+func StrategyName(cfg RoutingConfig) string {
+	if cfg.Strategy == "" {
+		return sitecfg.RoutingStrategyWeightedRandom
+	}
+	return cfg.Strategy
 }

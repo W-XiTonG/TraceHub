@@ -15,7 +15,14 @@ type GroupRow = {
   subscription_type?: string
   default_model?: string
   enabled: boolean
+  routing_strategy?: string
+  routing_options?: Record<string, unknown>
+  model_routing?: Record<string, number[]>
 }
+
+type ModelRoutingRow = { model: string; order: string }
+
+type ChBrief = { id: number; group_id: number; channel_name?: string }
 
 type RateRow = {
   id: number
@@ -26,6 +33,7 @@ type RateRow = {
 }
 
 const groups = ref<GroupRow[]>([])
+const allChannels = ref<ChBrief[]>([])
 const msg = ref('')
 const expandedId = ref<number | null>(null)
 const ratesByGroup = ref<Record<number, RateRow[]>>({})
@@ -50,6 +58,12 @@ const editForm = reactive({
   rpm_limit: 0,
   default_model: '',
   enabled: true,
+  routingStrategy: '' as string,
+  overrideRoutingOptions: false,
+  failoverEnabled: false,
+  failoverMaxAttempts: 2,
+  stickyEnabled: true,
+  modelRoutingRows: [] as ModelRoutingRow[],
 })
 
 function httpErr(e: unknown): string {
@@ -63,12 +77,42 @@ function httpErr(e: unknown): string {
 async function load() {
   msg.value = ''
   try {
-    const { data } = await http.get<Envelope<{ items: GroupRow[] }>>('/api/admin/groups')
-    if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
-    groups.value = data.data.items || []
+    const [gRes, cRes] = await Promise.all([
+      http.get<Envelope<{ items: GroupRow[] }>>('/api/admin/groups'),
+      http.get<Envelope<{ items: ChBrief[] }>>('/api/admin/channels'),
+    ])
+    if (gRes.data.code !== 0) throw new Error(gRes.data.message || t('adminCommon.loadFail'))
+    groups.value = gRes.data.data.items || []
+    if (cRes.data.code === 0) allChannels.value = cRes.data.data.items || []
   } catch (e: unknown) {
     msg.value = httpErr(e)
   }
+}
+
+function channelsForGroup(gid: number): ChBrief[] {
+  return allChannels.value.filter((c) => c.group_id === gid)
+}
+
+function modelRoutingFromRows(rows: ModelRoutingRow[]): Record<string, number[]> {
+  const out: Record<string, number[]> = {}
+  for (const r of rows) {
+    const model = r.model.trim()
+    if (!model) continue
+    const ids = r.order
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0)
+    if (ids.length) out[model] = ids
+  }
+  return out
+}
+
+function modelRoutingToRows(mr?: Record<string, number[]>): ModelRoutingRow[] {
+  if (!mr) return []
+  return Object.entries(mr).map(([model, ids]) => ({
+    model,
+    order: (ids || []).join(','),
+  }))
 }
 
 async function createGroup() {
@@ -107,20 +151,45 @@ function openEdit(g: GroupRow) {
   editForm.rpm_limit = g.rpm_limit ?? 0
   editForm.default_model = g.default_model || ''
   editForm.enabled = g.enabled !== false
+  editForm.routingStrategy = g.routing_strategy || ''
+  const opts = g.routing_options || {}
+  editForm.overrideRoutingOptions = Object.keys(opts).length > 0
+  editForm.failoverEnabled = Boolean(opts.failover_enabled)
+  editForm.failoverMaxAttempts = Number(opts.failover_max_attempts) || 2
+  editForm.stickyEnabled = opts.sticky_enabled !== false
+  editForm.modelRoutingRows = modelRoutingToRows(g.model_routing)
   editOpen.value = true
+}
+
+function addModelRoutingRow() {
+  editForm.modelRoutingRows.push({ model: '', order: '' })
 }
 
 async function saveEdit() {
   msg.value = ''
   try {
-    await http.put(`/api/admin/groups/${editForm.id}`, {
+    const body: Record<string, unknown> = {
       name: editForm.name.trim(),
       description: editForm.description.trim(),
       rate_multiplier: editForm.rate_multiplier,
       rpm_limit: editForm.rpm_limit,
       default_model: editForm.default_model.trim() || '',
       enabled: editForm.enabled,
-    })
+    }
+    body.routing_strategy = editForm.routingStrategy.trim() || ''
+    if (editForm.overrideRoutingOptions) {
+      body.routing_options = {
+        failover_enabled: editForm.failoverEnabled,
+        failover_max_attempts: editForm.failoverMaxAttempts,
+        sticky_enabled: editForm.stickyEnabled,
+      }
+    } else {
+      body.routing_options = {}
+    }
+    if (editForm.routingStrategy === 'fixed_order') {
+      body.model_routing = modelRoutingFromRows(editForm.modelRoutingRows)
+    }
+    await http.put(`/api/admin/groups/${editForm.id}`, body)
     editOpen.value = false
     await load()
     msg.value = t('adminGroups.saved')
@@ -454,6 +523,45 @@ onMounted(load)
               <input v-model="editForm.enabled" type="checkbox" />
               <span class="text-xs text-slate-400">{{ t('adminCommon.enabled') }}</span>
             </label>
+            <div class="border-t border-slate-800 pt-4">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.secRouting') }}</p>
+              <label class="mb-3 flex flex-col gap-1">
+                <span class="text-xs text-slate-400">{{ t('adminGroups.lblRoutingStrategy') }}</span>
+                <select v-model="editForm.routingStrategy" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
+                  <option value="">{{ t('adminGroups.routingInherit') }}</option>
+                  <option value="weighted_random">{{ t('adminGroups.routingWeighted') }}</option>
+                  <option value="priority">{{ t('adminGroups.routingPriority') }}</option>
+                  <option value="fixed_order">{{ t('adminGroups.routingFixedOrder') }}</option>
+                </select>
+              </label>
+              <label class="mb-2 flex items-center gap-2">
+                <input v-model="editForm.overrideRoutingOptions" type="checkbox" />
+                <span class="text-xs text-slate-400">{{ t('adminGroups.overrideRoutingOptions') }}</span>
+              </label>
+              <div v-if="editForm.overrideRoutingOptions" class="mb-3 space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                <label class="flex items-center gap-2 text-xs text-slate-300">
+                  <input v-model="editForm.failoverEnabled" type="checkbox" />
+                  {{ t('adminGroups.lblFailover') }}
+                </label>
+                <label v-if="editForm.failoverEnabled" class="flex flex-col gap-1 text-xs text-slate-400">
+                  {{ t('adminGroups.lblFailoverMax') }}
+                  <input v-model.number="editForm.failoverMaxAttempts" type="number" min="1" max="5" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono" />
+                </label>
+                <label class="flex items-center gap-2 text-xs text-slate-300">
+                  <input v-model="editForm.stickyEnabled" type="checkbox" />
+                  {{ t('adminGroups.lblSticky') }}
+                </label>
+              </div>
+              <div v-if="editForm.routingStrategy === 'fixed_order'" class="space-y-2">
+                <p class="text-xs text-slate-500">{{ t('adminGroups.modelRoutingHint') }}</p>
+                <div v-for="(row, idx) in editForm.modelRoutingRows" :key="idx" class="grid gap-2 sm:grid-cols-2">
+                  <input v-model="row.model" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs" :placeholder="t('adminGroups.phModelId')" />
+                  <input v-model="row.order" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs" :placeholder="t('adminGroups.phChannelOrder')" />
+                </div>
+                <button type="button" class="text-xs text-amber-400 hover:underline" @click="addModelRoutingRow">{{ t('adminGroups.addModelRoutingRow') }}</button>
+                <p class="text-[11px] text-slate-600">{{ t('adminGroups.channelIdsHint', { ids: channelsForGroup(editForm.id).map((c) => c.id).join(', ') || '—' }) }}</p>
+              </div>
+            </div>
           </div>
           <div class="mt-6 flex justify-end gap-2">
             <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400 hover:bg-slate-800" @click="editOpen = false">

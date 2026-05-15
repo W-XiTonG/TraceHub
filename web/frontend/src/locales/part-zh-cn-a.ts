@@ -17,6 +17,7 @@ export default {
     models: '模型',
     pricing: '计费说明',
     whyTraceHub: '为何选择',
+    routing: '智能路由',
     quickStart: '快速上手',
     faq: 'FAQ',
     backHome: '返回首页',

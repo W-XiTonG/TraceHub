@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -139,18 +140,20 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		start := time.Now()
 		switch {
 		case router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras):
-			resp, err := relay.ForwardOpenAIChat(c.Request.Context(), baseURL, secret, patched, stream)
-			if err != nil {
-				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
-				return
-			}
-			defer relay.DrainBody(resp.Body)
-			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-
 			if stream {
+				resp, err := relay.ForwardOpenAIChat(c.Request.Context(), baseURL, secret, patched, true)
+				if err != nil {
+					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err)
+					metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+					middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+					return
+				}
+				defer relay.DrainBody(resp.Body)
+				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+
 				if resp.StatusCode >= 400 {
 					rawErr, _ := io.ReadAll(resp.Body)
+					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil)
 					out := augmentUpstreamJSONModelNotExistChatHint(rawErr)
 					setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
 					c.Writer.Header().Set("Content-Type", "application/json")
@@ -195,20 +198,38 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil)
 				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 				return
 			}
 
-			raw, _ := io.ReadAll(resp.Body)
-			if resp.StatusCode >= 400 {
-				setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
-				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-				out := augmentUpstreamJSONModelNotExistChatHint(raw)
-				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, out)
-				c.Data(resp.StatusCode, "application/json", out)
+			routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
+			sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, nil, nil,
+				func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
+					secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+					if !ok {
+						return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+					}
+					resp, ferr := relay.ForwardOpenAIChat(ctx, baseURL, secret, patched, false)
+					return HTTPResponseToUpstreamResult(resp, ferr)
+				})
+			if err != nil {
+				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 				return
 			}
-			usage := ParseOpenAIUsageJSON(raw)
+			ch = sel.Channel
+			ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
+			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+			if res.StatusCode >= 400 {
+				setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
+				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+				out := augmentUpstreamJSONModelNotExistChatHint(res.Body)
+				logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, out)
+				c.Data(res.StatusCode, "application/json", out)
+				return
+			}
+			usage := ParseOpenAIUsageJSON(res.Body)
 			applyPromptFallback(&usage, promptToks)
 			applyCompletionFallback(&usage, maxOut)
 			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
@@ -216,8 +237,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-			c.Data(resp.StatusCode, "application/json", raw)
+			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+			c.Data(res.StatusCode, "application/json", res.Body)
 
 		case ct == "claude":
 			if stream {
@@ -443,9 +464,7 @@ func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, m
 	creator := client.UsageLog.Create().
 		SetUserID(userID).
 		SetNillableAPIKeyID(&apiKeyID).
-		SetNillableChannelID(&channelID).
 		SetModel(model).
-		SetNillableModelUpstream(&upstream).
 		SetPromptTokens(pt).
 		SetCompletionTokens(ct).
 		SetTotalTokens(pt + ct).
@@ -455,11 +474,44 @@ func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, m
 		SetNillableIPAddress(&ip).
 		SetIsCached(cachedPrompt > 0).
 		SetCachedTokens(cachedPrompt)
+	if channelID > 0 {
+		creator.SetChannelID(channelID)
+	}
+	if strings.TrimSpace(upstream) != "" {
+		creator.SetModelUpstream(upstream)
+	}
 	if requestID != "" {
 		creator.SetRequestID(requestID)
 	}
 	if errMsg != nil {
 		creator.SetNillableErrorMessage(errMsg)
 	}
-	_, _ = creator.Save(ctx)
+	ulog, err := creator.Save(ctx)
+	logArgs := []any{
+		"user_id", userID,
+		"api_key_id", apiKeyID,
+		"channel_id", channelID,
+		"routing_model", model,
+		"upstream_model", upstream,
+		"status_code", status,
+		"prompt_tokens", pt,
+		"completion_tokens", ct,
+		"total_cost", cost,
+		"duration_ms", ms,
+	}
+	if requestID != "" {
+		logArgs = append(logArgs, "request_id", requestID)
+	}
+	if errMsg != nil {
+		logArgs = append(logArgs, "bill_error", *errMsg)
+	}
+	if err != nil {
+		slog.Warn("gateway usage log persist failed", append(logArgs, "err", err)...)
+		return
+	}
+	if channelID <= 0 {
+		slog.Warn("gateway usage recorded without channel_id", append(logArgs, "usage_log_id", ulog.ID)...)
+		return
+	}
+	slog.Info("gateway usage recorded", append(logArgs, "usage_log_id", ulog.ID)...)
 }

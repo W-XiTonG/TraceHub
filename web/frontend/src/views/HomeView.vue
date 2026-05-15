@@ -185,6 +185,7 @@ const trustPoints = computed(() => [
   { label: t('home.t1label'), hint: t('home.t1hint') },
   { label: t('home.t2label'), hint: t('home.t2hint') },
   { label: t('home.t3label'), hint: t('home.t3hint') },
+  { label: t('home.t4label'), hint: t('home.t4hint') },
 ])
 
 type WhyAccent = 'violet' | 'cyan' | 'emerald' | 'amber'
@@ -231,6 +232,13 @@ const billingCards = computed(() => [
 ])
 
 const pricingBadges = computed(() => [t('home.billingBadge1'), t('home.billingBadge2'), t('home.billingBadge3')])
+
+const routingCapabilities = computed(() => [
+  { title: t('home.routingCap1Title'), desc: t('home.routingCap1Desc'), icon: 'chart' },
+  { title: t('home.routingCap2Title'), desc: t('home.routingCap2Desc'), icon: 'shield' },
+  { title: t('home.routingCap3Title'), desc: t('home.routingCap3Desc'), icon: 'bolt' },
+  { title: t('home.routingCap4Title'), desc: t('home.routingCap4Desc'), icon: 'globe' },
+])
 
 function featureLink(to: string) {
   if (auth.isLoggedIn) return { path: to }
@@ -287,6 +295,7 @@ function featureLink(to: string) {
         <nav class="flex flex-wrap items-center justify-end gap-0.5 sm:gap-1">
           <a href="#why" class="th-site-nav-link hidden md:inline">{{ t('nav.whyTraceHub') }}</a>
           <a href="#steps" class="th-site-nav-link hidden lg:inline">{{ t('nav.quickStart') }}</a>
+          <a href="#routing" class="th-site-nav-link hidden lg:inline">{{ t('nav.routing') }}</a>
           <a href="#features" class="th-site-nav-link">{{ t('nav.features') }}</a>
           <a href="#integration" class="th-site-nav-link hidden sm:inline">{{ t('nav.integration') }}</a>
           <a href="#models" class="th-site-nav-link">{{ t('nav.models') }}</a>
@@ -550,6 +559,49 @@ function featureLink(to: string) {
       </section>
 
       <section
+        id="routing"
+        class="th-reveal relative border-y border-white/[0.06] bg-gradient-to-b from-cyan-500/[0.03] via-transparent to-transparent py-20 md:py-24"
+      >
+        <div class="mx-auto max-w-6xl px-5">
+          <p class="th-kicker mb-2 text-center"><span class="th-kicker-accent">{{ t('home.routingKicker') }}</span></p>
+          <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">
+            {{ t('home.routingTitle') }}
+          </h2>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500">
+            {{ t('home.routingDesc') }}
+          </p>
+          <div class="th-reveal-stagger mt-12 grid gap-4 sm:grid-cols-2">
+            <div
+              v-for="cap in routingCapabilities"
+              :key="cap.title"
+              class="th-glass flex gap-4 rounded-[var(--th-radius-xl)] p-5 md:p-6"
+            >
+              <span
+                class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-500/20 [&>svg]:h-5 [&>svg]:w-5"
+              >
+                <svg><use :href="`#th-icon-${cap.icon}`" /></svg>
+              </span>
+              <div>
+                <h3 class="text-base font-semibold text-slate-100">{{ cap.title }}</h3>
+                <p class="mt-1.5 text-sm leading-relaxed text-slate-500">{{ cap.desc }}</p>
+              </div>
+            </div>
+          </div>
+          <p class="mx-auto mt-8 max-w-3xl text-center text-xs leading-relaxed text-slate-600">
+            {{ t('home.routingFootnote') }}
+          </p>
+          <div class="mt-8 flex flex-wrap justify-center gap-3">
+            <RouterLink :to="featureLink('/console/group')" class="th-btn-secondary px-6 py-2.5 text-sm">
+              {{ t('home.routingCtaConsole') }}
+            </RouterLink>
+            <RouterLink to="/docs" class="th-btn-secondary px-6 py-2.5 text-sm">
+              {{ t('home.routingCtaDocs') }}
+            </RouterLink>
+          </div>
+        </div>
+      </section>
+
+      <section
         id="integration"
         class="th-reveal relative border-y border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-transparent py-20"
       >
@@ -807,6 +859,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
               <ul class="mt-3 space-y-2 text-sm text-slate-400">
                 <li><a href="#why" class="transition hover:text-cyan-400/90">{{ t('home.footerWhy') }}</a></li>
                 <li><a href="#steps" class="transition hover:text-cyan-400/90">{{ t('home.footerSteps') }}</a></li>
+                <li><a href="#routing" class="transition hover:text-cyan-400/90">{{ t('home.footerRouting') }}</a></li>
                 <li><a href="#features" class="transition hover:text-cyan-400/90">{{ t('home.footerFeat') }}</a></li>
                 <li><a href="#integration" class="transition hover:text-cyan-400/90">{{ t('home.footerInteg') }}</a></li>
                 <li><a href="#models" class="transition hover:text-cyan-400/90">{{ t('home.footerModels') }}</a></li>

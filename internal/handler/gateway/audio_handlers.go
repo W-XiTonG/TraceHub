@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -136,65 +137,57 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			return
 		}
 
-		baseURL := strings.TrimSpace(ch.APIBaseURL)
-		if baseURL == "" {
-			baseURL = router.DefaultBaseURL(ch.ChannelType)
-		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
-			baseURL = nb
-		}
-		var secret string
-		switch ch.AuthType {
-		case channel.AuthTypeAPIKey:
-			secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
-		case channel.AuthTypeOauth:
-			secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
-		case channel.AuthTypeSetupToken:
-			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
-		}
-		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
-			return
-		}
-
-		body, contentType, err := rebuildMultipartWithUpstreamModel(form, sel.UpstreamModel)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法重组 multipart 请求")
-			return
-		}
-
 		reqID, _ := c.Get("request_id")
 		rid, _ := reqID.(string)
 		start := time.Now()
 
-		acceptHdr := ""
 		if multipartFormWantsStream(form) {
-			acceptHdr = "text/event-stream"
-		}
-		resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, upstreamRelPath, contentType, body, openAIPassthroughHeaders(c), acceptHdr)
-		if err != nil {
-			metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
-			return
-		}
-		defer relay.DrainBody(resp.Body)
-		defer func() {
-			metrics.GatewayLatency.WithLabelValues(chType).Observe(time.Since(start).Seconds())
-		}()
-
-		if resp.StatusCode >= 400 {
-			raw, _ := io.ReadAll(resp.Body)
-			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(resp.StatusCode)).Inc()
-			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-			outCT := resp.Header.Get("Content-Type")
-			if outCT == "" {
-				outCT = "application/json"
+			baseURL := strings.TrimSpace(ch.APIBaseURL)
+			if baseURL == "" {
+				baseURL = router.DefaultBaseURL(ch.ChannelType)
+			} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
+				baseURL = nb
 			}
-			c.Data(resp.StatusCode, outCT, raw)
-			return
-		}
+			var secret string
+			switch ch.AuthType {
+			case channel.AuthTypeAPIKey:
+				secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
+			case channel.AuthTypeOauth:
+				secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
+			case channel.AuthTypeSetupToken:
+				secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
+			}
+			if strings.TrimSpace(secret) == "" {
+				middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+				return
+			}
+			body, contentType, err := rebuildMultipartWithUpstreamModel(form, sel.UpstreamModel)
+			if err != nil {
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法重组 multipart 请求")
+				return
+			}
+			resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, upstreamRelPath, contentType, body, openAIPassthroughHeaders(c), "text/event-stream")
+			if err != nil {
+				metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
+				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				return
+			}
+			defer relay.DrainBody(resp.Body)
+			defer func() {
+				metrics.GatewayLatency.WithLabelValues(chType).Observe(time.Since(start).Seconds())
+			}()
 
-		// OpenAI：multipart 中 stream=true 时返回 SSE，需边读边写客户端，不能整包缓冲。
-		if multipartFormWantsStream(form) {
+			if resp.StatusCode >= 400 {
+				raw, _ := io.ReadAll(resp.Body)
+				metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(resp.StatusCode)).Inc()
+				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
+				outCT := resp.Header.Get("Content-Type")
+				if outCT == "" {
+					outCT = "application/json"
+				}
+				c.Data(resp.StatusCode, outCT, raw)
+				return
+			}
 			for _, k := range []string{"Content-Type", "Cache-Control"} {
 				if v := resp.Header.Get(k); v != "" {
 					c.Writer.Header().Set(k, v)
@@ -232,8 +225,41 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			return
 		}
 
-		raw, _ := io.ReadAll(resp.Body)
-		usage := parseUsageFlexible(raw)
+		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
+		sel, res, err := routeDeps.executeWithFailoverRecorded(c.Request.Context(), int64(u.ID), gid, model, sticky, false, sel,
+			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
+				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+				if !ok {
+					return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+				}
+				mpBody, contentType, err := rebuildMultipartWithUpstreamModel(form, sel.UpstreamModel)
+				if err != nil {
+					return nil, err
+				}
+				resp, ferr := relay.ForwardOpenAIMultipart(ctx, baseURL, secret, upstreamRelPath, contentType, mpBody, openAIPassthroughHeaders(c), "")
+				return HTTPResponseToUpstreamResult(resp, ferr)
+			})
+		if err != nil {
+			metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
+			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			return
+		}
+		ch = sel.Channel
+		chType = strings.ToLower(strings.TrimSpace(ch.ChannelType))
+		metrics.GatewayLatency.WithLabelValues(chType).Observe(time.Since(start).Seconds())
+		if res.StatusCode >= 400 {
+			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(res.StatusCode)).Inc()
+			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+			outCT := "application/json"
+			if res.Headers != nil {
+				if h := res.Headers.Get("Content-Type"); h != "" {
+					outCT = h
+				}
+			}
+			c.Data(res.StatusCode, outCT, res.Body)
+			return
+		}
+		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxComp)
 		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
@@ -241,13 +267,14 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-
-		outCT := resp.Header.Get("Content-Type")
-		if outCT == "" {
-			outCT = "application/json"
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+		outCT := "application/json"
+		if res.Headers != nil {
+			if h := res.Headers.Get("Content-Type"); h != "" {
+				outCT = h
+			}
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		c.Data(res.StatusCode, outCT, res.Body)
 	}
 }
 
@@ -315,65 +342,50 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		baseURL := strings.TrimSpace(ch.APIBaseURL)
-		if baseURL == "" {
-			baseURL = router.DefaultBaseURL(ch.ChannelType)
-		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
-			baseURL = nb
-		}
-		var secret string
-		switch ch.AuthType {
-		case channel.AuthTypeAPIKey:
-			secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
-		case channel.AuthTypeOauth:
-			secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
-		case channel.AuthTypeSetupToken:
-			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
-		}
-		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
-			return
-		}
-
-		patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
-			return
-		}
-
 		reqID, _ := c.Get("request_id")
 		rid, _ := reqID.(string)
 		start := time.Now()
 		accept := c.GetHeader("Accept")
+		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
-		resp, err := relay.ForwardOpenAISpeech(c.Request.Context(), baseURL, secret, patched, accept, openAIPassthroughHeaders(c))
+		sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, nil, nil,
+			func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
+				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+				if !ok {
+					return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+				}
+				resp, ferr := relay.ForwardOpenAISpeech(ctx, baseURL, secret, patched, accept, openAIPassthroughHeaders(c))
+				return HTTPResponseToUpstreamResult(resp, ferr)
+			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
 			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
 			return
 		}
-		defer relay.DrainBody(resp.Body)
+		ch = sel.Channel
+		chType = strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		metrics.GatewayLatency.WithLabelValues(chType).Observe(time.Since(start).Seconds())
 
-		raw, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode >= 400 {
-			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(resp.StatusCode)).Inc()
-			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-			outCT := resp.Header.Get("Content-Type")
-			if outCT == "" {
-				outCT = "application/json"
+		if res.StatusCode >= 400 {
+			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(res.StatusCode)).Inc()
+			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+			outCT := "application/json"
+			if res.Headers != nil {
+				if h := res.Headers.Get("Content-Type"); h != "" {
+					outCT = h
+				}
 			}
-			c.Data(resp.StatusCode, outCT, raw)
+			c.Data(res.StatusCode, outCT, res.Body)
 			return
 		}
 
-		usage := parseUsageFlexible(raw)
+		usage := parseUsageFlexible(res.Body)
 		pt2, ct2 := usage.PromptTokens, usage.CompletionTokens
 		if pt2 == 0 {
 			pt2 = promptToks
 		}
 		if ct2 == 0 {
-			ct2 = len(raw) / 400
+			ct2 = len(res.Body) / 400
 			if ct2 < 256 {
 				ct2 = 256
 			}
@@ -387,13 +399,15 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 
-		outCT := resp.Header.Get("Content-Type")
-		if outCT == "" {
-			outCT = "application/octet-stream"
+		outCT := "application/octet-stream"
+		if res.Headers != nil {
+			if h := res.Headers.Get("Content-Type"); h != "" {
+				outCT = h
+			}
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		c.Data(res.StatusCode, outCT, res.Body)
 	}
 }
 

@@ -20,6 +20,8 @@ type Ch = {
   weight?: number
   concurrency?: number
   schedulable?: boolean
+  error_count?: number
+  last_error_msg?: string
   has_api_secret?: boolean
   model_upstream_probe?: Record<string, unknown>
 }
@@ -35,6 +37,26 @@ const form = reactive({
   api_key: '',
   api_base_url: '',
   modelsStr: 'gpt-4o,gpt-4o-mini',
+  priority: 0,
+  weight: 100,
+})
+
+const editOpen = ref(false)
+const editForm = reactive({
+  id: 0,
+  channel_name: '',
+  api_key: '',
+  api_base_url: '',
+  modelsStr: '',
+  priority: 0,
+  weight: 100,
+  concurrency: 2,
+  enabled: true,
+  schedulable: true,
+  health_status: 1,
+  error_count: 0,
+  last_error_msg: '',
+  reset_error_count: false,
 })
 
 const presetLoading = ref(false)
@@ -247,12 +269,50 @@ async function createCh() {
     api_key: form.api_key,
     api_base_url: form.api_base_url,
     models,
-    priority: 0,
-    weight: 100,
+    priority: form.priority,
+    weight: form.weight,
     concurrency: 2,
     enabled: true,
   })
   form.api_key = ''
+  await load()
+}
+
+function openEdit(ch: Ch) {
+  editForm.id = ch.id
+  editForm.channel_name = ch.channel_name || ''
+  editForm.api_key = ''
+  editForm.api_base_url = ch.api_base_url || ''
+  editForm.modelsStr = (ch.models || []).join(',')
+  editForm.priority = ch.priority ?? 0
+  editForm.weight = ch.weight ?? 100
+  editForm.concurrency = ch.concurrency ?? 2
+  editForm.enabled = ch.enabled !== false
+  editForm.schedulable = ch.schedulable !== false
+  editForm.health_status = ch.health_status ?? 1
+  editForm.error_count = ch.error_count ?? 0
+  editForm.last_error_msg = ch.last_error_msg || ''
+  editForm.reset_error_count = false
+  editOpen.value = true
+}
+
+async function saveEdit() {
+  const models = editForm.modelsStr.split(',').map((s) => s.trim()).filter(Boolean)
+  const body: Record<string, unknown> = {
+    channel_name: editForm.channel_name,
+    api_base_url: editForm.api_base_url,
+    models,
+    priority: editForm.priority,
+    weight: editForm.weight,
+    concurrency: editForm.concurrency,
+    enabled: editForm.enabled,
+    schedulable: editForm.schedulable,
+    health_status: editForm.health_status,
+    reset_error_count: editForm.reset_error_count,
+  }
+  if (editForm.api_key.trim()) body.api_key = editForm.api_key.trim()
+  await http.put(`/api/admin/channels/${editForm.id}`, body)
+  editOpen.value = false
   await load()
 }
 
@@ -427,6 +487,16 @@ async function probeChannelNow(ch: Ch) {
               <span class="text-xs text-slate-600">{{ t('adminChannels.baseUrlHint') }}</span>
             </label>
           </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.priority') }}</span>
+              <input v-model.number="form.priority" type="number" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm" />
+            </label>
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.weight') }}</span>
+              <input v-model.number="form.weight" type="number" min="1" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm" />
+            </label>
+          </div>
           <label class="flex flex-col gap-1.5">
             <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblModels') }}</span>
             <textarea
@@ -556,13 +626,22 @@ async function probeChannelNow(ch: Ch) {
                 <span v-if="ch.auth_type" class="text-slate-600">· {{ ch.auth_type }}</span>
               </p>
             </div>
-            <button
-              type="button"
-              class="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 opacity-80 transition hover:bg-red-950/50 hover:opacity-100"
-              @click="remove(ch.id)"
-            >
-              {{ t('adminCommon.delete') }}
-            </button>
+            <div class="flex shrink-0 gap-1">
+              <button
+                type="button"
+                class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                @click="openEdit(ch)"
+              >
+                {{ t('adminChannels.edit') }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 opacity-80 transition hover:bg-red-950/50 hover:opacity-100"
+                @click="remove(ch.id)"
+              >
+                {{ t('adminCommon.delete') }}
+              </button>
+            </div>
           </div>
 
           <div class="flex flex-1 flex-col gap-4 px-5 py-4">
@@ -642,5 +721,70 @@ async function probeChannelNow(ch: Ch) {
         </article>
       </div>
     </section>
+
+    <Teleport to="body">
+      <div v-if="editOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="editOpen = false">
+        <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6">
+          <h3 class="mb-4 text-lg font-semibold text-white">{{ t('adminChannels.editModalTitle') }}</h3>
+          <div class="space-y-3 text-sm">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-slate-400">{{ t('adminChannels.lblChannelName') }}</span>
+              <input v-model="editForm.channel_name" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-slate-400">{{ t('adminChannels.lblApiKey') }}</span>
+              <input v-model="editForm.api_key" type="password" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" :placeholder="t('adminChannels.editKeyPh')" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-slate-400">{{ t('adminChannels.lblBaseUrl') }}</span>
+              <input v-model="editForm.api_base_url" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-slate-400">{{ t('adminChannels.lblModels') }}</span>
+              <textarea v-model="editForm.modelsStr" rows="3" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" />
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="flex flex-col gap-1 text-xs text-slate-400">
+                {{ t('adminChannels.priority') }}
+                <input v-model.number="editForm.priority" type="number" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono" />
+              </label>
+              <label class="flex flex-col gap-1 text-xs text-slate-400">
+                {{ t('adminChannels.weight') }}
+                <input v-model.number="editForm.weight" type="number" min="1" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono" />
+              </label>
+            </div>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              {{ t('adminChannels.concurrency') }}
+              <input v-model.number="editForm.concurrency" type="number" min="1" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono" />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-slate-400">
+              {{ t('adminChannels.lblHealth') }}
+              <select v-model.number="editForm.health_status" class="rounded border border-slate-700 bg-slate-950 px-2 py-1">
+                <option :value="1">{{ t('adminChannels.healthOk') }}</option>
+                <option :value="2">{{ t('adminChannels.healthBad') }}</option>
+                <option :value="3">{{ t('adminChannels.healthPaused') }}</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300">
+              <input v-model="editForm.enabled" type="checkbox" /> {{ t('adminCommon.enabled') }}
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300">
+              <input v-model="editForm.schedulable" type="checkbox" /> {{ t('adminChannels.schedulable') }}
+            </label>
+            <p v-if="editForm.error_count" class="text-xs text-slate-500">
+              {{ t('adminChannels.errorCount', { n: editForm.error_count }) }}
+              <span v-if="editForm.last_error_msg" class="block text-red-400/80">{{ editForm.last_error_msg }}</span>
+            </p>
+            <label class="flex items-center gap-2 text-xs text-amber-300">
+              <input v-model="editForm.reset_error_count" type="checkbox" /> {{ t('adminChannels.resetErrorCount') }}
+            </label>
+          </div>
+          <div class="mt-6 flex justify-end gap-2">
+            <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400" @click="editOpen = false">{{ t('adminCommon.cancel') }}</button>
+            <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="saveEdit">{{ t('adminCommon.save') }}</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

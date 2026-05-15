@@ -134,6 +134,38 @@ func (_u *GroupUpdate) ClearModelRouting() *GroupUpdate {
 	return _u
 }
 
+// SetRoutingStrategy sets the "routing_strategy" field.
+func (_u *GroupUpdate) SetRoutingStrategy(v string) *GroupUpdate {
+	_u.mutation.SetRoutingStrategy(v)
+	return _u
+}
+
+// SetNillableRoutingStrategy sets the "routing_strategy" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableRoutingStrategy(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetRoutingStrategy(*v)
+	}
+	return _u
+}
+
+// ClearRoutingStrategy clears the value of the "routing_strategy" field.
+func (_u *GroupUpdate) ClearRoutingStrategy() *GroupUpdate {
+	_u.mutation.ClearRoutingStrategy()
+	return _u
+}
+
+// SetRoutingOptions sets the "routing_options" field.
+func (_u *GroupUpdate) SetRoutingOptions(v map[string]interface{}) *GroupUpdate {
+	_u.mutation.SetRoutingOptions(v)
+	return _u
+}
+
+// ClearRoutingOptions clears the value of the "routing_options" field.
+func (_u *GroupUpdate) ClearRoutingOptions() *GroupUpdate {
+	_u.mutation.ClearRoutingOptions()
+	return _u
+}
+
 // SetDefaultModel sets the "default_model" field.
 func (_u *GroupUpdate) SetDefaultModel(v string) *GroupUpdate {
 	_u.mutation.SetDefaultModel(v)
@@ -371,6 +403,11 @@ func (_u *GroupUpdate) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.RoutingStrategy(); ok {
+		if err := group.RoutingStrategyValidator(v); err != nil {
+			return &ValidationError{Name: "routing_strategy", err: fmt.Errorf(`ent: validator failed for field "Group.routing_strategy": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.DefaultModel(); ok {
 		if err := group.DefaultModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_model": %w`, err)}
@@ -420,6 +457,18 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ModelRoutingCleared() {
 		_spec.ClearField(group.FieldModelRouting, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.RoutingStrategy(); ok {
+		_spec.SetField(group.FieldRoutingStrategy, field.TypeString, value)
+	}
+	if _u.mutation.RoutingStrategyCleared() {
+		_spec.ClearField(group.FieldRoutingStrategy, field.TypeString)
+	}
+	if value, ok := _u.mutation.RoutingOptions(); ok {
+		_spec.SetField(group.FieldRoutingOptions, field.TypeJSON, value)
+	}
+	if _u.mutation.RoutingOptionsCleared() {
+		_spec.ClearField(group.FieldRoutingOptions, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.DefaultModel(); ok {
 		_spec.SetField(group.FieldDefaultModel, field.TypeString, value)
@@ -735,6 +784,38 @@ func (_u *GroupUpdateOne) ClearModelRouting() *GroupUpdateOne {
 	return _u
 }
 
+// SetRoutingStrategy sets the "routing_strategy" field.
+func (_u *GroupUpdateOne) SetRoutingStrategy(v string) *GroupUpdateOne {
+	_u.mutation.SetRoutingStrategy(v)
+	return _u
+}
+
+// SetNillableRoutingStrategy sets the "routing_strategy" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableRoutingStrategy(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetRoutingStrategy(*v)
+	}
+	return _u
+}
+
+// ClearRoutingStrategy clears the value of the "routing_strategy" field.
+func (_u *GroupUpdateOne) ClearRoutingStrategy() *GroupUpdateOne {
+	_u.mutation.ClearRoutingStrategy()
+	return _u
+}
+
+// SetRoutingOptions sets the "routing_options" field.
+func (_u *GroupUpdateOne) SetRoutingOptions(v map[string]interface{}) *GroupUpdateOne {
+	_u.mutation.SetRoutingOptions(v)
+	return _u
+}
+
+// ClearRoutingOptions clears the value of the "routing_options" field.
+func (_u *GroupUpdateOne) ClearRoutingOptions() *GroupUpdateOne {
+	_u.mutation.ClearRoutingOptions()
+	return _u
+}
+
 // SetDefaultModel sets the "default_model" field.
 func (_u *GroupUpdateOne) SetDefaultModel(v string) *GroupUpdateOne {
 	_u.mutation.SetDefaultModel(v)
@@ -985,6 +1066,11 @@ func (_u *GroupUpdateOne) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.RoutingStrategy(); ok {
+		if err := group.RoutingStrategyValidator(v); err != nil {
+			return &ValidationError{Name: "routing_strategy", err: fmt.Errorf(`ent: validator failed for field "Group.routing_strategy": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.DefaultModel(); ok {
 		if err := group.DefaultModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_model": %w`, err)}
@@ -1051,6 +1137,18 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if _u.mutation.ModelRoutingCleared() {
 		_spec.ClearField(group.FieldModelRouting, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.RoutingStrategy(); ok {
+		_spec.SetField(group.FieldRoutingStrategy, field.TypeString, value)
+	}
+	if _u.mutation.RoutingStrategyCleared() {
+		_spec.ClearField(group.FieldRoutingStrategy, field.TypeString)
+	}
+	if value, ok := _u.mutation.RoutingOptions(); ok {
+		_spec.SetField(group.FieldRoutingOptions, field.TypeJSON, value)
+	}
+	if _u.mutation.RoutingOptionsCleared() {
+		_spec.ClearField(group.FieldRoutingOptions, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.DefaultModel(); ok {
 		_spec.SetField(group.FieldDefaultModel, field.TypeString, value)

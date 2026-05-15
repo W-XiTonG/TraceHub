@@ -402,20 +402,24 @@ func init() {
 	groupDescRpmLimit := groupFields[4].Descriptor()
 	// group.DefaultRpmLimit holds the default value on creation for the rpm_limit field.
 	group.DefaultRpmLimit = groupDescRpmLimit.Default.(int)
+	// groupDescRoutingStrategy is the schema descriptor for routing_strategy field.
+	groupDescRoutingStrategy := groupFields[6].Descriptor()
+	// group.RoutingStrategyValidator is a validator for the "routing_strategy" field. It is called by the builders before save.
+	group.RoutingStrategyValidator = groupDescRoutingStrategy.Validators[0].(func(string) error)
 	// groupDescDefaultModel is the schema descriptor for default_model field.
-	groupDescDefaultModel := groupFields[6].Descriptor()
+	groupDescDefaultModel := groupFields[8].Descriptor()
 	// group.DefaultModelValidator is a validator for the "default_model" field. It is called by the builders before save.
 	group.DefaultModelValidator = groupDescDefaultModel.Validators[0].(func(string) error)
 	// groupDescEnabled is the schema descriptor for enabled field.
-	groupDescEnabled := groupFields[7].Descriptor()
+	groupDescEnabled := groupFields[9].Descriptor()
 	// group.DefaultEnabled holds the default value on creation for the enabled field.
 	group.DefaultEnabled = groupDescEnabled.Default.(bool)
 	// groupDescCreatedAt is the schema descriptor for created_at field.
-	groupDescCreatedAt := groupFields[8].Descriptor()
+	groupDescCreatedAt := groupFields[10].Descriptor()
 	// group.DefaultCreatedAt holds the default value on creation for the created_at field.
 	group.DefaultCreatedAt = groupDescCreatedAt.Default.(func() time.Time)
 	// groupDescUpdatedAt is the schema descriptor for updated_at field.
-	groupDescUpdatedAt := groupFields[9].Descriptor()
+	groupDescUpdatedAt := groupFields[11].Descriptor()
 	// group.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	group.DefaultUpdatedAt = groupDescUpdatedAt.Default.(func() time.Time)
 	// group.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
