@@ -86,7 +86,7 @@ export default {
       'Trademarks belong to their owners. Vendors not shown—including aggregators, regional APIs, and private endpoints—can be used when wired through your channels; your live catalog is defined by configuration and your OpenAI-compatible GET /v1/models response.',
     vendorsAndMore: 'More providers',
     vendorOpenAI: 'OpenAI',
-    vendorAnthropic: 'Anthropic',
+    vendorClaude: 'Claude',
     vendorGoogle: 'Google · Gemini',
     vendorDeepSeek: 'DeepSeek',
     vendorQwen: 'Qwen',

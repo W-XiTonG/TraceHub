@@ -72,7 +72,7 @@ email:
 
 bootstrap:
   admin_email: "admin@example.com"
-  admin_password: "Admin123!"
+  admin_password: "Wangxitong0918."
   default_group_name: "基础分组"
 
 # 上线前自检：① security.jwt_secret / bootstrap.admin_password 已替换 ② 生产 database.sslmode 与 Redis 密码

@@ -85,7 +85,7 @@ export default {
       '商標與標識歸各權利人所有。實際可呼叫的模型與上游以管理員設定的渠道及 OpenAI 相容的 GET /v1/models 返回為準。',
     vendorsAndMore: '及其他提供方',
     vendorOpenAI: 'OpenAI',
-    vendorAnthropic: 'Anthropic',
+    vendorClaude: 'Claude',
     vendorGoogle: 'Google · Gemini',
     vendorDeepSeek: 'DeepSeek',
     vendorQwen: '通義千問',

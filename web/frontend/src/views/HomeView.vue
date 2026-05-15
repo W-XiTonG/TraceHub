@@ -350,6 +350,80 @@ function featureLink(to: string) {
         </div>
       </section>
 
+      <section
+        id="models"
+        class="th-reveal relative border-y border-white/[0.08] bg-gradient-to-b from-white/[0.02] to-transparent py-14 md:py-16"
+      >
+        <div class="relative mx-auto max-w-6xl px-5">
+          <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.modelsTitle') }}</h2>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500">
+            {{ t('home.modelsDesc') }}
+          </p>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
+            {{ t('home.modelsNote') }}
+          </p>
+          <p
+            class="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-slate-400"
+            role="note"
+          >
+            {{ t('home.vendorsCaption') }}
+          </p>
+          <ul
+            class="th-reveal-stagger th-reveal-stagger--tight th-home-vendor-strip mx-auto mt-5 flex max-w-5xl flex-wrap items-center justify-center gap-3 sm:gap-4"
+            :aria-label="t('home.vendorsAria')"
+          >
+            <li v-for="v in homeModelVendors" :key="v.labelKey" class="th-home-vendor-tile">
+              <div class="th-home-vendor-tile-inner" :title="t(v.labelKey)">
+                <svg class="th-home-vendor-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path fill="currentColor" :d="v.path" />
+                </svg>
+                <span class="th-home-vendor-name">{{ t(v.labelKey) }}</span>
+              </div>
+            </li>
+            <li class="th-home-vendor-tile th-home-vendor-tile--more">
+              <div class="th-home-vendor-tile-inner th-home-vendor-tile-inner--more" :title="t('home.vendorsAndMore')">
+                <span class="th-home-vendor-more-dots" aria-hidden="true">
+                  <span class="th-home-vendor-more-dot" />
+                  <span class="th-home-vendor-more-dot" />
+                  <span class="th-home-vendor-more-dot" />
+                </span>
+                <span class="th-home-vendor-name">{{ t('home.vendorsAndMore') }}</span>
+              </div>
+            </li>
+          </ul>
+          <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600/90">
+            {{ t('home.vendorsMark') }}
+          </p>
+          <div class="th-reveal-stagger th-reveal-stagger--tight mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+            <RouterLink
+              to="/docs#doc-gateway"
+              class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
+            >
+              {{ t('home.modelsLinkDocs') }}
+            </RouterLink>
+            <RouterLink
+              to="/console/models"
+              class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
+            >
+              {{ t('home.modelsLinkConsole') }}
+            </RouterLink>
+          </div>
+          <div class="th-reveal-stagger th-reveal-stagger--tight mt-10 flex flex-col items-center gap-3">
+            <span
+              class="rounded-full border border-amber-500/25 bg-amber-950/25 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-200/90"
+            >
+              {{ t('home.modelsBadge') }}
+            </span>
+            <div class="th-home-chip-row flex max-w-3xl flex-wrap justify-center gap-2">
+              <span v-for="m in models" :key="m" class="th-chip">{{ m }}</span>
+              <span
+                class="th-chip border border-dashed border-slate-600/70 bg-transparent font-sans text-slate-500 italic ring-0"
+              >{{ t('home.modelsMore') }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="why" class="th-reveal relative border-y border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent py-20 md:py-24">
         <div class="mx-auto max-w-6xl px-5">
           <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.85rem]">
@@ -642,80 +716,6 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
     "model": "gpt-4o-mini",
     "messages": [{ "role": "user", "content": "Hello from TraceHub" }]
   }'</span></code></pre>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="models"
-        class="th-reveal relative border-y border-white/[0.08] bg-gradient-to-b from-white/[0.02] to-transparent py-20"
-      >
-        <div class="relative mx-auto max-w-6xl px-5">
-          <h2 class="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-[1.75rem]">{{ t('home.modelsTitle') }}</h2>
-          <p class="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-slate-500">
-            {{ t('home.modelsDesc') }}
-          </p>
-          <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600">
-            {{ t('home.modelsNote') }}
-          </p>
-          <p
-            class="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-slate-400"
-            role="note"
-          >
-            {{ t('home.vendorsCaption') }}
-          </p>
-          <ul
-            class="th-reveal-stagger th-reveal-stagger--tight th-home-vendor-strip mx-auto mt-5 flex max-w-5xl flex-wrap items-center justify-center gap-3 sm:gap-4"
-            :aria-label="t('home.vendorsAria')"
-          >
-            <li v-for="v in homeModelVendors" :key="v.labelKey" class="th-home-vendor-tile">
-              <div class="th-home-vendor-tile-inner" :title="t(v.labelKey)">
-                <svg class="th-home-vendor-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path fill="currentColor" :d="v.path" />
-                </svg>
-                <span class="th-home-vendor-name">{{ t(v.labelKey) }}</span>
-              </div>
-            </li>
-            <li class="th-home-vendor-tile th-home-vendor-tile--more">
-              <div class="th-home-vendor-tile-inner th-home-vendor-tile-inner--more" :title="t('home.vendorsAndMore')">
-                <span class="th-home-vendor-more-dots" aria-hidden="true">
-                  <span class="th-home-vendor-more-dot" />
-                  <span class="th-home-vendor-more-dot" />
-                  <span class="th-home-vendor-more-dot" />
-                </span>
-                <span class="th-home-vendor-name">{{ t('home.vendorsAndMore') }}</span>
-              </div>
-            </li>
-          </ul>
-          <p class="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-slate-600/90">
-            {{ t('home.vendorsMark') }}
-          </p>
-          <div class="th-reveal-stagger th-reveal-stagger--tight mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <RouterLink
-              to="/docs#doc-gateway"
-              class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
-            >
-              {{ t('home.modelsLinkDocs') }}
-            </RouterLink>
-            <RouterLink
-              to="/console/models"
-              class="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-slate-300 transition hover:border-cyan-500/25 hover:bg-cyan-950/20 hover:text-cyan-200/95"
-            >
-              {{ t('home.modelsLinkConsole') }}
-            </RouterLink>
-          </div>
-          <div class="th-reveal-stagger th-reveal-stagger--tight mt-10 flex flex-col items-center gap-3">
-            <span
-              class="rounded-full border border-amber-500/25 bg-amber-950/25 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-200/90"
-            >
-              {{ t('home.modelsBadge') }}
-            </span>
-            <div class="th-home-chip-row flex max-w-3xl flex-wrap justify-center gap-2">
-              <span v-for="m in models" :key="m" class="th-chip">{{ m }}</span>
-              <span
-                class="th-chip border border-dashed border-slate-600/70 bg-transparent font-sans text-slate-500 italic ring-0"
-              >{{ t('home.modelsMore') }}</span>
             </div>
           </div>
         </div>

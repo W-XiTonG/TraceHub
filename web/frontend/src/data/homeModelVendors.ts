@@ -1,6 +1,6 @@
 import type { SimpleIcon } from 'simple-icons'
 import {
-  siAnthropic,
+  siClaude,
   siDeepseek,
   siGooglegemini,
   siHuggingface,
@@ -19,7 +19,7 @@ const OPENAI_PATH =
 
 export type HomeVendorLabelKey =
   | 'home.vendorOpenAI'
-  | 'home.vendorAnthropic'
+  | 'home.vendorClaude'
   | 'home.vendorGoogle'
   | 'home.vendorDeepSeek'
   | 'home.vendorQwen'
@@ -45,7 +45,7 @@ function fromSi(icon: SimpleIcon): Pick<HomeModelVendor, 'path' | 'hex'> {
 /** 首页 #models 厂商条：路径来自 simple-icons（OpenAI 除外）。仅为常见品牌示意，非产品能力边界。 */
 export const homeModelVendors: HomeModelVendor[] = [
   { labelKey: 'home.vendorOpenAI', path: OPENAI_PATH, hex: '10A37F' },
-  { labelKey: 'home.vendorAnthropic', ...fromSi(siAnthropic) },
+  { labelKey: 'home.vendorClaude', ...fromSi(siClaude) },
   { labelKey: 'home.vendorGoogle', ...fromSi(siGooglegemini) },
   { labelKey: 'home.vendorDeepSeek', ...fromSi(siDeepseek) },
   { labelKey: 'home.vendorQwen', ...fromSi(siQwen) },
