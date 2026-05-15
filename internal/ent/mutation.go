@@ -10216,6 +10216,7 @@ type GroupModelRateMutation struct {
 	output_rate    *float64
 	addoutput_rate *float64
 	enabled        *bool
+	billable       *bool
 	created_at     *time.Time
 	updated_at     *time.Time
 	clearedFields  map[string]struct{}
@@ -10544,6 +10545,42 @@ func (m *GroupModelRateMutation) ResetEnabled() {
 	m.enabled = nil
 }
 
+// SetBillable sets the "billable" field.
+func (m *GroupModelRateMutation) SetBillable(b bool) {
+	m.billable = &b
+}
+
+// Billable returns the value of the "billable" field in the mutation.
+func (m *GroupModelRateMutation) Billable() (r bool, exists bool) {
+	v := m.billable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBillable returns the old "billable" field's value of the GroupModelRate entity.
+// If the GroupModelRate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupModelRateMutation) OldBillable(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBillable is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBillable requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBillable: %w", err)
+	}
+	return oldValue.Billable, nil
+}
+
+// ResetBillable resets all changes to the "billable" field.
+func (m *GroupModelRateMutation) ResetBillable() {
+	m.billable = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *GroupModelRateMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -10677,7 +10714,7 @@ func (m *GroupModelRateMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupModelRateMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.group != nil {
 		fields = append(fields, groupmodelrate.FieldGroupID)
 	}
@@ -10692,6 +10729,9 @@ func (m *GroupModelRateMutation) Fields() []string {
 	}
 	if m.enabled != nil {
 		fields = append(fields, groupmodelrate.FieldEnabled)
+	}
+	if m.billable != nil {
+		fields = append(fields, groupmodelrate.FieldBillable)
 	}
 	if m.created_at != nil {
 		fields = append(fields, groupmodelrate.FieldCreatedAt)
@@ -10717,6 +10757,8 @@ func (m *GroupModelRateMutation) Field(name string) (ent.Value, bool) {
 		return m.OutputRate()
 	case groupmodelrate.FieldEnabled:
 		return m.Enabled()
+	case groupmodelrate.FieldBillable:
+		return m.Billable()
 	case groupmodelrate.FieldCreatedAt:
 		return m.CreatedAt()
 	case groupmodelrate.FieldUpdatedAt:
@@ -10740,6 +10782,8 @@ func (m *GroupModelRateMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldOutputRate(ctx)
 	case groupmodelrate.FieldEnabled:
 		return m.OldEnabled(ctx)
+	case groupmodelrate.FieldBillable:
+		return m.OldBillable(ctx)
 	case groupmodelrate.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case groupmodelrate.FieldUpdatedAt:
@@ -10787,6 +10831,13 @@ func (m *GroupModelRateMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEnabled(v)
+		return nil
+	case groupmodelrate.FieldBillable:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBillable(v)
 		return nil
 	case groupmodelrate.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -10892,6 +10943,9 @@ func (m *GroupModelRateMutation) ResetField(name string) error {
 		return nil
 	case groupmodelrate.FieldEnabled:
 		m.ResetEnabled()
+		return nil
+	case groupmodelrate.FieldBillable:
+		m.ResetBillable()
 		return nil
 	case groupmodelrate.FieldCreatedAt:
 		m.ResetCreatedAt()

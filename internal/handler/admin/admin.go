@@ -650,6 +650,7 @@ func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
 				InputRate  float64 `json:"input_rate"`
 				OutputRate float64 `json:"output_rate"`
 				Enabled    bool    `json:"enabled"`
+				Billable   *bool   `json:"billable"`
 			} `json:"rates"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -661,6 +662,10 @@ func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
 			existing, err := client.GroupModelRate.Query().
 				Where(groupmodelrate.GroupIDEQ(gid), groupmodelrate.ModelNameEQ(r.ModelName)).
 				Only(ctx)
+			billable := true
+			if r.Billable != nil {
+				billable = *r.Billable
+			}
 			if ent.IsNotFound(err) {
 				_, err = client.GroupModelRate.Create().
 					SetGroupID(gid).
@@ -668,13 +673,15 @@ func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
 					SetInputRate(r.InputRate).
 					SetOutputRate(r.OutputRate).
 					SetEnabled(r.Enabled).
+					SetBillable(billable).
 					Save(ctx)
 			} else if err == nil {
-				err = client.GroupModelRate.UpdateOne(existing).
+				up := client.GroupModelRate.UpdateOne(existing).
 					SetInputRate(r.InputRate).
 					SetOutputRate(r.OutputRate).
 					SetEnabled(r.Enabled).
-					Exec(ctx)
+					SetBillable(billable)
+				err = up.Exec(ctx)
 			}
 			if err != nil {
 				httpx.ServerError(c, "保存倍率失败")

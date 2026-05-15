@@ -516,6 +516,16 @@ cp /opt/tracehub/backups/tracehub_v0.9.0 /opt/tracehub/tracehub
 sudo systemctl start tracehub
 ```
 
+### 8.4 数据库 schema 与二进制升级
+
+TraceHub 默认在**每次进程启动**时执行 Ent 的 `Schema.Create`（PostgreSQL），将库表结构对齐到当前二进制内嵌的 Ent 模型（例如新增列、新表、新索引）。因此：
+
+- **仅替换二进制并重启服务**，在能连上同一数据库且迁移成功的前提下，一般会**自动完成**与版本匹配的 schema 变更；无需单独执行一条 `migrate` 子命令。
+- 若 DDL 与线上数据冲突（极少见），启动会失败并打 `database migration failed`，服务不会进入监听状态。
+- **升级前建议备份数据库**；大版本或敏感环境可在预发库先起一次新版本验证迁移日志。
+
+Docker 场景同理：拉取新镜像并 `up -d` 后，容器内进程启动时执行同一套迁移逻辑。
+
 ---
 
 ## 九、Prometheus + Grafana 监控

@@ -58,7 +58,7 @@
 | **上游平台** | Anthropic Claude、OpenAI、Google Gemini、Antigravity |
 | **认证方式** | OAuth 2.0（PKCE 流程）、API Key、Setup Token |
 | **智能调度** | 粘性会话路由、多账号负载均衡、优先级调度、混合调度 |
-| **计费系统** | Token 级精准计费、多级倍率（分组/账号/管理员自定义）、离线兜底计费 |
+| **计费系统** | Token 级精准计费、多级倍率、全局/分组「模型不计费」策略（见 [gateway-core-design.md](./gateway-core-design.md) §4.2.1）、离线兜底计费 |
 | **限流体系** | 用户级 + API Key 级 + 账号级三层并发控制与速率限制 |
 | **协议适配** | 统一兼容 Claude Messages API 格式，内部自动转换至各平台原生协议 |
 | **数据层** | PostgreSQL（Ent ORM）+ Redis（缓存/协调）双持久化策略 |

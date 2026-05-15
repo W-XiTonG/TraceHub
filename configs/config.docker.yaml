@@ -15,6 +15,7 @@ security:
 
 site:
   app_version: "1.0.0"
+  no_bill_models: []
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
   default_new_user_balance: 100000

@@ -2438,6 +2438,41 @@
   box-shadow: 0 0 0 3px var(--th-input-focus-ring);
 }
 
+/* 管理端分组模型倍率：模型 ID 自定义下拉（Teleport + fixed，与 th-input 同色，避免原生 datalist 系统浅色弹层） */
+.th-model-combobox-list {
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-border-strong);
+  background: rgba(2, 6, 23, 0.96);
+  color: #f1f5f9;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+.th-model-combobox-floating {
+  pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.th-model-combobox-item {
+  cursor: pointer;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+.th-model-combobox-item--muted {
+  color: #64748b;
+  cursor: default;
+}
+@media (hover: hover) {
+  .th-model-combobox-item:not(.th-model-combobox-item--muted):hover {
+    background: rgba(51, 65, 85, 0.55);
+  }
+}
+
 /* 原生 datetime-local：弹层亮/暗由 color-scheme 决定（筛选控件加 .th-datetime-local，勿写死 [color-scheme:dark]） */
 .th-datetime-local {
   position: relative;

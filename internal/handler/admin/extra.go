@@ -25,6 +25,7 @@ import (
 	"tracehub/internal/handler/health"
 	"tracehub/internal/middleware"
 	"tracehub/internal/gateway/router"
+	"tracehub/internal/service/billing"
 	"tracehub/internal/pkg/alertconfig"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
@@ -622,6 +623,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
 		dbSetBal, dbValBal := sitecfg.DefaultNewUserBalanceDBMeta(ctx, client)
 		dbSetPromo, dbValPromo := sitecfg.RegisterPromoTextDBMeta(ctx, client)
+		dbSetNoBill, dbValNoBill := sitecfg.NoBillModelsDBMeta(ctx, client)
 		probeEnSet, probeEnVal, probeIntSet, probeIntVal, probeMetaErr := sitecfg.UpstreamModelProbeDBMeta(ctx, client)
 		if probeMetaErr != nil {
 			httpx.ServerError(c, "读取探测配置失败")
@@ -653,6 +655,10 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"register_promo_text_file":          strings.TrimSpace(cfg.Site.RegisterPromoText),
 			"register_promo_text_db_set":        dbSetPromo,
 			"register_promo_text_db_value":      strings.TrimSpace(dbValPromo),
+			"no_bill_models":                    sitecfg.EffectiveNoBillModels(ctx, client, cfg),
+			"no_bill_models_file":                cfg.Site.NoBillModels,
+			"no_bill_models_db_set":             dbSetNoBill,
+			"no_bill_models_db_value":           strings.TrimSpace(dbValNoBill),
 			"api_public_base_url":               sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
 			"public_contact":                    sitecfg.EffectivePublicContactData(ctx, client),
 			"upstream_model_probe_enabled":             sitecfg.EffectiveUpstreamModelProbeEnabled(ctx, client),
@@ -684,6 +690,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyOperatorDisplayName,
 			sitecfg.SystemConfigKeyDefaultNewUserBalance,
 			sitecfg.SystemConfigKeyRegisterPromoText,
+			sitecfg.SystemConfigKeyNoBillModels,
 			sitecfg.SystemConfigKeyAPIPublicBaseURL,
 			sitecfg.SystemConfigKeyPublicContactJSON,
 			sitecfg.SystemConfigKeyRoutingStrategyDefault,
@@ -698,6 +705,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "清除配置失败")
 			return
 		}
+		billing.InvalidateNoBillModelsCacheAdmin()
 		auditLog(client, adm.ID, "site.settings_reset_defaults", "system_config", "", map[string]any{"deleted_rows": n}, c)
 		httpx.OK(c, gin.H{"deleted_rows": n})
 	}
@@ -718,10 +726,14 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		ctx := c.Request.Context()
+		invalidateNoBill := false
 		for _, it := range req.Items {
 			k := strings.TrimSpace(it.Key)
 			if k == "" {
 				continue
+			}
+			if k == sitecfg.SystemConfigKeyNoBillModels {
+				invalidateNoBill = true
 			}
 			if err := sitecfg.ValidateSystemConfigPut(k, it.Value); err != nil {
 				httpx.BadRequest(c, err.Error())
@@ -769,6 +781,9 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			}
 		}
 		router.InvalidateAllRoutingCache()
+		if invalidateNoBill {
+			billing.InvalidateNoBillModelsCacheAdmin()
+		}
 		auditLog(client, adm.ID, "config.update", "system_config", "", map[string]any{"count": len(req.Items)}, c)
 		httpx.OKMsg(c, "已保存", nil)
 	}

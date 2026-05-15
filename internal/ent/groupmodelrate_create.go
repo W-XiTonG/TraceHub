@@ -75,6 +75,20 @@ func (_c *GroupModelRateCreate) SetNillableEnabled(v *bool) *GroupModelRateCreat
 	return _c
 }
 
+// SetBillable sets the "billable" field.
+func (_c *GroupModelRateCreate) SetBillable(v bool) *GroupModelRateCreate {
+	_c.mutation.SetBillable(v)
+	return _c
+}
+
+// SetNillableBillable sets the "billable" field if the given value is not nil.
+func (_c *GroupModelRateCreate) SetNillableBillable(v *bool) *GroupModelRateCreate {
+	if v != nil {
+		_c.SetBillable(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *GroupModelRateCreate) SetCreatedAt(v time.Time) *GroupModelRateCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -155,6 +169,10 @@ func (_c *GroupModelRateCreate) defaults() {
 		v := groupmodelrate.DefaultEnabled
 		_c.mutation.SetEnabled(v)
 	}
+	if _, ok := _c.mutation.Billable(); !ok {
+		v := groupmodelrate.DefaultBillable
+		_c.mutation.SetBillable(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := groupmodelrate.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -186,6 +204,9 @@ func (_c *GroupModelRateCreate) check() error {
 	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		return &ValidationError{Name: "enabled", err: errors.New(`ent: missing required field "GroupModelRate.enabled"`)}
+	}
+	if _, ok := _c.mutation.Billable(); !ok {
+		return &ValidationError{Name: "billable", err: errors.New(`ent: missing required field "GroupModelRate.billable"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "GroupModelRate.created_at"`)}
@@ -237,6 +258,10 @@ func (_c *GroupModelRateCreate) createSpec() (*GroupModelRate, *sqlgraph.CreateS
 	if value, ok := _c.mutation.Enabled(); ok {
 		_spec.SetField(groupmodelrate.FieldEnabled, field.TypeBool, value)
 		_node.Enabled = value
+	}
+	if value, ok := _c.mutation.Billable(); ok {
+		_spec.SetField(groupmodelrate.FieldBillable, field.TypeBool, value)
+		_node.Billable = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(groupmodelrate.FieldCreatedAt, field.TypeTime, value)

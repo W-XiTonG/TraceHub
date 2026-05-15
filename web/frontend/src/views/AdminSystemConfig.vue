@@ -36,6 +36,10 @@ type SiteSettings = {
   register_promo_text_file?: string
   register_promo_text_db_set?: boolean
   register_promo_text_db_value?: string
+  no_bill_models?: string[]
+  no_bill_models_file?: string[]
+  no_bill_models_db_set?: boolean
+  no_bill_models_db_value?: string
   api_public_base_url?: string
   public_contact?: PublicContactPayload | null
   upstream_model_probe_enabled?: boolean
@@ -59,6 +63,7 @@ const form = reactive({
   operatorDisplayName: '',
   defaultNewUserBalance: 0,
   registerPromoText: '',
+  noBillModelsText: '',
   apiPublicBaseUrl: '',
   upstreamProbeEnabled: false,
   upstreamProbeInterval: 360,
@@ -93,6 +98,9 @@ const defaultNewUserBalanceDbOverride = ref(false)
 const registerPromoTextYaml = ref('')
 /** 数据库是否已有注册推广文案的覆盖 */
 const registerPromoTextDbOverride = ref(false)
+/** 配置文件 site.no_bill_models（仅展示） */
+const noBillModelsYaml = ref('')
+const noBillModelsDbOverride = ref(false)
 
 /** 上游探测：数据库是否覆盖（仅展示） */
 const upstreamProbeEnabledDbOverride = ref(false)
@@ -152,6 +160,15 @@ function applyPayload(d: SiteSettings) {
   form.registerPromoText = typeof d.register_promo_text === 'string' ? d.register_promo_text : ''
   registerPromoTextYaml.value = typeof d.register_promo_text_file === 'string' ? d.register_promo_text_file : ''
   registerPromoTextDbOverride.value = Boolean(d.register_promo_text_db_set)
+  const noBillList = Array.isArray(d.no_bill_models)
+    ? d.no_bill_models.filter((x): x is string => typeof x === 'string' && x.trim())
+    : []
+  form.noBillModelsText = noBillList.join('\n')
+  const yamlList = Array.isArray(d.no_bill_models_file)
+    ? d.no_bill_models_file.filter((x): x is string => typeof x === 'string' && x.trim())
+    : []
+  noBillModelsYaml.value = yamlList.join('\n')
+  noBillModelsDbOverride.value = Boolean(d.no_bill_models_db_set)
   form.apiPublicBaseUrl = typeof d.api_public_base_url === 'string' ? d.api_public_base_url : ''
   form.upstreamProbeEnabled = Boolean(d.upstream_model_probe_enabled)
   const iv = pickInt64ish(d.upstream_model_probe_interval_minutes)
@@ -417,6 +434,16 @@ async function save() {
       description: t('adminSystem.descRegisterPromo'),
     },
     {
+      key: 'site.no_bill_models',
+      value: JSON.stringify(
+        form.noBillModelsText
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+      description: t('adminSystem.descNoBillModels'),
+    },
+    {
       key: 'site.api.public_base_url',
       value: form.apiPublicBaseUrl.trim(),
       description: t('adminSystem.descApiPublicBaseUrl'),
@@ -630,6 +657,31 @@ onMounted(() => void refresh())
           </dl>
           <p v-if="registerPromoTextDbOverride" class="mt-2 text-[11px] leading-relaxed text-amber-100/80">
             {{ t('adminSystem.hintRegisterPromoDb') }}
+          </p>
+        </div>
+      </section>
+
+      <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secBilling') }}</h2>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secBillingHint') }}</p>
+        <div class="mt-4 max-w-2xl">
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+            t('adminSystem.lblNoBillModels')
+          }}</label>
+          <textarea
+            v-model="form.noBillModelsText"
+            rows="5"
+            class="th-input w-full resize-y font-mono text-xs leading-relaxed"
+            :placeholder="t('adminSystem.phNoBillModels')"
+            autocomplete="off"
+          />
+          <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintNoBillModels') }}</p>
+          <dl v-if="noBillModelsYaml.trim()" class="mt-2 th-admin-compare-tile">
+            <dt class="text-[10px] uppercase tracking-wide text-slate-500">{{ t('adminSystem.lblNoBillModelsYaml') }}</dt>
+            <dd class="m-0 mt-1 whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{{ noBillModelsYaml }}</dd>
+          </dl>
+          <p v-if="noBillModelsDbOverride" class="mt-2 text-[11px] leading-relaxed text-amber-100/80">
+            {{ t('adminSystem.hintNoBillModelsDb') }}
           </p>
         </div>
       </section>

@@ -138,7 +138,8 @@ CREATE TABLE group_model_rates (
     model_name   VARCHAR(255) NOT NULL,
     input_rate   DECIMAL(10,6) DEFAULT 1.0,   -- 输入 Token 倍率
     output_rate  DECIMAL(10,6) DEFAULT 1.0,   -- 输出 Token 倍率
-    enabled      BOOLEAN       DEFAULT TRUE,
+    enabled      BOOLEAN       DEFAULT TRUE,  -- false=不使用该行倍率，回退默认定价（仍可能计费）
+    billable     BOOLEAN       DEFAULT TRUE,  -- false=该分组下此逻辑模型不计费（cost=0，仍写 usage_logs）
     created_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     UNIQUE(group_id, model_name)
@@ -147,6 +148,13 @@ CREATE TABLE group_model_rates (
 CREATE INDEX idx_gmr_group_id   ON group_model_rates(group_id);
 CREATE INDEX idx_gmr_model_name ON group_model_rates(model_name);
 ```
+
+| 字段 | 说明 |
+|:---|:---|
+| `enabled` | 是否采用本行的 `input_rate` / `output_rate`；为 `false` 时回退内置单价与分组倍率，**不等于免计费**。 |
+| `billable` | 是否对该分组下命中的逻辑模型计费；`false` 时 `Cost=0`，扣费链路跳过，用量日志仍记录且 `total_cost=0`。 |
+
+**全局「免计费模型」列表**：不存独立表，由配置文件 `site.no_bill_models`（YAML）与/或 `system_configs.config_key = 'site.no_bill_models'`（值为 JSON 字符串数组）提供；仅当某用户分组下**没有**对应 `group_model_rates` 行时，才按全局列表判断是否免计费。若存在分组行且 `billable=true`，即使模型在全局列表中也会正常计费（分组优先）。
 
 ---
 
@@ -607,25 +615,18 @@ func (Channel) Indexes() []ent.Index {
 
 ### 5.1 Ent 自动迁移
 
-```go
-// cmd/server/main.go
+服务启动时在 `cmd/server/main.go` 中创建 Ent 客户端后调用 `client.Schema.Create(ctx)`（PostgreSQL），由 `entgo.io/ent/dialect/sql/schema` 将当前 Ent 模型与数据库对齐：**缺表建表、缺列/索引等会增量补齐**；默认不启用删列（`WithDropColumn` 为 false）。迁移失败进程会直接退出（日志 `database migration failed`）。
 
-func main() {
-    client, err := ent.Open("postgres", dsn)
-    if err != nil {
-        log.Fatalf("failed opening connection: %v", err)
-    }
-    defer client.Close()
-    
-    // 自动迁移（开发环境）
-    if err := client.Schema.Create(context.Background()); err != nil {
-        log.Fatalf("failed creating schema resources: %v", err)
-    }
-    
-    // 生产环境建议使用版本化迁移文件
-    // 执行: go generate ./ent 生成迁移 SQL
+```go
+// cmd/server/main.go（示意：实际使用 sql.Open + ent.NewClient）
+
+client := ent.NewClient(ent.Driver(entsql.OpenDB("postgres", sqldb)))
+if err := client.Schema.Create(ctx); err != nil {
+    log.Fatal("database migration failed", err)
 }
 ```
+
+生产环境若需严格审计的 DDL，仍可另行维护版本化 SQL（见下节）；与本仓库默认「启动即迁移」并不冲突。
 
 ### 5.2 版本化迁移（生产推荐）
 

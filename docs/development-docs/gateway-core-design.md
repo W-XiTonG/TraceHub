@@ -644,6 +644,20 @@ func (e *Engine) Finalize(ctx *RelayContext) error {
 }
 ```
 
+### 4.2.1 模型不计费（全局列表 + 分组 `billable`，分组优先）
+
+现行实现位于 `internal/service/billing/engine.go`（`ModelBillRates`、`Cost`、`modelBillable` 等），与网关 `gatewayDeduct`（`cost <= 0` 跳过扣费）配合。
+
+| 条件 | 行为 |
+|:---|:---|
+| 分组存在 `group_model_rates` 行且 `billable = false` | 该用户在该分组下对该逻辑模型 **不计费**（`Cost` 为 0）。 |
+| 分组存在行且 `billable = true` | **正常计费**；即使模型出现在全局免计费列表中也仍计费（分组优先）。 |
+| 分组无对应行 | 若逻辑模型（含定价表别名等候选名）命中全局列表，则 **不计费**；否则按内置单价与倍率计费。 |
+
+- **全局列表**：`internal/pkg/config/config.go` 中 `site.no_bill_models`（YAML）与 `system_configs` 键 `site.no_bill_models`（JSON 字符串数组）；库内非空配置优先于 YAML。管理后台「系统配置」页可编辑该列表；更新后计费引擎会失效内存缓存（短 TTL）。
+- **`enabled` 与 `billable` 区别**：`enabled=false` 仅表示不采用该行自定义输入/输出倍率，会回退默认定价，**不表示免计费**；免计费须 `billable=false` 或命中全局列表。
+- **用量日志**：不计费时仍写入 `usage_logs`，`total_cost=0`（与既有零费用路径一致）。
+
 ### 4.3 计费异常熔断
 
 > **[sub2api]** 参考 Sub2API 的 `billing.circuit_breaker` 配置，异常时 fail-closed。

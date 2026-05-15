@@ -113,6 +113,20 @@ func (_u *GroupModelRateUpdate) SetNillableEnabled(v *bool) *GroupModelRateUpdat
 	return _u
 }
 
+// SetBillable sets the "billable" field.
+func (_u *GroupModelRateUpdate) SetBillable(v bool) *GroupModelRateUpdate {
+	_u.mutation.SetBillable(v)
+	return _u
+}
+
+// SetNillableBillable sets the "billable" field if the given value is not nil.
+func (_u *GroupModelRateUpdate) SetNillableBillable(v *bool) *GroupModelRateUpdate {
+	if v != nil {
+		_u.SetBillable(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *GroupModelRateUpdate) SetUpdatedAt(v time.Time) *GroupModelRateUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -213,6 +227,9 @@ func (_u *GroupModelRateUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(groupmodelrate.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Billable(); ok {
+		_spec.SetField(groupmodelrate.FieldBillable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(groupmodelrate.FieldUpdatedAt, field.TypeTime, value)
@@ -350,6 +367,20 @@ func (_u *GroupModelRateUpdateOne) SetNillableEnabled(v *bool) *GroupModelRateUp
 	return _u
 }
 
+// SetBillable sets the "billable" field.
+func (_u *GroupModelRateUpdateOne) SetBillable(v bool) *GroupModelRateUpdateOne {
+	_u.mutation.SetBillable(v)
+	return _u
+}
+
+// SetNillableBillable sets the "billable" field if the given value is not nil.
+func (_u *GroupModelRateUpdateOne) SetNillableBillable(v *bool) *GroupModelRateUpdateOne {
+	if v != nil {
+		_u.SetBillable(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *GroupModelRateUpdateOne) SetUpdatedAt(v time.Time) *GroupModelRateUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -480,6 +511,9 @@ func (_u *GroupModelRateUpdateOne) sqlSave(ctx context.Context) (_node *GroupMod
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(groupmodelrate.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Billable(); ok {
+		_spec.SetField(groupmodelrate.FieldBillable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(groupmodelrate.FieldUpdatedAt, field.TypeTime, value)

@@ -85,7 +85,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	}
 
 	balAlerts := balancealert.New(opt.Config, opt.Log)
-	billingEngine := &billing.Engine{Client: opt.Client, Alerts: balAlerts}
+	billingEngine := &billing.Engine{Client: opt.Client, Alerts: balAlerts, Config: opt.Config}
+	billing.SetAdminEngine(billingEngine)
 
 	gate := r.Group("/v1")
 	gate.Use(middleware.GatewayAPIKeyAuth(opt.Client))

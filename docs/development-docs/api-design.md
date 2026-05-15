@@ -486,8 +486,10 @@ POST /api/user/redeem
 | `/api/admin/groups` | POST | 创建分组 |
 | `/api/admin/groups/:id` | PUT | 更新分组 |
 | `/api/admin/groups/:id` | DELETE | 删除分组 |
-| `/api/admin/groups/:id/model-rates` | GET | 分组模型倍率列表 |
-| `/api/admin/groups/:id/model-rates` | PUT | 批量更新分组模型倍率 |
+| `/api/admin/groups/:id/model-rates` | GET | 分组模型倍率列表（含 `billable`） |
+| `/api/admin/groups/:id/model-rates` | PUT | 批量更新分组模型倍率；每项可含 `billable`（默认 `true` 表示计费，`false` 表示该分组下该模型不计费） |
+
+全局「免计费模型」由 `site.no_bill_models` 提供：配置文件 `site.no_bill_models`（YAML 字符串数组）与/或 `PUT /api/admin/config` 写入键 `site.no_bill_models`（JSON 字符串数组）；聚合展示见 `GET /api/admin/site-settings` 管理端「系统配置」页。
 
 **创建分组请求示例**：
 

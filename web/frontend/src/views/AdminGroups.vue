@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 
@@ -30,7 +30,7 @@ type ModelOverlapItem = {
   pinned?: number[]
 }
 
-type ChBrief = { id: number; group_id: number; channel_name?: string }
+type ChBrief = { id: number; group_id: number; channel_name?: string; channel_type?: string }
 
 type RateRow = {
   id: number
@@ -38,12 +38,42 @@ type RateRow = {
   input_rate: number
   output_rate: number
   enabled: boolean
+  billable?: boolean
 }
 
 const groups = ref<GroupRow[]>([])
 const allChannels = ref<ChBrief[]>([])
 const msg = ref('')
 const msgIsError = ref(false)
+
+/** 模型倍率保存结果：贴在表格下方、按钮上方，避免用户滚动在底部时看不到页面顶部的全局提示 */
+const ratesFlashGid = ref<number | null>(null)
+const ratesFlashMsg = ref('')
+const ratesFlashIsError = ref(false)
+
+function clearRatesFlash() {
+  ratesFlashGid.value = null
+  ratesFlashMsg.value = ''
+  ratesFlashIsError.value = false
+}
+
+function flashRatesSuccess(gid: number, text: string) {
+  ratesFlashGid.value = gid
+  ratesFlashMsg.value = text
+  ratesFlashIsError.value = false
+}
+
+function flashRatesError(gid: number, e: unknown) {
+  ratesFlashGid.value = gid
+  ratesFlashMsg.value = httpErr(e)
+  ratesFlashIsError.value = true
+}
+
+function scrollRatesFlashIntoView(gid: number) {
+  void nextTick(() => {
+    document.getElementById(`rates-flash-${gid}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
+}
 
 function clearFlash() {
   msg.value = ''
@@ -62,6 +92,260 @@ const expandedId = ref<number | null>(null)
 const ratesByGroup = ref<Record<number, RateRow[]>>({})
 const ratesDraft = ref<RateRow[]>([])
 const ratesLoading = ref(false)
+/** 模型倍率表「模型 ID」建议（目录 + 分组渠道预设 + 当前表内已有 ID）；下拉用自定义列表以适配深浅色主题 */
+const modelSuggestIds = ref<string[]>([])
+const modelSuggestLoading = ref(false)
+let cachedCatalogModelIds: string[] | null = null
+
+/** 当前展开哪一行的模型 ID 建议列表（替代 datalist，避免系统原生浅色弹层） */
+const openModelSuggestRow = ref<number | null>(null)
+
+const comboboxAnchorEls = new Map<number, HTMLElement>()
+
+function setComboboxRef(rowIdx: number, el: unknown) {
+  if (el instanceof HTMLElement) comboboxAnchorEls.set(rowIdx, el)
+  else comboboxAnchorEls.delete(rowIdx)
+}
+
+const modelSuggestPanelStyle = ref<Record<string, string>>({})
+
+function updateModelSuggestPanelLayout() {
+  const i = openModelSuggestRow.value
+  if (i === null) {
+    modelSuggestPanelStyle.value = {}
+    return
+  }
+  const anchor = comboboxAnchorEls.get(i)
+  if (!anchor) return
+  const r = anchor.getBoundingClientRect()
+  const margin = 6
+  const edgePad = 10
+  const vh = window.innerHeight
+  const vw = window.innerWidth
+  const maxDesired = 320
+  const w = Math.min(Math.max(160, r.width), vw - 16)
+  const left = Math.min(Math.max(8, r.left), vw - w - 8)
+  const belowSpace = vh - r.bottom - margin - edgePad
+  const aboveSpace = r.top - margin - edgePad
+  /** 上方剩余空间更大则向上展开（上拉） */
+  const openAbove = aboveSpace > belowSpace
+  const maxH = openAbove
+    ? Math.min(maxDesired, Math.max(56, aboveSpace))
+    : Math.min(maxDesired, Math.max(56, belowSpace))
+  const base: Record<string, string> = {
+    position: 'fixed',
+    left: `${left}px`,
+    width: `${w}px`,
+    zIndex: '9999',
+    maxHeight: `${Math.floor(maxH)}px`,
+    overflowY: 'auto',
+    overscrollBehavior: 'contain',
+  }
+  if (openAbove) {
+    modelSuggestPanelStyle.value = {
+      ...base,
+      top: 'auto',
+      bottom: `${vh - r.top + margin}px`,
+    }
+  } else {
+    modelSuggestPanelStyle.value = {
+      ...base,
+      top: `${r.bottom + margin}px`,
+      bottom: 'auto',
+    }
+  }
+}
+
+const suggestScrollOpts: AddEventListenerOptions = { passive: true }
+let suggestScrollParents: HTMLElement[] = []
+
+function scrollableAncestors(start: HTMLElement | null): HTMLElement[] {
+  const out: HTMLElement[] = []
+  let el = start?.parentElement ?? null
+  while (el) {
+    const st = window.getComputedStyle(el)
+    const oy = st.overflowY
+    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 2) {
+      out.push(el)
+    }
+    el = el.parentElement
+  }
+  return out
+}
+
+function attachSuggestScrollReposition() {
+  detachSuggestScrollReposition()
+  const i = openModelSuggestRow.value
+  if (i === null) return
+  const anchor = comboboxAnchorEls.get(i)
+  if (!anchor) return
+  suggestScrollParents = scrollableAncestors(anchor)
+  for (const p of suggestScrollParents) {
+    p.addEventListener('scroll', updateModelSuggestPanelLayout, suggestScrollOpts)
+  }
+}
+
+function detachSuggestScrollReposition() {
+  for (const p of suggestScrollParents) {
+    p.removeEventListener('scroll', updateModelSuggestPanelLayout, suggestScrollOpts)
+  }
+  suggestScrollParents = []
+}
+
+function filterModelSuggestIds(query: string): string[] {
+  const all = modelSuggestIds.value
+  const s = query.trim().toLowerCase()
+  if (!s) return all.slice(0, 120)
+  const out: string[] = []
+  for (const id of all) {
+    if (id.toLowerCase().includes(s)) {
+      out.push(id)
+      if (out.length >= 200) break
+    }
+  }
+  return out
+}
+
+const activeModelSuggestQuery = computed(() => {
+  const i = openModelSuggestRow.value
+  if (i === null) return ''
+  return ratesDraft.value[i]?.model_name ?? ''
+})
+
+const filteredOpenModelSuggestIds = computed(() => filterModelSuggestIds(activeModelSuggestQuery.value))
+
+let suggestLayoutTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleSuggestLayout() {
+  if (openModelSuggestRow.value === null) return
+  if (suggestLayoutTimer) clearTimeout(suggestLayoutTimer)
+  suggestLayoutTimer = setTimeout(() => {
+    suggestLayoutTimer = null
+    updateModelSuggestPanelLayout()
+  }, 40)
+}
+
+function onModelSuggestDocMouseDown(e: MouseEvent) {
+  if (openModelSuggestRow.value === null) return
+  const t = e.target as HTMLElement | null
+  if (t?.closest?.('.th-model-combobox')) return
+  if (t?.closest?.('.th-model-combobox-floating')) return
+  openModelSuggestRow.value = null
+}
+
+watch(openModelSuggestRow, (v) => {
+  if (v !== null) {
+    document.addEventListener('mousedown', onModelSuggestDocMouseDown, false)
+    window.addEventListener('resize', updateModelSuggestPanelLayout)
+    void nextTick(() => {
+      updateModelSuggestPanelLayout()
+      attachSuggestScrollReposition()
+      requestAnimationFrame(() => updateModelSuggestPanelLayout())
+    })
+  } else {
+    document.removeEventListener('mousedown', onModelSuggestDocMouseDown, false)
+    window.removeEventListener('resize', updateModelSuggestPanelLayout)
+    detachSuggestScrollReposition()
+    modelSuggestPanelStyle.value = {}
+  }
+})
+
+onUnmounted(() => {
+  if (suggestLayoutTimer) clearTimeout(suggestLayoutTimer)
+  document.removeEventListener('mousedown', onModelSuggestDocMouseDown, false)
+  window.removeEventListener('resize', updateModelSuggestPanelLayout)
+  detachSuggestScrollReposition()
+})
+
+function pickModelRateId(rowIdx: number, id: string) {
+  const row = ratesDraft.value[rowIdx]
+  if (row) row.model_name = id
+  openModelSuggestRow.value = null
+}
+
+function pickOpenModelSuggestId(id: string) {
+  const i = openModelSuggestRow.value
+  if (i === null) return
+  pickModelRateId(i, id)
+}
+
+function toggleModelSuggestRow(rowIdx: number) {
+  if (openModelSuggestRow.value === rowIdx) {
+    openModelSuggestRow.value = null
+    return
+  }
+  openModelSuggestRow.value = rowIdx
+  void nextTick(() => updateModelSuggestPanelLayout())
+}
+
+function focusModelSuggestRow(rowIdx: number) {
+  openModelSuggestRow.value = rowIdx
+  void nextTick(() => updateModelSuggestPanelLayout())
+}
+
+async function fetchCatalogModelIds(): Promise<string[]> {
+  if (cachedCatalogModelIds !== null) return cachedCatalogModelIds
+  const set = new Set<string>()
+  try {
+    for (let page = 1; page <= 25; page++) {
+      const { data } = await http.get<Envelope<{ items?: Array<{ model_id?: string }> }>>('/api/admin/model-catalog/entries', {
+        params: { page, page_size: 200 },
+      })
+      if (data.code !== 0) break
+      const items = data.data.items || []
+      for (const it of items) {
+        const id = typeof it.model_id === 'string' ? it.model_id.trim() : ''
+        if (id) set.add(id)
+      }
+      if (items.length < 200) break
+    }
+  } catch {
+    /* 目录不可用时仍允许手输 */
+  }
+  cachedCatalogModelIds = Array.from(set).sort((a, b) => a.localeCompare(b))
+  return cachedCatalogModelIds
+}
+
+async function loadModelRateSuggestions(gid: number) {
+  modelSuggestLoading.value = true
+  try {
+    const set = new Set<string>()
+    for (const r of ratesDraft.value) {
+      const m = r.model_name.trim()
+      if (m) set.add(m)
+    }
+    for (const r of ratesByGroup.value[gid] || []) {
+      const m = (r.model_name || '').trim()
+      if (m) set.add(m)
+    }
+    const catalog = await fetchCatalogModelIds()
+    for (const id of catalog) set.add(id)
+
+    const types = new Set<string>()
+    for (const ch of channelsForGroup(gid)) {
+      const ct = (ch.channel_type || '').trim().toLowerCase()
+      if (ct) types.add(ct)
+    }
+    await Promise.all(
+      [...types].map(async (channelType) => {
+        try {
+          const { data } = await http.get<Envelope<{ merged?: string[] }>>('/api/admin/channel-model-presets', {
+            params: { channel_type: channelType },
+          })
+          if (data.code !== 0) return
+          for (const id of data.data.merged || []) {
+            const m = typeof id === 'string' ? id.trim() : ''
+            if (m) set.add(m)
+          }
+        } catch {
+          /* 单个渠道类型失败可忽略 */
+        }
+      }),
+    )
+    modelSuggestIds.value = Array.from(set).sort((a, b) => a.localeCompare(b))
+  } finally {
+    modelSuggestLoading.value = false
+  }
+}
 
 const createForm = reactive({
   name: '',
@@ -312,19 +596,26 @@ async function reloadRatesDraft(gid: number) {
   if (data.code !== 0) throw new Error(data.message || t('adminGroups.loadRatesFail'))
   const list = data.data.items || []
   ratesByGroup.value[gid] = list
-  ratesDraft.value = list.map((r) => ({ ...r }))
+  ratesDraft.value = list.map((r) => ({ ...r, billable: r.billable !== false }))
 }
 
 async function toggleExpand(id: number) {
   if (expandedId.value === id) {
     expandedId.value = null
+    modelSuggestIds.value = []
+    openModelSuggestRow.value = null
+    clearRatesFlash()
     return
   }
+  clearRatesFlash()
   expandedId.value = id
   ratesLoading.value = true
   ratesDraft.value = []
+  modelSuggestIds.value = []
+  openModelSuggestRow.value = null
   try {
     await reloadRatesDraft(id)
+    void loadModelRateSuggestions(id)
   } catch (e: unknown) {
     flashError(e)
     expandedId.value = null
@@ -340,11 +631,13 @@ function addRateDraft() {
     input_rate: 1,
     output_rate: 1,
     enabled: true,
+    billable: true,
   })
 }
 
 async function saveRates(gid: number) {
   clearFlash()
+  clearRatesFlash()
   const rates = ratesDraft.value
     .filter((r) => r.model_name.trim())
     .map((r) => ({
@@ -352,13 +645,17 @@ async function saveRates(gid: number) {
       input_rate: r.input_rate,
       output_rate: r.output_rate,
       enabled: r.enabled,
+      billable: r.billable !== false,
     }))
   try {
     await http.put(`/api/admin/groups/${gid}/model-rates`, { rates })
     await reloadRatesDraft(gid)
-    flashSuccess(t('adminGroups.ratesSaved'))
+    void loadModelRateSuggestions(gid)
+    flashRatesSuccess(gid, t('adminGroups.ratesSaved'))
+    scrollRatesFlashIntoView(gid)
   } catch (e: unknown) {
-    flashError(e)
+    flashRatesError(gid, e)
+    scrollRatesFlashIntoView(gid)
   }
 }
 
@@ -522,48 +819,104 @@ onMounted(load)
           <div v-if="expandedId === g.id" class="border-t border-slate-800/80 bg-slate-950/40 px-5 py-4">
             <p v-if="ratesLoading" class="text-sm text-slate-500">{{ t('adminGroups.loading') }}</p>
             <template v-else>
-              <p class="mb-3 text-xs text-slate-500">{{ t('adminGroups.ratesHint') }}</p>
+              <p class="mb-1 text-xs text-slate-500">{{ t('adminGroups.ratesHint') }}</p>
+              <p class="mb-3 text-[11px] leading-relaxed text-slate-500">
+                <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
+                <span v-else>{{ t('adminGroups.modelSuggestHint') }}</span>
+              </p>
               <div class="overflow-x-auto rounded-xl border border-slate-800">
-                <table class="w-full text-left text-xs">
+                <table class="w-full border-collapse text-left text-xs">
                   <thead class="bg-slate-900 text-slate-500">
                     <tr>
-                      <th class="px-3 py-2">{{ t('adminGroups.thModelId') }}</th>
-                      <th class="px-3 py-2">{{ t('adminGroups.thIn') }}</th>
-                      <th class="px-3 py-2">{{ t('adminGroups.thOut') }}</th>
-                      <th class="px-3 py-2">{{ t('adminGroups.thEn') }}</th>
+                      <th class="align-middle px-3 py-2">{{ t('adminGroups.thModelId') }}</th>
+                      <th class="align-middle px-3 py-2">{{ t('adminGroups.thIn') }}</th>
+                      <th class="align-middle px-3 py-2">{{ t('adminGroups.thOut') }}</th>
+                      <th class="align-middle px-3 py-2 text-center">{{ t('adminGroups.thEn') }}</th>
+                      <th class="align-middle px-3 py-2 text-center">{{ t('adminGroups.thNoBill') }}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-800">
                     <tr v-for="(r, idx) in ratesDraft" :key="idx">
-                      <td class="px-2 py-1">
-                        <input
-                          v-model="r.model_name"
-                          class="w-full min-w-[8rem] rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono"
-                        />
+                      <td class="align-middle px-2 py-2 max-w-[min(100%,22rem)] overflow-hidden">
+                        <div
+                          class="th-model-combobox relative max-w-full min-w-0"
+                          :ref="(el) => setComboboxRef(idx, el)"
+                        >
+                          <div class="flex max-w-full min-w-0 gap-1">
+                            <input
+                              v-model="r.model_name"
+                              class="th-input h-9 min-w-0 w-0 flex-1 py-1 font-mono text-xs leading-normal"
+                              autocomplete="off"
+                              spellcheck="false"
+                              :placeholder="t('adminGroups.modelIdPh')"
+                              @focus="focusModelSuggestRow(idx)"
+                              @input="scheduleSuggestLayout"
+                            />
+                            <button
+                              type="button"
+                              class="th-input flex h-9 w-9 min-w-9 shrink-0 items-center justify-center !w-9 !max-w-9 !px-0"
+                              :title="t('adminGroups.modelSuggestToggle')"
+                              :aria-expanded="openModelSuggestRow === idx"
+                              @mousedown.prevent
+                              @click="toggleModelSuggestRow(idx)"
+                            >
+                              <svg class="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path
+                                  fill-rule="evenodd"
+                                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                                  clip-rule="evenodd"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       </td>
-                      <td class="px-2 py-1">
+                      <td class="align-middle px-2 py-2">
                         <input
                           v-model.number="r.input_rate"
                           type="number"
                           step="0.01"
-                          class="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1"
+                          class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
                         />
                       </td>
-                      <td class="px-2 py-1">
+                      <td class="align-middle px-2 py-2">
                         <input
                           v-model.number="r.output_rate"
                           type="number"
                           step="0.01"
-                          class="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1"
+                          class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
                         />
                       </td>
-                      <td class="px-2 py-1">
-                        <input v-model="r.enabled" type="checkbox" />
+                      <td class="align-middle px-2 py-2 text-center">
+                        <input
+                          v-model="r.enabled"
+                          type="checkbox"
+                          class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
+                        />
+                      </td>
+                      <td class="align-middle px-2 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
+                          :checked="r.billable === false"
+                          :title="t('adminGroups.thNoBill')"
+                          @change="r.billable = !($event.target as HTMLInputElement).checked"
+                        />
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
+              <p
+                v-if="ratesFlashGid === g.id && ratesFlashMsg"
+                :id="`rates-flash-${g.id}`"
+                class="mt-3 rounded-lg border px-3 py-2 text-xs"
+                :class="ratesFlashIsError ? 'th-admin-flash--error' : 'th-admin-flash--success'"
+                role="status"
+                aria-live="polite"
+              >
+                {{ ratesFlashMsg }}
+              </p>
               <div class="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -727,6 +1080,31 @@ onMounted(load)
           </div>
         </div>
       </div>
+    </Teleport>
+    <Teleport to="body">
+      <ul
+        v-if="openModelSuggestRow !== null && !modelSuggestLoading"
+        class="th-model-combobox-list th-model-combobox-floating thin-scrollbar"
+        :style="modelSuggestPanelStyle"
+        role="listbox"
+        tabindex="-1"
+        @wheel.stop
+      >
+        <template v-if="filteredOpenModelSuggestIds.length">
+          <li
+            v-for="opt in filteredOpenModelSuggestIds"
+            :key="opt"
+            class="th-model-combobox-item"
+            role="option"
+            @mousedown.prevent="pickOpenModelSuggestId(opt)"
+          >
+            {{ opt }}
+          </li>
+        </template>
+        <li v-else class="th-model-combobox-item th-model-combobox-item--muted cursor-default">
+          {{ t('adminGroups.modelSuggestEmpty') }}
+        </li>
+      </ul>
     </Teleport>
   </div>
 </template>

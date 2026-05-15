@@ -327,6 +327,7 @@ var (
 		{Name: "input_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "output_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "billable", Type: field.TypeBool, Default: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "group_id", Type: field.TypeInt},
@@ -339,7 +340,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "group_model_rates_groups_group_model_rates",
-				Columns:    []*schema.Column{GroupModelRatesColumns[7]},
+				Columns:    []*schema.Column{GroupModelRatesColumns[8]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -348,7 +349,7 @@ var (
 			{
 				Name:    "groupmodelrate_group_id_model_name",
 				Unique:  true,
-				Columns: []*schema.Column{GroupModelRatesColumns[7], GroupModelRatesColumns[1]},
+				Columns: []*schema.Column{GroupModelRatesColumns[8], GroupModelRatesColumns[1]},
 			},
 			{
 				Name:    "groupmodelrate_model_name",

@@ -80,6 +80,11 @@ func Enabled(v bool) predicate.GroupModelRate {
 	return predicate.GroupModelRate(sql.FieldEQ(FieldEnabled, v))
 }
 
+// Billable applies equality check predicate on the "billable" field. It's identical to BillableEQ.
+func Billable(v bool) predicate.GroupModelRate {
+	return predicate.GroupModelRate(sql.FieldEQ(FieldBillable, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.GroupModelRate {
 	return predicate.GroupModelRate(sql.FieldEQ(FieldCreatedAt, v))
@@ -263,6 +268,16 @@ func EnabledEQ(v bool) predicate.GroupModelRate {
 // EnabledNEQ applies the NEQ predicate on the "enabled" field.
 func EnabledNEQ(v bool) predicate.GroupModelRate {
 	return predicate.GroupModelRate(sql.FieldNEQ(FieldEnabled, v))
+}
+
+// BillableEQ applies the EQ predicate on the "billable" field.
+func BillableEQ(v bool) predicate.GroupModelRate {
+	return predicate.GroupModelRate(sql.FieldEQ(FieldBillable, v))
+}
+
+// BillableNEQ applies the NEQ predicate on the "billable" field.
+func BillableNEQ(v bool) predicate.GroupModelRate {
+	return predicate.GroupModelRate(sql.FieldNEQ(FieldBillable, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

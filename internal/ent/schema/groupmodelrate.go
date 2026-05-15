@@ -20,6 +20,7 @@ func (GroupModelRate) Fields() []ent.Field {
 		field.Float("input_rate").Default(1),
 		field.Float("output_rate").Default(1),
 		field.Bool("enabled").Default(true),
+		field.Bool("billable").Default(true).Comment("false=该分组下此模型不计费"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

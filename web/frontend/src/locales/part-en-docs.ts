@@ -42,7 +42,7 @@ export default {
       'Admins configure channels (upstream base URL, auth, type, weight, priority, etc.). One model can map to multiple channels; the gateway routes per group policy. See “Smart routing” below.',
     cBill: 'Balance & billing',
     cBillD:
-      'Usage is charged against account balance per platform rules (conversion is deployment-specific, e.g. site.currency_quota_per_yuan). Insufficient balance may yield HTTP 402.',
+      'Usage is charged against account balance per platform rules (conversion is deployment-specific, e.g. site.currency_quota_per_yuan). Insufficient balance may yield HTTP 402. If the deployment or admins mark some models as no-bill (global list site.no_bill_models or per-group model rate rows), those calls cost 0 but may still appear in usage logs; an explicit billable group row overrides the global free list.',
     quickH2: 'Quick start',
     q1: 'Ensure the backend is running (see server.addr in configs/config.yaml, e.g. :8080) with database and Redis reachable.',
     q2before: 'On the',

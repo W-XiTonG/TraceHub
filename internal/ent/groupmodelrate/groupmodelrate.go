@@ -24,6 +24,8 @@ const (
 	FieldOutputRate = "output_rate"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
+	// FieldBillable holds the string denoting the billable field in the database.
+	FieldBillable = "billable"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -49,6 +51,7 @@ var Columns = []string{
 	FieldInputRate,
 	FieldOutputRate,
 	FieldEnabled,
+	FieldBillable,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -72,6 +75,8 @@ var (
 	DefaultOutputRate float64
 	// DefaultEnabled holds the default value on creation for the "enabled" field.
 	DefaultEnabled bool
+	// DefaultBillable holds the default value on creation for the "billable" field.
+	DefaultBillable bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -111,6 +116,11 @@ func ByOutputRate(opts ...sql.OrderTermOption) OrderOption {
 // ByEnabled orders the results by the enabled field.
 func ByEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEnabled, opts...).ToFunc()
+}
+
+// ByBillable orders the results by the billable field.
+func ByBillable(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBillable, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

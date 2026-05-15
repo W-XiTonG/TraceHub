@@ -28,6 +28,8 @@ type GroupModelRate struct {
 	OutputRate float64 `json:"output_rate,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
+	// false=该分组下此模型不计费
+	Billable bool `json:"billable,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -63,7 +65,7 @@ func (*GroupModelRate) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case groupmodelrate.FieldEnabled:
+		case groupmodelrate.FieldEnabled, groupmodelrate.FieldBillable:
 			values[i] = new(sql.NullBool)
 		case groupmodelrate.FieldInputRate, groupmodelrate.FieldOutputRate:
 			values[i] = new(sql.NullFloat64)
@@ -123,6 +125,12 @@ func (_m *GroupModelRate) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field enabled", values[i])
 			} else if value.Valid {
 				_m.Enabled = value.Bool
+			}
+		case groupmodelrate.FieldBillable:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field billable", values[i])
+			} else if value.Valid {
+				_m.Billable = value.Bool
 			}
 		case groupmodelrate.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -191,6 +199,9 @@ func (_m *GroupModelRate) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))
+	builder.WriteString(", ")
+	builder.WriteString("billable=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Billable))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

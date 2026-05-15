@@ -456,12 +456,16 @@ func init() {
 	groupmodelrateDescEnabled := groupmodelrateFields[4].Descriptor()
 	// groupmodelrate.DefaultEnabled holds the default value on creation for the enabled field.
 	groupmodelrate.DefaultEnabled = groupmodelrateDescEnabled.Default.(bool)
+	// groupmodelrateDescBillable is the schema descriptor for billable field.
+	groupmodelrateDescBillable := groupmodelrateFields[5].Descriptor()
+	// groupmodelrate.DefaultBillable holds the default value on creation for the billable field.
+	groupmodelrate.DefaultBillable = groupmodelrateDescBillable.Default.(bool)
 	// groupmodelrateDescCreatedAt is the schema descriptor for created_at field.
-	groupmodelrateDescCreatedAt := groupmodelrateFields[5].Descriptor()
+	groupmodelrateDescCreatedAt := groupmodelrateFields[6].Descriptor()
 	// groupmodelrate.DefaultCreatedAt holds the default value on creation for the created_at field.
 	groupmodelrate.DefaultCreatedAt = groupmodelrateDescCreatedAt.Default.(func() time.Time)
 	// groupmodelrateDescUpdatedAt is the schema descriptor for updated_at field.
-	groupmodelrateDescUpdatedAt := groupmodelrateFields[6].Descriptor()
+	groupmodelrateDescUpdatedAt := groupmodelrateFields[7].Descriptor()
 	// groupmodelrate.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	groupmodelrate.DefaultUpdatedAt = groupmodelrateDescUpdatedAt.Default.(func() time.Time)
 	// groupmodelrate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -83,6 +83,8 @@ type SiteConfig struct {
 	BrandUploadDir string `mapstructure:"brand_upload_dir"`
 	// RegisterPromoText 注册页与官网展示的推广说明（纯文本，可含换行）；空则不展示。
 	RegisterPromoText string `mapstructure:"register_promo_text"`
+	// NoBillModels 全局不计费模型 ID 列表（逻辑模型名）；分组 model_rates.billable 可覆盖。
+	NoBillModels []string `mapstructure:"no_bill_models"`
 }
 
 // SiteLoginCaptchaConfig 控制台登录人机校验（图形验证码）。
@@ -135,6 +137,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.login_captcha.enabled", true)
 	v.SetDefault("site.login_captcha.ttl_seconds", 300)
 	v.SetDefault("site.register_promo_text", "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。")
+	v.SetDefault("site.no_bill_models", []string{})
 	v.SetDefault("bootstrap.default_group_name", "基础分组")
 	v.SetDefault("email.smtp_port", 587)
 	v.SetDefault("email.starttls", true)

@@ -26,6 +26,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateAPIPublicBaseURL(value)
 	case SystemConfigKeyRegisterPromoText:
 		return ValidateRegisterPromoText(value)
+	case SystemConfigKeyNoBillModels:
+		return ValidateNoBillModelsJSON(value)
 	case SystemConfigKeyPublicContactJSON:
 		return ValidatePublicContactJSON(value)
 	case SystemConfigKeyUpstreamModelProbeEnabled:

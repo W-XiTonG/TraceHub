@@ -592,6 +592,24 @@ html[data-th-theme="paper"] .th-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
 }
 
+html[data-th-theme="dawn"] .th-model-combobox-list,
+html[data-th-theme="paper"] .th-model-combobox-list {
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14);
+}
+html[data-th-theme="dawn"] .th-model-combobox-item--muted,
+html[data-th-theme="paper"] .th-model-combobox-item--muted {
+  color: #64748b;
+}
+@media (hover: hover) {
+  html[data-th-theme="dawn"] .th-model-combobox-item:not(.th-model-combobox-item--muted):hover,
+  html[data-th-theme="paper"] .th-model-combobox-item:not(.th-model-combobox-item--muted):hover {
+    background: rgba(241, 245, 249, 0.95);
+  }
+}
+
 html[data-th-theme="dawn"] .th-chip,
 html[data-th-theme="paper"] .th-chip {
   background: rgba(255, 255, 255, 0.7);

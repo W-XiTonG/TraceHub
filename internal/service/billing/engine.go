@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/pkg/config"
+	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/service/balancealert"
 
 	"github.com/pkoukk/tiktoken-go"
@@ -16,7 +20,14 @@ import (
 type Engine struct {
 	Client *ent.Client
 	Alerts *balancealert.Notifier
+	Config *config.Config
+
+	noBillMu      sync.Mutex
+	noBillList    []string
+	noBillExpires time.Time
 }
+
+const noBillListCacheTTL = 60 * time.Second
 
 func (e *Engine) multipliers(ctx context.Context, u *ent.User, model string) (groupMul, userMul, inRate, outRate float64, err error) {
 	groupMul = 1
@@ -26,7 +37,7 @@ func (e *Engine) multipliers(ctx context.Context, u *ent.User, model string) (gr
 		userMul = u.RateMultiplier
 		if u.Edges.Group != nil {
 			groupMul = u.Edges.Group.RateMultiplier
-			if gmr := e.firstGroupModelRate(ctx, u.Edges.Group.ID, model); gmr != nil {
+			if gmr := e.lookupGroupModelRateRow(ctx, u.Edges.Group.ID, model); gmr != nil && gmr.Enabled {
 				inRate = gmr.InputRate
 				outRate = gmr.OutputRate
 			}
@@ -35,17 +46,15 @@ func (e *Engine) multipliers(ctx context.Context, u *ent.User, model string) (gr
 	return groupMul, userMul, inRate, outRate, nil
 }
 
-func (e *Engine) firstGroupModelRate(ctx context.Context, groupID int, model string) *ent.GroupModelRate {
+func (e *Engine) lookupGroupModelRateRow(ctx context.Context, groupID int, model string) *ent.GroupModelRate {
 	names := CandidateGroupModelRateNames(model)
 	if len(names) == 0 {
 		return nil
 	}
-	// 单次查询替代对每个候选依次 Only，避免未命中时多次顺序往返（预检+实扣会各调一次 multipliers）。
 	list, err := e.Client.GroupModelRate.Query().
 		Where(
 			groupmodelrate.GroupIDEQ(groupID),
 			groupmodelrate.ModelNameIn(names...),
-			groupmodelrate.Enabled(true),
 		).All(ctx)
 	if err != nil || len(list) == 0 {
 		return nil
@@ -60,6 +69,64 @@ func (e *Engine) firstGroupModelRate(ctx context.Context, groupID int, model str
 		}
 	}
 	return nil
+}
+
+func (e *Engine) modelBillable(ctx context.Context, u *ent.User, model string) bool {
+	if u != nil && u.Edges.Group != nil {
+		if gmr := e.lookupGroupModelRateRow(ctx, u.Edges.Group.ID, model); gmr != nil {
+			return gmr.Billable
+		}
+	}
+	return !modelMatchesNoBillList(model, e.cachedNoBillModels(ctx))
+}
+
+func modelMatchesNoBillList(model string, list []string) bool {
+	if len(list) == 0 {
+		return false
+	}
+	set := make(map[string]struct{}, len(list))
+	for _, id := range list {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			set[id] = struct{}{}
+		}
+	}
+	for _, name := range CandidateGroupModelRateNames(model) {
+		if _, ok := set[name]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Engine) cachedNoBillModels(ctx context.Context) []string {
+	if e.Client == nil {
+		return nil
+	}
+	cfg := e.Config
+	now := time.Now()
+	e.noBillMu.Lock()
+	if now.Before(e.noBillExpires) && e.noBillList != nil {
+		list := append([]string(nil), e.noBillList...)
+		e.noBillMu.Unlock()
+		return list
+	}
+	e.noBillMu.Unlock()
+
+	list := sitecfg.EffectiveNoBillModels(ctx, e.Client, cfg)
+	e.noBillMu.Lock()
+	e.noBillList = list
+	e.noBillExpires = now.Add(noBillListCacheTTL)
+	e.noBillMu.Unlock()
+	return list
+}
+
+// InvalidateNoBillModelsCache 管理端更新 site.no_bill_models 后调用。
+func (e *Engine) InvalidateNoBillModelsCache() {
+	e.noBillMu.Lock()
+	e.noBillList = nil
+	e.noBillExpires = time.Time{}
+	e.noBillMu.Unlock()
 }
 
 func (e *Engine) EstimateTokens(model string, promptText string) (int, error) {
@@ -89,6 +156,7 @@ func (e *Engine) ChargeWithPromptCache(ctx context.Context, u *ent.User, model s
 type ModelBillRates struct {
 	groupMul, userMul, inRate, outRate float64
 	in1k, out1k                       int64
+	Billable                         bool
 }
 
 // ModelBillRates 拉取该用户在指定 logical model 下的计价因子（与 Charge 一致）。
@@ -98,11 +166,18 @@ func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string) 
 	if err != nil {
 		return ModelBillRates{}, err
 	}
-	return ModelBillRates{groupMul: gm, userMul: um, inRate: ir, outRate: or, in1k: in1k, out1k: out1k}, nil
+	return ModelBillRates{
+		groupMul: gm, userMul: um, inRate: ir, outRate: or,
+		in1k: in1k, out1k: out1k,
+		Billable: e.modelBillable(ctx, u, model),
+	}, nil
 }
 
 // Cost 与 ChargeWithPromptCache 数值一致（含 cached prompt 分层与向上取整）。
 func (b ModelBillRates) Cost(promptTokens, completionTokens, cachedPromptTokens int) int64 {
+	if !b.Billable {
+		return 0
+	}
 	if cachedPromptTokens < 0 {
 		cachedPromptTokens = 0
 	}

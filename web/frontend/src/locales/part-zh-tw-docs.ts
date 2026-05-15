@@ -43,7 +43,7 @@ export default {
       '管理員在後台配置「渠道」（上游 Base URL、鑑權方式、類型、weight/priority 等）。同一 model 可綁定多條渠道；網關按分組策略選路並轉發。詳見下文「智能路由」。',
     cBill: '餘額与計费',
     cBillD:
-      '按平台规则从帳户餘額扣费（具体换算以部署配置为准，例如配置项 site.currency_quota_per_yuan）。餘額不足时，网关可能返回 HTTP 402。',
+      '按平台规则从帳戶餘額扣費（換算以部署配置為準，例如 site.currency_quota_per_yuan）。餘額不足時網關可能回 HTTP 402。若部署或管理員將部分模型設為不計費（全域 site.no_bill_models 或分組模型倍率），該類呼叫費用為 0，仍可能寫入用量日誌；分組側明確「計費」優先於全域免費清單。',
     quickH2: '快速开始',
     q1: '確認后端已启动（預設示例为监听 configs/config.yaml 中 server.addr，如 :8080），資料庫与 Redis 可用。',
     q2before: '在',
