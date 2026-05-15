@@ -272,6 +272,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/groups", adminhandler.ListGroups(opt.Client))
 	a.POST("/groups", adminhandler.CreateGroup(opt.Client))
 	a.PUT("/groups/:id", adminhandler.UpdateGroup(opt.Client))
+	a.GET("/groups/:id/model-overlaps", adminhandler.GroupModelOverlaps(opt.Client))
 	a.DELETE("/groups/:id", adminhandler.DeleteGroup(opt.Client))
 	a.GET("/groups/:id/model-rates", adminhandler.ListGroupModelRates(opt.Client))
 	a.PUT("/groups/:id/model-rates", adminhandler.PutGroupModelRates(opt.Client))

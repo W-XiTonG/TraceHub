@@ -6,6 +6,7 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/gateway/router"
 	"tracehub/internal/pkg/sitecfg"
 )
 
@@ -18,17 +19,21 @@ func validateGroupModelRouting(ctx context.Context, client *ent.Client, groupID 
 	if err != nil {
 		return err
 	}
-	allowed := make(map[int]struct{}, len(chs))
+	chByID := make(map[int]*ent.Channel, len(chs))
 	for _, ch := range chs {
-		allowed[ch.ID] = struct{}{}
+		chByID[ch.ID] = ch
 	}
 	for model, ids := range modelRouting {
 		if model == "" {
 			return fmt.Errorf("model_routing 模型名不能为空")
 		}
 		for _, id := range ids {
-			if _, ok := allowed[int(id)]; !ok {
+			ch, ok := chByID[int(id)]
+			if !ok {
 				return fmt.Errorf("model_routing[%s] 含不属于该分组的渠道 ID %d", model, id)
+			}
+			if _, ok := router.MatchModelOnChannel(ch, model); !ok {
+				return fmt.Errorf("model_routing[%s] 渠道 %d 未声明该模型", model, id)
 			}
 		}
 	}

@@ -331,6 +331,7 @@ onUnmounted(() => {
               <li>{{ t('docs.routingLi1') }}</li>
               <li>{{ t('docs.routingLi2') }}</li>
               <li>{{ t('docs.routingLi3') }}</li>
+              <li>{{ t('docs.routingLi3b') }}</li>
               <li>{{ t('docs.routingLi4') }}</li>
               <li>{{ t('docs.routingLi5') }}</li>
             </ul>
@@ -341,6 +342,7 @@ onUnmounted(() => {
               <li>{{ t('docs.routingFlow1') }}</li>
               <li>{{ t('docs.routingFlow2') }}</li>
               <li>{{ t('docs.routingFlow3') }}</li>
+              <li>{{ t('docs.routingFlow3b') }}</li>
               <li>{{ t('docs.routingFlow4') }}</li>
               <li>{{ t('docs.routingFlow5') }}</li>
             </ol>

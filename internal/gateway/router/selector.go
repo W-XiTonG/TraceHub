@@ -107,6 +107,11 @@ func SelectChannelExcluding(ctx context.Context, rdb *redis.Client, client *ent.
 		return nil, fmt.Errorf("没有可用渠道支持模型 %s", requestedModel)
 	}
 
+	candidates, err = filterCandidatesByModelRouting(candidates, cfg.ModelRouting, requestedModel)
+	if err != nil {
+		return nil, err
+	}
+
 	if rdb != nil && stickySession != "" {
 		key := stickyKey(userID, stickySession)
 		if idStr, err := rdb.Get(ctx, key).Result(); err == nil && idStr != "" {

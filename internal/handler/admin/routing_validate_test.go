@@ -25,3 +25,23 @@ func TestValidateGroupModelRouting_rejectsForeignChannel(t *testing.T) {
 		t.Fatal("expected validation error")
 	}
 }
+
+func TestValidateGroupModelRouting_rejectsUndeclaredModel(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:valmr2?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+	ctx := context.Background()
+
+	g, _ := client.Group.Create().SetName("g1").Save(ctx)
+	ch, _ := client.Channel.Create().
+		SetGroupID(g.ID).
+		SetChannelType("openai").
+		SetModels([]string{"other-model"}).
+		Save(ctx)
+
+	err := validateGroupModelRouting(ctx, client, g.ID, map[string][]int64{
+		"gpt-4o": {int64(ch.ID)},
+	})
+	if err == nil {
+		t.Fatal("expected validation error for undeclared model")
+	}
+}

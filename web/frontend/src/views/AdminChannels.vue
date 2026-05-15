@@ -380,26 +380,26 @@ function modelProbeBadge(ch: Ch, modelId: string): { text: string; title: string
     return {
       text: t('adminChannels.probeUnknown'),
       title: chErr,
-      cls: 'bg-amber-950/50 text-amber-300/90 ring-amber-800/40',
+      cls: 'th-admin-probe--warn',
     }
   }
   if (!row) {
-    return { text: t('adminChannels.probeUnknown'), title: '', cls: 'bg-slate-800/80 text-slate-500 ring-slate-700/60' }
+    return { text: t('adminChannels.probeUnknown'), title: '', cls: 'th-admin-probe--muted' }
   }
   if (typeof row.error === 'string' && row.error.trim()) {
-    return { text: t('adminChannels.probeErr'), title: row.error, cls: 'bg-amber-950/50 text-amber-300 ring-amber-800/40' }
+    return { text: t('adminChannels.probeErr'), title: row.error, cls: 'th-admin-probe--warn' }
   }
   const inList = Boolean(row.in_upstream_list)
   const checked = typeof row.checked_at === 'string' ? row.checked_at.trim() : ''
   const titleBase = checked ? t('adminChannels.probeTitleChecked', { t: checked }) : ''
   const disclaimer = t('adminSystem.hintUpstreamProbeListDisclaimer')
   if (inList) {
-    return { text: t('adminChannels.probeInList'), title: titleBase, cls: 'bg-emerald-950/40 text-emerald-300 ring-emerald-800/40' }
+    return { text: t('adminChannels.probeInList'), title: titleBase, cls: 'th-admin-probe--ok' }
   }
   return {
     text: t('adminChannels.probeNotInList'),
     title: titleBase ? `${titleBase}\n${disclaimer}` : disclaimer,
-    cls: 'bg-rose-950/35 text-rose-300/95 ring-rose-900/40',
+    cls: 'th-admin-probe--fail',
   }
 }
 
@@ -707,7 +707,7 @@ async function probeChannelNow(ch: Ch) {
                   >
                     <span class="truncate font-mono text-[11px] text-slate-300" :title="m">{{ m }}</span>
                     <span
-                      class="inline-flex max-w-full shrink-0 self-start truncate rounded px-1 py-px text-[9px] font-semibold ring-1"
+                      class="inline-flex max-w-full shrink-0 self-start truncate rounded px-1 py-px text-[9px] font-semibold"
                       :class="modelProbeBadge(ch, m).cls"
                       :title="modelProbeBadge(ch, m).title"
                     >

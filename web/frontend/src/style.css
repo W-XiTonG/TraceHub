@@ -291,6 +291,28 @@
   color: var(--th-admin-flash-error-fg);
 }
 
+/* 管理后台 · 渠道模型上游探测小标签（深浅色共用变量） */
+.th-admin-probe--ok {
+  border: 1px solid var(--th-admin-flash-success-border);
+  background-color: var(--th-admin-flash-success-bg);
+  color: var(--th-admin-flash-success-fg);
+}
+.th-admin-probe--fail {
+  border: 1px solid var(--th-admin-flash-error-border);
+  background-color: var(--th-admin-flash-error-bg);
+  color: var(--th-admin-flash-error-fg);
+}
+.th-admin-probe--warn {
+  border: 1px solid var(--th-badge-http-4xx-border);
+  background-color: var(--th-badge-http-4xx-bg);
+  color: var(--th-badge-http-4xx-fg);
+}
+.th-admin-probe--muted {
+  border: 1px solid var(--th-badge-disabled-border);
+  background-color: var(--th-badge-disabled-bg);
+  color: var(--th-badge-disabled-fg);
+}
+
 /* 兑换页：成功卡片与额度数字（变量由 themes-light 在 dawn/paper 下覆写） */
 .th-redeem-result {
   border-width: 1px;

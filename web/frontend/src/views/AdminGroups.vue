@@ -22,6 +22,14 @@ type GroupRow = {
 
 type ModelRoutingRow = { model: string; order: string }
 
+type OverlapChannel = { id: number; name: string; healthy: boolean }
+
+type ModelOverlapItem = {
+  model: string
+  channels: OverlapChannel[]
+  pinned?: number[]
+}
+
 type ChBrief = { id: number; group_id: number; channel_name?: string }
 
 type RateRow = {
@@ -35,6 +43,21 @@ type RateRow = {
 const groups = ref<GroupRow[]>([])
 const allChannels = ref<ChBrief[]>([])
 const msg = ref('')
+const msgIsError = ref(false)
+
+function clearFlash() {
+  msg.value = ''
+}
+
+function flashSuccess(text: string) {
+  msgIsError.value = false
+  msg.value = text
+}
+
+function flashError(e: unknown) {
+  msgIsError.value = true
+  msg.value = httpErr(e)
+}
 const expandedId = ref<number | null>(null)
 const ratesByGroup = ref<Record<number, RateRow[]>>({})
 const ratesDraft = ref<RateRow[]>([])
@@ -66,6 +89,11 @@ const editForm = reactive({
   modelRoutingRows: [] as ModelRoutingRow[],
 })
 
+const overlaps = ref<ModelOverlapItem[]>([])
+const overlapsLoading = ref(false)
+const overlapPins = reactive<Record<string, number | ''>>({})
+const showAdvancedModelRouting = ref(false)
+
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
     const d = e.response.data as { message?: string }
@@ -75,7 +103,7 @@ function httpErr(e: unknown): string {
 }
 
 async function load() {
-  msg.value = ''
+  clearFlash()
   try {
     const [gRes, cRes] = await Promise.all([
       http.get<Envelope<{ items: GroupRow[] }>>('/api/admin/groups'),
@@ -85,7 +113,7 @@ async function load() {
     groups.value = gRes.data.data.items || []
     if (cRes.data.code === 0) allChannels.value = cRes.data.data.items || []
   } catch (e: unknown) {
-    msg.value = httpErr(e)
+    flashError(e)
   }
 }
 
@@ -107,17 +135,85 @@ function modelRoutingFromRows(rows: ModelRoutingRow[]): Record<string, number[]>
   return out
 }
 
-function modelRoutingToRows(mr?: Record<string, number[]>): ModelRoutingRow[] {
+function modelRoutingToRows(mr?: Record<string, number[]>, excludeModels?: Set<string>): ModelRoutingRow[] {
   if (!mr) return []
-  return Object.entries(mr).map(([model, ids]) => ({
-    model,
-    order: (ids || []).join(','),
-  }))
+  return Object.entries(mr)
+    .filter(([model]) => !excludeModels?.has(model))
+    .map(([model, ids]) => ({
+      model,
+      order: (ids || []).join(','),
+    }))
+}
+
+function overlapModelSet(items: ModelOverlapItem[]): Set<string> {
+  return new Set(items.map((it) => it.model))
+}
+
+async function loadOverlaps(groupId: number, mr?: Record<string, number[]>) {
+  overlapsLoading.value = true
+  overlaps.value = []
+  for (const k of Object.keys(overlapPins)) {
+    delete overlapPins[k]
+  }
+  try {
+    const { data } = await http.get<Envelope<{ items: ModelOverlapItem[] }>>(
+      `/api/admin/groups/${groupId}/model-overlaps`,
+    )
+    if (data.code !== 0) throw new Error(data.message || t('adminGroups.loadOverlapsFail'))
+    overlaps.value = data.data.items || []
+    const excl = overlapModelSet(overlaps.value)
+    for (const it of overlaps.value) {
+      const pin = it.pinned?.[0]
+      overlapPins[it.model] = pin && pin > 0 ? pin : ''
+    }
+    editForm.modelRoutingRows = modelRoutingToRows(mr, excl)
+  } catch (e: unknown) {
+    overlaps.value = []
+    editForm.modelRoutingRows = modelRoutingToRows(mr)
+    flashError(e)
+  } finally {
+    overlapsLoading.value = false
+  }
+}
+
+function buildModelRoutingForSave(): Record<string, number[]> {
+  const out: Record<string, number[]> = {}
+  for (const it of overlaps.value) {
+    const pin = overlapPins[it.model]
+    if (typeof pin === 'number' && pin > 0) {
+      out[it.model] = [pin]
+    }
+  }
+  const advanced = modelRoutingFromRows(editForm.modelRoutingRows)
+  for (const [model, ids] of Object.entries(advanced)) {
+    if (!ids.length) continue
+    const existing = out[model]
+    if (existing) {
+      const seen = new Set(existing)
+      for (const id of ids) {
+        if (!seen.has(id)) {
+          existing.push(id)
+          seen.add(id)
+        }
+      }
+      out[model] = existing
+    } else {
+      out[model] = ids
+    }
+  }
+  return out
+}
+
+function overlapChannelLabel(ch: OverlapChannel): string {
+  const name = (ch.name || '').trim()
+  const health = ch.healthy ? '' : ` (${t('adminGroups.channelUnhealthy')})`
+  return name ? `#${ch.id} ${name}${health}` : `#${ch.id}${health}`
 }
 
 async function createGroup() {
-  msg.value = ''
+  clearFlash()
   if (!createForm.name.trim()) {
+    msgIsError.value = true
     msg.value = t('adminGroups.nameRequired')
     return
   }
@@ -137,9 +233,9 @@ async function createGroup() {
     createForm.default_model = ''
     createForm.enabled = true
     await load()
-    msg.value = t('adminGroups.created')
+    flashSuccess(t('adminGroups.created'))
   } catch (e: unknown) {
-    msg.value = httpErr(e)
+    flashError(e)
   }
 }
 
@@ -157,8 +253,10 @@ function openEdit(g: GroupRow) {
   editForm.failoverEnabled = Boolean(opts.failover_enabled)
   editForm.failoverMaxAttempts = Number(opts.failover_max_attempts) || 2
   editForm.stickyEnabled = opts.sticky_enabled !== false
-  editForm.modelRoutingRows = modelRoutingToRows(g.model_routing)
+  editForm.modelRoutingRows = []
+  showAdvancedModelRouting.value = false
   editOpen.value = true
+  void loadOverlaps(g.id, g.model_routing)
 }
 
 function addModelRoutingRow() {
@@ -166,7 +264,7 @@ function addModelRoutingRow() {
 }
 
 async function saveEdit() {
-  msg.value = ''
+  clearFlash()
   try {
     const body: Record<string, unknown> = {
       name: editForm.name.trim(),
@@ -186,28 +284,26 @@ async function saveEdit() {
     } else {
       body.routing_options = {}
     }
-    if (editForm.routingStrategy === 'fixed_order') {
-      body.model_routing = modelRoutingFromRows(editForm.modelRoutingRows)
-    }
+    body.model_routing = buildModelRoutingForSave()
     await http.put(`/api/admin/groups/${editForm.id}`, body)
     editOpen.value = false
     await load()
-    msg.value = t('adminGroups.saved')
+    flashSuccess(t('adminGroups.saved'))
   } catch (e: unknown) {
-    msg.value = httpErr(e)
+    flashError(e)
   }
 }
 
 async function remove(g: GroupRow) {
   if (!confirm(t('adminGroups.confirmDelete', { name: g.name }))) return
-  msg.value = ''
+  clearFlash()
   try {
     await http.delete(`/api/admin/groups/${g.id}`)
     await load()
     if (expandedId.value === g.id) expandedId.value = null
-    msg.value = t('adminGroups.deleted')
+    flashSuccess(t('adminGroups.deleted'))
   } catch (e: unknown) {
-    msg.value = httpErr(e)
+    flashError(e)
   }
 }
 
@@ -230,7 +326,7 @@ async function toggleExpand(id: number) {
   try {
     await reloadRatesDraft(id)
   } catch (e: unknown) {
-    msg.value = httpErr(e)
+    flashError(e)
     expandedId.value = null
   } finally {
     ratesLoading.value = false
@@ -248,7 +344,7 @@ function addRateDraft() {
 }
 
 async function saveRates(gid: number) {
-  msg.value = ''
+  clearFlash()
   const rates = ratesDraft.value
     .filter((r) => r.model_name.trim())
     .map((r) => ({
@@ -260,9 +356,9 @@ async function saveRates(gid: number) {
   try {
     await http.put(`/api/admin/groups/${gid}/model-rates`, { rates })
     await reloadRatesDraft(gid)
-    msg.value = t('adminGroups.ratesSaved')
+    flashSuccess(t('adminGroups.ratesSaved'))
   } catch (e: unknown) {
-    msg.value = httpErr(e)
+    flashError(e)
   }
 }
 
@@ -276,7 +372,13 @@ onMounted(load)
       <p class="mt-1 text-sm text-slate-500">{{ t('adminGroups.intro') }}</p>
     </header>
 
-    <p v-if="msg" class="rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm text-slate-300">{{ msg }}</p>
+    <p
+      v-if="msg"
+      class="rounded-lg border px-4 py-2 text-sm"
+      :class="msgIsError ? 'th-admin-flash--error' : 'th-admin-flash--success'"
+    >
+      {{ msg }}
+    </p>
 
     <section class="rounded-2xl border border-slate-800/90 bg-gradient-to-b from-slate-900/90 to-slate-950 p-6 shadow-xl ring-1 ring-white/5">
       <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">{{ t('adminGroups.createSection') }}</h2>
@@ -491,7 +593,7 @@ onMounted(load)
         @click.self="editOpen = false"
       >
         <div
-          class="max-h-[90vh] w-full max-w-lg cursor-default overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
+          class="max-h-[90vh] w-full max-w-2xl cursor-default overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"
           role="dialog"
           aria-modal="true"
         >
@@ -552,14 +654,62 @@ onMounted(load)
                   {{ t('adminGroups.lblSticky') }}
                 </label>
               </div>
-              <div v-if="editForm.routingStrategy === 'fixed_order'" class="space-y-2">
-                <p class="text-xs text-slate-500">{{ t('adminGroups.modelRoutingHint') }}</p>
-                <div v-for="(row, idx) in editForm.modelRoutingRows" :key="idx" class="grid gap-2 sm:grid-cols-2">
-                  <input v-model="row.model" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs" :placeholder="t('adminGroups.phModelId')" />
-                  <input v-model="row.order" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs" :placeholder="t('adminGroups.phChannelOrder')" />
+              <div class="mt-4 space-y-2 border-t border-slate-800 pt-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.secModelPin') }}</p>
+                <p class="text-xs text-slate-500">{{ t('adminGroups.modelPinHint') }}</p>
+                <p v-if="overlapsLoading" class="text-xs text-slate-600">{{ t('adminGroups.loadingOverlaps') }}</p>
+                <p v-else-if="overlaps.length === 0" class="text-xs text-slate-600">{{ t('adminGroups.noOverlaps') }}</p>
+                <div v-else class="overflow-x-auto rounded-lg border border-slate-800">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-950 text-slate-500">
+                      <tr>
+                        <th class="px-2 py-2">{{ t('adminGroups.thOverlapModel') }}</th>
+                        <th class="px-2 py-2">{{ t('adminGroups.thOverlapChannels') }}</th>
+                        <th class="px-2 py-2">{{ t('adminGroups.thOverlapPin') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                      <tr v-for="it in overlaps" :key="it.model">
+                        <td class="px-2 py-2 font-mono text-slate-300">{{ it.model }}</td>
+                        <td class="px-2 py-2 text-slate-400">
+                          <span v-for="(ch, ci) in it.channels" :key="ch.id">
+                            <span v-if="ci > 0"> · </span>
+                            <span :class="ch.healthy ? '' : 'text-amber-500/90'">{{ overlapChannelLabel(ch) }}</span>
+                          </span>
+                        </td>
+                        <td class="px-2 py-2">
+                          <select
+                            v-model="overlapPins[it.model]"
+                            class="w-full min-w-[10rem] rounded border border-slate-700 bg-slate-950 px-2 py-1"
+                          >
+                            <option value="">{{ t('adminGroups.pinInherit') }}</option>
+                            <option v-for="ch in it.channels" :key="ch.id" :value="ch.id">
+                              {{ overlapChannelLabel(ch) }}
+                            </option>
+                          </select>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-                <button type="button" class="text-xs text-amber-400 hover:underline" @click="addModelRoutingRow">{{ t('adminGroups.addModelRoutingRow') }}</button>
-                <p class="text-[11px] text-slate-600">{{ t('adminGroups.channelIdsHint', { ids: channelsForGroup(editForm.id).map((c) => c.id).join(', ') || '—' }) }}</p>
+              </div>
+              <div class="mt-3 space-y-2">
+                <button
+                  type="button"
+                  class="text-xs text-amber-400 hover:underline"
+                  @click="showAdvancedModelRouting = !showAdvancedModelRouting"
+                >
+                  {{ showAdvancedModelRouting ? t('adminGroups.hideAdvancedRouting') : t('adminGroups.showAdvancedRouting') }}
+                </button>
+                <div v-if="showAdvancedModelRouting" class="space-y-2">
+                  <p class="text-xs text-slate-500">{{ t('adminGroups.modelRoutingHint') }}</p>
+                  <div v-for="(row, idx) in editForm.modelRoutingRows" :key="idx" class="grid gap-2 sm:grid-cols-2">
+                    <input v-model="row.model" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs" :placeholder="t('adminGroups.phModelId')" />
+                    <input v-model="row.order" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs" :placeholder="t('adminGroups.phChannelOrder')" />
+                  </div>
+                  <button type="button" class="text-xs text-amber-400 hover:underline" @click="addModelRoutingRow">{{ t('adminGroups.addModelRoutingRow') }}</button>
+                  <p class="text-[11px] text-slate-600">{{ t('adminGroups.channelIdsHint', { ids: channelsForGroup(editForm.id).map((c) => c.id).join(', ') || '—' }) }}</p>
+                </div>
               </div>
             </div>
           </div>
