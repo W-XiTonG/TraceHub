@@ -2249,6 +2249,28 @@
   transform: rotate(180deg);
 }
 
+/* 可用模型页 · 模型类型标签（与「服务登记」胶囊区分；dawn/paper 在 themes-light.css 覆写为深字浅底） */
+.th-model-kind-pill {
+  box-sizing: border-box;
+  display: inline-flex;
+  max-width: 100%;
+  flex-shrink: 0;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  background: linear-gradient(
+    145deg,
+    rgba(76, 29, 149, 0.4) 0%,
+    rgba(15, 23, 42, 0.52) 100%
+  );
+  color: rgba(237, 233, 254, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 /* 试玩模型下拉：路由健康 + 服务登记共用胶囊壳（色板由 th-models-upstream-pill--* 提供） */
 .th-pg-model-picker__meta-pill {
   box-sizing: border-box;
@@ -2270,11 +2292,26 @@
     filter 0.15s ease,
     box-shadow 0.15s ease;
 }
+.th-pg-model-picker__kind-pill {
+  max-width: 7.5rem;
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  background: linear-gradient(
+    145deg,
+    rgba(76, 29, 149, 0.42) 0%,
+    rgba(15, 23, 42, 0.55) 100%
+  );
+  color: rgba(237, 233, 254, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
 .th-pg-model-picker__trigger .th-pg-model-picker__meta-pill {
   max-width: min(9rem, 38vw);
 }
 .th-pg-model-picker__option:hover .th-pg-model-picker__meta-pill,
 .th-pg-model-picker__option:focus-visible .th-pg-model-picker__meta-pill {
+  filter: brightness(1.08);
+}
+.th-pg-model-picker__option:hover .th-pg-model-picker__kind-pill,
+.th-pg-model-picker__option:focus-visible .th-pg-model-picker__kind-pill {
   filter: brightness(1.08);
 }
 

@@ -10,6 +10,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/service/modelcatalog"
 
 	"github.com/gin-gonic/gin"
@@ -314,6 +315,7 @@ func ListModelCatalogEntries(client *ent.Client) gin.HandlerFunc {
 				"owned_by":      e.OwnedBy,
 				"description":   e.Description,
 				"metadata":      e.Metadata,
+				"admin_labels": e.AdminLabels,
 				"source_id":     e.SourceID,
 				"visible":       e.Visible,
 				"enabled":       e.Enabled,
@@ -334,10 +336,11 @@ func UpdateModelCatalogEntry(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		var req struct {
-			DisplayName *string `json:"display_name"`
-			Description *string `json:"description"`
-			Visible     *bool   `json:"visible"`
-			Enabled     *bool   `json:"enabled"`
+			DisplayName *string   `json:"display_name"`
+			Description *string   `json:"description"`
+			Visible     *bool     `json:"visible"`
+			Enabled     *bool     `json:"enabled"`
+			AdminLabels *[]string `json:"admin_labels"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -361,6 +364,18 @@ func UpdateModelCatalogEntry(client *ent.Client) gin.HandlerFunc {
 		}
 		if req.Enabled != nil {
 			up.SetEnabled(*req.Enabled)
+		}
+		if req.AdminLabels != nil {
+			norm, err := modelkind.NormalizeAdminLabels(*req.AdminLabels)
+			if err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+			if len(norm) == 0 {
+				up.ClearAdminLabels()
+			} else {
+				up.SetAdminLabels(norm)
+			}
 		}
 		if err := up.Exec(ctx); err != nil {
 			httpx.ServerError(c, "更新失败")

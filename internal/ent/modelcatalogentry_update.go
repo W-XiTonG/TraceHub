@@ -13,6 +13,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 )
 
@@ -146,6 +147,24 @@ func (_u *ModelCatalogEntryUpdate) SetMetadata(v map[string]interface{}) *ModelC
 // ClearMetadata clears the value of the "metadata" field.
 func (_u *ModelCatalogEntryUpdate) ClearMetadata() *ModelCatalogEntryUpdate {
 	_u.mutation.ClearMetadata()
+	return _u
+}
+
+// SetAdminLabels sets the "admin_labels" field.
+func (_u *ModelCatalogEntryUpdate) SetAdminLabels(v []string) *ModelCatalogEntryUpdate {
+	_u.mutation.SetAdminLabels(v)
+	return _u
+}
+
+// AppendAdminLabels appends value to the "admin_labels" field.
+func (_u *ModelCatalogEntryUpdate) AppendAdminLabels(v []string) *ModelCatalogEntryUpdate {
+	_u.mutation.AppendAdminLabels(v)
+	return _u
+}
+
+// ClearAdminLabels clears the value of the "admin_labels" field.
+func (_u *ModelCatalogEntryUpdate) ClearAdminLabels() *ModelCatalogEntryUpdate {
+	_u.mutation.ClearAdminLabels()
 	return _u
 }
 
@@ -321,6 +340,17 @@ func (_u *ModelCatalogEntryUpdate) sqlSave(ctx context.Context) (_node int, err 
 	}
 	if _u.mutation.MetadataCleared() {
 		_spec.ClearField(modelcatalogentry.FieldMetadata, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AdminLabels(); ok {
+		_spec.SetField(modelcatalogentry.FieldAdminLabels, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAdminLabels(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, modelcatalogentry.FieldAdminLabels, value)
+		})
+	}
+	if _u.mutation.AdminLabelsCleared() {
+		_spec.ClearField(modelcatalogentry.FieldAdminLabels, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Visible(); ok {
 		_spec.SetField(modelcatalogentry.FieldVisible, field.TypeBool, value)
@@ -503,6 +533,24 @@ func (_u *ModelCatalogEntryUpdateOne) SetMetadata(v map[string]interface{}) *Mod
 // ClearMetadata clears the value of the "metadata" field.
 func (_u *ModelCatalogEntryUpdateOne) ClearMetadata() *ModelCatalogEntryUpdateOne {
 	_u.mutation.ClearMetadata()
+	return _u
+}
+
+// SetAdminLabels sets the "admin_labels" field.
+func (_u *ModelCatalogEntryUpdateOne) SetAdminLabels(v []string) *ModelCatalogEntryUpdateOne {
+	_u.mutation.SetAdminLabels(v)
+	return _u
+}
+
+// AppendAdminLabels appends value to the "admin_labels" field.
+func (_u *ModelCatalogEntryUpdateOne) AppendAdminLabels(v []string) *ModelCatalogEntryUpdateOne {
+	_u.mutation.AppendAdminLabels(v)
+	return _u
+}
+
+// ClearAdminLabels clears the value of the "admin_labels" field.
+func (_u *ModelCatalogEntryUpdateOne) ClearAdminLabels() *ModelCatalogEntryUpdateOne {
+	_u.mutation.ClearAdminLabels()
 	return _u
 }
 
@@ -708,6 +756,17 @@ func (_u *ModelCatalogEntryUpdateOne) sqlSave(ctx context.Context) (_node *Model
 	}
 	if _u.mutation.MetadataCleared() {
 		_spec.ClearField(modelcatalogentry.FieldMetadata, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.AdminLabels(); ok {
+		_spec.SetField(modelcatalogentry.FieldAdminLabels, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAdminLabels(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, modelcatalogentry.FieldAdminLabels, value)
+		})
+	}
+	if _u.mutation.AdminLabelsCleared() {
+		_spec.ClearField(modelcatalogentry.FieldAdminLabels, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Visible(); ok {
 		_spec.SetField(modelcatalogentry.FieldVisible, field.TypeBool, value)

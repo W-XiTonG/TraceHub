@@ -33,6 +33,8 @@ type ModelCatalogEntry struct {
 	SourceID int `json:"source_id,omitempty"`
 	// Metadata holds the value of the "metadata" field.
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	// 后台配置的标签，多值；同步上游不覆盖
+	AdminLabels []string `json:"admin_labels,omitempty"`
 	// 在内部模型市场中展示
 	Visible bool `json:"visible,omitempty"`
 	// Enabled holds the value of the "enabled" field.
@@ -74,7 +76,7 @@ func (*ModelCatalogEntry) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case modelcatalogentry.FieldMetadata:
+		case modelcatalogentry.FieldMetadata, modelcatalogentry.FieldAdminLabels:
 			values[i] = new([]byte)
 		case modelcatalogentry.FieldVisible, modelcatalogentry.FieldEnabled:
 			values[i] = new(sql.NullBool)
@@ -147,6 +149,14 @@ func (_m *ModelCatalogEntry) assignValues(columns []string, values []any) error 
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.Metadata); err != nil {
 					return fmt.Errorf("unmarshal field metadata: %w", err)
+				}
+			}
+		case modelcatalogentry.FieldAdminLabels:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field admin_labels", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.AdminLabels); err != nil {
+					return fmt.Errorf("unmarshal field admin_labels: %w", err)
 				}
 			}
 		case modelcatalogentry.FieldVisible:
@@ -240,6 +250,9 @@ func (_m *ModelCatalogEntry) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("metadata=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Metadata))
+	builder.WriteString(", ")
+	builder.WriteString("admin_labels=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AdminLabels))
 	builder.WriteString(", ")
 	builder.WriteString("visible=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Visible))

@@ -31,6 +31,7 @@ type Entry = {
   visible: boolean
   enabled: boolean
   synced_at?: string
+  admin_labels?: string[]
 }
 
 type Ch = { id: number; channel_name: string; channel_type: string }
@@ -62,7 +63,15 @@ const editForm = reactive({
   description: '',
   visible: true,
   enabled: true,
+  admin_labels_text: '',
 })
+
+function parseAdminLabelsInput(raw: string): string[] {
+  return raw
+    .split(/[,，;；\n\r]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
 
 async function loadSources() {
   const { data } = await http.get<Envelope<{ items: Source[] }>>('/api/admin/model-catalog/sources')
@@ -134,18 +143,27 @@ function openEdit(e: Entry) {
   editForm.description = e.description || ''
   editForm.visible = e.visible
   editForm.enabled = e.enabled
+  editForm.admin_labels_text = (e.admin_labels ?? []).join(', ')
 }
 
 async function saveEntry() {
   if (!editingEntry.value) return
-  await http.put(`/api/admin/model-catalog/entries/${editingEntry.value.id}`, {
-    display_name: editForm.display_name,
-    description: editForm.description || undefined,
-    visible: editForm.visible,
-    enabled: editForm.enabled,
-  })
-  editingEntry.value = null
-  await loadEntries()
+  err.value = ''
+  msg.value = ''
+  try {
+    await http.put(`/api/admin/model-catalog/entries/${editingEntry.value.id}`, {
+      display_name: editForm.display_name,
+      description: editForm.description || undefined,
+      visible: editForm.visible,
+      enabled: editForm.enabled,
+      admin_labels: parseAdminLabelsInput(editForm.admin_labels_text),
+    })
+    editingEntry.value = null
+    await loadEntries()
+    msg.value = t('adminMarket.entrySaved')
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : t('adminMarket.saveFail')
+  }
 }
 
 async function removeEntry(id: number) {
@@ -282,6 +300,7 @@ onMounted(async () => {
           <tr>
             <th class="pb-2">{{ t('adminMarket.thModelId') }}</th>
             <th class="pb-2">{{ t('adminMarket.thDisplay') }}</th>
+            <th class="pb-2">{{ t('adminMarket.thLabels') }}</th>
             <th class="pb-2">{{ t('adminMarket.thProvider') }}</th>
             <th class="pb-2">{{ t('adminMarket.thVisible') }}</th>
             <th class="pb-2">{{ t('adminMarket.thEnabled') }}</th>
@@ -292,6 +311,17 @@ onMounted(async () => {
           <tr v-for="e in entries" :key="e.id">
             <td class="py-2 font-mono text-xs">{{ e.model_id }}</td>
             <td class="py-2">{{ e.display_name }}</td>
+            <td class="max-w-[14rem] py-2 text-xs text-slate-400">
+              <span v-if="e.admin_labels?.length" class="flex flex-wrap gap-1">
+                <span
+                  v-for="lab in e.admin_labels"
+                  :key="lab"
+                  class="th-model-kind-pill"
+                  >{{ lab }}</span
+                >
+              </span>
+              <span v-else class="text-slate-600">—</span>
+            </td>
             <td class="py-2 text-xs text-slate-400">{{ e.provider_slug }}</td>
             <td class="py-2">{{ e.visible ? t('adminCommon.yes') : t('adminCommon.no') }}</td>
             <td class="py-2">{{ e.enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</td>
@@ -336,6 +366,16 @@ onMounted(async () => {
         <label class="mb-3 flex flex-col gap-1">
           <span class="text-slate-500">{{ t('adminMarket.lblDisplayName') }}</span>
           <input v-model="editForm.display_name" class="rounded border border-slate-700 bg-slate-950 px-2 py-1" />
+        </label>
+        <label class="mb-3 flex flex-col gap-1">
+          <span class="text-slate-500">{{ t('adminMarket.lblAdminLabels') }}</span>
+          <textarea
+            v-model="editForm.admin_labels_text"
+            rows="2"
+            class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-xs"
+            :placeholder="t('adminMarket.adminLabelsPh')"
+          />
+          <span class="text-[10px] leading-snug text-slate-600">{{ t('adminMarket.adminLabelsHint') }}</span>
         </label>
         <label class="mb-3 flex flex-col gap-1">
           <span class="text-slate-500">{{ t('adminMarket.lblDesc') }}</span>

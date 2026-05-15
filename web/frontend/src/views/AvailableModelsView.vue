@@ -15,6 +15,7 @@ type ModelItem = {
   in_catalog?: boolean
   upstream_list_status?: string
   upstream_list_checked_at?: string
+  labels?: string[]
 }
 
 type ModelsPayload = {
@@ -42,9 +43,36 @@ const filtered = computed(() => {
     ) {
       return true
     }
-    return upstreamListCell(m).text.toLowerCase().includes(s)
+    if (upstreamListCell(m).text.toLowerCase().includes(s)) return true
+    const lb = modelLabelsSearchBlob(m)
+    return lb.includes(s)
   })
 })
+
+function modelKindDisplayLabel(key: string): string {
+  switch (key) {
+    case 'chat':
+      return t('modelsPage.labelChat')
+    case 'embedding':
+      return t('modelsPage.labelEmbedding')
+    case 'image':
+      return t('modelsPage.labelImage')
+    case 'video':
+      return t('modelsPage.labelVideo')
+    case 'audio':
+      return t('modelsPage.labelAudio')
+    case 'moderation':
+      return t('modelsPage.labelModeration')
+    case 'rerank':
+      return t('modelsPage.labelRerank')
+    default:
+      return key
+  }
+}
+
+function modelLabelsSearchBlob(m: ModelItem): string {
+  return (m.labels ?? []).map((k) => modelKindDisplayLabel(k).toLowerCase()).join(' ')
+}
 
 function upstreamListCell(m: ModelItem): {
   text: string
@@ -155,6 +183,7 @@ onMounted(load)
             <thead class="sticky top-0 z-10">
               <tr class="border-b border-white/[0.06] bg-slate-900/95 text-xs uppercase tracking-wider text-slate-500 shadow-[0_1px_0_rgba(0,0,0,0.35)] backdrop-blur-sm">
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thId') }}</th>
+                <th class="px-4 py-3 font-medium" :title="t('modelsPage.labelsHint')">{{ t('modelsPage.thLabels') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thDisplay') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thSource') }}</th>
                 <th class="px-4 py-3 font-medium" :title="t('modelsPage.thUpstreamListHint')">{{ t('modelsPage.thUpstreamList') }}</th>
@@ -164,6 +193,19 @@ onMounted(load)
             <tbody class="divide-y divide-white/[0.06]">
               <tr v-for="m in filtered" :key="m.id" class="transition hover:bg-white/[0.03]">
                 <td class="px-4 py-3 font-mono text-sm text-cyan-100/95">{{ m.id }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1">
+                    <span
+                      v-for="lab in m.labels ?? []"
+                      :key="`${m.id}-kind-${lab}`"
+                      class="th-model-kind-pill"
+                      :title="t('modelsPage.labelsHint')"
+                    >
+                      {{ modelKindDisplayLabel(lab) }}
+                    </span>
+                    <span v-if="!(m.labels && m.labels.length)" class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
+                  </div>
+                </td>
                 <td class="px-4 py-3 text-slate-300">{{ m.display_name || t('modelsPage.dash') }}</td>
                 <td class="px-4 py-3">
                   <span v-if="m.in_gateway && m.in_catalog" class="text-xs text-emerald-400/90">{{ t('modelsPage.srcBoth') }}</span>

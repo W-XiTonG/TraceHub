@@ -6,6 +6,7 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/service/availmodels"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,7 @@ func ModelsList(client *ent.Client) gin.HandlerFunc {
 			if includeRH {
 				row["tracehub"] = gin.H{
 					"router_health": availmodels.RouterHealthLabel(channelAll, channelHealthy, it.ID),
+					"labels":          modelkind.LabelsForModel(it.ID, nil, nil),
 				}
 			}
 			data = append(data, row)

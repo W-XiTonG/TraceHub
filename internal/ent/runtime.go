@@ -505,19 +505,19 @@ func init() {
 	// modelcatalogentry.OwnedByValidator is a validator for the "owned_by" field. It is called by the builders before save.
 	modelcatalogentry.OwnedByValidator = modelcatalogentryDescOwnedBy.Validators[0].(func(string) error)
 	// modelcatalogentryDescVisible is the schema descriptor for visible field.
-	modelcatalogentryDescVisible := modelcatalogentryFields[7].Descriptor()
+	modelcatalogentryDescVisible := modelcatalogentryFields[8].Descriptor()
 	// modelcatalogentry.DefaultVisible holds the default value on creation for the visible field.
 	modelcatalogentry.DefaultVisible = modelcatalogentryDescVisible.Default.(bool)
 	// modelcatalogentryDescEnabled is the schema descriptor for enabled field.
-	modelcatalogentryDescEnabled := modelcatalogentryFields[8].Descriptor()
+	modelcatalogentryDescEnabled := modelcatalogentryFields[9].Descriptor()
 	// modelcatalogentry.DefaultEnabled holds the default value on creation for the enabled field.
 	modelcatalogentry.DefaultEnabled = modelcatalogentryDescEnabled.Default.(bool)
 	// modelcatalogentryDescCreatedAt is the schema descriptor for created_at field.
-	modelcatalogentryDescCreatedAt := modelcatalogentryFields[10].Descriptor()
+	modelcatalogentryDescCreatedAt := modelcatalogentryFields[11].Descriptor()
 	// modelcatalogentry.DefaultCreatedAt holds the default value on creation for the created_at field.
 	modelcatalogentry.DefaultCreatedAt = modelcatalogentryDescCreatedAt.Default.(func() time.Time)
 	// modelcatalogentryDescUpdatedAt is the schema descriptor for updated_at field.
-	modelcatalogentryDescUpdatedAt := modelcatalogentryFields[11].Descriptor()
+	modelcatalogentryDescUpdatedAt := modelcatalogentryFields[12].Descriptor()
 	// modelcatalogentry.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	modelcatalogentry.DefaultUpdatedAt = modelcatalogentryDescUpdatedAt.Default.(func() time.Time)
 	// modelcatalogentry.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

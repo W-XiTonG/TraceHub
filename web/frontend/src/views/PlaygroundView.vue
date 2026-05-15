@@ -222,6 +222,27 @@ function pgRouterHealthCell(h: PlaygroundRouterHealth): {
   }
 }
 
+function pgModelKindLabel(k: string): string {
+  switch (k) {
+    case 'chat':
+      return t('modelsPage.labelChat')
+    case 'embedding':
+      return t('modelsPage.labelEmbedding')
+    case 'image':
+      return t('modelsPage.labelImage')
+    case 'video':
+      return t('modelsPage.labelVideo')
+    case 'audio':
+      return t('modelsPage.labelAudio')
+    case 'moderation':
+      return t('modelsPage.labelModeration')
+    case 'rerank':
+      return t('modelsPage.labelRerank')
+    default:
+      return k
+  }
+}
+
 const filteredPlaygroundModels = computed(() => {
   const rows = models.value
   const raw = modelSearchQuery.value.trim().toLowerCase()
@@ -232,7 +253,10 @@ const filteredPlaygroundModels = computed(() => {
     const id = r.id.toLowerCase()
     const regText = idSet?.has(r.id) ? pgRegistryCell(r).text.toLowerCase() : ''
     const rhText = r.routerHealth ? pgRouterHealthCell(r.routerHealth).text.toLowerCase() : ''
-    return parts.every((p) => id.includes(p) || regText.includes(p) || rhText.includes(p))
+    const kindBlob = (r.labels ?? []).map((k) => pgModelKindLabel(k).toLowerCase()).join(' ')
+    return parts.every(
+      (p) => id.includes(p) || regText.includes(p) || rhText.includes(p) || kindBlob.includes(p),
+    )
   })
 })
 
@@ -1505,6 +1529,14 @@ function fmtNum(n: number) {
                 @click="toggleModelPicker"
               >
                 <span
+                  v-for="lab in selectedModelRow?.labels ?? []"
+                  :key="'pg-sel-k-' + lab"
+                  class="th-pg-model-picker__meta-pill th-pg-model-picker__kind-pill"
+                  :title="t('modelsPage.labelsHint')"
+                >
+                  {{ pgModelKindLabel(lab) }}
+                </span>
+                <span
                   v-for="cell in selectedModelRow?.routerHealth ? [pgRouterHealthCell(selectedModelRow.routerHealth)] : []"
                   :key="'pg-sel-rh'"
                   class="th-pg-model-picker__meta-pill"
@@ -1591,6 +1623,14 @@ function fmtNum(n: number) {
                   >
                     <span class="th-pg-model-picker__opt-id">{{ m.id }}</span>
                     <div class="th-pg-model-picker__opt-aside">
+                      <span
+                        v-for="lab in m.labels ?? []"
+                        :key="`${m.id}-k-${lab}`"
+                        class="th-pg-model-picker__meta-pill th-pg-model-picker__kind-pill"
+                        :title="t('modelsPage.labelsHint')"
+                      >
+                        {{ pgModelKindLabel(lab) }}
+                      </span>
                       <span
                         v-for="cell in m.routerHealth ? [pgRouterHealthCell(m.routerHealth)] : []"
                         :key="`${m.id}-rh`"

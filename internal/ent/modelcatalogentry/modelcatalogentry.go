@@ -28,6 +28,8 @@ const (
 	FieldSourceID = "source_id"
 	// FieldMetadata holds the string denoting the metadata field in the database.
 	FieldMetadata = "metadata"
+	// FieldAdminLabels holds the string denoting the admin_labels field in the database.
+	FieldAdminLabels = "admin_labels"
 	// FieldVisible holds the string denoting the visible field in the database.
 	FieldVisible = "visible"
 	// FieldEnabled holds the string denoting the enabled field in the database.
@@ -61,6 +63,7 @@ var Columns = []string{
 	FieldDescription,
 	FieldSourceID,
 	FieldMetadata,
+	FieldAdminLabels,
 	FieldVisible,
 	FieldEnabled,
 	FieldSyncedAt,

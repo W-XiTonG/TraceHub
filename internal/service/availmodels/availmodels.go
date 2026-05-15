@@ -10,6 +10,7 @@ import (
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/modelcatalogentry"
+	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/service/billing"
 )
 
@@ -185,6 +186,7 @@ type ConsoleModel struct {
 	InCatalog             bool   `json:"in_catalog"`
 	UpstreamListStatus    string `json:"upstream_list_status,omitempty"`    // listed|not_listed|mixed
 	UpstreamListCheckedAt string `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
+	Labels                []string `json:"labels,omitempty"`                 // 类型标签（启发式 + 可选目录 metadata）
 }
 
 // ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关侧仍以 ListForGroup 为准。
@@ -250,6 +252,23 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]
 			return nil, err
 		}
 		attachUpstreamListProbeFromChannels(channels, byID)
+	}
+	catalogMetaByID := make(map[string]map[string]any, len(catalogRows))
+	adminLabelsByID := make(map[string][]string, len(catalogRows))
+	for _, row := range catalogRows {
+		id := strings.TrimSpace(row.ModelID)
+		if id == "" {
+			continue
+		}
+		if len(row.AdminLabels) > 0 {
+			adminLabelsByID[id] = row.AdminLabels
+		}
+		if row.Metadata != nil && len(row.Metadata) > 0 {
+			catalogMetaByID[id] = row.Metadata
+		}
+	}
+	for id, m := range byID {
+		m.Labels = modelkind.LabelsForModel(id, catalogMetaByID[id], adminLabelsByID[id])
 	}
 	ids := make([]string, 0, len(byID))
 	for id := range byID {

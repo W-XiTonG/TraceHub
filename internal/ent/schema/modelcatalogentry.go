@@ -23,6 +23,7 @@ func (ModelCatalogEntry) Fields() []ent.Field {
 		field.Text("description").Optional(),
 		field.Int("source_id").Optional(),
 		field.JSON("metadata", map[string]any{}).Optional(),
+		field.JSON("admin_labels", []string{}).Optional().Comment("后台配置的标签，多值；同步上游不覆盖"),
 		field.Bool("visible").Default(true).Comment("在内部模型市场中展示"),
 		field.Bool("enabled").Default(true),
 		field.Time("synced_at").Optional(),

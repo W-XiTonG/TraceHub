@@ -505,6 +505,16 @@ func MetadataNotNil() predicate.ModelCatalogEntry {
 	return predicate.ModelCatalogEntry(sql.FieldNotNull(FieldMetadata))
 }
 
+// AdminLabelsIsNil applies the IsNil predicate on the "admin_labels" field.
+func AdminLabelsIsNil() predicate.ModelCatalogEntry {
+	return predicate.ModelCatalogEntry(sql.FieldIsNull(FieldAdminLabels))
+}
+
+// AdminLabelsNotNil applies the NotNil predicate on the "admin_labels" field.
+func AdminLabelsNotNil() predicate.ModelCatalogEntry {
+	return predicate.ModelCatalogEntry(sql.FieldNotNull(FieldAdminLabels))
+}
+
 // VisibleEQ applies the EQ predicate on the "visible" field.
 func VisibleEQ(v bool) predicate.ModelCatalogEntry {
 	return predicate.ModelCatalogEntry(sql.FieldEQ(FieldVisible, v))

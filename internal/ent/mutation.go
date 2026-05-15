@@ -11034,26 +11034,28 @@ func (m *GroupModelRateMutation) ResetEdge(name string) error {
 // ModelCatalogEntryMutation represents an operation that mutates the ModelCatalogEntry nodes in the graph.
 type ModelCatalogEntryMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	model_id      *string
-	display_name  *string
-	provider_slug *string
-	owned_by      *string
-	description   *string
-	metadata      *map[string]interface{}
-	visible       *bool
-	enabled       *bool
-	synced_at     *time.Time
-	created_at    *time.Time
-	updated_at    *time.Time
-	clearedFields map[string]struct{}
-	source        *int
-	clearedsource bool
-	done          bool
-	oldValue      func(context.Context) (*ModelCatalogEntry, error)
-	predicates    []predicate.ModelCatalogEntry
+	op                 Op
+	typ                string
+	id                 *int
+	model_id           *string
+	display_name       *string
+	provider_slug      *string
+	owned_by           *string
+	description        *string
+	metadata           *map[string]interface{}
+	admin_labels       *[]string
+	appendadmin_labels []string
+	visible            *bool
+	enabled            *bool
+	synced_at          *time.Time
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	source             *int
+	clearedsource      bool
+	done               bool
+	oldValue           func(context.Context) (*ModelCatalogEntry, error)
+	predicates         []predicate.ModelCatalogEntry
 }
 
 var _ ent.Mutation = (*ModelCatalogEntryMutation)(nil)
@@ -11471,6 +11473,71 @@ func (m *ModelCatalogEntryMutation) ResetMetadata() {
 	delete(m.clearedFields, modelcatalogentry.FieldMetadata)
 }
 
+// SetAdminLabels sets the "admin_labels" field.
+func (m *ModelCatalogEntryMutation) SetAdminLabels(s []string) {
+	m.admin_labels = &s
+	m.appendadmin_labels = nil
+}
+
+// AdminLabels returns the value of the "admin_labels" field in the mutation.
+func (m *ModelCatalogEntryMutation) AdminLabels() (r []string, exists bool) {
+	v := m.admin_labels
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAdminLabels returns the old "admin_labels" field's value of the ModelCatalogEntry entity.
+// If the ModelCatalogEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelCatalogEntryMutation) OldAdminLabels(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAdminLabels is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAdminLabels requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAdminLabels: %w", err)
+	}
+	return oldValue.AdminLabels, nil
+}
+
+// AppendAdminLabels adds s to the "admin_labels" field.
+func (m *ModelCatalogEntryMutation) AppendAdminLabels(s []string) {
+	m.appendadmin_labels = append(m.appendadmin_labels, s...)
+}
+
+// AppendedAdminLabels returns the list of values that were appended to the "admin_labels" field in this mutation.
+func (m *ModelCatalogEntryMutation) AppendedAdminLabels() ([]string, bool) {
+	if len(m.appendadmin_labels) == 0 {
+		return nil, false
+	}
+	return m.appendadmin_labels, true
+}
+
+// ClearAdminLabels clears the value of the "admin_labels" field.
+func (m *ModelCatalogEntryMutation) ClearAdminLabels() {
+	m.admin_labels = nil
+	m.appendadmin_labels = nil
+	m.clearedFields[modelcatalogentry.FieldAdminLabels] = struct{}{}
+}
+
+// AdminLabelsCleared returns if the "admin_labels" field was cleared in this mutation.
+func (m *ModelCatalogEntryMutation) AdminLabelsCleared() bool {
+	_, ok := m.clearedFields[modelcatalogentry.FieldAdminLabels]
+	return ok
+}
+
+// ResetAdminLabels resets all changes to the "admin_labels" field.
+func (m *ModelCatalogEntryMutation) ResetAdminLabels() {
+	m.admin_labels = nil
+	m.appendadmin_labels = nil
+	delete(m.clearedFields, modelcatalogentry.FieldAdminLabels)
+}
+
 // SetVisible sets the "visible" field.
 func (m *ModelCatalogEntryMutation) SetVisible(b bool) {
 	m.visible = &b
@@ -11725,7 +11792,7 @@ func (m *ModelCatalogEntryMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ModelCatalogEntryMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.model_id != nil {
 		fields = append(fields, modelcatalogentry.FieldModelID)
 	}
@@ -11746,6 +11813,9 @@ func (m *ModelCatalogEntryMutation) Fields() []string {
 	}
 	if m.metadata != nil {
 		fields = append(fields, modelcatalogentry.FieldMetadata)
+	}
+	if m.admin_labels != nil {
+		fields = append(fields, modelcatalogentry.FieldAdminLabels)
 	}
 	if m.visible != nil {
 		fields = append(fields, modelcatalogentry.FieldVisible)
@@ -11784,6 +11854,8 @@ func (m *ModelCatalogEntryMutation) Field(name string) (ent.Value, bool) {
 		return m.SourceID()
 	case modelcatalogentry.FieldMetadata:
 		return m.Metadata()
+	case modelcatalogentry.FieldAdminLabels:
+		return m.AdminLabels()
 	case modelcatalogentry.FieldVisible:
 		return m.Visible()
 	case modelcatalogentry.FieldEnabled:
@@ -11817,6 +11889,8 @@ func (m *ModelCatalogEntryMutation) OldField(ctx context.Context, name string) (
 		return m.OldSourceID(ctx)
 	case modelcatalogentry.FieldMetadata:
 		return m.OldMetadata(ctx)
+	case modelcatalogentry.FieldAdminLabels:
+		return m.OldAdminLabels(ctx)
 	case modelcatalogentry.FieldVisible:
 		return m.OldVisible(ctx)
 	case modelcatalogentry.FieldEnabled:
@@ -11884,6 +11958,13 @@ func (m *ModelCatalogEntryMutation) SetField(name string, value ent.Value) error
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetMetadata(v)
+		return nil
+	case modelcatalogentry.FieldAdminLabels:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAdminLabels(v)
 		return nil
 	case modelcatalogentry.FieldVisible:
 		v, ok := value.(bool)
@@ -11968,6 +12049,9 @@ func (m *ModelCatalogEntryMutation) ClearedFields() []string {
 	if m.FieldCleared(modelcatalogentry.FieldMetadata) {
 		fields = append(fields, modelcatalogentry.FieldMetadata)
 	}
+	if m.FieldCleared(modelcatalogentry.FieldAdminLabels) {
+		fields = append(fields, modelcatalogentry.FieldAdminLabels)
+	}
 	if m.FieldCleared(modelcatalogentry.FieldSyncedAt) {
 		fields = append(fields, modelcatalogentry.FieldSyncedAt)
 	}
@@ -12000,6 +12084,9 @@ func (m *ModelCatalogEntryMutation) ClearField(name string) error {
 	case modelcatalogentry.FieldMetadata:
 		m.ClearMetadata()
 		return nil
+	case modelcatalogentry.FieldAdminLabels:
+		m.ClearAdminLabels()
+		return nil
 	case modelcatalogentry.FieldSyncedAt:
 		m.ClearSyncedAt()
 		return nil
@@ -12031,6 +12118,9 @@ func (m *ModelCatalogEntryMutation) ResetField(name string) error {
 		return nil
 	case modelcatalogentry.FieldMetadata:
 		m.ResetMetadata()
+		return nil
+	case modelcatalogentry.FieldAdminLabels:
+		m.ResetAdminLabels()
 		return nil
 	case modelcatalogentry.FieldVisible:
 		m.ResetVisible()

@@ -103,6 +103,12 @@ func (_c *ModelCatalogEntryCreate) SetMetadata(v map[string]interface{}) *ModelC
 	return _c
 }
 
+// SetAdminLabels sets the "admin_labels" field.
+func (_c *ModelCatalogEntryCreate) SetAdminLabels(v []string) *ModelCatalogEntryCreate {
+	_c.mutation.SetAdminLabels(v)
+	return _c
+}
+
 // SetVisible sets the "visible" field.
 func (_c *ModelCatalogEntryCreate) SetVisible(v bool) *ModelCatalogEntryCreate {
 	_c.mutation.SetVisible(v)
@@ -324,6 +330,10 @@ func (_c *ModelCatalogEntryCreate) createSpec() (*ModelCatalogEntry, *sqlgraph.C
 	if value, ok := _c.mutation.Metadata(); ok {
 		_spec.SetField(modelcatalogentry.FieldMetadata, field.TypeJSON, value)
 		_node.Metadata = value
+	}
+	if value, ok := _c.mutation.AdminLabels(); ok {
+		_spec.SetField(modelcatalogentry.FieldAdminLabels, field.TypeJSON, value)
+		_node.AdminLabels = value
 	}
 	if value, ok := _c.mutation.Visible(); ok {
 		_spec.SetField(modelcatalogentry.FieldVisible, field.TypeBool, value)

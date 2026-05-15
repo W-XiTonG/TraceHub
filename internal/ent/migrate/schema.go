@@ -367,6 +367,7 @@ var (
 		{Name: "owned_by", Type: field.TypeString, Nullable: true, Size: 128},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
+		{Name: "admin_labels", Type: field.TypeJSON, Nullable: true},
 		{Name: "visible", Type: field.TypeBool, Default: true},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
@@ -382,7 +383,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "model_catalog_entries_model_catalog_sources_catalog_entries",
-				Columns:    []*schema.Column{ModelCatalogEntriesColumns[12]},
+				Columns:    []*schema.Column{ModelCatalogEntriesColumns[13]},
 				RefColumns: []*schema.Column{ModelCatalogSourcesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -396,12 +397,12 @@ var (
 			{
 				Name:    "modelcatalogentry_source_id",
 				Unique:  false,
-				Columns: []*schema.Column{ModelCatalogEntriesColumns[12]},
+				Columns: []*schema.Column{ModelCatalogEntriesColumns[13]},
 			},
 			{
 				Name:    "modelcatalogentry_visible",
 				Unique:  false,
-				Columns: []*schema.Column{ModelCatalogEntriesColumns[7]},
+				Columns: []*schema.Column{ModelCatalogEntriesColumns[8]},
 			},
 			{
 				Name:    "modelcatalogentry_provider_slug",

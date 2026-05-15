@@ -10,16 +10,27 @@ export type PlaygroundRegistryMeta = {
   upstream_list_status?: string
   upstream_list_checked_at?: string
   in_gateway?: boolean
+  labels?: string[]
 }
 
 export type PlaygroundModelRow = {
   id: string
   routerHealth?: PlaygroundRouterHealth
+  labels?: string[]
 } & PlaygroundRegistryMeta
 
 function parseRouterHealth(v: unknown): PlaygroundRouterHealth | undefined {
   if (v === 'healthy' || v === 'unhealthy' || v === 'catalog_only') return v
   return undefined
+}
+
+function parseTracehubLabels(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const out: string[] = []
+  for (const x of v) {
+    if (typeof x === 'string' && x.trim()) out.push(x.trim())
+  }
+  return out.length ? out : undefined
 }
 
 /** GET /v1/models，带路由健康扩展字段（与网关选路 health_status 一致，非实时探测上游）。 */
@@ -35,13 +46,17 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
     throw new Error(parseOpenAIError(text) || `${res.status} ${res.statusText}`)
   }
   const data = (await res.json()) as {
-    data?: Array<{ id?: string; tracehub?: { router_health?: string } }>
+    data?: Array<{ id?: string; tracehub?: { router_health?: string; labels?: unknown } }>
   }
   const rows: PlaygroundModelRow[] = []
   for (const m of data.data || []) {
     const id = typeof m.id === 'string' ? m.id : ''
     if (!id) continue
-    rows.push({ id, routerHealth: parseRouterHealth(m.tracehub?.router_health) })
+    rows.push({
+      id,
+      routerHealth: parseRouterHealth(m.tracehub?.router_health),
+      labels: parseTracehubLabels(m.tracehub?.labels),
+    })
   }
   rows.sort((a, b) => a.id.localeCompare(b.id))
   return rows
@@ -52,6 +67,7 @@ type AvailModelItem = {
   upstream_list_status?: string
   upstream_list_checked_at?: string
   in_gateway?: boolean
+  labels?: string[]
 }
 
 /**
@@ -70,6 +86,7 @@ export async function fetchPlaygroundRegistryMap(): Promise<Map<string, Playgrou
         upstream_list_status: it.upstream_list_status,
         upstream_list_checked_at: it.upstream_list_checked_at,
         in_gateway: it.in_gateway,
+        labels: it.labels,
       })
     }
     return map
@@ -91,6 +108,7 @@ export function mergePlaygroundRegistry(
       upstream_list_status: m.upstream_list_status,
       upstream_list_checked_at: m.upstream_list_checked_at,
       in_gateway: m.in_gateway,
+      labels: m.labels != null && m.labels.length > 0 ? m.labels : r.labels,
     }
   })
 }
