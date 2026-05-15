@@ -105,9 +105,10 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 	promptToks := 64
 	maxOut := 512
 	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
-	costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
+	compAssumed := completionTokensFallback(maxOut)
+	costPre := br.Cost(promptToks, compAssumed, 0)
 	if u.Balance < costPre {
-		middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
+		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
 		return
 	}
 

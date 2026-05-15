@@ -155,7 +155,8 @@ export default {
     errH2: '错误与排查',
     errIntro: '网关错误体一般为 OpenAI 风格的 JSON（含 error 对象）。常见情况：',
     err401: '401：API Key 缺失、错误、已停用或不在白名單。',
-    err402: '402：餘額不足以完成本次预估扣费。',
+    err402:
+      '402：餘額不足以通過網關「預檢」。error.message 會寫明當前餘額、預檢所需、還差多少，以及輸出 token 上限來源（max_tokens 等）與調低建議；請求成功後按實際上游用量扣費。402 表示餘額相對「保守預檢」不足，與 403 權限/選路類錯誤不同（見 err403）。響應頭 X-TraceHub-Billing-Phase、X-TraceHub-Balance、X-TraceHub-Estimated-* 供複製排查。',
     err403: '403：模型不在分組允许列表、未分配分組、选路失敗等权限類原因。',
     err400: '400：請求体不合法（缺少 model、messages 无效等）。',
     errFoot: '若返回上游原始错误，请结合呼叫日誌中的狀態碼与 X-Request-ID 追踪單次請求。',

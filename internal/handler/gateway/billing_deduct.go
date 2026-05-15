@@ -26,7 +26,13 @@ func gatewayDeduct(c *gin.Context, eng *billing.Engine, userID int64, cost int64
 				"user_id", userID, "cost", cost)
 			return err
 		}
-		middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足，无法完成本次扣费")
+		bal := int64(0)
+		if eng != nil && eng.Client != nil {
+			if u2, err2 := eng.Client.User.Get(c.Request.Context(), int(userID)); err2 == nil {
+				bal = u2.Balance
+			}
+		}
+		WriteInsufficientBalance402PostDebit(c, bal, cost)
 		return err
 	}
 	if afterResponse {

@@ -7,11 +7,6 @@ import (
 	"tracehub/internal/service/billing"
 )
 
-// balancePrecheck402Message 预检阶段 402 文案，便于与 403 权限/选路及成功后的扣费失败区分。
-func balancePrecheck402Message() string {
-	return "余额不足（预检）：当前余额小于本次请求预估消耗。若为模型或渠道不可用，请查看 HTTP 403 与 error.type=permission_error。"
-}
-
 const (
 	visionTokensLow      = 170  // 文档 low ≈85，预检取 2×
 	visionTokensHighAuto = 2000 // high/auto 上限量级保守值，远低于误计 base64

@@ -109,13 +109,31 @@ function parseOpenAIError(text: string): string {
   }
 }
 
-/** 网关在上游 4xx 时返回的选路诊断头（需 CORS Expose-Headers） */
+/** 网关在上游 4xx 或计费 402 时返回的诊断头（需 CORS Expose-Headers） */
 export function traceHubGatewayErrorDetails(res: Response): string {
   const r = res.headers.get('X-TraceHub-Routing-Model')?.trim()
   const u = res.headers.get('X-TraceHub-Upstream-Model')?.trim()
   const cid = res.headers.get('X-TraceHub-Channel-Id')?.trim()
-  if (!r && !u && !cid) return ''
-  return `\n\n[TraceHub 选路] routing_model=${r ?? '—'} | upstream_model=${u ?? '—'} | channel_id=${cid ?? '—'}\n若 upstream 与上游控制台不一致，请检查渠道「模型 ID / 别名」配置。`
+  let out = ''
+  if (r || u || cid) {
+    out += `\n\n[TraceHub 选路] routing_model=${r ?? '—'} | upstream_model=${u ?? '—'} | channel_id=${cid ?? '—'}\n若 upstream 与上游控制台不一致，请检查渠道「模型 ID / 别名」配置。`
+  }
+  const phase = res.headers.get('X-TraceHub-Billing-Phase')?.trim()
+  const bal = res.headers.get('X-TraceHub-Balance')?.trim()
+  const est = res.headers.get('X-TraceHub-Estimated-Cost')?.trim()
+  if (phase || bal || est) {
+    const pt = res.headers.get('X-TraceHub-Estimated-Prompt-Tokens')?.trim()
+    const ctok = res.headers.get('X-TraceHub-Estimated-Completion-Tokens')?.trim()
+    const debit = res.headers.get('X-TraceHub-Debit-Cost')?.trim()
+    out += `\n\n[TraceHub 计费] phase=${phase ?? '—'}`
+    if (bal) out += ` | balance=${bal}`
+    if (est) out += ` | estimated_cost=${est}`
+    if (debit) out += ` | debit_cost=${debit}`
+    if (pt || ctok) out += ` | est_prompt_tokens=${pt ?? '—'} | est_completion_tokens=${ctok ?? '—'}`
+    // 与 error.message 不重复展开；完整说明以 JSON error.message 为准，本行便于复制/工单。
+    out += '\n说明以响应 JSON 的 error.message 为准。'
+  }
+  return out
 }
 
 export async function chatCompletion(

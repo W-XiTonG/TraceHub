@@ -84,9 +84,10 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		const promptToks = 4096
 		const compToks = 4096
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
-		costPre := br.Cost(promptToks, completionTokensFallback(compToks), 0)
+		compAssumed := completionTokensFallback(compToks)
+		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {
-			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
+			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
 			return
 		}
 

@@ -70,6 +70,16 @@ func WriteOpenAIAuthErr(c *gin.Context) {
 
 // WriteOpenAIError OpenAI 风格的错误响应。
 func WriteOpenAIError(c *gin.Context, httpStatus int, code, msg string) {
+	WriteOpenAIErrorWithHeaders(c, httpStatus, code, msg, nil)
+}
+
+// WriteOpenAIErrorWithHeaders 与 WriteOpenAIError 相同，并在写 JSON 前设置可选响应头（如网关计费诊断）。
+func WriteOpenAIErrorWithHeaders(c *gin.Context, httpStatus int, code, msg string, headers map[string]string) {
+	for k, v := range headers {
+		if k != "" && v != "" {
+			c.Header(k, v)
+		}
+	}
 	c.JSON(httpStatus, gin.H{
 		"error": gin.H{
 			"type":    code,

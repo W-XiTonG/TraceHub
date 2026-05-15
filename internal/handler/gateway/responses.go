@@ -85,9 +85,10 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			promptToks = 1
 		}
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
-		costPre := br.Cost(promptToks, completionTokensFallback(maxOut), 0)
+		compAssumed := completionTokensFallback(maxOut)
+		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {
-			middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", balancePrecheck402Message())
+			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
 			return
 		}
 

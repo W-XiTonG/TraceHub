@@ -122,9 +122,10 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 		middleware.WriteOpenAIError(c, 500, "api_error", "计费状态异常")
 		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
-	costPre := br.Cost(prePrompt, completionTokensFallback(preComp), 0)
+	compAssumed := completionTokensFallback(preComp)
+	costPre := br.Cost(prePrompt, compAssumed, 0)
 	if u.Balance < costPre {
-		middleware.WriteOpenAIError(c, 402, "insufficient_balance_error", "余额不足")
+		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, prePrompt, compAssumed)
 		return nil, nil, nil, "", "", "", false, br
 	}
 

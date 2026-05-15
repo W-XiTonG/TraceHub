@@ -156,7 +156,8 @@ export default {
     errH2: 'Errors & troubleshooting',
     errIntro: 'Gateway errors are usually OpenAI-style JSON with an error object. Common cases:',
     err401: '401: missing/wrong/disabled API key or not on the IP allowlist.',
-    err402: '402: insufficient balance for the estimated charge.',
+    err402:
+      '402: balance failed the gateway precheck. error.message includes balance, estimated charge, shortfall, where the output-token cap comes from (e.g. max_tokens), and how to lower it; after a successful request, debit follows upstream usage. 402 is insufficient balance vs the conservative precheck—not the same as HTTP 403 routing/permission errors (see err403). Headers X-TraceHub-Billing-Phase, X-TraceHub-Balance, X-TraceHub-Estimated-* are for diagnostics.',
     err403: '403: model not allowed for the group, no group assigned, routing failure, etc.',
     err400: '400: invalid body (missing model, invalid messages, …).',
     errFoot: 'For upstream errors, correlate status codes and X-Request-ID from request logs.',
