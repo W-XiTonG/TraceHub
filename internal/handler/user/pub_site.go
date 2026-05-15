@@ -5,6 +5,8 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/sitecfg"
+	"tracehub/internal/service/availmodels"
+	"tracehub/internal/service/billing"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,6 +38,12 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 				"title":    pc.Title,
 				"qr_items": qr,
 				"emails":   pc.Emails,
+			}
+		}
+		// 全站已启用渠道声明的模型键去重数（models + model_alias 键）；失败时省略该字段。
+		if n, err := availmodels.DistinctDeclaredModelCountSiteWide(ctx, client); err == nil {
+			if badge := billing.ModelCountHundredPlusBadge(n); badge != "" {
+				out["declared_model_count_badge"] = badge
 			}
 		}
 		httpx.OK(c, out)

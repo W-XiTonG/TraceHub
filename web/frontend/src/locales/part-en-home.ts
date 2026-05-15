@@ -72,6 +72,9 @@ export default {
     codeWinTitle: 'curl · chat.completions',
     codeComment: '# Replace BASE and KEY with your gateway URL and console API key',
     modelsTitle: 'Broad model coverage',
+    modelsCountAria:
+      'Counts models listed on enabled channel configs (models list + alias keys), about {badge} site-wide—shows breadth of coverage; what you can call follows admin setup and GET /v1/models.',
+    modelsCountChip: '{badge} models listed on enabled channels',
     modelsDesc:
       'TraceHub reaches many providers and custom endpoints through configurable channels. The IDs below are common examples only—not a fixed or exhaustive catalog. Models you can call follow admin channel setup and your account’s OpenAI-compatible GET /v1/models response.',
     modelsNote: 'For your live list, open Available models in the console (after sign-in) or read the gateway section in the docs.',

@@ -43,3 +43,19 @@ func TestCollectChannelModelKeys(t *testing.T) {
 		t.Fatal("m3 should not be healthy")
 	}
 }
+
+func TestDeclaredModelDistinctCount(t *testing.T) {
+	chs := []*ent.Channel{
+		{Models: []string{"a", "b"}, ModelAlias: map[string]string{"c": "upstream"}},
+		{Models: []string{"b", "d"}, ModelAlias: map[string]string{"e": "x"}},
+	}
+	if n := DeclaredModelDistinctCount(chs); n != 5 {
+		t.Fatalf("got %d want 5 (a,b,c,d,e)", n)
+	}
+	if n := DeclaredModelDistinctCount(nil); n != 0 {
+		t.Fatalf("nil got %d", n)
+	}
+	if n := DeclaredModelDistinctCount([]*ent.Channel{{Models: []string{"  ", "x"}}}); n != 1 {
+		t.Fatalf("trim/empty got %d", n)
+	}
+}

@@ -76,12 +76,12 @@ onBeforeUnmount(() => {
 })
 
 const models = [
-  'gpt-4o',
-  'gpt-4o-mini',
-  'claude-3-5-sonnet-20241022',
-  'gemini-2.0-flash',
-  'deepseek-chat',
-  'qwen-plus',
+  'gpt-5.5',
+  'gpt-image-2',
+  'deepseek-r1',
+  'gemini-2.5-flash',
+  'qwen3-30b-a3b-instruct-2507',
+  'kimi-k2-thinking',
 ]
 
 const faqs = computed(() => [
@@ -414,9 +414,16 @@ function featureLink(to: string) {
             >
               {{ t('home.modelsBadge') }}
             </span>
-            <div class="th-home-chip-row flex max-w-3xl flex-wrap justify-center gap-2">
+            <div class="th-home-chip-row flex max-w-3xl flex-wrap items-center justify-center gap-2">
               <span v-for="m in models" :key="m" class="th-chip">{{ m }}</span>
               <span
+                v-if="siteMeta.declaredModelCountBadge"
+                class="th-chip th-home-model-count-chip tabular-nums"
+                role="status"
+                :aria-label="t('home.modelsCountAria', { badge: siteMeta.declaredModelCountBadge })"
+              >{{ t('home.modelsCountChip', { badge: siteMeta.declaredModelCountBadge }) }}</span>
+              <span
+                v-else
                 class="th-chip border border-dashed border-slate-600/70 bg-transparent font-sans text-slate-500 italic ring-0"
               >{{ t('home.modelsMore') }}</span>
             </div>
@@ -713,7 +720,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
   -H <span class="th-home-code-hdr text-amber-200/85">"Authorization: Bearer $KEY"</span> \
   -H <span class="th-home-code-hdr text-amber-200/85">"Content-Type: application/json"</span> \
   -d <span class="th-home-code-json text-sky-200/90">'{
-    "model": "gpt-4o-mini",
+    "model": "gpt-5.5",
     "messages": [{ "role": "user", "content": "Hello from TraceHub" }]
   }'</span></code></pre>
             </div>

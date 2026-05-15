@@ -71,6 +71,9 @@ export default {
     codeWinTitle: 'curl · chat.completions',
     codeComment: '# 将 BASE 与 KEY 替换为你的网关地址与控制台 API Key',
     modelsTitle: '多廠商模型接入',
+    modelsCountAria:
+      '統計的是各渠道設定中列出的模型（models 列表與別名鍵），全站匯總約 {badge} 個；代表平台可覆蓋的型號廣度，實際能否呼叫以控制台與 GET /v1/models 為準。',
+    modelsCountChip: '全站渠道已聲明 {badge} 個模型',
     modelsDesc:
       'TraceHub 透過渠道對接各家大模型與自建端點。下方僅為常見的 model id 示意，不代表平台「僅支援」這些型號；您環境中可呼叫的模型以管理員設定的渠道及 OpenAI 相容的 GET /v1/models 為準。',
     modelsNote: '需要完整清單請登入控制台「可用模型」查看，或閱讀文件中的網關與選路說明。',

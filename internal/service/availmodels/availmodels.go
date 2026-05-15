@@ -175,6 +175,24 @@ func ListForGroupWithChannelHealthKeys(ctx context.Context, client *ent.Client, 
 	return itemsFromModelIDSet(set), channelAll, channelHealthy, nil
 }
 
+// DeclaredModelDistinctCount 汇总多路渠道上「已声明」的模型键去重数量：
+// 每条渠道的 models 列表与 model_alias 的键（请求侧逻辑名），语义与 collectChannelModelKeys 的 all 集一致。
+func DeclaredModelDistinctCount(channels []*ent.Channel) int {
+	all, _ := collectChannelModelKeys(channels)
+	return len(all)
+}
+
+// DistinctDeclaredModelCountSiteWide 统计全站已启用渠道上的声明模型去重数（models ∪ model_alias 键）。
+func DistinctDeclaredModelCountSiteWide(ctx context.Context, client *ent.Client) (int, error) {
+	channels, err := client.Channel.Query().
+		Where(channel.Enabled(true)).
+		All(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return DeclaredModelDistinctCount(channels), nil
+}
+
 // ConsoleModel 控制台合并列表：网关渠道可调度模型 + 模型市场中对用户可见的目录条目。
 type ConsoleModel struct {
 	ID                    string `json:"id"`

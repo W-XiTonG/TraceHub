@@ -19,6 +19,8 @@ type PubSiteMeta = {
   register_promo_text?: string
   /** 官网页脚「联系我们」；未返回或空则不展示 */
   public_contact?: PublicContactPayload | null
+  /** 全站渠道声明模型去重数（百位取整+）；未返回或低于展示阈值则为空 */
+  declared_model_count_badge?: string
 }
 
 function normalizePublicContact(raw: unknown): PublicContactPayload | null {
@@ -57,6 +59,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   const registerPromoText = ref('')
   /** 官网页脚联系我们（来自站点配置） */
   const publicContact = ref<PublicContactPayload | null>(null)
+  /** 全站渠道声明模型数展示文案（如 300+），来自 /api/pub/site-meta */
+  const declaredModelCountBadge = ref('')
   const loaded = ref(false)
   let inflight: Promise<void> | null = null
 
@@ -115,6 +119,11 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
           registerPromoText.value = ''
         }
         publicContact.value = normalizePublicContact(data.data.public_contact)
+        if (typeof data.data.declared_model_count_badge === 'string') {
+          declaredModelCountBadge.value = data.data.declared_model_count_badge.trim()
+        } else {
+          declaredModelCountBadge.value = ''
+        }
       }
     } catch (e: unknown) {
       if (!axios.isAxiosError(e) || e.response?.status !== 404) {
@@ -148,6 +157,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     apiPublicBaseUrl.value = ''
     registerPromoText.value = ''
     publicContact.value = null
+    declaredModelCountBadge.value = ''
     inflight = (async () => {
       try {
         await pullPubSiteMeta()
@@ -166,6 +176,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     apiPublicBaseUrl,
     registerPromoText,
     publicContact,
+    declaredModelCountBadge,
     hasPublicContact,
     loaded,
     displayName,
