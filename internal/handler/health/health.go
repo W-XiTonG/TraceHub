@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"tracehub/internal/ent"
@@ -12,16 +13,16 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// Version 与产品文档运维端点示例一致，发布时可由 ldflags 覆盖。
-const Version = "1.0.0"
-
 var serverStarted = time.Now()
 
-func Liveness(operator string) gin.HandlerFunc {
+func Liveness(operator, appVersion string) gin.HandlerFunc {
+	if strings.TrimSpace(appVersion) == "" {
+		appVersion = "1.0.0"
+	}
 	return func(c *gin.Context) {
 		body := gin.H{
 			"status":     "ok",
-			"version":    Version,
+			"version":    appVersion,
 			"go_version": runtime.Version(),
 			"uptime":     UptimeSeconds(),
 		}

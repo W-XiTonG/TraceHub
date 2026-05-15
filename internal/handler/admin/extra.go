@@ -1392,7 +1392,7 @@ func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin
 			"recent_audit": auditItems,
 			"health": gin.H{
 				"checks":       checks,
-				"app_version":  health.Version,
+				"app_version":  cfg.AppVersion(),
 				"go_version":   runtime.Version(),
 				"uptime_sec":   health.UptimeSeconds(),
 				"public_paths": gin.H{"liveness": "/health", "readiness": "/ready"},

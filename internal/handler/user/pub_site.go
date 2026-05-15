@@ -19,6 +19,7 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		out := gin.H{
 			"brand_name":     sitecfg.EffectiveBrandName(ctx, client),
 			"brand_icon_url": sitecfg.EffectiveBrandIconURL(ctx, client),
+			"app_version":    cfg.AppVersion(),
 		}
 		if promo := sitecfg.EffectiveRegisterPromoText(ctx, client, cfg); promo != "" {
 			out["register_promo_text"] = promo

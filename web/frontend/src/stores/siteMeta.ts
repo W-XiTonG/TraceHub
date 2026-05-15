@@ -13,6 +13,7 @@ export type PublicContactPayload = {
 type PubSiteMeta = {
   brand_name?: string
   brand_icon_url?: string
+  app_version?: string
   api_public_base_url?: string
   /** 注册推广说明（纯文本）；空或未返回则不展示 */
   register_promo_text?: string
@@ -49,6 +50,7 @@ const defaultPubIcon = '/tracehub-icon.svg'
 export const useSiteMetaStore = defineStore('siteMeta', () => {
   const brandName = ref('')
   const brandIconUrl = ref('')
+  const appVersion = ref('')
   /** 管理员配置的 OpenAI 兼容 Base URL（含 /v1）；空则 effectiveOpenaiApiBase 回退为当前站点 origin + /v1 */
   const apiPublicBaseUrl = ref('')
   /** 注册页 / 官网展示的推广文案（来自站点配置） */
@@ -66,6 +68,11 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   const displayIconUrl = computed(() => {
     const u = brandIconUrl.value.trim()
     return u || defaultPubIcon
+  })
+
+  const displayVersion = computed(() => {
+    const v = appVersion.value.trim()
+    return v || '1.0.0'
   })
 
   const effectiveOpenaiApiBase = computed(() => {
@@ -91,6 +98,11 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
         if (typeof data.data.brand_icon_url === 'string') {
           const u = data.data.brand_icon_url.trim()
           brandIconUrl.value = u === defaultPubIcon ? '' : u
+        }
+        if (typeof data.data.app_version === 'string') {
+          appVersion.value = data.data.app_version.trim()
+        } else {
+          appVersion.value = ''
         }
         if (typeof data.data.api_public_base_url === 'string') {
           apiPublicBaseUrl.value = data.data.api_public_base_url.trim()
@@ -132,6 +144,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     loaded.value = false
     brandName.value = ''
     brandIconUrl.value = ''
+    appVersion.value = ''
     apiPublicBaseUrl.value = ''
     registerPromoText.value = ''
     publicContact.value = null
@@ -149,6 +162,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   return {
     brandName,
     brandIconUrl,
+    appVersion,
     apiPublicBaseUrl,
     registerPromoText,
     publicContact,
@@ -156,6 +170,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     loaded,
     displayName,
     displayIconUrl,
+    displayVersion,
     effectiveOpenaiApiBase,
     ensureLoaded,
     refreshFromServer,

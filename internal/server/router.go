@@ -64,7 +64,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 
 	r.GET("/health", func(c *gin.Context) {
 		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)
-		health.Liveness(op)(c)
+		health.Liveness(op, opt.Config.AppVersion())(c)
 	})
 	r.GET("/ready", func(c *gin.Context) {
 		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)

@@ -13,7 +13,6 @@ import RegisterPromoDropdown from '../components/RegisterPromoDropdown.vue'
 const { t } = useI18n()
 const auth = useAuthStore()
 const siteMeta = useSiteMetaStore()
-const version = ref('1.0.0')
 
 type ContactQrLightboxPayload = { url: string; label: string }
 const contactQrLightbox = ref<ContactQrLightboxPayload | null>(null)
@@ -290,7 +289,7 @@ function featureLink(to: string) {
             <span class="th-sidebar-brand block text-lg font-semibold tracking-tight text-white">{{ siteMeta.displayName }}</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('home.brandSub') }}</span>
           </div>
-          <span class="ml-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-500">v{{ version }}</span>
+          <span class="ml-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-500">v{{ siteMeta.displayVersion }}</span>
         </div>
         <nav class="flex flex-wrap items-center justify-end gap-0.5 sm:gap-1">
           <a href="#why" class="th-site-nav-link hidden md:inline">{{ t('nav.whyTraceHub') }}</a>

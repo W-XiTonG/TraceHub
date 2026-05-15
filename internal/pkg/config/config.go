@@ -57,6 +57,8 @@ type SecurityConfig struct {
 }
 
 type SiteConfig struct {
+	// AppVersion 对外展示的应用版本号（首页页脚、/health、管理后台运维等）；空则默认 1.0.0。
+	AppVersion            string   `mapstructure:"app_version"`
 	APIKeyPrefix          string   `mapstructure:"api_key_prefix"`
 	CurrencyQuotaPerYuan  int64    `mapstructure:"currency_quota_per_yuan"`
 	DefaultNewUserBalance int64    `mapstructure:"default_new_user_balance"`
@@ -119,6 +121,7 @@ func Load(path string) (*Config, error) {
 
 	v.SetDefault("server.addr", ":8080")
 	v.SetDefault("server.mode", "release")
+	v.SetDefault("site.app_version", "1.0.0")
 	v.SetDefault("site.api_key_prefix", "sk-th-")
 	v.SetDefault("site.currency_quota_per_yuan", 10000)
 	v.SetDefault("site.default_new_user_balance", 0)
@@ -161,4 +164,16 @@ func Load(path string) (*Config, error) {
 		c.Site.LoginCaptcha.TTLSeconds = ts
 	}
 	return &c, nil
+}
+
+// AppVersion 返回 trim 后的站点应用版本；未配置时为 1.0.0。
+func (c *Config) AppVersion() string {
+	if c == nil {
+		return "1.0.0"
+	}
+	v := strings.TrimSpace(c.Site.AppVersion)
+	if v == "" {
+		return "1.0.0"
+	}
+	return v
 }

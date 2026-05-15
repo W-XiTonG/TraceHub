@@ -19,6 +19,8 @@ security:
   # metrics_bearer_token: ""
 
 site:
+  # 对外展示的应用版本（首页页脚、/health、管理后台运维）；改此处后重启服务即可
+  app_version: "1.0.0"
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
   default_new_user_balance: 5000 # 试用额度（额度单位）
