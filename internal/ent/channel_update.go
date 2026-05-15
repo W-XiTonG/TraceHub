@@ -480,6 +480,18 @@ func (_u *ChannelUpdate) ClearModelAlias() *ChannelUpdate {
 	return _u
 }
 
+// SetModelUpstreamProbe sets the "model_upstream_probe" field.
+func (_u *ChannelUpdate) SetModelUpstreamProbe(v map[string]interface{}) *ChannelUpdate {
+	_u.mutation.SetModelUpstreamProbe(v)
+	return _u
+}
+
+// ClearModelUpstreamProbe clears the value of the "model_upstream_probe" field.
+func (_u *ChannelUpdate) ClearModelUpstreamProbe() *ChannelUpdate {
+	_u.mutation.ClearModelUpstreamProbe()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ChannelUpdate) SetUpdatedAt(v time.Time) *ChannelUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -774,6 +786,12 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ModelAliasCleared() {
 		_spec.ClearField(channel.FieldModelAlias, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.ModelUpstreamProbe(); ok {
+		_spec.SetField(channel.FieldModelUpstreamProbe, field.TypeJSON, value)
+	}
+	if _u.mutation.ModelUpstreamProbeCleared() {
+		_spec.ClearField(channel.FieldModelUpstreamProbe, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
@@ -1365,6 +1383,18 @@ func (_u *ChannelUpdateOne) ClearModelAlias() *ChannelUpdateOne {
 	return _u
 }
 
+// SetModelUpstreamProbe sets the "model_upstream_probe" field.
+func (_u *ChannelUpdateOne) SetModelUpstreamProbe(v map[string]interface{}) *ChannelUpdateOne {
+	_u.mutation.SetModelUpstreamProbe(v)
+	return _u
+}
+
+// ClearModelUpstreamProbe clears the value of the "model_upstream_probe" field.
+func (_u *ChannelUpdateOne) ClearModelUpstreamProbe() *ChannelUpdateOne {
+	_u.mutation.ClearModelUpstreamProbe()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ChannelUpdateOne) SetUpdatedAt(v time.Time) *ChannelUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1689,6 +1719,12 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if _u.mutation.ModelAliasCleared() {
 		_spec.ClearField(channel.FieldModelAlias, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.ModelUpstreamProbe(); ok {
+		_spec.SetField(channel.FieldModelUpstreamProbe, field.TypeJSON, value)
+	}
+	if _u.mutation.ModelUpstreamProbeCleared() {
+		_spec.ClearField(channel.FieldModelUpstreamProbe, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)

@@ -38,6 +38,12 @@ type SiteSettings = {
   register_promo_text_db_value?: string
   api_public_base_url?: string
   public_contact?: PublicContactPayload | null
+  upstream_model_probe_enabled?: boolean
+  upstream_model_probe_interval_minutes?: number
+  upstream_model_probe_enabled_db_set?: boolean
+  upstream_model_probe_enabled_db_value?: string
+  upstream_model_probe_interval_db_set?: boolean
+  upstream_model_probe_interval_db_value?: string
 }
 
 const form = reactive({
@@ -48,6 +54,8 @@ const form = reactive({
   defaultNewUserBalance: 0,
   registerPromoText: '',
   apiPublicBaseUrl: '',
+  upstreamProbeEnabled: false,
+  upstreamProbeInterval: 360,
 })
 
 const contactTitle = ref('')
@@ -73,6 +81,10 @@ const defaultNewUserBalanceDbOverride = ref(false)
 const registerPromoTextYaml = ref('')
 /** 数据库是否已有注册推广文案的覆盖 */
 const registerPromoTextDbOverride = ref(false)
+
+/** 上游探测：数据库是否覆盖（仅展示） */
+const upstreamProbeEnabledDbOverride = ref(false)
+const upstreamProbeIntervalDbOverride = ref(false)
 
 const brandIconPreviewSrc = computed(() => {
   const u = form.brandIconUrl.trim()
@@ -129,6 +141,11 @@ function applyPayload(d: SiteSettings) {
   registerPromoTextYaml.value = typeof d.register_promo_text_file === 'string' ? d.register_promo_text_file : ''
   registerPromoTextDbOverride.value = Boolean(d.register_promo_text_db_set)
   form.apiPublicBaseUrl = typeof d.api_public_base_url === 'string' ? d.api_public_base_url : ''
+  form.upstreamProbeEnabled = Boolean(d.upstream_model_probe_enabled)
+  const iv = pickInt64ish(d.upstream_model_probe_interval_minutes)
+  form.upstreamProbeInterval = iv >= 15 && iv <= 1440 ? iv : 360
+  upstreamProbeEnabledDbOverride.value = Boolean(d.upstream_model_probe_enabled_db_set)
+  upstreamProbeIntervalDbOverride.value = Boolean(d.upstream_model_probe_interval_db_set)
   const pc = d.public_contact
   if (pc && typeof pc === 'object') {
     contactTitle.value = typeof pc.title === 'string' ? pc.title.trim() : ''
@@ -388,6 +405,16 @@ async function save() {
       value: JSON.stringify(contactPayload),
       description: t('adminSystem.descPublicContact'),
     },
+    {
+      key: 'upstream_model_probe.enabled',
+      value: form.upstreamProbeEnabled ? 'true' : 'false',
+      description: t('adminSystem.descUpstreamProbeEnabled'),
+    },
+    {
+      key: 'upstream_model_probe.interval_minutes',
+      value: String(Math.min(1440, Math.max(15, Math.trunc(Number(form.upstreamProbeInterval)) || 360))),
+      description: t('adminSystem.descUpstreamProbeInterval'),
+    },
   ]
   try {
     const { data } = await http.put<Envelope<unknown>>('/api/admin/config', { items })
@@ -571,6 +598,39 @@ onMounted(() => void refresh())
             placeholder="https://api.example.com"
           />
           <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintApiPublicBaseUrl') }}</p>
+        </div>
+      </section>
+
+      <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+        <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secUpstreamProbe') }}</h2>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secUpstreamProbeHint') }}</p>
+        <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamProbeListDisclaimer') }}</p>
+        <div class="mt-5 max-w-xl space-y-4">
+          <label class="flex cursor-pointer items-start gap-3">
+            <input v-model="form.upstreamProbeEnabled" type="checkbox" class="mt-1" />
+            <span class="block text-xs font-medium text-slate-300">{{ t('adminSystem.lblUpstreamProbeEnabled') }}</span>
+          </label>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+              t('adminSystem.lblUpstreamProbeInterval')
+            }}</label>
+            <input
+              v-model.number="form.upstreamProbeInterval"
+              type="number"
+              min="15"
+              max="1440"
+              step="1"
+              class="th-input max-w-xs font-mono text-sm"
+              autocomplete="off"
+            />
+            <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamProbeInterval') }}</p>
+          </div>
+          <p
+            v-if="upstreamProbeEnabledDbOverride || upstreamProbeIntervalDbOverride"
+            class="text-[11px] leading-relaxed text-amber-100/80"
+          >
+            {{ t('adminSystem.hintUpstreamProbeDb') }}
+          </p>
         </div>
       </section>
 

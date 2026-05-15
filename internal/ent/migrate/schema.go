@@ -180,6 +180,7 @@ var (
 		{Name: "quota_used", Type: field.TypeInt64, Default: 0},
 		{Name: "quota_total", Type: field.TypeInt64, Default: 0},
 		{Name: "model_alias", Type: field.TypeJSON, Nullable: true},
+		{Name: "model_upstream_probe", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "group_id", Type: field.TypeInt, Nullable: true},
@@ -192,7 +193,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channels_groups_channels",
-				Columns:    []*schema.Column{ChannelsColumns[26]},
+				Columns:    []*schema.Column{ChannelsColumns[27]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -216,7 +217,7 @@ var (
 			{
 				Name:    "channel_group_id",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelsColumns[26]},
+				Columns: []*schema.Column{ChannelsColumns[27]},
 			},
 		},
 	}

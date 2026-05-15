@@ -271,6 +271,14 @@ export default {
     priority: '优先级',
     weight: '权重',
     concurrency: '并发',
+    probeNow: '立即探测',
+    probeProbing: '探测中…',
+    probeInList: '在列表',
+    probeNotInList: '未见',
+    probeUnknown: '未探测',
+    probeErr: '错误',
+    probeTitleChecked: '上次检测：{t}',
+    probeChannelErr: '最近拉取失败：{msg}',
   },
   adminGroups: {
     title: '分组管理',
@@ -607,6 +615,15 @@ export default {
       '留空则控制台「概览」与文档中的示例使用当前浏览器站点 + /v1。若对外网关域名与控制台不同（例如独立 API 子域），请填写 https 根地址（路径可留空或填 /v1）；保存后写入公开站点元数据，前端自动替换文档与概览中的 Base URL 与 cURL 示例。',
     lblApiPublicBaseUrl: 'API 公网 Base URL',
     hintApiPublicBaseUrl: '示例：https://api.example.com 或 https://api.example.com/v1（保存时会自动规范为含 /v1 的地址）。',
+    secUpstreamProbe: '上游模型列表探测',
+    secUpstreamProbeHint:
+      '后台按间隔对各启用且可调度的渠道请求 OpenAI 兼容 GET /v1/models，与本地已配置模型比对后写入标注（不自动删除模型配置）。关闭时不发起周期性外呼；与渠道卡片上「立即探测」无关。',
+    lblUpstreamProbeEnabled: '启用周期性探测',
+    lblUpstreamProbeInterval: '探测间隔（分钟）',
+    hintUpstreamProbeInterval: '建议 60–720；最小 15，最大 1440（1 天）。默认 360（6 小时）。',
+    hintUpstreamProbeDb:
+      '若数据库中曾保存过本段两项，下方会提示；「恢复默认」不会清除这两项（避免误关探测）。',
+    hintUpstreamProbeListDisclaimer: '标注依据上游 /v1/models 返回；部分供应商列表不全，「未见」不代表一定不可用。',
     secOps: '运维与探测',
     secOpsHint: '写入 /health、/ready 返回的 operator 字段；空则回退到配置文件 site.operator_display_name。',
     lblOperator: '运营方展示名（operator）',
@@ -651,5 +668,7 @@ export default {
     descRegisterPromo: '注册页与官网首页展示的推广说明（site.register_promo_text）',
     descApiPublicBaseUrl: '对外 OpenAI 兼容 Base URL（site.api.public_base_url）',
     descPublicContact: '官网页脚联系我们 JSON（site.public_contact）',
+    descUpstreamProbeEnabled: '后台周期性上游模型列表探测开关',
+    descUpstreamProbeInterval: '后台探测周期间隔（分钟）',
   },
 } as const

@@ -271,6 +271,14 @@ export default {
     priority: '優先級',
     weight: '權重',
     concurrency: '併發',
+    probeNow: '立即偵測',
+    probeProbing: '偵測中…',
+    probeInList: '在列表',
+    probeNotInList: '未見',
+    probeUnknown: '未偵測',
+    probeErr: '錯誤',
+    probeTitleChecked: '上次偵測：{t}',
+    probeChannelErr: '最近拉取失敗：{msg}',
   },
   adminGroups: {
     title: '分組管理',
@@ -610,6 +618,14 @@ export default {
       '留空則控制台「概覽」與文件中的範例使用目前瀏覽器站點 + /v1。若對外閘道網域與控制台不同（例如獨立 API 子網域），請填 https 根位址（路徑可留空或填 /v1）；儲存後寫入公開站點中繼資料，前端會自動替換文件與概覽中的 Base URL 與 cURL 範例。',
     lblApiPublicBaseUrl: 'API 公網 Base URL',
     hintApiPublicBaseUrl: '範例：https://api.example.com 或 https://api.example.com/v1（儲存時會自動規範為含 /v1 的位址）。',
+    secUpstreamProbe: '上游模型列表偵測',
+    secUpstreamProbeHint:
+      '背景依間隔對各啟用且可排程的渠道請求 OpenAI 相容 GET /v1/models，與本機已設定模型比對後寫入標註（不會自動刪除模型設定）。關閉時不進行週期性外呼；與渠道卡片「立即偵測」無關。',
+    lblUpstreamProbeEnabled: '啟用週期性偵測',
+    lblUpstreamProbeInterval: '偵測間隔（分鐘）',
+    hintUpstreamProbeInterval: '建議 60–720；最小 15，最大 1440（1 天）。預設 360（6 小時）。',
+    hintUpstreamProbeDb: '若資料庫曾儲存本段兩項，下方會提示；「恢復預設」不會清除（避免誤關偵測）。',
+    hintUpstreamProbeListDisclaimer: '標註依上游 /v1/models；部分供應商列表不全，「未見」不代表一定不可用。',
     secContact: '官網聯絡我們',
     secContactHint:
       '設定後顯示在官網首頁頁尾上方：可選區塊標題、多張 QR 圖（建議本地上傳或同源路徑）與多個聯絡信箱。寫入 site.public_contact（JSON），並經 /api/pub/site-meta 下發給未登入訪客。',
@@ -654,5 +670,7 @@ export default {
     descRegisterPromo: '註冊頁與官網首頁展示的推廣說明（site.register_promo_text）',
     descApiPublicBaseUrl: '對外 OpenAI 相容 Base URL（site.api.public_base_url）',
     descPublicContact: '官網頁尾聯絡我們 JSON（site.public_contact）',
+    descUpstreamProbeEnabled: '背景週期性上游 /v1/models 偵測開關',
+    descUpstreamProbeInterval: '背景偵測間隔（分鐘）',
   },
 } as const

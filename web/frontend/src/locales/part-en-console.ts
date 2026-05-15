@@ -213,12 +213,20 @@ export default {
     mid: ' (models from healthy enabled channels in your group, same as ',
     mid2: ') and ',
     cat: 'Catalog',
-    after: ' (visible entries from the admin model market). Catalog-only models still need a channel to be callable.',
+    after:
+      ' (visible entries from the admin model market). Catalog-only models still need a channel to be callable. If admins enabled model checks, gateway models may show a “Service registry” column so you can see whether each model is still registered as available on this TraceHub deployment.',
     searchPh: 'Filter by model id, display name or owner…',
     count: '{total} total · showing {n}',
     thId: 'Model ID',
     thDisplay: 'Display name',
     thSource: 'Source',
+    thUpstreamList: 'Service registry',
+    thUpstreamListHint:
+      'We periodically verify whether each model is still supported on this service. If different connection profiles disagree, you may see “Partial”. No label is shown until a check has run.',
+    upstreamAvailable: 'Available',
+    upstreamUnavailable: 'Unavailable',
+    upstreamPartial: 'Partial',
+    upstreamUnknown: 'Not checked yet',
     thOwner: 'Owner',
     srcBoth: 'Gateway + catalog',
     srcGw: 'Gateway',
@@ -466,6 +474,8 @@ export default {
     model: 'Model',
     routerHealthHint:
       'From channel health in your group (same as gateway routing): Routable means a healthy channel can serve the model; Channel down means only unhealthy channels list it; Catalog only means it comes from the catalog/defaults, not from your channels.',
+    registryHint:
+      '"Service registry" matches the Available models page and refreshes when you reload the list or return to this tab. If the pasted API key is not for the account you are logged into, badges may not match that key’s routing.',
     routerHealth: {
       healthy: 'Routable',
       unhealthy: 'Channel down',

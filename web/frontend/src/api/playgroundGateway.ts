@@ -1,13 +1,21 @@
 /** 同源调用 TraceHub OpenAI 兼容网关 /v1（使用 API Key，而非控制台 JWT） */
 
+import { http, type Envelope } from './http'
+
 const STICKY_HDR = 'X-TraceHub-Session'
 
 export type PlaygroundRouterHealth = 'healthy' | 'unhealthy' | 'catalog_only'
 
+export type PlaygroundRegistryMeta = {
+  upstream_list_status?: string
+  upstream_list_checked_at?: string
+  in_gateway?: boolean
+}
+
 export type PlaygroundModelRow = {
   id: string
   routerHealth?: PlaygroundRouterHealth
-}
+} & PlaygroundRegistryMeta
 
 function parseRouterHealth(v: unknown): PlaygroundRouterHealth | undefined {
   if (v === 'healthy' || v === 'unhealthy' || v === 'catalog_only') return v
@@ -37,6 +45,54 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
   }
   rows.sort((a, b) => a.id.localeCompare(b.id))
   return rows
+}
+
+type AvailModelItem = {
+  id: string
+  upstream_list_status?: string
+  upstream_list_checked_at?: string
+  in_gateway?: boolean
+}
+
+/**
+ * 拉取当前登录账户在「可用模型」页的登记元数据，用于与试玩 GET /v1/models 结果按 id 合并。
+ * 未登录、无令牌或请求失败时返回 null（不影响网关模型列表）。
+ */
+export async function fetchPlaygroundRegistryMap(): Promise<Map<string, PlaygroundRegistryMeta> | null> {
+  try {
+    const { data } = await http.get<Envelope<{ items: AvailModelItem[] }>>('/api/user/available-models')
+    if (data.code !== 0 || !data.data?.items) return null
+    const map = new Map<string, PlaygroundRegistryMeta>()
+    for (const it of data.data.items) {
+      const id = typeof it.id === 'string' ? it.id.trim() : ''
+      if (!id) continue
+      map.set(id, {
+        upstream_list_status: it.upstream_list_status,
+        upstream_list_checked_at: it.upstream_list_checked_at,
+        in_gateway: it.in_gateway,
+      })
+    }
+    return map
+  } catch {
+    return null
+  }
+}
+
+export function mergePlaygroundRegistry(
+  rows: PlaygroundModelRow[],
+  reg: Map<string, PlaygroundRegistryMeta> | null,
+): PlaygroundModelRow[] {
+  if (!reg?.size) return rows
+  return rows.map((r) => {
+    const m = reg.get(r.id)
+    if (!m) return r
+    return {
+      ...r,
+      upstream_list_status: m.upstream_list_status,
+      upstream_list_checked_at: m.upstream_list_checked_at,
+      in_gateway: m.in_gateway,
+    }
+  })
 }
 
 function parseOpenAIError(text: string): string {

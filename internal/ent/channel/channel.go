@@ -63,6 +63,8 @@ const (
 	FieldQuotaTotal = "quota_total"
 	// FieldModelAlias holds the string denoting the model_alias field in the database.
 	FieldModelAlias = "model_alias"
+	// FieldModelUpstreamProbe holds the string denoting the model_upstream_probe field in the database.
+	FieldModelUpstreamProbe = "model_upstream_probe"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -125,6 +127,7 @@ var Columns = []string{
 	FieldQuotaUsed,
 	FieldQuotaTotal,
 	FieldModelAlias,
+	FieldModelUpstreamProbe,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }

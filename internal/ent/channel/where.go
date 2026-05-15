@@ -1260,6 +1260,16 @@ func ModelAliasNotNil() predicate.Channel {
 	return predicate.Channel(sql.FieldNotNull(FieldModelAlias))
 }
 
+// ModelUpstreamProbeIsNil applies the IsNil predicate on the "model_upstream_probe" field.
+func ModelUpstreamProbeIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldModelUpstreamProbe))
+}
+
+// ModelUpstreamProbeNotNil applies the NotNil predicate on the "model_upstream_probe" field.
+func ModelUpstreamProbeNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldModelUpstreamProbe))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldCreatedAt, v))

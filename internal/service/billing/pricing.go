@@ -7,6 +7,7 @@ import (
 )
 
 // DefaultQuotaPer1K 默认每千 Token 计费（额度单位），可按模型覆盖；管理员可通过后续版本写入 DB。
+// 若调整本表，请同步更新前端首页参考表：web/frontend/src/data/homeBillingExamples.ts
 var DefaultQuotaPer1K = map[string]struct {
 	In  int64
 	Out int64

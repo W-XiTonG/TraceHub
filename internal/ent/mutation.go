@@ -4082,6 +4082,7 @@ type ChannelMutation struct {
 	quota_total                  *int64
 	addquota_total               *int64
 	model_alias                  *map[string]string
+	model_upstream_probe         *map[string]interface{}
 	created_at                   *time.Time
 	updated_at                   *time.Time
 	clearedFields                map[string]struct{}
@@ -5378,6 +5379,55 @@ func (m *ChannelMutation) ResetModelAlias() {
 	delete(m.clearedFields, channel.FieldModelAlias)
 }
 
+// SetModelUpstreamProbe sets the "model_upstream_probe" field.
+func (m *ChannelMutation) SetModelUpstreamProbe(value map[string]interface{}) {
+	m.model_upstream_probe = &value
+}
+
+// ModelUpstreamProbe returns the value of the "model_upstream_probe" field in the mutation.
+func (m *ChannelMutation) ModelUpstreamProbe() (r map[string]interface{}, exists bool) {
+	v := m.model_upstream_probe
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelUpstreamProbe returns the old "model_upstream_probe" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldModelUpstreamProbe(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelUpstreamProbe is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelUpstreamProbe requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelUpstreamProbe: %w", err)
+	}
+	return oldValue.ModelUpstreamProbe, nil
+}
+
+// ClearModelUpstreamProbe clears the value of the "model_upstream_probe" field.
+func (m *ChannelMutation) ClearModelUpstreamProbe() {
+	m.model_upstream_probe = nil
+	m.clearedFields[channel.FieldModelUpstreamProbe] = struct{}{}
+}
+
+// ModelUpstreamProbeCleared returns if the "model_upstream_probe" field was cleared in this mutation.
+func (m *ChannelMutation) ModelUpstreamProbeCleared() bool {
+	_, ok := m.clearedFields[channel.FieldModelUpstreamProbe]
+	return ok
+}
+
+// ResetModelUpstreamProbe resets all changes to the "model_upstream_probe" field.
+func (m *ChannelMutation) ResetModelUpstreamProbe() {
+	m.model_upstream_probe = nil
+	delete(m.clearedFields, channel.FieldModelUpstreamProbe)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ChannelMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -5619,7 +5669,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 26)
+	fields := make([]string, 0, 27)
 	if m.group != nil {
 		fields = append(fields, channel.FieldGroupID)
 	}
@@ -5692,6 +5742,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.model_alias != nil {
 		fields = append(fields, channel.FieldModelAlias)
 	}
+	if m.model_upstream_probe != nil {
+		fields = append(fields, channel.FieldModelUpstreamProbe)
+	}
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -5754,6 +5807,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.QuotaTotal()
 	case channel.FieldModelAlias:
 		return m.ModelAlias()
+	case channel.FieldModelUpstreamProbe:
+		return m.ModelUpstreamProbe()
 	case channel.FieldCreatedAt:
 		return m.CreatedAt()
 	case channel.FieldUpdatedAt:
@@ -5815,6 +5870,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldQuotaTotal(ctx)
 	case channel.FieldModelAlias:
 		return m.OldModelAlias(ctx)
+	case channel.FieldModelUpstreamProbe:
+		return m.OldModelUpstreamProbe(ctx)
 	case channel.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case channel.FieldUpdatedAt:
@@ -5996,6 +6053,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetModelAlias(v)
 		return nil
+	case channel.FieldModelUpstreamProbe:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelUpstreamProbe(v)
+		return nil
 	case channel.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -6172,6 +6236,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldModelAlias) {
 		fields = append(fields, channel.FieldModelAlias)
 	}
+	if m.FieldCleared(channel.FieldModelUpstreamProbe) {
+		fields = append(fields, channel.FieldModelUpstreamProbe)
+	}
 	return fields
 }
 
@@ -6218,6 +6285,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldModelAlias:
 		m.ClearModelAlias()
+		return nil
+	case channel.FieldModelUpstreamProbe:
+		m.ClearModelUpstreamProbe()
 		return nil
 	}
 	return fmt.Errorf("unknown Channel nullable field %s", name)
@@ -6298,6 +6368,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldModelAlias:
 		m.ResetModelAlias()
+		return nil
+	case channel.FieldModelUpstreamProbe:
+		m.ResetModelUpstreamProbe()
 		return nil
 	case channel.FieldCreatedAt:
 		m.ResetCreatedAt()

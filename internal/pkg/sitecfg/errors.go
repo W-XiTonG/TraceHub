@@ -29,4 +29,8 @@ var (
 	errPublicContactQRURLRequired  = errors.New("site.public_contact.qr_items 填写说明时须填写 image_url")
 	errPublicContactEmailInvalid   = errors.New("site.public_contact.emails 中存在无效邮箱（仅支持纯邮箱，不含显示名）")
 	errPublicContactEmailTooLong   = errors.New("site.public_contact.emails 单项过长")
+
+	errInvalidUpstreamProbeEnabled = errors.New("upstream_model_probe.enabled 须为 true 或 false")
+	errInvalidUpstreamProbeInterval = errors.New("upstream_model_probe.interval_minutes 须为整数")
+	errUpstreamProbeIntervalRange    = errors.New("upstream_model_probe.interval_minutes 须在 15–1440 之间")
 )

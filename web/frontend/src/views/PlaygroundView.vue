@@ -5,7 +5,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import * as pgw from '../api/playgroundGateway'
-import type { PlaygroundModelRow } from '../api/playgroundGateway'
+import type { PlaygroundModelRow, PlaygroundRouterHealth } from '../api/playgroundGateway'
 import { copyTextToClipboard } from '../utils/clipboard'
 import { randomUUID } from '../utils/randomId'
 
@@ -38,6 +38,10 @@ const models = ref<PlaygroundModelRow[]>([])
 const model = ref('')
 const modelsErr = ref('')
 const modelsLoading = ref(false)
+/** 已成功拉取控制台「可用模型」元数据并与列表合并（含空表），用于展示登记说明 */
+const playgroundRegistryMerged = ref(false)
+/** 控制台返回过元数据的模型 id；仅对这些行展示登记角标 */
+const playgroundRegistryIds = ref<Set<string> | null>(null)
 
 const modelPickerOpen = ref(false)
 const modelPickerWrap = ref<HTMLElement | null>(null)
@@ -114,14 +118,121 @@ const selectedModelRow = computed(() => {
   return rows.find((r) => r.id === model.value) ?? rows[0]
 })
 
+/** 试玩模型下拉里「路由健康 / 服务登记」共用色板（与可用模型页登记胶囊一致） */
+const PG_PILL_UNKNOWN =
+  'th-models-upstream-pill th-models-upstream-pill--unknown border border-dashed border-slate-600/55 bg-slate-950/70 text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
+const PG_PILL_AVAILABLE =
+  'th-models-upstream-pill th-models-upstream-pill--available border border-emerald-400/25 bg-gradient-to-br from-emerald-500/[0.22] via-teal-500/10 to-slate-900/40 text-emerald-50 ring-1 ring-inset ring-white/[0.06] shadow-[0_0_28px_-12px_rgba(16,185,129,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]'
+const PG_PILL_UNAVAILABLE =
+  'th-models-upstream-pill th-models-upstream-pill--unavailable border border-rose-400/25 bg-gradient-to-br from-rose-500/[0.18] via-fuchsia-900/10 to-slate-900/45 text-rose-50 ring-1 ring-inset ring-white/[0.05] shadow-[0_0_26px_-12px_rgba(244,63,94,0.45),inset_0_1px_0_rgba(255,255,255,0.05)]'
+const PG_PILL_PARTIAL =
+  'th-models-upstream-pill th-models-upstream-pill--partial border border-amber-400/30 bg-gradient-to-br from-amber-500/[0.2] via-violet-600/10 to-slate-900/40 text-amber-50 ring-1 ring-inset ring-white/[0.06] shadow-[0_0_28px_-12px_rgba(245,158,11,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]'
+const PG_DOT_AVAILABLE = 'th-models-upstream-pill-dot bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.75)]'
+const PG_DOT_UNAVAILABLE = 'th-models-upstream-pill-dot bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.55)]'
+const PG_DOT_PARTIAL =
+  'th-models-upstream-pill-dot bg-gradient-to-br from-amber-300 to-violet-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'
+const PG_DOT_UNKNOWN_DIM = 'th-models-upstream-pill-dot bg-slate-600'
+const PG_DOT_UNKNOWN = 'th-models-upstream-pill-dot bg-slate-500'
+
+function pgRegistryCell(m: PlaygroundModelRow): {
+  text: string
+  title: string
+  variant: 'unknown' | 'available' | 'unavailable' | 'partial'
+  pillClass: string
+  dotClass: string
+} {
+  if (m.in_gateway === false) {
+    return {
+      text: t('modelsPage.upstreamUnknown'),
+      title: '',
+      variant: 'unknown',
+      pillClass: PG_PILL_UNKNOWN,
+      dotClass: PG_DOT_UNKNOWN_DIM,
+    }
+  }
+  const st = (m.upstream_list_status ?? '').trim()
+  const checked = (m.upstream_list_checked_at ?? '').trim()
+  const hint = t('modelsPage.thUpstreamListHint')
+  const timeTitle = checked ? `${checked}\n${hint}` : hint
+  switch (st) {
+    case 'listed':
+      return {
+        text: t('modelsPage.upstreamAvailable'),
+        title: timeTitle,
+        variant: 'available',
+        pillClass: PG_PILL_AVAILABLE,
+        dotClass: PG_DOT_AVAILABLE,
+      }
+    case 'not_listed':
+      return {
+        text: t('modelsPage.upstreamUnavailable'),
+        title: timeTitle,
+        variant: 'unavailable',
+        pillClass: PG_PILL_UNAVAILABLE,
+        dotClass: PG_DOT_UNAVAILABLE,
+      }
+    case 'mixed':
+      return {
+        text: t('modelsPage.upstreamPartial'),
+        title: timeTitle,
+        variant: 'partial',
+        pillClass: PG_PILL_PARTIAL,
+        dotClass: PG_DOT_PARTIAL,
+      }
+    default:
+      return {
+        text: t('modelsPage.upstreamUnknown'),
+        title: m.in_gateway === true ? hint : '',
+        variant: 'unknown',
+        pillClass: PG_PILL_UNKNOWN,
+        dotClass: PG_DOT_UNKNOWN,
+      }
+  }
+}
+
+function pgRouterHealthCell(h: PlaygroundRouterHealth): {
+  text: string
+  title: string
+  pillClass: string
+  dotClass: string
+} {
+  const title = t('playground.routerHealthHint')
+  switch (h) {
+    case 'healthy':
+      return {
+        text: t('playground.routerHealth.healthy'),
+        title,
+        pillClass: PG_PILL_AVAILABLE,
+        dotClass: PG_DOT_AVAILABLE,
+      }
+    case 'unhealthy':
+      return {
+        text: t('playground.routerHealth.unhealthy'),
+        title,
+        pillClass: PG_PILL_PARTIAL,
+        dotClass: PG_DOT_PARTIAL,
+      }
+    case 'catalog_only':
+      return {
+        text: t('playground.routerHealth.catalog_only'),
+        title,
+        pillClass: PG_PILL_UNKNOWN,
+        dotClass: PG_DOT_UNKNOWN,
+      }
+  }
+}
+
 const filteredPlaygroundModels = computed(() => {
   const rows = models.value
   const raw = modelSearchQuery.value.trim().toLowerCase()
   if (!raw) return rows
   const parts = raw.split(/\s+/).filter(Boolean)
+  const idSet = playgroundRegistryIds.value
   return rows.filter((r) => {
     const id = r.id.toLowerCase()
-    return parts.every((p) => id.includes(p))
+    const regText = idSet?.has(r.id) ? pgRegistryCell(r).text.toLowerCase() : ''
+    const rhText = r.routerHealth ? pgRouterHealthCell(r.routerHealth).text.toLowerCase() : ''
+    return parts.every((p) => id.includes(p) || regText.includes(p) || rhText.includes(p))
   })
 })
 
@@ -222,11 +333,18 @@ onMounted(() => {
   if (apiKey.value) void refreshModels()
   document.addEventListener('mousedown', onDocMousedown)
   document.addEventListener('keydown', onDocKeydown)
+  document.addEventListener('visibilitychange', onPlaygroundVisibility)
 })
+
+function onPlaygroundVisibility() {
+  if (document.visibilityState !== 'visible') return
+  if (apiKey.value.trim()) void refreshModels()
+}
 
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onDocMousedown)
   document.removeEventListener('keydown', onDocKeydown)
+  document.removeEventListener('visibilitychange', onPlaygroundVisibility)
   window.removeEventListener('resize', onWinReposition)
   window.removeEventListener('scroll', onWinReposition, true)
 })
@@ -246,6 +364,8 @@ watch(apiKey, (v) => {
     if (!t) {
       models.value = []
       modelsErr.value = ''
+      playgroundRegistryMerged.value = false
+      playgroundRegistryIds.value = null
       return
     }
     void refreshModels()
@@ -419,9 +539,14 @@ async function refreshModels() {
   modelsErr.value = ''
   modelsLoading.value = true
   try {
-    const rows = await pgw.fetchPlaygroundModels(k, stickySession.value)
-    models.value = rows
-    const ids = rows.map((r) => r.id)
+    const [rows, reg] = await Promise.all([
+      pgw.fetchPlaygroundModels(k, stickySession.value),
+      pgw.fetchPlaygroundRegistryMap(),
+    ])
+    playgroundRegistryMerged.value = reg !== null
+    playgroundRegistryIds.value = reg ? new Set(reg.keys()) : null
+    models.value = pgw.mergePlaygroundRegistry(rows, reg)
+    const ids = models.value.map((r) => r.id)
     if (!model.value && ids.length) model.value = ids[0]
     if (model.value && !ids.includes(model.value) && ids.length) model.value = ids[0]
   } catch (e: unknown) {
@@ -1365,6 +1490,9 @@ function fmtNum(n: number) {
           <div>
             <label class="text-xs text-slate-500">{{ t('playground.model') }}</label>
             <p class="mt-0.5 text-[10px] leading-snug th-pg-muted">{{ t('playground.routerHealthHint') }}</p>
+            <p v-if="playgroundRegistryMerged" class="mt-0.5 text-[10px] leading-snug th-pg-muted">
+              {{ t('playground.registryHint') }}
+            </p>
             <div ref="modelPickerWrap" class="th-pg-model-picker mt-1">
               <button
                 id="pg-model-picker-trigger"
@@ -1377,11 +1505,33 @@ function fmtNum(n: number) {
                 @click="toggleModelPicker"
               >
                 <span
-                  v-if="selectedModelRow?.routerHealth"
-                  class="th-pg-model-picker__health-dot"
-                  :class="`th-pg-model-picker__health-dot--${selectedModelRow.routerHealth}`"
-                  aria-hidden="true"
-                />
+                  v-for="cell in selectedModelRow?.routerHealth ? [pgRouterHealthCell(selectedModelRow.routerHealth)] : []"
+                  :key="'pg-sel-rh'"
+                  class="th-pg-model-picker__meta-pill"
+                  :class="cell.pillClass"
+                  :title="cell.title"
+                >
+                  <span
+                    class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
+                    :class="cell.dotClass"
+                    aria-hidden="true"
+                  />
+                  <span class="min-w-0 truncate">{{ cell.text }}</span>
+                </span>
+                <span
+                  v-for="cell in selectedModelRow && playgroundRegistryIds?.has(selectedModelRow.id) ? [pgRegistryCell(selectedModelRow)] : []"
+                  :key="'pg-sel-reg'"
+                  class="th-pg-model-picker__meta-pill"
+                  :class="cell.pillClass"
+                  :title="cell.title"
+                >
+                  <span
+                    class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
+                    :class="cell.dotClass"
+                    aria-hidden="true"
+                  />
+                  <span class="min-w-0 truncate">{{ cell.text }}</span>
+                </span>
                 <span class="th-pg-model-picker__value min-w-0 flex-1 truncate text-left font-mono text-[11px] leading-snug">{{
                   models.length ? model || models[0].id : t('playground.modelEmpty')
                 }}</span>
@@ -1440,13 +1590,36 @@ function fmtNum(n: number) {
                     @click="pickModel(m.id)"
                   >
                     <span class="th-pg-model-picker__opt-id">{{ m.id }}</span>
-                    <span
-                      v-if="m.routerHealth"
-                      class="th-pg-model-picker__health"
-                      :class="`th-pg-model-picker__health--${m.routerHealth}`"
-                    >
-                      {{ t(`playground.routerHealth.${m.routerHealth}`) }}
-                    </span>
+                    <div class="th-pg-model-picker__opt-aside">
+                      <span
+                        v-for="cell in m.routerHealth ? [pgRouterHealthCell(m.routerHealth)] : []"
+                        :key="`${m.id}-rh`"
+                        class="th-pg-model-picker__meta-pill"
+                        :class="cell.pillClass"
+                        :title="cell.title"
+                      >
+                        <span
+                          class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
+                          :class="cell.dotClass"
+                          aria-hidden="true"
+                        />
+                        <span class="min-w-0 truncate">{{ cell.text }}</span>
+                      </span>
+                      <span
+                        v-for="cell in playgroundRegistryIds?.has(m.id) ? [pgRegistryCell(m)] : []"
+                        :key="`${m.id}-reg`"
+                        class="th-pg-model-picker__meta-pill"
+                        :class="cell.pillClass"
+                        :title="cell.title"
+                      >
+                        <span
+                          class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
+                          :class="cell.dotClass"
+                          aria-hidden="true"
+                        />
+                        <span class="min-w-0 truncate">{{ cell.text }}</span>
+                      </span>
+                    </div>
                   </button>
                   <p
                     v-if="!filteredPlaygroundModels.length"

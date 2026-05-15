@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,13 +12,14 @@ import (
 	adminhandler "tracehub/internal/handler/admin"
 	gatewayhandler "tracehub/internal/handler/gateway"
 	"tracehub/internal/handler/health"
-	userhandler "tracehub/internal/handler/user"
+	userhandler 	"tracehub/internal/handler/user"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/service/balancealert"
 	"tracehub/internal/service/billing"
+	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -264,6 +266,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/channels", adminhandler.CreateChannel(chAdmin))
 	a.PUT("/channels/:id", adminhandler.UpdateChannel(chAdmin))
 	a.DELETE("/channels/:id", adminhandler.DeleteChannel(opt.Client))
+	a.POST("/channels/:id/probe-upstream-models", adminhandler.ProbeChannelUpstream(chAdmin))
 	a.GET("/channel-model-presets", adminhandler.ChannelModelPresets(opt.Client))
 	a.POST("/channel-models/fetch-upstream", adminhandler.FetchUpstreamModelList())
 	a.GET("/groups", adminhandler.ListGroups(opt.Client))
@@ -305,6 +308,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/announcements/:id/unpublish", adminhandler.UnpublishAnnouncement(opt.Client))
 	a.GET("/feedbacks", adminhandler.ListFeedbacks(opt.Client))
 	a.PUT("/feedbacks/:id/review", adminhandler.ReviewFeedback(opt.Client))
+
+	upstreamprobe.StartWorker(context.Background(), opt.Log, opt.Client, aesKey)
 
 	registerSPA(r, opt)
 	return r, nil

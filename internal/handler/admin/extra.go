@@ -592,6 +592,11 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
 		dbSetBal, dbValBal := sitecfg.DefaultNewUserBalanceDBMeta(ctx, client)
 		dbSetPromo, dbValPromo := sitecfg.RegisterPromoTextDBMeta(ctx, client)
+		probeEnSet, probeEnVal, probeIntSet, probeIntVal, probeMetaErr := sitecfg.UpstreamModelProbeDBMeta(ctx, client)
+		if probeMetaErr != nil {
+			httpx.ServerError(c, "读取探测配置失败")
+			return
+		}
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
@@ -614,6 +619,12 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"register_promo_text_db_value":      strings.TrimSpace(dbValPromo),
 			"api_public_base_url":               sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
 			"public_contact":                    sitecfg.EffectivePublicContactData(ctx, client),
+			"upstream_model_probe_enabled":             sitecfg.EffectiveUpstreamModelProbeEnabled(ctx, client),
+			"upstream_model_probe_interval_minutes":    sitecfg.EffectiveUpstreamModelProbeIntervalMinutes(ctx, client),
+			"upstream_model_probe_enabled_db_set":    probeEnSet,
+			"upstream_model_probe_enabled_db_value":  strings.TrimSpace(probeEnVal),
+			"upstream_model_probe_interval_db_set":   probeIntSet,
+			"upstream_model_probe_interval_db_value": strings.TrimSpace(probeIntVal),
 		})
 	}
 }

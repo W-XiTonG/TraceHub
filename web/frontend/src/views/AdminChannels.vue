@@ -21,6 +21,7 @@ type Ch = {
   concurrency?: number
   schedulable?: boolean
   has_api_secret?: boolean
+  model_upstream_probe?: Record<string, unknown>
 }
 
 type G = { id: number; name: string }
@@ -38,6 +39,7 @@ const form = reactive({
 
 const presetLoading = ref(false)
 const fetchLoading = ref(false)
+const probingId = ref<number | null>(null)
 const presetHint = ref('')
 
 /** 分组下拉用字符串 v-model，避免动态 option 与 v-model.number 在部分浏览器下不同步 */
@@ -294,6 +296,69 @@ function truncateUrl(u: string, max = 42): string {
   if (!u || u.length <= max) return u || t('adminCommon.dash')
   return u.slice(0, max - 1) + t('adminCommon.ellipsis')
 }
+
+type ProbeRow = { in_upstream_list?: boolean; checked_at?: string; error?: string }
+
+function probeMap(ch: Ch): Record<string, unknown> | undefined {
+  const m = ch.model_upstream_probe
+  return m && typeof m === 'object' ? m : undefined
+}
+
+function channelProbeErrMsg(ch: Ch): string {
+  const raw = probeMap(ch)?.['_channel']
+  if (!raw || typeof raw !== 'object') return ''
+  const err = (raw as Record<string, unknown>).error
+  return typeof err === 'string' ? err.trim() : ''
+}
+
+function modelProbeBadge(ch: Ch, modelId: string): { text: string; title: string; cls: string } {
+  const pm = probeMap(ch)
+  const raw = pm?.[modelId]
+  const row = raw && typeof raw === 'object' ? (raw as ProbeRow) : null
+  const chErr = channelProbeErrMsg(ch)
+  if (!row && chErr) {
+    return {
+      text: t('adminChannels.probeUnknown'),
+      title: chErr,
+      cls: 'bg-amber-950/50 text-amber-300/90 ring-amber-800/40',
+    }
+  }
+  if (!row) {
+    return { text: t('adminChannels.probeUnknown'), title: '', cls: 'bg-slate-800/80 text-slate-500 ring-slate-700/60' }
+  }
+  if (typeof row.error === 'string' && row.error.trim()) {
+    return { text: t('adminChannels.probeErr'), title: row.error, cls: 'bg-amber-950/50 text-amber-300 ring-amber-800/40' }
+  }
+  const inList = Boolean(row.in_upstream_list)
+  const checked = typeof row.checked_at === 'string' ? row.checked_at.trim() : ''
+  const titleBase = checked ? t('adminChannels.probeTitleChecked', { t: checked }) : ''
+  const disclaimer = t('adminSystem.hintUpstreamProbeListDisclaimer')
+  if (inList) {
+    return { text: t('adminChannels.probeInList'), title: titleBase, cls: 'bg-emerald-950/40 text-emerald-300 ring-emerald-800/40' }
+  }
+  return {
+    text: t('adminChannels.probeNotInList'),
+    title: titleBase ? `${titleBase}\n${disclaimer}` : disclaimer,
+    cls: 'bg-rose-950/35 text-rose-300/95 ring-rose-900/40',
+  }
+}
+
+async function probeChannelNow(ch: Ch) {
+  probingId.value = ch.id
+  presetHint.value = ''
+  try {
+    const { data } = await http.post<Envelope<{ model_upstream_probe?: Record<string, unknown> }>>(
+      `/api/admin/channels/${ch.id}/probe-upstream-models`,
+      {},
+    )
+    if (!envelopeOk(data)) throw new Error((data as { message?: string }).message || t('adminCommon.requestFail'))
+    await load()
+  } catch (e: unknown) {
+    presetHint.value = httpErrMessage(e)
+  } finally {
+    probingId.value = null
+  }
+}
 </script>
 
 <template>
@@ -537,7 +602,20 @@ function truncateUrl(u: string, max = 42): string {
             <div v-else class="text-xs text-slate-600">{{ t('adminChannels.baseDefault') }}</div>
 
             <div>
-              <span class="text-xs font-medium text-slate-500">{{ t('adminChannels.modelsLabel', { n: ch.models?.length ?? 0 }) }}</span>
+              <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-medium text-slate-500">{{ t('adminChannels.modelsLabel', { n: ch.models?.length ?? 0 }) }}</span>
+                <button
+                  type="button"
+                  class="shrink-0 rounded-md border border-slate-600/90 bg-slate-800/80 px-2 py-1 text-[10px] font-medium text-slate-300 hover:border-cyan-500/30 hover:text-cyan-200/90 disabled:opacity-40"
+                  :disabled="probingId === ch.id"
+                  @click="probeChannelNow(ch)"
+                >
+                  {{ probingId === ch.id ? t('adminChannels.probeProbing') : t('adminChannels.probeNow') }}
+                </button>
+              </div>
+              <p v-if="channelProbeErrMsg(ch)" class="mb-2 text-[11px] leading-snug text-amber-300/90">
+                {{ t('adminChannels.probeChannelErr', { msg: channelProbeErrMsg(ch) }) }}
+              </p>
               <div
                 class="mt-2 max-h-28 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/50 p-2"
               >
@@ -546,10 +624,16 @@ function truncateUrl(u: string, max = 42): string {
                   <span
                     v-for="m in ch.models"
                     :key="m"
-                    class="inline-flex max-w-full truncate rounded-md bg-slate-800/90 px-2 py-0.5 font-mono text-[11px] text-slate-300 ring-1 ring-slate-700/80"
-                    :title="m"
+                    class="inline-flex max-w-[11rem] flex-col gap-0.5 rounded-md bg-slate-800/90 px-2 py-0.5 ring-1 ring-slate-700/80"
                   >
-                    {{ m }}
+                    <span class="truncate font-mono text-[11px] text-slate-300" :title="m">{{ m }}</span>
+                    <span
+                      class="inline-flex max-w-full shrink-0 self-start truncate rounded px-1 py-px text-[9px] font-semibold ring-1"
+                      :class="modelProbeBadge(ch, m).cls"
+                      :title="modelProbeBadge(ch, m).title"
+                    >
+                      {{ modelProbeBadge(ch, m).text }}
+                    </span>
                   </span>
                 </div>
               </div>

@@ -67,6 +67,8 @@ type Channel struct {
 	QuotaTotal int64 `json:"quota_total,omitempty"`
 	// request model -> upstream model
 	ModelAlias map[string]string `json:"model_alias,omitempty"`
+	// per-model GET /v1/models snapshot; key _channel for last fetch error
+	ModelUpstreamProbe map[string]interface{} `json:"model_upstream_probe,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -124,7 +126,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channel.FieldModels, channel.FieldModelAlias:
+		case channel.FieldModels, channel.FieldModelAlias, channel.FieldModelUpstreamProbe:
 			values[i] = new([]byte)
 		case channel.FieldSchedulable, channel.FieldEnabled:
 			values[i] = new(sql.NullBool)
@@ -305,6 +307,14 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field model_alias: %w", err)
 				}
 			}
+		case channel.FieldModelUpstreamProbe:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field model_upstream_probe", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ModelUpstreamProbe); err != nil {
+					return fmt.Errorf("unmarshal field model_upstream_probe: %w", err)
+				}
+			}
 		case channel.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -435,6 +445,9 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_alias=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ModelAlias))
+	builder.WriteString(", ")
+	builder.WriteString("model_upstream_probe=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ModelUpstreamProbe))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

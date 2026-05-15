@@ -2,11 +2,7 @@ package adminhandler
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -14,8 +10,8 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/pkg/httpx"
-	"tracehub/internal/pkg/safehttp"
 	"tracehub/internal/service/billing"
+	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
 )
@@ -124,95 +120,6 @@ func ChannelModelPresets(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-type openAIModelsResp struct {
-	Data []struct {
-		ID string `json:"id"`
-	} `json:"data"`
-}
-
-var upstreamModelsHTTP = &http.Client{
-	Timeout: 60 * time.Second,
-}
-
-// normalizeOpenAICompatBaseURL 将「仅域名」或缺少 /v1 的 Base URL 规范为 OpenAI 兼容根路径 …/v1，
-// 避免误请求 https://api.openai.com/models（404）而非 …/v1/models。
-func normalizeOpenAICompatBaseURL(raw string) (string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return "https://api.openai.com/v1", nil
-	}
-	raw = strings.TrimRight(raw, "/")
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return "", fmt.Errorf("invalid api_base_url")
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", fmt.Errorf("api_base_url 仅支持 http/https")
-	}
-	path := strings.TrimSuffix(u.Path, "/")
-	if path == "" || path == "/" {
-		u.Path = "/v1"
-	} else if !strings.HasSuffix(path, "/v1") {
-		u.Path = path + "/v1"
-	} else {
-		u.Path = path
-	}
-	u.RawQuery = ""
-	u.Fragment = ""
-	return strings.TrimRight(u.String(), "/"), nil
-}
-
-func extractModelIDsFromBody(body []byte) ([]string, error) {
-	var parsed openAIModelsResp
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, err
-	}
-	set := make(map[string]struct{})
-	for _, d := range parsed.Data {
-		id := strings.TrimSpace(d.ID)
-		if id != "" {
-			set[id] = struct{}{}
-		}
-	}
-	if len(set) > 0 {
-		out := make([]string, 0, len(set))
-		for id := range set {
-			out = append(out, id)
-		}
-		sort.Strings(out)
-		return out, nil
-	}
-	// 少数中转返回非标准字段时，尝试从顶层 JSON 收集含 id 的对象数组
-	var generic map[string]json.RawMessage
-	if err := json.Unmarshal(body, &generic); err != nil {
-		return nil, err
-	}
-	for _, key := range []string{"data", "models", "items"} {
-		rawList, ok := generic[key]
-		if !ok {
-			continue
-		}
-		var arr []map[string]interface{}
-		if err := json.Unmarshal(rawList, &arr); err != nil {
-			continue
-		}
-		for _, obj := range arr {
-			if id, ok := obj["id"].(string); ok && strings.TrimSpace(id) != "" {
-				set[strings.TrimSpace(id)] = struct{}{}
-			}
-		}
-		if len(set) > 0 {
-			out := make([]string, 0, len(set))
-			for id := range set {
-				out = append(out, id)
-			}
-			sort.Strings(out)
-			return out, nil
-		}
-	}
-	return []string{}, nil
-}
-
 // FetchUpstreamModelList POST /api/admin/channel-models/fetch-upstream
 // 使用请求体内的 api_key 调用上游 OpenAI 兼容 GET /v1/models，返回 id 列表（不落库、不记录密钥）。
 func FetchUpstreamModelList() gin.HandlerFunc {
@@ -230,64 +137,36 @@ func FetchUpstreamModelList() gin.HandlerFunc {
 			httpx.BadRequest(c, "api_key 必填")
 			return
 		}
-		base, err := normalizeOpenAICompatBaseURL(req.APIBaseURL)
-		if err != nil {
-			httpx.BadRequest(c, err.Error())
-			return
-		}
-		modelsURL := base + "/models"
-		if err := safehttp.EgressURLHostSafe(modelsURL); err != nil {
-			httpx.BadRequest(c, "api_base_url 主机不可访问: "+err.Error())
-			return
-		}
-		u, err := url.Parse(modelsURL)
-		if err != nil {
-			httpx.BadRequest(c, "无法拼接 models URL")
-			return
-		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 55*time.Second)
 		defer cancel()
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+		ids, fetchedURL, err := upstreamprobe.FetchUpstreamModelIDs(ctx, req.APIBaseURL, key)
 		if err != nil {
-			httpx.ServerError(c, "构建请求失败")
+			msg := err.Error()
+			if strings.Contains(msg, "invalid api_base_url") ||
+				strings.Contains(msg, "api_base_url 仅支持") ||
+				strings.Contains(msg, "主机不可访问") ||
+				strings.Contains(msg, "无法拼接 models URL") ||
+				strings.Contains(msg, "缺少凭证") {
+				httpx.BadRequest(c, msg)
+				return
+			}
+			if strings.Contains(msg, "上游 HTTP") {
+				httpx.Err(c, http.StatusBadGateway, 50202, msg)
+				return
+			}
+			if strings.Contains(msg, "解析上游 JSON") {
+				httpx.Err(c, http.StatusBadGateway, 50203, msg+"。请确认该地址为 OpenAI 兼容 /v1/models 接口")
+				return
+			}
+			httpx.Err(c, http.StatusBadGateway, 50201, "连接上游失败（请检查网络、代理与 api_base_url）: "+msg)
 			return
 		}
-		httpReq.Header.Set("Authorization", "Bearer "+key)
-		httpReq.Header.Set("Accept", "application/json")
-		httpReq.Header.Set("User-Agent", "TraceHub/1.0 (admin-fetch-models)")
-		resp, err := upstreamModelsHTTP.Do(httpReq)
-		if err != nil {
-			httpx.Err(c, http.StatusBadGateway, 50201, "连接上游失败（请检查网络、代理与 api_base_url）: "+err.Error())
-			return
-		}
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			httpx.ServerError(c, "读取上游响应失败")
-			return
-		}
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			msg := fmt.Sprintf("上游 HTTP %s，请求 URL: %s。响应片段: %s", resp.Status, u.String(), string(truncateBody(body, 400)))
-			httpx.Err(c, http.StatusBadGateway, 50202, msg)
-			return
-		}
-		ids, err := extractModelIDsFromBody(body)
-		if err != nil {
-			httpx.Err(c, http.StatusBadGateway, 50203, "解析上游 JSON 失败: "+err.Error()+"。请确认该地址为 OpenAI 兼容 /v1/models 接口")
-			return
-		}
+		base, _ := upstreamprobe.NormalizeOpenAICompatBaseURL(req.APIBaseURL)
 		httpx.OK(c, gin.H{
-			"model_ids": ids,
-			"count":     len(ids),
+			"model_ids":         ids,
+			"count":             len(ids),
 			"resolved_base_url": base,
-			"fetched_url":       modelsURL,
+			"fetched_url":       fetchedURL,
 		})
 	}
-}
-
-func truncateBody(b []byte, max int) []byte {
-	if len(b) <= max {
-		return b
-	}
-	return b[:max]
 }

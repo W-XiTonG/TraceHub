@@ -354,21 +354,22 @@ func ListChannels(client *ent.Client) gin.HandlerFunc {
 		var items []gin.H
 		for _, ch := range chs {
 			items = append(items, gin.H{
-				"id":             ch.ID,
-				"group_id":       ch.GroupID,
-				"channel_type":   ch.ChannelType,
-				"channel_name":   ch.ChannelName,
-				"auth_type":      ch.AuthType,
-				"api_base_url":   ch.APIBaseURL,
-				"models":         ch.Models,
-				"model_alias":    ch.ModelAlias,
-				"priority":       ch.Priority,
-				"weight":         ch.Weight,
-				"concurrency":    ch.Concurrency,
-				"enabled":        ch.Enabled,
-				"health_status":  ch.HealthStatus,
-				"schedulable":    ch.Schedulable,
-				"has_api_secret": ch.APIKey != "" || ch.OauthToken != "",
+				"id":                    ch.ID,
+				"group_id":              ch.GroupID,
+				"channel_type":          ch.ChannelType,
+				"channel_name":          ch.ChannelName,
+				"auth_type":             ch.AuthType,
+				"api_base_url":          ch.APIBaseURL,
+				"models":                ch.Models,
+				"model_alias":           ch.ModelAlias,
+				"model_upstream_probe":  ch.ModelUpstreamProbe,
+				"priority":              ch.Priority,
+				"weight":                ch.Weight,
+				"concurrency":           ch.Concurrency,
+				"enabled":               ch.Enabled,
+				"health_status":         ch.HealthStatus,
+				"schedulable":           ch.Schedulable,
+				"has_api_secret":        ch.APIKey != "" || ch.OauthToken != "",
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": len(items)})

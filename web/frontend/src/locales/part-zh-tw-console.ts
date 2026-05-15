@@ -213,12 +213,20 @@ export default {
     mid: '（分組下啟用且健康的渠道所配置的模型，与',
     mid2: '一致）与 ',
     cat: '目录',
-    after: '（管理端模型市场中对用戶可见的条目）。仅有「目录」时尚需在渠道中配置方可呼叫。',
+    after:
+      '（管理端模型市场中对用戶可见的条目）。仅有「目录」时尚需在渠道中配置方可呼叫。若管理員已開啟型號核對，來自閘道的模型可顯示「服務登記」欄，便於了解該型號是否仍由目前服務登記為可用。',
     searchPh: '按模型 ID、展示名或归属篩選…',
     count: '共 {total} 個 · 顯示 {n} 個',
     thId: '模型 ID',
     thDisplay: '展示名',
     thSource: '来源',
+    thUpstreamList: '服務登記',
+    thUpstreamListHint:
+      '平台會定期核對模型是否仍在目前服務所支援的型號範圍內；若不同接入設定結論不一致，將顯示「部分可用」。尚未核對時不展示結論。',
+    upstreamAvailable: '可用',
+    upstreamUnavailable: '不可用',
+    upstreamPartial: '部分可用',
+    upstreamUnknown: '未核對',
     thOwner: '归属',
     srcBoth: '网关 + 目录',
     srcGw: '网关',
@@ -467,6 +475,8 @@ export default {
     model: '模型',
     routerHealthHint:
       '狀態來自分組內渠道健康位（與閘道選路一致）：可路由表示有可派單的健康渠道；渠道異常表示僅有異常渠道聲明；僅目錄表示來自市場／預設列表，分組渠道未聲明。',
+    registryHint:
+      '「服務登記」與可用模型頁一致：重新整理清單或從其他分頁返回時會再拉取。若貼上的 API Key 不屬於目前登入帳戶分組，角標可能與該 Key 實際路由不一致。',
     routerHealth: {
       healthy: '可路由',
       unhealthy: '渠道異常',

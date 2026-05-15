@@ -28,6 +28,10 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateRegisterPromoText(value)
 	case SystemConfigKeyPublicContactJSON:
 		return ValidatePublicContactJSON(value)
+	case SystemConfigKeyUpstreamModelProbeEnabled:
+		return ValidateUpstreamModelProbeEnabled(value)
+	case SystemConfigKeyUpstreamModelProbeIntervalMinutes:
+		return ValidateUpstreamModelProbeIntervalMinutes(value)
 	default:
 		return nil
 	}

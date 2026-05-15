@@ -257,11 +257,11 @@ func init() {
 	// channel.DefaultQuotaTotal holds the default value on creation for the quota_total field.
 	channel.DefaultQuotaTotal = channelDescQuotaTotal.Default.(int64)
 	// channelDescCreatedAt is the schema descriptor for created_at field.
-	channelDescCreatedAt := channelFields[24].Descriptor()
+	channelDescCreatedAt := channelFields[25].Descriptor()
 	// channel.DefaultCreatedAt holds the default value on creation for the created_at field.
 	channel.DefaultCreatedAt = channelDescCreatedAt.Default.(func() time.Time)
 	// channelDescUpdatedAt is the schema descriptor for updated_at field.
-	channelDescUpdatedAt := channelFields[25].Descriptor()
+	channelDescUpdatedAt := channelFields[26].Descriptor()
 	// channel.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	channel.DefaultUpdatedAt = channelDescUpdatedAt.Default.(func() time.Time)
 	// channel.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

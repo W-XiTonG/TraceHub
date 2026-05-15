@@ -272,6 +272,14 @@ export default {
     priority: 'Priority',
     weight: 'Weight',
     concurrency: 'Concurrency',
+    probeNow: 'Probe now',
+    probeProbing: 'Probing…',
+    probeInList: 'Listed',
+    probeNotInList: 'Not listed',
+    probeUnknown: 'N/A',
+    probeErr: 'Err',
+    probeTitleChecked: 'Last check: {t}',
+    probeChannelErr: 'Last fetch failed: {msg}',
   },
   adminGroups: {
     title: 'Groups',
@@ -615,6 +623,16 @@ export default {
       'Leave empty to use the current browser origin + /v1 in the console overview and docs. If the gateway is served on another host (e.g. api.example.com), enter an https root (path empty or /v1). Saved to public site meta so docs and the dashboard example update automatically.',
     lblApiPublicBaseUrl: 'Public OpenAI base URL',
     hintApiPublicBaseUrl: 'Example: https://api.example.com or https://api.example.com/v1 (saved value is normalized to include /v1).',
+    secUpstreamProbe: 'Upstream model list probe',
+    secUpstreamProbeHint:
+      'Background job periodically calls OpenAI-compatible GET /v1/models per enabled, schedulable channel, compares with locally configured model IDs, and stores labels (it does not delete your model list). When disabled, no periodic outbound calls; the per-channel “Probe now” button still works.',
+    lblUpstreamProbeEnabled: 'Enable periodic probe',
+    lblUpstreamProbeInterval: 'Interval (minutes)',
+    hintUpstreamProbeInterval: 'Suggested 60–720; min 15, max 1440 (1 day). Default 360 (6 hours).',
+    hintUpstreamProbeDb:
+      'If these keys were saved in the database, hints appear below. “Restore defaults” does not remove them (to avoid accidentally disabling probes).',
+    hintUpstreamProbeListDisclaimer:
+      'Labels follow upstream /v1/models; some vendors return incomplete lists—“Not listed” does not always mean unusable.',
     secContact: 'Marketing site “Contact us”',
     secContactHint:
       'Shown above the footer on the public home page: optional heading, multiple QR images (upload locally or use same-origin paths), and multiple support emails. Stored as JSON in site.public_contact and published via /api/pub/site-meta to anonymous visitors.',
@@ -661,5 +679,7 @@ export default {
     descRegisterPromo: 'Promo copy on marketing home and register page (site.register_promo_text)',
     descApiPublicBaseUrl: 'Public OpenAI-compatible base URL (site.api.public_base_url)',
     descPublicContact: 'Marketing footer contact JSON (site.public_contact)',
+    descUpstreamProbeEnabled: 'Periodic upstream /v1/models probe toggle',
+    descUpstreamProbeInterval: 'Periodic probe interval (minutes)',
   },
 } as const

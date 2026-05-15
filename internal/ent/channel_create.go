@@ -335,6 +335,12 @@ func (_c *ChannelCreate) SetModelAlias(v map[string]string) *ChannelCreate {
 	return _c
 }
 
+// SetModelUpstreamProbe sets the "model_upstream_probe" field.
+func (_c *ChannelCreate) SetModelUpstreamProbe(v map[string]interface{}) *ChannelCreate {
+	_c.mutation.SetModelUpstreamProbe(v)
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ChannelCreate) SetCreatedAt(v time.Time) *ChannelCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -679,6 +685,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModelAlias(); ok {
 		_spec.SetField(channel.FieldModelAlias, field.TypeJSON, value)
 		_node.ModelAlias = value
+	}
+	if value, ok := _c.mutation.ModelUpstreamProbe(); ok {
+		_spec.SetField(channel.FieldModelUpstreamProbe, field.TypeJSON, value)
+		_node.ModelUpstreamProbe = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(channel.FieldCreatedAt, field.TypeTime, value)

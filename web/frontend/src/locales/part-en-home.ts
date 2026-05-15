@@ -85,7 +85,7 @@ export default {
     billingFormulaMath:
       'prompt side = (prompt tokens ÷ 1000) × input reference rate\noutput side = (output tokens ÷ 1000) × output reference rate\nreference sum = prompt side + output side\ndebited quota = rounded up to a whole number after site billing rules',
     billingFormulaExplain:
-      'Reference rates depend on the model you pick. Chat, images, and audio share the same metering idea—balance checks before a call match the final debit logic; token counts may be estimated first or taken from the provider. If anything here differs from your environment, follow the usage detail in the signed-in console.',
+      'The block above is a baseline sketch: reference rates come from how your model string resolves (unknown models use a generic default tier). Live debits also apply group and user multipliers, plus optional per-model input/output rates configured for your group. When the provider reports prompt-cache hits, the cached portion of prompt tokens is billed at a reduced input factor. Balance checks before a call use the same factors as post-success debits, but prechecks typically assume no cache hits, so actual debits can be lower under heavy prompt caching. Chat, images, and audio share the same metering idea; token counts may be estimated or taken from the provider. If anything here differs from your environment, follow the usage detail in the signed-in console.',
     billingBadge1: 'No monthly minimum · pay as you go',
     billingBadge2: 'Balance check before calls · fewer wasted retries',
     billingBadge3: 'Ledger + logs · easy reconciliation',
@@ -95,7 +95,7 @@ export default {
     billTableThIn: 'Input / 1K',
     billTableThOut: 'Output / 1K',
     billTableFoot:
-      'Each figure is reference quota per 1,000 tokens of that kind (input vs output columns). The model name must match your API request exactly to use this row; otherwise a general default tier applies. Order is for readability only. If your live debits differ, follow your usage detail.',
+      'Each figure is reference quota per 1,000 tokens of that kind (input vs output columns). The billing key resolves by longest-prefix match on the built-in table; trailing OpenAI snapshot dates (e.g. -2024-08-06) may be stripped before matching; unknown IDs use the generic default tier. Order is for readability only. If your live debits differ, follow your usage detail.',
     usageLead:
       'Pay for what you actually use: prompt and completion tokens roll up into your account quota—no “minimum monthly spend” lock-in. Totals reconcile in the console and request logs.',
     usageFootnote:

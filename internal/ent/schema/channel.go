@@ -41,6 +41,7 @@ func (Channel) Fields() []ent.Field {
 		field.Int64("quota_used").Default(0),
 		field.Int64("quota_total").Default(0),
 		field.JSON("model_alias", map[string]string{}).Optional().Comment("request model -> upstream model"),
+		field.JSON("model_upstream_probe", map[string]any{}).Optional().Comment("per-model GET /v1/models snapshot; key _channel for last fetch error"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

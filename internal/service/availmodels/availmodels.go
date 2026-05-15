@@ -176,13 +176,15 @@ func ListForGroupWithChannelHealthKeys(ctx context.Context, client *ent.Client, 
 
 // ConsoleModel 控制台合并列表：网关渠道可调度模型 + 模型市场中对用户可见的目录条目。
 type ConsoleModel struct {
-	ID          string `json:"id"`
-	Object      string `json:"object"`
-	Created     int64  `json:"created"`
-	OwnedBy     string `json:"owned_by"`
-	DisplayName string `json:"display_name,omitempty"`
-	InGateway   bool   `json:"in_gateway"`
-	InCatalog   bool   `json:"in_catalog"`
+	ID                    string `json:"id"`
+	Object                string `json:"object"`
+	Created               int64  `json:"created"`
+	OwnedBy               string `json:"owned_by"`
+	DisplayName           string `json:"display_name,omitempty"`
+	InGateway             bool   `json:"in_gateway"`
+	InCatalog             bool   `json:"in_catalog"`
+	UpstreamListStatus    string `json:"upstream_list_status,omitempty"`    // listed|not_listed|mixed
+	UpstreamListCheckedAt string `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
 }
 
 // ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关侧仍以 ListForGroup 为准。
@@ -235,6 +237,19 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]
 			InGateway:   false,
 			InCatalog:   true,
 		}
+	}
+	if groupID > 0 {
+		channels, err := client.Channel.Query().
+			Where(
+				channel.Enabled(true),
+				channel.Schedulable(true),
+				channel.HasGroupWith(group.IDEQ(groupID)),
+			).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		attachUpstreamListProbeFromChannels(channels, byID)
 	}
 	ids := make([]string, 0, len(byID))
 	for id := range byID {

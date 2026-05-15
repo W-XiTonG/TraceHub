@@ -13,6 +13,8 @@ type ModelItem = {
   display_name?: string
   in_gateway?: boolean
   in_catalog?: boolean
+  upstream_list_status?: string
+  upstream_list_checked_at?: string
 }
 
 type ModelsPayload = {
@@ -31,13 +33,79 @@ const filtered = computed(() => {
   const items = payload.value?.items ?? []
   const s = q.value.trim().toLowerCase()
   if (!s) return items
-  return items.filter(
-    (m) =>
+  return items.filter((m) => {
+    if (
       m.id.toLowerCase().includes(s) ||
       (m.owned_by ?? '').toLowerCase().includes(s) ||
-      (m.display_name ?? '').toLowerCase().includes(s),
-  )
+      (m.display_name ?? '').toLowerCase().includes(s) ||
+      (m.upstream_list_status ?? '').toLowerCase().includes(s)
+    ) {
+      return true
+    }
+    return upstreamListCell(m).text.toLowerCase().includes(s)
+  })
 })
+
+function upstreamListCell(m: ModelItem): {
+  text: string
+  title: string
+  variant: 'unknown' | 'available' | 'unavailable' | 'partial'
+  pillClass: string
+  dotClass: string
+} {
+  const unknownPill =
+    'th-models-upstream-pill th-models-upstream-pill--unknown border border-dashed border-slate-600/55 bg-slate-950/70 text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
+  if (!m.in_gateway) {
+    return {
+      text: t('modelsPage.upstreamUnknown'),
+      title: '',
+      variant: 'unknown',
+      pillClass: unknownPill,
+      dotClass: 'th-models-upstream-pill-dot bg-slate-600',
+    }
+  }
+  const st = (m.upstream_list_status ?? '').trim()
+  const checked = (m.upstream_list_checked_at ?? '').trim()
+  const hint = t('modelsPage.thUpstreamListHint')
+  const timeTitle = checked ? `${checked}\n${hint}` : hint
+  switch (st) {
+    case 'listed':
+      return {
+        text: t('modelsPage.upstreamAvailable'),
+        title: timeTitle,
+        variant: 'available',
+        pillClass:
+          'th-models-upstream-pill th-models-upstream-pill--available border border-emerald-400/25 bg-gradient-to-br from-emerald-500/[0.22] via-teal-500/10 to-slate-900/40 text-emerald-50 ring-1 ring-inset ring-white/[0.06] shadow-[0_0_28px_-12px_rgba(16,185,129,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]',
+        dotClass: 'th-models-upstream-pill-dot bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.75)]',
+      }
+    case 'not_listed':
+      return {
+        text: t('modelsPage.upstreamUnavailable'),
+        title: timeTitle,
+        variant: 'unavailable',
+        pillClass:
+          'th-models-upstream-pill th-models-upstream-pill--unavailable border border-rose-400/25 bg-gradient-to-br from-rose-500/[0.18] via-fuchsia-900/10 to-slate-900/45 text-rose-50 ring-1 ring-inset ring-white/[0.05] shadow-[0_0_26px_-12px_rgba(244,63,94,0.45),inset_0_1px_0_rgba(255,255,255,0.05)]',
+        dotClass: 'th-models-upstream-pill-dot bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.55)]',
+      }
+    case 'mixed':
+      return {
+        text: t('modelsPage.upstreamPartial'),
+        title: timeTitle,
+        variant: 'partial',
+        pillClass:
+          'th-models-upstream-pill th-models-upstream-pill--partial border border-amber-400/30 bg-gradient-to-br from-amber-500/[0.2] via-violet-600/10 to-slate-900/40 text-amber-50 ring-1 ring-inset ring-white/[0.06] shadow-[0_0_28px_-12px_rgba(245,158,11,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]',
+        dotClass: 'th-models-upstream-pill-dot bg-gradient-to-br from-amber-300 to-violet-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]',
+      }
+    default:
+      return {
+        text: t('modelsPage.upstreamUnknown'),
+        title: hint,
+        variant: 'unknown',
+        pillClass: unknownPill,
+        dotClass: 'th-models-upstream-pill-dot bg-slate-500',
+      }
+  }
+}
 
 async function load() {
   err.value = ''
@@ -89,6 +157,7 @@ onMounted(load)
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thId') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thDisplay') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thSource') }}</th>
+                <th class="px-4 py-3 font-medium" :title="t('modelsPage.thUpstreamListHint')">{{ t('modelsPage.thUpstreamList') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thOwner') }}</th>
               </tr>
             </thead>
@@ -100,6 +169,23 @@ onMounted(load)
                   <span v-if="m.in_gateway && m.in_catalog" class="text-xs text-emerald-400/90">{{ t('modelsPage.srcBoth') }}</span>
                   <span v-else-if="m.in_gateway" class="text-xs text-cyan-400/90">{{ t('modelsPage.srcGw') }}</span>
                   <span v-else class="text-xs text-slate-500">{{ t('modelsPage.srcCat') }}</span>
+                </td>
+                <td class="px-4 py-3">
+                  <span
+                    v-for="cell in [upstreamListCell(m)]"
+                    :key="`${m.id}-upstream`"
+                    class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide tabular-nums backdrop-blur-[2px] transition-[box-shadow,transform] duration-200 hover:brightness-110"
+                    :class="cell.pillClass"
+                    :data-upstream-variant="cell.variant"
+                    :title="cell.title"
+                  >
+                    <span
+                      class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
+                      :class="cell.dotClass"
+                      aria-hidden="true"
+                    />
+                    <span class="min-w-0 truncate">{{ cell.text }}</span>
+                  </span>
                 </td>
                 <td class="px-4 py-3 text-slate-400">{{ m.owned_by ?? t('modelsPage.dash') }}</td>
               </tr>

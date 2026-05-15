@@ -1,4 +1,4 @@
-/** 首页参考表：与系统当前内置模型计价保持一致；维护价表时请同步更新本文件。 */
+/** 首页参考表：与 internal/service/billing/pricing.go 中 DefaultQuotaPer1K 保持一致；任一侧变更时请同步另一侧。 */
 export type HomeBillingExampleRow = {
   model: string
   inPer1k: number
