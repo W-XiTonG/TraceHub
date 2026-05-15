@@ -9,6 +9,12 @@ func TestResolvePricingTableKey_DateSuffix(t *testing.T) {
 	if got := ResolvePricingTableKey("gpt-4o-mini-2024-07-18"); got != "gpt-4o-mini" {
 		t.Fatalf("got %q want gpt-4o-mini", got)
 	}
+	if got := ResolvePricingTableKey("gpt-5.5-2026-01-15"); got != "gpt-5.5" {
+		t.Fatalf("got %q want gpt-5.5", got)
+	}
+	if got := ResolvePricingTableKey("gpt-5-2026-01-15"); got != "gpt-5" {
+		t.Fatalf("got %q want gpt-5", got)
+	}
 }
 
 func TestResolvePricingTableKey_Prefix(t *testing.T) {
@@ -29,6 +35,31 @@ func TestResolvePricingTableKey_Prefix(t *testing.T) {
 	}
 	if got := ResolvePricingTableKey("text-embedding-3-large"); got != "text-embedding-3-large" {
 		t.Fatalf("got %q want text-embedding-3-large", got)
+	}
+	if got := ResolvePricingTableKey("gpt-5.5"); got != "gpt-5.5" {
+		t.Fatalf("got %q want gpt-5.5", got)
+	}
+	if got := ResolvePricingTableKey("gpt-5"); got != "gpt-5" {
+		t.Fatalf("got %q want gpt-5", got)
+	}
+	// Longer table key gpt-5.5 must win over gpt-5 prefix.
+	if got := ResolvePricingTableKey("gpt-5.5-reasoning"); got != "gpt-5.5" {
+		t.Fatalf("got %q want gpt-5.5", got)
+	}
+}
+
+func TestLookupPricing_GPT5Family(t *testing.T) {
+	in, out := LookupPricing("gpt-5.5")
+	if in != 525 || out != 3360 {
+		t.Fatalf("gpt-5.5 got %d,%d", in, out)
+	}
+	in, out = LookupPricing("gpt-5")
+	if in != 450 || out != 1800 {
+		t.Fatalf("gpt-5 got %d,%d", in, out)
+	}
+	in, out = LookupPricing("gpt-5.5-2026-01-15")
+	if in != 525 || out != 3360 {
+		t.Fatalf("gpt-5.5 dated got %d,%d", in, out)
 	}
 }
 

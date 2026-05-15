@@ -11,6 +11,8 @@ export const homeBillingExampleRows: HomeBillingExampleRow[] = [
   { model: 'gpt-4-turbo', inPer1k: 500, outPer1k: 1500 },
   { model: 'gpt-4', inPer1k: 600, outPer1k: 1800 },
   { model: 'gpt-3.5-turbo', inPer1k: 50, outPer1k: 150 },
+  { model: 'gpt-5.5', inPer1k: 525, outPer1k: 3360 },
+  { model: 'gpt-5', inPer1k: 450, outPer1k: 1800 },
   { model: 'o3-mini', inPer1k: 200, outPer1k: 800 },
   { model: 'o3', inPer1k: 500, outPer1k: 2000 },
   { model: 'o1-mini', inPer1k: 400, outPer1k: 1600 },
