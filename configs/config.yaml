@@ -1,6 +1,6 @@
 server:
   addr: ":8080"
-  mode: debug
+  mode: debug # release
 
 database:
   dsn: "postgres://tracehub:tracehub@10.117.57.171:15432/tracehub?sslmode=disable"
@@ -12,9 +12,17 @@ redis:
 
 security:
   jwt_secret: "tracehub-dev-change-me-please-use-long-secret"
+  # AES-256 key: exactly 32 bytes as base64 or raw; if absent, derived from jwt_secret via SHA256
+  aes_key_base64: ""
+  # 非空时 GET /metrics 需携带 Authorization: Bearer <metrics_bearer_token>；生产建议配置或由反向代理限制访问
+  # metrics_bearer_token: ""
 
 site:
+  # 对外展示的应用版本（首页页脚、/health、管理后台运维）；改此处后重启服务即可
   app_version: "1.1.0"
+  # 全局不计费模型（逻辑 model ID）；分组 model_rates.billable=false 可覆盖为计费
+  # no_bill_models:
+  #   - "gpt-4o-mini"
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
   default_new_user_balance: 5000
@@ -22,6 +30,27 @@ site:
   register_promo_text: "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。"
   cors_origins:
     - "*"
+  # 可选：非空时写入 /health、/ready JSON 的 operator 字段，便于监控或对外展示运营方
+  operator_display_name: "循迹未来"
+  # 登录页图形验证码（防脚本撞库、刷发登录邮件）。开启后依赖 Redis；本地无 Redis 时请改为 enabled: false
+  login_captcha:
+    enabled: true
+    ttl_seconds: 300
+  # 可选：管理后台「本地上传品牌图标」保存目录（进程可写）；默认 data/site_brand
+  # brand_upload_dir: ./data/site_brand
+  # Realtime 通话子资源：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
+  # realtime_call_mapping_enabled: false
+  # realtime_call_mapping_ttl_sec: 86400
+  # realtime_call_control_bill_reject_hangup: false
+  # OpenAI 兼容扩展（可选），详见 config.example.yaml 注释
+  # openai_compat_channel_types: []
+  # block_openai_account_admin_paths: true
+  # openai_account_admin_deny_prefixes: []
+  # openai_passthrough:
+  #   enabled: false
+  #   allow_prefixes: []
+  #   deny_prefixes: []
+  #   patch_model_in_json: true
 
 # 邮箱验证码登录：enabled 为 true 时需 Redis + SMTP（本地可用 MailHog 等）
 email:
@@ -38,8 +67,13 @@ email:
   login_code_ttl_minutes: 10
   login_code_resend_seconds: 60
   login_code_max_per_hour: 8
+  # true：验证码邮件正文固定包含简中、繁中、English 三段；false：按请求 locale 发送单一语言
+  code_email_trilingual: false
 
 bootstrap:
   admin_email: "admin@example.com"
   admin_password: "Admin123!"
   default_group_name: "基础分组"
+
+# 上线前自检：① security.jwt_secret / bootstrap.admin_password 已替换 ② 生产 database.sslmode 与 Redis 密码
+# ③ 按需设置 security.metrics_bearer_token 或限制 /metrics 仅内网 ④ site.cors_origins 为真实前端 Origin，勿用弱口令
