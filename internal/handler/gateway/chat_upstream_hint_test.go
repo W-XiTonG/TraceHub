@@ -14,7 +14,7 @@ func TestAugmentUpstreamJSONModelNotExistChatHint(t *testing.T) {
 		t.Fatal(err)
 	}
 	msg, _ := m["message"].(string)
-	if !strings.Contains(msg, "文生图") {
+	if !strings.Contains(msg, "images/generations") {
 		t.Fatalf("expected hint in message, got %q", msg)
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// HTTP 响应头：便于 Playground / 自建客户端展示预检分解，且不改变 OpenAI 风格 JSON 主体。
+// HTTP 响应头：便于客户端（含浏览器）读取计费预检分解，且不改变 OpenAI 风格 JSON 主体。
 const (
 	headerBillingPhase          = "X-TraceHub-Billing-Phase"
 	headerBalance               = "X-TraceHub-Balance"

@@ -127,7 +127,7 @@ function parseOpenAIError(text: string): string {
   }
 }
 
-/** 网关在上游 4xx 或计费 402 时返回的诊断头（需 CORS Expose-Headers） */
+/** 网关在上游 4xx 或计费 402 时返回的诊断头（需 CORS Expose-Headers；正式 API 与控制台试玩共用） */
 export function traceHubGatewayErrorDetails(res: Response): string {
   const r = res.headers.get('X-TraceHub-Routing-Model')?.trim()
   const u = res.headers.get('X-TraceHub-Upstream-Model')?.trim()
