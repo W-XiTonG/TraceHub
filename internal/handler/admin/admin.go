@@ -20,6 +20,7 @@ import (
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/service/channelhealth"
 
 	"github.com/gin-gonic/gin"
@@ -723,6 +724,7 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 			id, _ := strconv.Atoi(sc)
 			q = q.Where(usagelog.StatusCodeEQ(id))
 		}
+		q = usagelogfilter.ApplyIPAddress(q, c.Query("ip"))
 		if st := strings.TrimSpace(c.Query("start_time")); st != "" {
 			if t, err := time.Parse(time.RFC3339, st); err == nil {
 				q = q.Where(usagelog.RequestTimeGTE(t))

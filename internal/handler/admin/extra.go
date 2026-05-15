@@ -634,6 +634,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			httpx.ServerError(c, "读取路由配置失败")
 			return
 		}
+		gwIPSet, gwIPRaw, gwIPList := sitecfg.GatewayIPBlacklistDBMeta(ctx, client)
 		routingDefaults := sitecfg.EffectiveRoutingDefaults(ctx, client)
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -674,6 +675,9 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"routing_auto_health_from_probe":         routingDefaults.AutoHealthFromProbe,
 			"routing_probe_fail_threshold":           routingDefaults.ProbeFailThreshold,
 			"routing_db_meta":                        routingMeta,
+			"gateway_ip_blacklist":                 gwIPList,
+			"gateway_ip_blacklist_db_set":          gwIPSet,
+			"gateway_ip_blacklist_db_value":        strings.TrimSpace(gwIPRaw),
 		})
 	}
 }
@@ -699,12 +703,15 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyRoutingStickyEnabledDefault,
 			sitecfg.SystemConfigKeyRoutingAutoHealthFromProbe,
 			sitecfg.SystemConfigKeyRoutingProbeFailThreshold,
+			sitecfg.SystemConfigKeyGatewayIPBlacklist,
+			sitecfg.SystemConfigKeyGatewayIPWhitelist,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
 			httpx.ServerError(c, "清除配置失败")
 			return
 		}
+		sitecfg.InvalidateGatewayIPBlacklistCache()
 		billing.InvalidateNoBillModelsCacheAdmin()
 		auditLog(client, adm.ID, "site.settings_reset_defaults", "system_config", "", map[string]any{"deleted_rows": n}, c)
 		httpx.OK(c, gin.H{"deleted_rows": n})
@@ -727,10 +734,14 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 		}
 		ctx := c.Request.Context()
 		invalidateNoBill := false
+		invalidateGatewayBlacklist := false
 		for _, it := range req.Items {
 			k := strings.TrimSpace(it.Key)
 			if k == "" {
 				continue
+			}
+			if k == sitecfg.SystemConfigKeyGatewayIPBlacklist {
+				invalidateGatewayBlacklist = true
 			}
 			if k == sitecfg.SystemConfigKeyNoBillModels {
 				invalidateNoBill = true
@@ -740,6 +751,9 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 				return
 			}
 			val := strings.TrimSpace(it.Value)
+			if k == sitecfg.SystemConfigKeyGatewayIPBlacklist && val == "" {
+				val = "[]"
+			}
 			if k == sitecfg.SystemConfigKeyAPIPublicBaseURL {
 				nv, err := sitecfg.NormalizeAPIPublicBaseURL(val)
 				if err != nil {
@@ -781,6 +795,9 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			}
 		}
 		router.InvalidateAllRoutingCache()
+		if invalidateGatewayBlacklist {
+			sitecfg.InvalidateGatewayIPBlacklistCache()
+		}
 		if invalidateNoBill {
 			billing.InvalidateNoBillModelsCacheAdmin()
 		}

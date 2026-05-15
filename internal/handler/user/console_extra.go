@@ -15,6 +15,7 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/redeemutil"
+	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/service/availmodels"
 
 	"github.com/gin-gonic/gin"
@@ -77,6 +78,7 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 				q = q.Where(usagelog.StatusCodeEQ(v))
 			}
 		}
+		q = usagelogfilter.ApplyIPAddress(q, c.Query("ip"))
 		if st := strings.TrimSpace(c.Query("start_time")); st != "" {
 			if t, err := time.Parse(time.RFC3339, st); err == nil {
 				q = q.Where(usagelog.RequestTimeGTE(t))

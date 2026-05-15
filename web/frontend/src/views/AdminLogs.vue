@@ -24,6 +24,7 @@ type Log = {
   total_cost: number
   status_code?: number | null
   request_time: string
+  ip_address?: string
 }
 
 const items = ref<Log[]>([])
@@ -36,6 +37,7 @@ const filterUserId = ref('')
 const filterEmail = ref('')
 const filterModel = ref('')
 const filterChannelId = ref('')
+const filterIp = ref('')
 
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
@@ -103,6 +105,8 @@ async function load() {
     if (m !== '') params.model = m
     const ch = filterChannelId.value.trim()
     if (ch !== '') params.channel_id = ch
+    const ip = filterIp.value.trim()
+    if (ip !== '') params.ip = ip
     const { data } = await http.get<Envelope<{ items: Log[]; total: number }>>('/api/admin/logs', { params })
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     items.value = data.data?.items ?? []
@@ -122,6 +126,7 @@ function clearFilters() {
   filterEmail.value = ''
   filterModel.value = ''
   filterChannelId.value = ''
+  filterIp.value = ''
   page.value = 1
   void load()
 }
@@ -167,6 +172,16 @@ onMounted(() => void load())
         <label class="mb-1 block text-xs text-slate-500">{{ t('adminLogs.lblFilterChannel') }}</label>
         <input v-model="filterChannelId" type="text" inputmode="numeric" class="th-input w-28 font-mono text-sm" :placeholder="t('adminLogs.phFilterChannel')" />
       </div>
+      <div>
+        <label class="mb-1 block text-xs text-slate-500">{{ t('adminLogs.lblFilterIp') }}</label>
+        <input
+          v-model="filterIp"
+          class="th-input w-40 font-mono text-sm"
+          :placeholder="t('adminLogs.phFilterIp')"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
       <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="applyFilters">{{ t('adminLogs.apply') }}</button>
       <button type="button" class="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.05]" @click="clearFilters">
         {{ t('adminLogs.clear') }}
@@ -179,7 +194,7 @@ onMounted(() => void load())
     <p v-if="err" class="text-sm text-rose-400">{{ err }}</p>
 
     <div class="overflow-x-auto rounded-lg border border-white/[0.06]">
-      <table class="w-full min-w-[80rem] text-left text-xs text-slate-300">
+      <table class="w-full min-w-[88rem] text-left text-xs text-slate-300">
         <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
           <tr>
             <th class="px-3 py-2">{{ t('adminLogs.thTime') }}</th>
@@ -191,6 +206,7 @@ onMounted(() => void load())
             <th class="px-3 py-2">{{ t('adminLogs.thUpstreamModel') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thToken') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thCost') }}</th>
+            <th class="px-3 py-2">{{ t('adminLogs.thIp') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thStatus') }}</th>
           </tr>
         </thead>
@@ -207,6 +223,12 @@ onMounted(() => void load())
             </td>
             <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-400">{{ l.prompt_tokens }} / {{ l.completion_tokens }}</td>
             <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-300">{{ l.total_cost }}</td>
+            <td
+              class="max-w-[9rem] truncate px-3 py-2 font-mono text-[10px] text-slate-500"
+              :title="(l.ip_address ?? '').trim() || undefined"
+            >
+              {{ (l.ip_address ?? '').trim() || t('adminCommon.dash') }}
+            </td>
             <td class="whitespace-nowrap px-3 py-2 font-mono text-slate-400">{{ l.status_code ?? '—' }}</td>
           </tr>
         </tbody>

@@ -46,6 +46,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateRoutingAutoHealthFromProbe(value)
 	case SystemConfigKeyRoutingProbeFailThreshold:
 		return ValidateRoutingProbeFailThreshold(value)
+	case SystemConfigKeyGatewayIPBlacklist:
+		return ValidateGatewayIPBlacklistJSON(value)
 	default:
 		return nil
 	}

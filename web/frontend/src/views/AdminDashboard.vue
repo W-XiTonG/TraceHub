@@ -643,7 +643,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
         :title="t('adminDash.quickTipAnnounce')"
       >{{ t('layout.adminNavAnnouncements') }}</RouterLink>
       <RouterLink
-        :to="{ name: 'admin-system' }"
+        :to="{ name: 'admin-settings-brand' }"
         class="th-admin-quick-pill"
         :title="t('adminSystem.title')"
       >{{ t('layout.adminNavSystem') }}</RouterLink>
@@ -1438,7 +1438,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
                   </div>
                 </dl>
                 <RouterLink
-                  :to="{ name: 'admin-system' }"
+                  :to="{ name: 'admin-settings-brand' }"
                   class="mt-3 inline-flex text-xs font-medium text-cyan-400/90 transition hover:text-cyan-300"
                 >
                   {{ t('adminDash.p4SysCfgLink') }} →

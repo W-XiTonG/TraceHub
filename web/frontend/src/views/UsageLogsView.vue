@@ -22,6 +22,7 @@ type LogRow = {
   response_time_ms?: number
   status_code?: number
   error_message?: string
+  ip_address?: string
 }
 
 const items = ref<LogRow[]>([])
@@ -37,6 +38,7 @@ const selectedIds = ref<number[]>([])
 const filters = reactive({
   model: '',
   status_code: '',
+  ip: '',
 })
 
 const startLocal = ref('')
@@ -49,6 +51,7 @@ const displayItems = computed(() => {
     const blob = [
       row.model,
       row.request_id || '',
+      row.ip_address || '',
       String(row.status_code ?? ''),
       row.error_message || '',
     ]
@@ -97,6 +100,7 @@ async function load() {
         page_size: pageSize,
         model: filters.model || undefined,
         status_code: filters.status_code || undefined,
+        ip: filters.ip.trim() || undefined,
         start_time: localDateTimeToRFC3339(startLocal.value),
         end_time: localDateTimeToRFC3339(endLocal.value),
       },
@@ -118,6 +122,7 @@ function applyFilters() {
 function resetFilters() {
   filters.model = ''
   filters.status_code = ''
+  filters.ip = ''
   startLocal.value = ''
   endLocal.value = ''
   quickSearch.value = ''
@@ -139,6 +144,7 @@ function rowToTsv(row: LogRow) {
     row.request_time,
     row.model,
     row.request_id || '',
+    row.ip_address || '',
     String(row.total_tokens),
     String(row.total_cost),
     String(row.status_code ?? ''),
@@ -149,7 +155,7 @@ function rowToTsv(row: LogRow) {
 }
 
 const tsvHeader = computed(() =>
-  ['time', 'model', 'request_id', 'tokens', 'cost', 'status', 'latency_ms', 'error'].join('\t'),
+  ['time', 'model', 'request_id', 'client_ip', 'tokens', 'cost', 'status', 'latency_ms', 'error'].join('\t'),
 )
 
 async function copyText(text: string) {
@@ -228,6 +234,16 @@ onMounted(() => {
             class="th-input h-10 !w-20 shrink-0 text-sm"
           />
         </label>
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="text-slate-500">{{ t('logsPage.lblFilterIp') }}</span>
+          <input
+            v-model="filters.ip"
+            :placeholder="t('logsPage.phFilterIp')"
+            class="th-input h-10 w-36 shrink-0 font-mono text-sm"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
         <div class="flex flex-col gap-1 text-xs">
           <label for="usage-dt-start" class="block cursor-pointer text-slate-500">{{ t('logsPage.start') }}</label>
           <DateTimeLocalFilterInput
@@ -269,7 +285,7 @@ onMounted(() => {
     <p class="mb-4 text-[11px] text-slate-600">{{ t('logsPage.copyNote') }}</p>
 
     <div class="th-user-keys-table-wrap overflow-x-auto">
-      <table class="w-full min-w-[880px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
+      <table class="w-full min-w-[960px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>
             <th class="w-10 px-3 py-2.5" :class="compact ? 'py-1.5' : ''">
@@ -286,6 +302,7 @@ onMounted(() => {
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thTokCol') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thCost') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thStatus') }}</th>
+            <th class="whitespace-nowrap px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thIp') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thLatency') }}</th>
             <th class="px-3 py-2.5 text-right font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thActions') }}</th>
           </tr>
@@ -317,6 +334,13 @@ onMounted(() => {
                 {{ row.status_code ?? t('modelsPage.dash') }}
               </span>
             </td>
+            <td
+              class="max-w-[9rem] truncate px-3 font-mono text-xs text-slate-400"
+              :class="compact ? 'py-1.5' : 'py-2.5'"
+              :title="row.ip_address || ''"
+            >
+              {{ row.ip_address?.trim() || t('modelsPage.dash') }}
+            </td>
             <td class="px-3 text-xs text-slate-400" :class="compact ? 'py-1.5' : 'py-2.5'">{{ row.response_time_ms ?? t('modelsPage.dash') }}</td>
             <td class="px-3 text-right" :class="compact ? 'py-1.5' : 'py-2.5'">
               <button
@@ -330,10 +354,10 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="items.length && !displayItems.length">
-            <td :colspan="compact ? 8 : 9" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.noClientMatch') }}</td>
+            <td :colspan="compact ? 9 : 10" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.noClientMatch') }}</td>
           </tr>
           <tr v-if="!items.length">
-            <td :colspan="compact ? 8 : 9" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
+            <td :colspan="compact ? 9 : 10" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
           </tr>
         </tbody>
       </table>

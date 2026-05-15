@@ -1620,6 +1620,36 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.th-admin-divider-b {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* 管理后台 · 系统设置：顶部分段标签（深色默认；浅色见 themes-light.css） */
+.th-admin-settings-title {
+  color: #f1f5f9;
+}
+.th-admin-settings-tab {
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  color: #94a3b8;
+  background: transparent;
+  text-decoration: none;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+.th-admin-settings-tab:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+}
+.th-admin-settings-tab--active {
+  border-color: rgba(6, 182, 212, 0.35);
+  background: rgba(8, 51, 68, 0.25);
+  color: #cffafe;
+}
+
 /* 运营摘要 / 审计：内嵌表格容器与表头（浅色在 themes-light 覆写） */
 .th-admin-table-shell {
   overflow-x: auto;

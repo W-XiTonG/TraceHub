@@ -8,6 +8,7 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/pkg/apikeyhash"
 	"tracehub/internal/pkg/ipcheck"
+	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +27,14 @@ func GatewayAPIKeyAuth(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		raw := strings.TrimSpace(h[7:])
+		clientIP := c.ClientIP()
+		if bl := sitecfg.CachedGatewayIPBlacklist(c.Request.Context(), client); len(bl) > 0 {
+			if ipcheck.Blocked(clientIP, bl) {
+				WriteOpenAIError(c, 403, "permission_error", "IP 已被全局网关黑名单拒绝")
+				c.Abort()
+				return
+			}
+		}
 		hash := apikeyhash.Hash(raw)
 		k, err := client.APIKey.Query().
 			Where(apikey.KeyHashEQ(hash), apikey.Enabled(true)).
@@ -42,7 +51,6 @@ func GatewayAPIKeyAuth(client *ent.Client) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		clientIP := c.ClientIP()
 		if !ipcheck.Allowed(clientIP, k.IPWhitelist) {
 			WriteOpenAIError(c, 403, "permission_error", "IP 不在 API Key 白名单内")
 			c.Abort()
