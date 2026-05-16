@@ -13,15 +13,14 @@ export function useQuotaPer1kUpstreamField(opts: {
   codeRefShowQuotaOnly: Ref<boolean>
   deriveCurrency: Ref<'cny' | 'usd'>
   deriveDenom: Ref<number>
-  deriveMargin: Ref<string>
   sitePricingFactors: () => SitePricingFactors
-  parseDeriveMargin: () => number | null
 }) {
+  const costBaseMargin = 0
   const focusedQuotaCell = ref<string | null>(null)
   const quotaEditBuf = ref(new Map<string, string>())
 
   watch(
-    [opts.codeRefShowQuotaOnly, opts.deriveCurrency, opts.deriveDenom, opts.deriveMargin],
+    [opts.codeRefShowQuotaOnly, opts.deriveCurrency, opts.deriveDenom],
     () => {
       focusedQuotaCell.value = null
       quotaEditBuf.value = new Map()
@@ -54,14 +53,12 @@ export function useQuotaPer1kUpstreamField(opts: {
     if (s === '') return ''
     const n = Number(s)
     if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return s
-    const margin = opts.parseDeriveMargin()
-    if (margin === null) return s
     const p = upstreamPriceFromQuotaPer1K(
       opts.sitePricingFactors(),
       opts.deriveCurrency.value,
       opts.deriveDenom.value,
       n,
-      margin,
+      costBaseMargin,
     )
     if (p === null) return s
     return formatUpstreamPrice(p)
@@ -114,14 +111,12 @@ export function useQuotaPer1kUpstreamField(opts: {
     }
     const price = Number(trimmed)
     if (!Number.isFinite(price) || price < 0) return
-    const margin = opts.parseDeriveMargin()
-    if (margin === null) return
     const q = quotaPer1KFromUpstreamPrice(
       opts.sitePricingFactors(),
       opts.deriveCurrency.value,
       opts.deriveDenom.value,
       price,
-      margin,
+      costBaseMargin,
     )
     if (q === null) return
     setRaw(r, side, String(q))

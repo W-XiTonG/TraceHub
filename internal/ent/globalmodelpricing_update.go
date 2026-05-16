@@ -152,6 +152,33 @@ func (_u *GlobalModelPricingUpdate) AddOutputRate(v float64) *GlobalModelPricing
 	return _u
 }
 
+// SetMarkupPercent sets the "markup_percent" field.
+func (_u *GlobalModelPricingUpdate) SetMarkupPercent(v float64) *GlobalModelPricingUpdate {
+	_u.mutation.ResetMarkupPercent()
+	_u.mutation.SetMarkupPercent(v)
+	return _u
+}
+
+// SetNillableMarkupPercent sets the "markup_percent" field if the given value is not nil.
+func (_u *GlobalModelPricingUpdate) SetNillableMarkupPercent(v *float64) *GlobalModelPricingUpdate {
+	if v != nil {
+		_u.SetMarkupPercent(*v)
+	}
+	return _u
+}
+
+// AddMarkupPercent adds value to the "markup_percent" field.
+func (_u *GlobalModelPricingUpdate) AddMarkupPercent(v float64) *GlobalModelPricingUpdate {
+	_u.mutation.AddMarkupPercent(v)
+	return _u
+}
+
+// ClearMarkupPercent clears the value of the "markup_percent" field.
+func (_u *GlobalModelPricingUpdate) ClearMarkupPercent() *GlobalModelPricingUpdate {
+	_u.mutation.ClearMarkupPercent()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *GlobalModelPricingUpdate) SetUpdatedAt(v time.Time) *GlobalModelPricingUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -256,6 +283,15 @@ func (_u *GlobalModelPricingUpdate) sqlSave(ctx context.Context) (_node int, err
 	}
 	if value, ok := _u.mutation.AddedOutputRate(); ok {
 		_spec.AddField(globalmodelpricing.FieldOutputRate, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.MarkupPercent(); ok {
+		_spec.SetField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedMarkupPercent(); ok {
+		_spec.AddField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
+	}
+	if _u.mutation.MarkupPercentCleared() {
+		_spec.ClearField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(globalmodelpricing.FieldUpdatedAt, field.TypeTime, value)
@@ -404,6 +440,33 @@ func (_u *GlobalModelPricingUpdateOne) AddOutputRate(v float64) *GlobalModelPric
 	return _u
 }
 
+// SetMarkupPercent sets the "markup_percent" field.
+func (_u *GlobalModelPricingUpdateOne) SetMarkupPercent(v float64) *GlobalModelPricingUpdateOne {
+	_u.mutation.ResetMarkupPercent()
+	_u.mutation.SetMarkupPercent(v)
+	return _u
+}
+
+// SetNillableMarkupPercent sets the "markup_percent" field if the given value is not nil.
+func (_u *GlobalModelPricingUpdateOne) SetNillableMarkupPercent(v *float64) *GlobalModelPricingUpdateOne {
+	if v != nil {
+		_u.SetMarkupPercent(*v)
+	}
+	return _u
+}
+
+// AddMarkupPercent adds value to the "markup_percent" field.
+func (_u *GlobalModelPricingUpdateOne) AddMarkupPercent(v float64) *GlobalModelPricingUpdateOne {
+	_u.mutation.AddMarkupPercent(v)
+	return _u
+}
+
+// ClearMarkupPercent clears the value of the "markup_percent" field.
+func (_u *GlobalModelPricingUpdateOne) ClearMarkupPercent() *GlobalModelPricingUpdateOne {
+	_u.mutation.ClearMarkupPercent()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *GlobalModelPricingUpdateOne) SetUpdatedAt(v time.Time) *GlobalModelPricingUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -538,6 +601,15 @@ func (_u *GlobalModelPricingUpdateOne) sqlSave(ctx context.Context) (_node *Glob
 	}
 	if value, ok := _u.mutation.AddedOutputRate(); ok {
 		_spec.AddField(globalmodelpricing.FieldOutputRate, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.MarkupPercent(); ok {
+		_spec.SetField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedMarkupPercent(); ok {
+		_spec.AddField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
+	}
+	if _u.mutation.MarkupPercentCleared() {
+		_spec.ClearField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(globalmodelpricing.FieldUpdatedAt, field.TypeTime, value)

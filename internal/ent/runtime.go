@@ -402,11 +402,11 @@ func init() {
 	// globalmodelpricing.DefaultOutputRate holds the default value on creation for the output_rate field.
 	globalmodelpricing.DefaultOutputRate = globalmodelpricingDescOutputRate.Default.(float64)
 	// globalmodelpricingDescCreatedAt is the schema descriptor for created_at field.
-	globalmodelpricingDescCreatedAt := globalmodelpricingFields[6].Descriptor()
+	globalmodelpricingDescCreatedAt := globalmodelpricingFields[7].Descriptor()
 	// globalmodelpricing.DefaultCreatedAt holds the default value on creation for the created_at field.
 	globalmodelpricing.DefaultCreatedAt = globalmodelpricingDescCreatedAt.Default.(func() time.Time)
 	// globalmodelpricingDescUpdatedAt is the schema descriptor for updated_at field.
-	globalmodelpricingDescUpdatedAt := globalmodelpricingFields[7].Descriptor()
+	globalmodelpricingDescUpdatedAt := globalmodelpricingFields[8].Descriptor()
 	// globalmodelpricing.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	globalmodelpricing.DefaultUpdatedAt = globalmodelpricingDescUpdatedAt.Default.(func() time.Time)
 	// globalmodelpricing.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

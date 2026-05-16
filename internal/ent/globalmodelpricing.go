@@ -29,6 +29,8 @@ type GlobalModelPricing struct {
 	InputRate float64 `json:"input_rate,omitempty"`
 	// OutputRate holds the value of the "output_rate" field.
 	OutputRate float64 `json:"output_rate,omitempty"`
+	// nil=使用全站默认成本加成%; 扣费时在成本额度上乘 (1+m/100)
+	MarkupPercent *float64 `json:"markup_percent,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -43,7 +45,7 @@ func (*GlobalModelPricing) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case globalmodelpricing.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case globalmodelpricing.FieldInputRate, globalmodelpricing.FieldOutputRate:
+		case globalmodelpricing.FieldInputRate, globalmodelpricing.FieldOutputRate, globalmodelpricing.FieldMarkupPercent:
 			values[i] = new(sql.NullFloat64)
 		case globalmodelpricing.FieldID, globalmodelpricing.FieldQuotaInPer1k, globalmodelpricing.FieldQuotaOutPer1k:
 			values[i] = new(sql.NullInt64)
@@ -109,6 +111,13 @@ func (_m *GlobalModelPricing) assignValues(columns []string, values []any) error
 				return fmt.Errorf("unexpected type %T for field output_rate", values[i])
 			} else if value.Valid {
 				_m.OutputRate = value.Float64
+			}
+		case globalmodelpricing.FieldMarkupPercent:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field markup_percent", values[i])
+			} else if value.Valid {
+				_m.MarkupPercent = new(float64)
+				*_m.MarkupPercent = value.Float64
 			}
 		case globalmodelpricing.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -179,6 +188,11 @@ func (_m *GlobalModelPricing) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("output_rate=")
 	builder.WriteString(fmt.Sprintf("%v", _m.OutputRate))
+	builder.WriteString(", ")
+	if v := _m.MarkupPercent; v != nil {
+		builder.WriteString("markup_percent=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

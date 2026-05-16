@@ -64,7 +64,9 @@ type SiteConfig struct {
 	// CurrencyQuotaPerUsd 每 1 美元上游成本对应额度；>0 时「美元标价→额度」优先用本字段（否则用 pricing_cny_per_usd × currency_quota_per_yuan）。
 	CurrencyQuotaPerUsd int64 `mapstructure:"currency_quota_per_usd"`
 	// PricingCnyPerUsd 参考汇率：1 USD = R CNY；仅在未配置 currency_quota_per_usd 时用于美元标价换算。
-	PricingCnyPerUsd      float64  `mapstructure:"pricing_cny_per_usd"`
+	PricingCnyPerUsd float64 `mapstructure:"pricing_cny_per_usd"`
+	// DefaultPricingMarkupPercent 全站默认成本加成 %；扣费时在成本额度上乘 (1+m/100)；可被单模型 markup_percent 覆盖。
+	DefaultPricingMarkupPercent float64 `mapstructure:"default_pricing_markup_percent"`
 	DefaultNewUserBalance int64    `mapstructure:"default_new_user_balance"`
 	CORSOrigins           []string `mapstructure:"cors_origins"`
 	// OperatorDisplayName 非空时写入 /health、/ready 的 JSON 字段 operator，便于运维与对外展示运营方。

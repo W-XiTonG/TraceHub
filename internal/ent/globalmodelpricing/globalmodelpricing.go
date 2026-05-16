@@ -25,6 +25,8 @@ const (
 	FieldInputRate = "input_rate"
 	// FieldOutputRate holds the string denoting the output_rate field in the database.
 	FieldOutputRate = "output_rate"
+	// FieldMarkupPercent holds the string denoting the markup_percent field in the database.
+	FieldMarkupPercent = "markup_percent"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -42,6 +44,7 @@ var Columns = []string{
 	FieldQuotaOutPer1k,
 	FieldInputRate,
 	FieldOutputRate,
+	FieldMarkupPercent,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -109,6 +112,11 @@ func ByInputRate(opts ...sql.OrderTermOption) OrderOption {
 // ByOutputRate orders the results by the output_rate field.
 func ByOutputRate(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOutputRate, opts...).ToFunc()
+}
+
+// ByMarkupPercent orders the results by the markup_percent field.
+func ByMarkupPercent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMarkupPercent, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

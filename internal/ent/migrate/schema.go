@@ -300,6 +300,7 @@ var (
 		{Name: "quota_out_per_1k", Type: field.TypeInt64, Nullable: true},
 		{Name: "input_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "output_rate", Type: field.TypeFloat64, Default: 1},
+		{Name: "markup_percent", Type: field.TypeFloat64, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

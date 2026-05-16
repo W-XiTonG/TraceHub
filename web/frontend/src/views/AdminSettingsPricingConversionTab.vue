@@ -16,6 +16,9 @@ type SitePayload = {
   pricing_cny_per_usd?: number
   pricing_cny_per_usd_file?: number
   pricing_cny_per_usd_db_set?: boolean
+  default_pricing_markup_percent?: number
+  default_pricing_markup_percent_file?: number
+  default_pricing_markup_percent_db_set?: boolean
 }
 
 const { t } = useI18n()
@@ -25,12 +28,15 @@ const resetting = ref(false)
 const draftYuan = ref('')
 const draftUsd = ref('')
 const draftRate = ref('')
+const draftMarkup = ref('')
 const fileYuan = ref(0)
 const fileUsd = ref(0)
 const fileRate = ref(0)
 const dbYuan = ref(false)
 const dbUsd = ref(false)
 const dbRate = ref(false)
+const fileMarkup = ref(0)
+const dbMarkup = ref(false)
 const flashMsg = ref('')
 const flashIsError = ref(false)
 const FLASH_DISMISS_MS = 3200
@@ -95,6 +101,14 @@ function applyPayload(d: SitePayload) {
   dbYuan.value = Boolean(d.currency_quota_per_yuan_db_set)
   dbUsd.value = Boolean(d.currency_quota_per_usd_db_set)
   dbRate.value = Boolean(d.pricing_cny_per_usd_db_set)
+  const m =
+    typeof d.default_pricing_markup_percent === 'number' ? d.default_pricing_markup_percent : 0
+  draftMarkup.value = String(m)
+  fileMarkup.value =
+    typeof d.default_pricing_markup_percent_file === 'number'
+      ? d.default_pricing_markup_percent_file
+      : 0
+  dbMarkup.value = Boolean(d.default_pricing_markup_percent_db_set)
 }
 
 async function load() {
@@ -125,6 +139,11 @@ const parsedRate = computed(() => {
   return Number.isFinite(n) && n >= 0 ? n : null
 })
 
+const parsedMarkup = computed(() => {
+  const n = Number(draftMarkup.value.trim())
+  return Number.isFinite(n) && n > -100 ? n : null
+})
+
 const siteFactors = computed(() => ({
   quotaPerYuan: parsedYuan.value ?? 0,
   quotaPerUsd: parsedUsd.value ?? 0,
@@ -146,6 +165,7 @@ function validateDraft(): string | null {
   if (parsedYuan.value === null) return t('adminPricingConversion.cfgErrYuan')
   if (parsedUsd.value === null) return t('adminPricingConversion.cfgErrUsd')
   if (parsedRate.value === null) return t('adminPricingConversion.cfgErrRate')
+  if (parsedMarkup.value === null) return t('adminPricingConversion.cfgErrMarkup')
   return null
 }
 
@@ -174,6 +194,11 @@ async function save() {
           key: 'site.pricing_cny_per_usd',
           value: String(parsedRate.value),
           description: t('adminPricingConversion.cfgDescRate'),
+        },
+        {
+          key: 'site.default_pricing_markup_percent',
+          value: String(parsedMarkup.value),
+          description: t('adminPricingConversion.cfgDescMarkup'),
         },
       ],
     })
@@ -277,6 +302,26 @@ onUnmounted(() => {
 
             <div>
               <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                {{ t('adminPricingConversion.cfgDefaultMarkup') }}
+              </label>
+              <input
+                v-model="draftMarkup"
+                type="text"
+                inputmode="decimal"
+                class="th-input w-full max-w-xs font-mono text-sm tabular-nums"
+                autocomplete="off"
+              />
+              <p class="mt-1.5 text-[11px] text-slate-500">{{ t('adminPricingConversion.cfgMarkupHint') }}</p>
+              <p class="mt-1 text-[11px] text-slate-500">
+                {{ t('adminPricingConversion.cfgYamlMarkup', { m: fileMarkup }) }}
+              </p>
+              <p v-if="dbMarkup" class="mt-1 text-[11px] text-amber-100/80">
+                {{ t('adminPricingConversion.cfgDbOverrideMarkup') }}
+              </p>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
                 {{ t('adminPricingConversion.cfgCnyPerUsd') }}
               </label>
               <input
@@ -296,7 +341,9 @@ onUnmounted(() => {
           </div>
 
           <section class="th-glass mt-6 max-w-2xl rounded-xl p-4 text-xs leading-relaxed text-slate-400">
-            <h4 class="text-sm font-medium text-slate-200">{{ t('adminPricingConversion.guideTitle') }}</h4>
+            <h4 class="text-sm font-medium text-slate-200">{{ t('adminPricingConversion.workflowTitle') }}</h4>
+            <p class="mt-2 text-slate-300">{{ t('adminPricingConversion.workflowSteps') }}</p>
+            <h4 class="mt-4 text-sm font-medium text-slate-200">{{ t('adminPricingConversion.guideTitle') }}</h4>
             <p class="mt-2">{{ t('adminPricingConversion.conversionIntro') }}</p>
             <p class="mt-2 font-mono text-[11px] text-slate-500">{{ t('adminPricingConversion.conversionCnyFormula') }}</p>
             <p v-if="exampleCnyQuota !== null" class="mt-2 text-slate-300">

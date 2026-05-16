@@ -1321,6 +1321,44 @@ html[data-th-theme="paper"] .th-pricing-advanced-panel {
   background: #ffffff;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
 }
+html[data-th-theme="dawn"] .th-pricing-advanced-panel__actions,
+html[data-th-theme="paper"] .th-pricing-advanced-panel__actions {
+  border-left-color: rgba(15, 23, 42, 0.1);
+}
+html[data-th-theme="dawn"] .th-pricing-advanced-panel__btn,
+html[data-th-theme="paper"] .th-pricing-advanced-panel__btn {
+  color: #475569;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: #f1f5f9;
+}
+html[data-th-theme="dawn"] .th-pricing-advanced-panel__btn:hover,
+html[data-th-theme="paper"] .th-pricing-advanced-panel__btn:hover {
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.2);
+  background: #e2e8f0;
+}
+html[data-th-theme="dawn"] .th-pricing-advanced-panel__btn--primary,
+html[data-th-theme="paper"] .th-pricing-advanced-panel__btn--primary {
+  color: #ffffff;
+  border-color: #0e7490;
+  background: #0891b2;
+}
+html[data-th-theme="dawn"] .th-pricing-advanced-panel__btn--primary:hover:not(:disabled),
+html[data-th-theme="paper"] .th-pricing-advanced-panel__btn--primary:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: #0c6b84;
+  background: #0e7490;
+}
+html[data-th-theme="dawn"] .th-pricing-advanced-panel__btn--primary:disabled,
+html[data-th-theme="paper"] .th-pricing-advanced-panel__btn--primary:disabled {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(14, 116, 144, 0.45);
+  background: rgba(8, 145, 178, 0.55);
+}
+html[data-th-theme="dawn"] .th-pricing-advanced > summary .text-cyan-300\/90,
+html[data-th-theme="paper"] .th-pricing-advanced > summary .text-cyan-300\/90 {
+  color: #0e7490;
+}
 html[data-th-theme="dawn"] .th-select.th-select--pricing-unit,
 html[data-th-theme="paper"] .th-select.th-select--pricing-unit {
   min-width: 9.25rem;

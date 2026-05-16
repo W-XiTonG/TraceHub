@@ -54,6 +54,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateCurrencyQuotaPerUsd(value)
 	case SystemConfigKeyPricingCnyPerUsd:
 		return ValidatePricingCnyPerUsd(value)
+	case SystemConfigKeyDefaultPricingMarkupPercent:
+		return ValidateDefaultPricingMarkupPercent(value)
 	default:
 		return nil
 	}

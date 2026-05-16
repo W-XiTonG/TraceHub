@@ -11,6 +11,7 @@ redis:
   db: 0
 
 security:
+  # 生产环境必须替换为高强度随机串（建议 ≥32 字符）；勿使用示例占位符
   jwt_secret: "tracehub-dev-change-me-please-use-long-secret"
   # AES-256 key: exactly 32 bytes as base64 or raw; if absent, derived from jwt_secret via SHA256
   aes_key_base64: ""
@@ -25,37 +26,42 @@ site:
   #   - "gpt-4o-mini"
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
-  # 上游美元标价 → 额度：优先用「每 1 美元对应多少额度」；为 0 时用 pricing_cny_per_usd × currency_quota_per_yuan
+  # 可选：每 1 美元上游成本对应多少「额度」；>0 时管理端「美元→额度」优先用此项（否则用 pricing_cny_per_usd × currency_quota_per_yuan）
   currency_quota_per_usd: 0
+  # 可选：美元兑人民币参考价（1 USD = 多少 CNY）；未配 currency_quota_per_usd 时美元标价换算需要此项且须 >0
   pricing_cny_per_usd: 7.2
+  # 全站默认成本加成 %（0=不加价）；扣费时应用，单模型可在全局计价表覆盖
+  default_pricing_markup_percent: 0
   default_new_user_balance: 20000
-  # 注册页与官网展示的推广说明（可被管理后台 system_configs 覆盖）；空字符串则不展示
+  # 注册页与官网首页推广说明（可被管理后台覆盖）；留空则不展示
   register_promo_text: "新用户注册即送 20000 额度（约合 ¥2），注册成功后自动到账。"
+  # 浏览器跨域：列出完整 Origin（如 http://localhost:5173）；与 * 组合时 * 表示未匹配请求不携带 Credentials
   cors_origins:
     - "*"
+  # Realtime 通话子资源（POST .../realtime/calls/{id}/accept 等）：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
+  # realtime_call_mapping_enabled: false
+  # realtime_call_mapping_ttl_sec: 86400
+  # realtime_call_control_bill_reject_hangup: false
+  #
+  # 三～五：OpenAI 兼容扩展（可选）
+  # openai_compat_channel_types: [] # 例: ["siliconflow"] — 与 openai 一样走 /v1 JSON 透传的额外渠道类型名
+  # block_openai_account_admin_paths: true # 四：默认拦截 /v1 下 organizations、organization、dashboard、billing 等账号/控制台类路径
+  # openai_account_admin_deny_prefixes: [] # 相对 /v1/ 的额外拒绝前缀
+  # openai_passthrough:
+  #   enabled: false
+  #   allow_prefixes: [] # 必填白名单，如 ["experimental/foo"]；未命中则 404
+  #   deny_prefixes: []
+  #   patch_model_in_json: true
+  #
   # 可选：非空时写入 /health、/ready JSON 的 operator 字段，便于监控或对外展示运营方
   operator_display_name: "循迹未来"
   # 登录页图形验证码（防脚本撞库、刷发登录邮件）。开启后依赖 Redis；本地无 Redis 时请改为 enabled: false
   login_captcha:
     enabled: true
     ttl_seconds: 300
-  # 可选：管理后台「本地上传品牌图标」保存目录（进程可写）；默认 data/site_brand
+  # 可选：管理后台「本地上传品牌图标」保存目录（进程可写）；默认 data/site_brand，对外 URL 为 /uploads/site-brand/site-brand-*.{png,jpg,...}（多版本保留）
   # brand_upload_dir: ./data/site_brand
-  # Realtime 通话子资源：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
-  # realtime_call_mapping_enabled: false
-  # realtime_call_mapping_ttl_sec: 86400
-  # realtime_call_control_bill_reject_hangup: false
-  # OpenAI 兼容扩展（可选），详见 config.example.yaml 注释
-  # openai_compat_channel_types: []
-  # block_openai_account_admin_paths: true
-  # openai_account_admin_deny_prefixes: []
-  # openai_passthrough:
-  #   enabled: false
-  #   allow_prefixes: []
-  #   deny_prefixes: []
-  #   patch_model_in_json: true
 
-# 邮箱验证码登录：enabled 为 true 时需 Redis + SMTP（本地可用 MailHog 等）
 email:
   enabled: true
   smtp_host: "smtp.qq.com"
@@ -65,16 +71,19 @@ email:
   from: "2751799737@qq.com"
   starttls: true
   insecure_skip_verify: false
+  # 仅当「非三语邮件」且界面/请求为简中（zh-CN）时用作邮件主题；留空则用内置「{operator} · TraceHub 登录验证码」
   login_code_subject: "TraceHub 登录验证码"
+  # 同上，注册验证码；留空则用内置简中主题
   register_code_subject: "TraceHub 注册验证码"
   login_code_ttl_minutes: 10
   login_code_resend_seconds: 60
   login_code_max_per_hour: 8
-  # true：验证码邮件正文固定包含简中、繁中、English 三段；false：按请求 locale 发送单一语言
+  # true：验证码邮件正文固定包含简中、繁中、English 三段（忽略请求的 locale）；false：按请求 locale（zh-CN/zh-TW/en）或 Accept-Language 发送单一语言
   code_email_trilingual: false
 
 bootstrap:
   admin_email: "admin@example.com"
+  # 首次种子管理员密码：部署时务必改为强密码；勿保留仓库示例值
   admin_password: "Wangxitong0918."
   default_group_name: "基础分组"
 

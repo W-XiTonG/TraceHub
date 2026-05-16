@@ -84,6 +84,11 @@ func OutputRate(v float64) predicate.GlobalModelPricing {
 	return predicate.GlobalModelPricing(sql.FieldEQ(FieldOutputRate, v))
 }
 
+// MarkupPercent applies equality check predicate on the "markup_percent" field. It's identical to MarkupPercentEQ.
+func MarkupPercent(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEQ(FieldMarkupPercent, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.GlobalModelPricing {
 	return predicate.GlobalModelPricing(sql.FieldEQ(FieldCreatedAt, v))
@@ -347,6 +352,56 @@ func OutputRateLT(v float64) predicate.GlobalModelPricing {
 // OutputRateLTE applies the LTE predicate on the "output_rate" field.
 func OutputRateLTE(v float64) predicate.GlobalModelPricing {
 	return predicate.GlobalModelPricing(sql.FieldLTE(FieldOutputRate, v))
+}
+
+// MarkupPercentEQ applies the EQ predicate on the "markup_percent" field.
+func MarkupPercentEQ(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEQ(FieldMarkupPercent, v))
+}
+
+// MarkupPercentNEQ applies the NEQ predicate on the "markup_percent" field.
+func MarkupPercentNEQ(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNEQ(FieldMarkupPercent, v))
+}
+
+// MarkupPercentIn applies the In predicate on the "markup_percent" field.
+func MarkupPercentIn(vs ...float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldIn(FieldMarkupPercent, vs...))
+}
+
+// MarkupPercentNotIn applies the NotIn predicate on the "markup_percent" field.
+func MarkupPercentNotIn(vs ...float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNotIn(FieldMarkupPercent, vs...))
+}
+
+// MarkupPercentGT applies the GT predicate on the "markup_percent" field.
+func MarkupPercentGT(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldGT(FieldMarkupPercent, v))
+}
+
+// MarkupPercentGTE applies the GTE predicate on the "markup_percent" field.
+func MarkupPercentGTE(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldGTE(FieldMarkupPercent, v))
+}
+
+// MarkupPercentLT applies the LT predicate on the "markup_percent" field.
+func MarkupPercentLT(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldLT(FieldMarkupPercent, v))
+}
+
+// MarkupPercentLTE applies the LTE predicate on the "markup_percent" field.
+func MarkupPercentLTE(v float64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldLTE(FieldMarkupPercent, v))
+}
+
+// MarkupPercentIsNil applies the IsNil predicate on the "markup_percent" field.
+func MarkupPercentIsNil() predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldIsNull(FieldMarkupPercent))
+}
+
+// MarkupPercentNotNil applies the NotNil predicate on the "markup_percent" field.
+func MarkupPercentNotNil() predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNotNull(FieldMarkupPercent))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

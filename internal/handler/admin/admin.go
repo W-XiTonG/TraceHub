@@ -21,6 +21,7 @@ import (
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
 	"tracehub/internal/pkg/usagelogfilter"
+	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelhealth"
 
 	"github.com/gin-gonic/gin"
@@ -689,6 +690,7 @@ func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
 				return
 			}
 		}
+		billing.InvalidateGroupModelRateCacheAdmin(gid)
 		auditLog(client, adm.ID, "group.model_rates", "group", strconv.Itoa(gid), map[string]any{"count": len(req.Rates)}, c)
 		httpx.OKMsg(c, "已保存", nil)
 	}

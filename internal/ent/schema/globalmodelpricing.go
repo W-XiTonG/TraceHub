@@ -20,6 +20,7 @@ func (GlobalModelPricing) Fields() []ent.Field {
 		field.Int64("quota_out_per_1k").Optional().Nillable().Comment("nil=不覆盖代码基准输出每千额度"),
 		field.Float("input_rate").Default(1),
 		field.Float("output_rate").Default(1),
+		field.Float("markup_percent").Optional().Nillable().Comment("nil=使用全站默认成本加成%; 扣费时在成本额度上乘 (1+m/100)"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

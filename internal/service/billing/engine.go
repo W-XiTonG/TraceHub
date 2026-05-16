@@ -30,11 +30,23 @@ type Engine struct {
 	globalPricingMu      sync.Mutex
 	globalPricingByModel map[string]*ent.GlobalModelPricing
 	globalPricingExpires time.Time
+
+	defaultMarkupMu      sync.Mutex
+	defaultMarkup        float64
+	defaultMarkupExpires time.Time
+
+	groupRatesMu      sync.Mutex
+	groupRatesByGroup map[int]map[string]*ent.GroupModelRate
+	groupRatesExpires map[int]time.Time
 }
 
 const noBillListCacheTTL = 60 * time.Second
 
 const globalModelPricingCacheTTL = 60 * time.Second
+
+const defaultMarkupCacheTTL = 60 * time.Second
+
+const groupModelRateCacheTTL = 60 * time.Second
 
 func (e *Engine) groupUserMultipliers(u *ent.User) (groupMul, userMul float64) {
 	groupMul, userMul = 1, 1
@@ -103,22 +115,97 @@ func (e *Engine) InvalidateGlobalModelPricingCache() {
 	e.globalPricingMu.Unlock()
 }
 
+func (e *Engine) cachedDefaultPricingMarkupPercent(ctx context.Context) float64 {
+	if e.Client == nil {
+		if e.Config != nil {
+			return e.Config.Site.DefaultPricingMarkupPercent
+		}
+		return 0
+	}
+	now := time.Now()
+	e.defaultMarkupMu.Lock()
+	if now.Before(e.defaultMarkupExpires) {
+		m := e.defaultMarkup
+		e.defaultMarkupMu.Unlock()
+		return m
+	}
+	e.defaultMarkupMu.Unlock()
+
+	m := sitecfg.EffectiveDefaultPricingMarkupPercent(ctx, e.Client, e.Config)
+	e.defaultMarkupMu.Lock()
+	e.defaultMarkup = m
+	e.defaultMarkupExpires = now.Add(defaultMarkupCacheTTL)
+	e.defaultMarkupMu.Unlock()
+	return m
+}
+
+// InvalidateDefaultPricingMarkupCache 管理端更新 site.default_pricing_markup_percent 后调用。
+func (e *Engine) InvalidateDefaultPricingMarkupCache() {
+	e.defaultMarkupMu.Lock()
+	e.defaultMarkupExpires = time.Time{}
+	e.defaultMarkupMu.Unlock()
+}
+
+func (e *Engine) cachedGroupModelRatesByName(ctx context.Context, groupID int) map[string]*ent.GroupModelRate {
+	if e.Client == nil || groupID <= 0 {
+		return nil
+	}
+	now := time.Now()
+	e.groupRatesMu.Lock()
+	if e.groupRatesByGroup != nil {
+		if exp, ok := e.groupRatesExpires[groupID]; ok && now.Before(exp) {
+			m := e.groupRatesByGroup[groupID]
+			e.groupRatesMu.Unlock()
+			return m
+		}
+	}
+	e.groupRatesMu.Unlock()
+
+	list, err := e.Client.GroupModelRate.Query().
+		Where(groupmodelrate.GroupIDEQ(groupID)).
+		All(ctx)
+	if err != nil {
+		e.groupRatesMu.Lock()
+		prev := e.groupRatesByGroup[groupID]
+		e.groupRatesMu.Unlock()
+		return prev
+	}
+	byName := make(map[string]*ent.GroupModelRate, len(list))
+	for _, r := range list {
+		byName[r.ModelName] = r
+	}
+	e.groupRatesMu.Lock()
+	if e.groupRatesByGroup == nil {
+		e.groupRatesByGroup = make(map[int]map[string]*ent.GroupModelRate)
+		e.groupRatesExpires = make(map[int]time.Time)
+	}
+	e.groupRatesByGroup[groupID] = byName
+	e.groupRatesExpires[groupID] = now.Add(groupModelRateCacheTTL)
+	e.groupRatesMu.Unlock()
+	return byName
+}
+
+// InvalidateGroupModelRateCache 管理端更新某分组模型倍率后调用；groupID<=0 时清空全部分组缓存。
+func (e *Engine) InvalidateGroupModelRateCache(groupID int) {
+	e.groupRatesMu.Lock()
+	defer e.groupRatesMu.Unlock()
+	if groupID <= 0 {
+		e.groupRatesByGroup = nil
+		e.groupRatesExpires = nil
+		return
+	}
+	delete(e.groupRatesByGroup, groupID)
+	delete(e.groupRatesExpires, groupID)
+}
+
 func (e *Engine) lookupGroupModelRateRow(ctx context.Context, groupID int, model string) *ent.GroupModelRate {
 	names := CandidateGroupModelRateNames(model)
 	if len(names) == 0 {
 		return nil
 	}
-	list, err := e.Client.GroupModelRate.Query().
-		Where(
-			groupmodelrate.GroupIDEQ(groupID),
-			groupmodelrate.ModelNameIn(names...),
-		).All(ctx)
-	if err != nil || len(list) == 0 {
+	byName := e.cachedGroupModelRatesByName(ctx, groupID)
+	if len(byName) == 0 {
 		return nil
-	}
-	byName := make(map[string]*ent.GroupModelRate, len(list))
-	for _, r := range list {
-		byName[r.ModelName] = r
 	}
 	for _, name := range names {
 		if gmr, ok := byName[name]; ok {
@@ -213,6 +300,7 @@ func (e *Engine) ChargeWithPromptCache(ctx context.Context, u *ent.User, model s
 type ModelBillRates struct {
 	groupMul, userMul, inRate, outRate float64
 	in1k, out1k                       int64
+	markupPercent                     float64
 	Billable                         bool
 }
 
@@ -241,9 +329,11 @@ func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string) 
 	} else if glo != nil && glo.Enabled {
 		ir, or = glo.InputRate, glo.OutputRate
 	}
+	siteMarkup := e.cachedDefaultPricingMarkupPercent(ctx)
+	markup := ResolveMarkupPercent(siteMarkup, glo)
 	return ModelBillRates{
 		groupMul: gm, userMul: um, inRate: ir, outRate: or,
-		in1k: in1k, out1k: out1k,
+		in1k: in1k, out1k: out1k, markupPercent: markup,
 		Billable: e.modelBillable(ctx, u, model),
 	}, nil
 }
@@ -264,6 +354,7 @@ func (b ModelBillRates) Cost(promptTokens, completionTokens, cachedPromptTokens 
 	raw := float64(uncachedPrompt)*float64(b.in1k)/1000.0*b.inRate +
 		float64(cachedPromptTokens)*float64(b.in1k)/1000.0*b.inRate*cf +
 		float64(completionTokens)*float64(b.out1k)/1000.0*b.outRate
+	raw *= 1 + b.markupPercent/100.0
 	raw *= b.groupMul * b.userMul
 	return int64(raw + 0.999999)
 }

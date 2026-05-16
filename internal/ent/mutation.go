@@ -8793,6 +8793,8 @@ type GlobalModelPricingMutation struct {
 	addinput_rate       *float64
 	output_rate         *float64
 	addoutput_rate      *float64
+	markup_percent      *float64
+	addmarkup_percent   *float64
 	created_at          *time.Time
 	updated_at          *time.Time
 	clearedFields       map[string]struct{}
@@ -9223,6 +9225,76 @@ func (m *GlobalModelPricingMutation) ResetOutputRate() {
 	m.addoutput_rate = nil
 }
 
+// SetMarkupPercent sets the "markup_percent" field.
+func (m *GlobalModelPricingMutation) SetMarkupPercent(f float64) {
+	m.markup_percent = &f
+	m.addmarkup_percent = nil
+}
+
+// MarkupPercent returns the value of the "markup_percent" field in the mutation.
+func (m *GlobalModelPricingMutation) MarkupPercent() (r float64, exists bool) {
+	v := m.markup_percent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMarkupPercent returns the old "markup_percent" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldMarkupPercent(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMarkupPercent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMarkupPercent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMarkupPercent: %w", err)
+	}
+	return oldValue.MarkupPercent, nil
+}
+
+// AddMarkupPercent adds f to the "markup_percent" field.
+func (m *GlobalModelPricingMutation) AddMarkupPercent(f float64) {
+	if m.addmarkup_percent != nil {
+		*m.addmarkup_percent += f
+	} else {
+		m.addmarkup_percent = &f
+	}
+}
+
+// AddedMarkupPercent returns the value that was added to the "markup_percent" field in this mutation.
+func (m *GlobalModelPricingMutation) AddedMarkupPercent() (r float64, exists bool) {
+	v := m.addmarkup_percent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearMarkupPercent clears the value of the "markup_percent" field.
+func (m *GlobalModelPricingMutation) ClearMarkupPercent() {
+	m.markup_percent = nil
+	m.addmarkup_percent = nil
+	m.clearedFields[globalmodelpricing.FieldMarkupPercent] = struct{}{}
+}
+
+// MarkupPercentCleared returns if the "markup_percent" field was cleared in this mutation.
+func (m *GlobalModelPricingMutation) MarkupPercentCleared() bool {
+	_, ok := m.clearedFields[globalmodelpricing.FieldMarkupPercent]
+	return ok
+}
+
+// ResetMarkupPercent resets all changes to the "markup_percent" field.
+func (m *GlobalModelPricingMutation) ResetMarkupPercent() {
+	m.markup_percent = nil
+	m.addmarkup_percent = nil
+	delete(m.clearedFields, globalmodelpricing.FieldMarkupPercent)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *GlobalModelPricingMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -9329,7 +9401,7 @@ func (m *GlobalModelPricingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GlobalModelPricingMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.model_name != nil {
 		fields = append(fields, globalmodelpricing.FieldModelName)
 	}
@@ -9347,6 +9419,9 @@ func (m *GlobalModelPricingMutation) Fields() []string {
 	}
 	if m.output_rate != nil {
 		fields = append(fields, globalmodelpricing.FieldOutputRate)
+	}
+	if m.markup_percent != nil {
+		fields = append(fields, globalmodelpricing.FieldMarkupPercent)
 	}
 	if m.created_at != nil {
 		fields = append(fields, globalmodelpricing.FieldCreatedAt)
@@ -9374,6 +9449,8 @@ func (m *GlobalModelPricingMutation) Field(name string) (ent.Value, bool) {
 		return m.InputRate()
 	case globalmodelpricing.FieldOutputRate:
 		return m.OutputRate()
+	case globalmodelpricing.FieldMarkupPercent:
+		return m.MarkupPercent()
 	case globalmodelpricing.FieldCreatedAt:
 		return m.CreatedAt()
 	case globalmodelpricing.FieldUpdatedAt:
@@ -9399,6 +9476,8 @@ func (m *GlobalModelPricingMutation) OldField(ctx context.Context, name string) 
 		return m.OldInputRate(ctx)
 	case globalmodelpricing.FieldOutputRate:
 		return m.OldOutputRate(ctx)
+	case globalmodelpricing.FieldMarkupPercent:
+		return m.OldMarkupPercent(ctx)
 	case globalmodelpricing.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case globalmodelpricing.FieldUpdatedAt:
@@ -9454,6 +9533,13 @@ func (m *GlobalModelPricingMutation) SetField(name string, value ent.Value) erro
 		}
 		m.SetOutputRate(v)
 		return nil
+	case globalmodelpricing.FieldMarkupPercent:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMarkupPercent(v)
+		return nil
 	case globalmodelpricing.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -9488,6 +9574,9 @@ func (m *GlobalModelPricingMutation) AddedFields() []string {
 	if m.addoutput_rate != nil {
 		fields = append(fields, globalmodelpricing.FieldOutputRate)
 	}
+	if m.addmarkup_percent != nil {
+		fields = append(fields, globalmodelpricing.FieldMarkupPercent)
+	}
 	return fields
 }
 
@@ -9504,6 +9593,8 @@ func (m *GlobalModelPricingMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedInputRate()
 	case globalmodelpricing.FieldOutputRate:
 		return m.AddedOutputRate()
+	case globalmodelpricing.FieldMarkupPercent:
+		return m.AddedMarkupPercent()
 	}
 	return nil, false
 }
@@ -9541,6 +9632,13 @@ func (m *GlobalModelPricingMutation) AddField(name string, value ent.Value) erro
 		}
 		m.AddOutputRate(v)
 		return nil
+	case globalmodelpricing.FieldMarkupPercent:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMarkupPercent(v)
+		return nil
 	}
 	return fmt.Errorf("unknown GlobalModelPricing numeric field %s", name)
 }
@@ -9554,6 +9652,9 @@ func (m *GlobalModelPricingMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(globalmodelpricing.FieldQuotaOutPer1k) {
 		fields = append(fields, globalmodelpricing.FieldQuotaOutPer1k)
+	}
+	if m.FieldCleared(globalmodelpricing.FieldMarkupPercent) {
+		fields = append(fields, globalmodelpricing.FieldMarkupPercent)
 	}
 	return fields
 }
@@ -9574,6 +9675,9 @@ func (m *GlobalModelPricingMutation) ClearField(name string) error {
 		return nil
 	case globalmodelpricing.FieldQuotaOutPer1k:
 		m.ClearQuotaOutPer1k()
+		return nil
+	case globalmodelpricing.FieldMarkupPercent:
+		m.ClearMarkupPercent()
 		return nil
 	}
 	return fmt.Errorf("unknown GlobalModelPricing nullable field %s", name)
@@ -9600,6 +9704,9 @@ func (m *GlobalModelPricingMutation) ResetField(name string) error {
 		return nil
 	case globalmodelpricing.FieldOutputRate:
 		m.ResetOutputRate()
+		return nil
+	case globalmodelpricing.FieldMarkupPercent:
+		m.ResetMarkupPercent()
 		return nil
 	case globalmodelpricing.FieldCreatedAt:
 		m.ResetCreatedAt()

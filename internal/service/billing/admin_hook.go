@@ -21,3 +21,17 @@ func InvalidateGlobalModelPricingCacheAdmin() {
 		adminEngine.InvalidateGlobalModelPricingCache()
 	}
 }
+
+// InvalidateDefaultPricingMarkupCacheAdmin 管理端更新 site.default_pricing_markup_percent 后调用。
+func InvalidateDefaultPricingMarkupCacheAdmin() {
+	if adminEngine != nil {
+		adminEngine.InvalidateDefaultPricingMarkupCache()
+	}
+}
+
+// InvalidateGroupModelRateCacheAdmin 管理端更新分组模型倍率后调用；groupID<=0 清空全部分组缓存。
+func InvalidateGroupModelRateCacheAdmin(groupID int) {
+	if adminEngine != nil {
+		adminEngine.InvalidateGroupModelRateCache(groupID)
+	}
+}

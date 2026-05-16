@@ -25,6 +25,10 @@ var (
 	errPricingCnyPerUsdEmpty       = errors.New("site.pricing_cny_per_usd 不能为空")
 	errPricingCnyPerUsdInvalid     = errors.New("site.pricing_cny_per_usd 须为非负数字")
 
+	errDefaultPricingMarkupEmpty   = errors.New("site.default_pricing_markup_percent 不能为空")
+	errDefaultPricingMarkupInvalid = errors.New("site.default_pricing_markup_percent 须为有效数字")
+	errDefaultPricingMarkupTooLow  = errors.New("site.default_pricing_markup_percent 须大于 -100")
+
 	errAPIPublicBaseURLInvalid = errors.New("site.api.public_base_url 须为 http(s) URL，路径仅可为空或 /v1")
 	errAPIPublicBaseURLPath    = errors.New("site.api.public_base_url 路径仅允许为空或 /v1")
 	errAPIPublicBaseURLTooLong = errors.New("site.api.public_base_url 过长")

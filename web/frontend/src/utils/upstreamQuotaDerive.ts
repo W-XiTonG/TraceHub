@@ -62,6 +62,13 @@ export function quotaPer1KFromUpstreamPrice(
   return Math.max(0, Math.ceil(raw))
 }
 
+/** 扣费预览：成本额度 × (1 + 加成%) 向上取整（与 billing Cost 一致，不含分组/用户倍率）。 */
+export function billingQuotaWithMarkup(baseQuota: number, markupPercent: number): number | null {
+  if (!Number.isFinite(baseQuota) || baseQuota < 0) return null
+  if (!Number.isFinite(markupPercent) || markupPercent <= -100) return null
+  return Math.max(0, Math.ceil(baseQuota * (1 + markupPercent / 100)))
+}
+
 export function formatUpstreamPrice(n: number): string {
   if (!Number.isFinite(n)) return '—'
   const abs = Math.abs(n)

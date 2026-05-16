@@ -96,6 +96,20 @@ func (_c *GlobalModelPricingCreate) SetNillableOutputRate(v *float64) *GlobalMod
 	return _c
 }
 
+// SetMarkupPercent sets the "markup_percent" field.
+func (_c *GlobalModelPricingCreate) SetMarkupPercent(v float64) *GlobalModelPricingCreate {
+	_c.mutation.SetMarkupPercent(v)
+	return _c
+}
+
+// SetNillableMarkupPercent sets the "markup_percent" field if the given value is not nil.
+func (_c *GlobalModelPricingCreate) SetNillableMarkupPercent(v *float64) *GlobalModelPricingCreate {
+	if v != nil {
+		_c.SetMarkupPercent(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *GlobalModelPricingCreate) SetCreatedAt(v time.Time) *GlobalModelPricingCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -255,6 +269,10 @@ func (_c *GlobalModelPricingCreate) createSpec() (*GlobalModelPricing, *sqlgraph
 	if value, ok := _c.mutation.OutputRate(); ok {
 		_spec.SetField(globalmodelpricing.FieldOutputRate, field.TypeFloat64, value)
 		_node.OutputRate = value
+	}
+	if value, ok := _c.mutation.MarkupPercent(); ok {
+		_spec.SetField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
+		_node.MarkupPercent = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(globalmodelpricing.FieldCreatedAt, field.TypeTime, value)

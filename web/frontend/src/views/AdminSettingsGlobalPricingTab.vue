@@ -6,7 +6,11 @@ import { useI18n } from 'vue-i18n'
 import { useAdminModelIdCombobox } from '../composables/useAdminModelIdCombobox'
 import { useQuotaPer1kUpstreamField } from '../composables/useQuotaPer1kUpstreamField'
 import { http, type Envelope } from '../api/http'
-import { formatUpstreamPrice, upstreamPriceFromQuotaPer1K } from '../utils/upstreamQuotaDerive'
+import {
+  billingQuotaWithMarkup,
+  formatUpstreamPrice,
+  upstreamPriceFromQuotaPer1K,
+} from '../utils/upstreamQuotaDerive'
 
 const { t } = useI18n()
 
@@ -23,6 +27,8 @@ type DraftRow = {
   enabled: boolean
   quota_in_per_1k: string
   quota_out_per_1k: string
+  /** 行内成本加成 %；空=全站默认 */
+  markup_percent: string
   input_rate: number
   output_rate: number
 }
@@ -35,6 +41,7 @@ type ApiRow = {
   quota_out_per_1k?: number | null
   input_rate: number
   output_rate: number
+  markup_percent?: number | null
 }
 
 type WorkspaceRow = {
@@ -58,6 +65,8 @@ const pageSaving = ref(false)
 const batchSaving = ref(false)
 const exporting = ref(false)
 const exportingTemplate = ref(false)
+const dataMenuOpen = ref(false)
+const dataMenuRef = ref<HTMLElement | null>(null)
 const templateMenuOpen = ref(false)
 const templateMenuRef = ref<HTMLElement | null>(null)
 const importing = ref(false)
@@ -67,7 +76,11 @@ const importPreviewSubmitting = ref(false)
 const csvFileInput = ref<HTMLInputElement | null>(null)
 type DeriveUnitPreset = 'quota' | 'usd_1m' | 'usd_1k' | 'cny_1m' | 'cny_1k'
 const deriveUnitPreset = ref<DeriveUnitPreset>('usd_1m')
+/** 已生效的毛利 %（驱动表格反算与失焦换算） */
 const deriveMargin = ref('0')
+/** 高级面板内编辑中的毛利 %，点「应用」后写入 deriveMargin */
+const deriveMarginDraft = ref('0')
+const deriveAdvancedRef = ref<HTMLDetailsElement | null>(null)
 
 const codeRefShowQuotaOnly = computed(() => deriveUnitPreset.value === 'quota')
 
@@ -178,6 +191,8 @@ function workspaceItemToDraft(w: WorkspaceRow): DraftRow {
     enabled: g?.enabled ?? true,
     quota_in_per_1k: g?.quota_in_per_1k != null ? String(g.quota_in_per_1k) : '',
     quota_out_per_1k: g?.quota_out_per_1k != null ? String(g.quota_out_per_1k) : '',
+    markup_percent:
+      g?.markup_percent != null && g.markup_percent !== undefined ? String(g.markup_percent) : '',
     input_rate: g?.input_rate ?? 1,
     output_rate: g?.output_rate ?? 1,
   }
@@ -219,6 +234,7 @@ type ApiPricingItem = {
   quota_out_per_1k?: number | null
   input_rate: number
   output_rate: number
+  markup_percent?: number | null
 }
 
 /** 导入预览接口返回的单行（与 PUT 项字段一致） */
@@ -229,6 +245,37 @@ type ApiImportPreviewRow = {
   quota_out_per_1k?: number | null
   input_rate: number
   output_rate: number
+  markup_percent?: number | null
+}
+
+function parseMarkup(raw: string): { ok: boolean; value?: number | null } {
+  const s = raw.trim()
+  if (s === '') return { ok: true, value: null }
+  const n = Number(s)
+  if (!Number.isFinite(n) || n <= -100) return { ok: false }
+  return { ok: true, value: n }
+}
+
+function effectiveMarkupPercentForRow(rowMarkupRaw: string): number | null {
+  const s = rowMarkupRaw.trim()
+  if (s !== '') {
+    const n = Number(s)
+    if (!Number.isFinite(n) || n <= -100) return null
+    return n
+  }
+  return parseDeriveMargin()
+}
+
+function billingChargePreview(baseRaw: string, rowMarkupRaw: string): string {
+  const s = baseRaw.trim()
+  if (s === '') return ''
+  const base = Number(s)
+  if (!Number.isFinite(base) || !Number.isInteger(base) || base < 0) return ''
+  const markup = effectiveMarkupPercentForRow(rowMarkupRaw)
+  if (markup === null) return ''
+  const charged = billingQuotaWithMarkup(base, markup)
+  if (charged === null) return ''
+  return String(charged)
 }
 
 /** 校验单行并构造 PUT 项；失败时返回错误文案（已本地化键路径由调用方包 t） */
@@ -250,6 +297,10 @@ function validateRowToItem(r: DraftRow): { ok: true; item: ApiPricingItem } | { 
   if (!(inR > 0) || !(outR > 0) || !Number.isFinite(inR) || !Number.isFinite(outR)) {
     return { ok: false, message: t('adminGlobalPricing.errRates') }
   }
+  const mp = parseMarkup(r.markup_percent)
+  if (!mp.ok) {
+    return { ok: false, message: t('adminGlobalPricing.errMarkup') }
+  }
   const item: ApiPricingItem = {
     model_name: name,
     enabled: r.enabled,
@@ -258,6 +309,7 @@ function validateRowToItem(r: DraftRow): { ok: true; item: ApiPricingItem } | { 
   }
   if (qIn.value !== undefined) item.quota_in_per_1k = qIn.value
   if (qOut.value !== undefined) item.quota_out_per_1k = qOut.value
+  item.markup_percent = mp.value ?? null
   return { ok: true, item }
 }
 
@@ -289,6 +341,10 @@ function apiImportItemToDraft(it: ApiImportPreviewRow): DraftRow {
       it.quota_out_per_1k != null && it.quota_out_per_1k !== undefined ? String(it.quota_out_per_1k) : '',
     input_rate: it.input_rate,
     output_rate: it.output_rate,
+    markup_percent:
+      it.markup_percent != null && it.markup_percent !== undefined
+        ? String(it.markup_percent)
+        : '',
   }
 }
 
@@ -409,15 +465,14 @@ function displayCodeRefCell(ref: number | null | undefined): { lines: CodeRefLin
   if (ref == null) return { lines: [{ text: '—' }] }
   if (codeRefShowQuotaOnly.value) return { lines: [{ text: String(ref) }] }
   const quotaTitle = t('adminGlobalPricing.codeRefQuotaTitle', { q: ref })
-  const margin = parseDeriveMargin()
   let upstreamText: string | null = null
-  if (margin !== null) {
+  {
     const p = upstreamPriceFromQuotaPer1K(
       sitePricingFactors(),
       deriveCurrency.value,
       deriveDenom.value,
       ref,
-      margin,
+      0,
     )
     if (p !== null) upstreamText = formatUpstreamPrice(p)
   }
@@ -569,6 +624,7 @@ function addRow() {
     enabled: true,
     quota_in_per_1k: '',
     quota_out_per_1k: '',
+    markup_percent: '',
     input_rate: 1,
     output_rate: 1,
   })
@@ -840,6 +896,7 @@ async function loadSitePricingMeta() {
         currency_quota_per_yuan?: number
         currency_quota_per_usd?: number
         pricing_cny_per_usd?: number
+        default_pricing_markup_percent?: number
       }>
     >('/api/admin/site-settings')
     if (data.code !== 0 || !data.data) return
@@ -847,6 +904,10 @@ async function loadSitePricingMeta() {
     if (typeof d.currency_quota_per_yuan === 'number') sitePerYuan.value = d.currency_quota_per_yuan
     if (typeof d.currency_quota_per_usd === 'number') sitePerUsd.value = d.currency_quota_per_usd
     if (typeof d.pricing_cny_per_usd === 'number') siteCnyPerUsd.value = d.pricing_cny_per_usd
+    if (typeof d.default_pricing_markup_percent === 'number') {
+      deriveMargin.value = formatDeriveMarginValue(d.default_pricing_markup_percent)
+      deriveMarginDraft.value = deriveMargin.value
+    }
   } catch {
     /* ignore */
   }
@@ -856,6 +917,70 @@ function parseDeriveMargin(): number | null {
   const margin = Number(String(deriveMargin.value).trim() || '0')
   if (!Number.isFinite(margin)) return null
   return margin
+}
+
+function parseMarginDraftText(raw: string): number | null {
+  const margin = Number(String(raw).trim() || '0')
+  if (!Number.isFinite(margin)) return null
+  if (margin <= -100) return null
+  return margin
+}
+
+function formatDeriveMarginValue(margin: number): string {
+  if (Number.isInteger(margin)) return String(margin)
+  return String(margin)
+}
+
+const deriveMarginAppliedLabel = computed(() => {
+  const m = parseDeriveMargin()
+  if (m === null || m === 0) return ''
+  return formatDeriveMarginValue(m)
+})
+
+function onDeriveAdvancedToggle() {
+  if (deriveAdvancedRef.value?.open) deriveMarginDraft.value = deriveMargin.value
+}
+
+const savingSiteMarkup = ref(false)
+
+async function applyDeriveMargin() {
+  const margin = parseMarginDraftText(deriveMarginDraft.value)
+  if (margin === null) {
+    const n = Number(String(deriveMarginDraft.value).trim() || '0')
+    if (Number.isFinite(n) && n <= -100) {
+      flashWarn(t('adminGlobalPricing.deriveErrMarginMin'))
+    } else {
+      flashWarn(t('adminGlobalPricing.deriveErrMargin'))
+    }
+    return
+  }
+  const next = formatDeriveMarginValue(margin)
+  savingSiteMarkup.value = true
+  try {
+    const { data } = await http.put<Envelope<unknown>>('/api/admin/config', {
+      items: [
+        {
+          key: 'site.default_pricing_markup_percent',
+          value: next,
+          description: t('adminGlobalPricing.deriveMarginConfigDesc'),
+        },
+      ],
+    })
+    if (data.code !== 0) throw new Error(data.message || 'save')
+    deriveMargin.value = next
+    deriveMarginDraft.value = next
+    if (deriveAdvancedRef.value) deriveAdvancedRef.value.open = false
+    flashSuccess(t('adminGlobalPricing.deriveMarginApplied', { m: next }))
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    savingSiteMarkup.value = false
+  }
+}
+
+function cancelDeriveMargin() {
+  deriveMarginDraft.value = deriveMargin.value
+  if (deriveAdvancedRef.value) deriveAdvancedRef.value.open = false
 }
 
 const {
@@ -869,9 +994,7 @@ const {
   codeRefShowQuotaOnly,
   deriveCurrency,
   deriveDenom,
-  deriveMargin,
   sitePricingFactors,
-  parseDeriveMargin,
 })
 
 const thQuotaInLabel = computed(() =>
@@ -898,11 +1021,11 @@ const quotaOutPlaceholder = computed(() =>
 onMounted(() => {
   void load()
   void loadSitePricingMeta()
-  document.addEventListener('click', onTemplateMenuDocClick)
+  document.addEventListener('click', onExportMenusDocClick)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', onTemplateMenuDocClick)
+  document.removeEventListener('click', onExportMenusDocClick)
   clearFlashDismissTimer()
 })
 
@@ -941,16 +1064,26 @@ async function downloadCsvBlob(
   flashSuccess(t(`adminGlobalPricing.${successKey}`))
 }
 
-async function exportDataCsv() {
+async function exportDataCsv(currency: 'cny' | 'usd', denom: number) {
   clearFlash()
   exporting.value = true
+  dataMenuOpen.value = false
   try {
-    await downloadCsvBlob('/api/admin/global-model-pricing/export', undefined, 'global-model-pricing-data.csv', 'exported')
+    await downloadCsvBlob(
+      '/api/admin/global-model-pricing/export',
+      { currency, denom },
+      `global-model-pricing-data-${currency}.csv`,
+      'exported',
+    )
   } catch (e: unknown) {
     flashError(e)
   } finally {
     exporting.value = false
   }
+}
+
+function exportDataCsvCurrentUnit() {
+  void exportDataCsv(deriveCurrency.value, deriveDenom.value)
 }
 
 async function exportImportTemplate(currency: 'cny' | 'usd', denom: number) {
@@ -975,10 +1108,26 @@ function exportImportTemplateCurrentUnit() {
   void exportImportTemplate(deriveCurrency.value, deriveDenom.value)
 }
 
-function onTemplateMenuDocClick(ev: MouseEvent) {
-  if (!templateMenuOpen.value) return
-  const el = templateMenuRef.value
-  if (el && !el.contains(ev.target as Node)) templateMenuOpen.value = false
+function toggleDataMenu() {
+  dataMenuOpen.value = !dataMenuOpen.value
+  templateMenuOpen.value = false
+}
+
+function toggleTemplateMenu() {
+  templateMenuOpen.value = !templateMenuOpen.value
+  dataMenuOpen.value = false
+}
+
+function onExportMenusDocClick(ev: MouseEvent) {
+  const target = ev.target as Node
+  if (templateMenuOpen.value) {
+    const el = templateMenuRef.value
+    if (el && !el.contains(target)) templateMenuOpen.value = false
+  }
+  if (dataMenuOpen.value) {
+    const el = dataMenuRef.value
+    if (el && !el.contains(target)) dataMenuOpen.value = false
+  }
 }
 
 function triggerCsvImport() {
@@ -1053,19 +1202,46 @@ async function onCsvFileChange(ev: Event) {
                 <option value="cny_1k">{{ t('adminGlobalPricing.deriveUnitCny1k') }}</option>
               </select>
             </label>
-            <details v-if="!codeRefShowQuotaOnly" class="th-pricing-advanced">
-              <summary>{{ t('adminGlobalPricing.deriveAdvanced') }}</summary>
+            <details
+              v-if="!codeRefShowQuotaOnly"
+              ref="deriveAdvancedRef"
+              class="th-pricing-advanced"
+              @toggle="onDeriveAdvancedToggle"
+            >
+              <summary>
+                {{ t('adminGlobalPricing.deriveAdvanced') }}
+                <span
+                  v-if="deriveMarginAppliedLabel"
+                  class="ml-1 font-mono tabular-nums text-cyan-300/90"
+                >{{ deriveMarginAppliedLabel }}%</span>
+              </summary>
               <div class="th-pricing-advanced-panel">
                 <span class="th-admin-pricing-toolbar__label whitespace-nowrap">{{
                   t('adminGlobalPricing.deriveMarginShort')
                 }}</span>
                 <input
-                  v-model="deriveMargin"
+                  v-model="deriveMarginDraft"
                   type="text"
                   inputmode="decimal"
                   class="th-input font-mono tabular-nums"
                   autocomplete="off"
+                  :title="t('adminGlobalPricing.deriveMargin')"
+                  @keydown.enter.prevent="applyDeriveMargin"
+                  @keydown.esc.prevent="cancelDeriveMargin"
                 />
+                <div class="th-pricing-advanced-panel__actions">
+                  <button
+                    type="button"
+                    class="th-pricing-advanced-panel__btn th-pricing-advanced-panel__btn--primary"
+                    :disabled="savingSiteMarkup"
+                    @click="applyDeriveMargin"
+                  >
+                    {{ savingSiteMarkup ? t('common.submitting') : t('adminCommon.apply') }}
+                  </button>
+                  <button type="button" class="th-pricing-advanced-panel__btn" @click="cancelDeriveMargin">
+                    {{ t('adminCommon.cancel') }}
+                  </button>
+                </div>
               </div>
             </details>
             <span class="th-admin-pricing-toolbar__sep" aria-hidden="true" />
@@ -1162,21 +1338,57 @@ async function onCsvFileChange(ev: Event) {
                   class="hidden h-6 w-px shrink-0 bg-slate-700/90 sm:block"
                   aria-hidden="true"
                 />
-                <button
-                  type="button"
-                  class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
-                  @click="exportDataCsv"
-                >
-                  {{ exporting ? t('common.submitting') : t('adminGlobalPricing.exportDataCsv') }}
-                </button>
+                <div ref="dataMenuRef" class="relative shrink-0">
+                  <button
+                    type="button"
+                    class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                    :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                    :aria-expanded="dataMenuOpen"
+                    @click.stop="toggleDataMenu"
+                  >
+                    {{ exporting ? t('common.submitting') : t('adminGlobalPricing.exportDataMenu') }}
+                    <span class="text-[10px] text-slate-500" aria-hidden="true">▾</span>
+                  </button>
+                  <div
+                    v-if="dataMenuOpen"
+                    class="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[10.5rem] overflow-hidden rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl ring-1 ring-black/20"
+                    role="menu"
+                    @click.stop
+                  >
+                    <button
+                      v-if="showTemplateCurrentPreset"
+                      type="button"
+                      role="menuitem"
+                      class="block w-full px-3 py-2 text-left text-xs text-cyan-200 hover:bg-slate-800"
+                      @click="exportDataCsvCurrentUnit"
+                    >
+                      {{ t('adminGlobalPricing.exportDataCurrent', { unit: priceUnitLabel }) }}
+                    </button>
+                    <div
+                      v-if="showTemplateCurrentPreset"
+                      class="my-1 border-t border-slate-800"
+                      role="separator"
+                    />
+                    <button
+                      v-for="(p, di) in importTemplatePresets"
+                      :key="`data-${p.currency}-${p.denom}`"
+                      type="button"
+                      role="menuitem"
+                      class="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+                      :class="di > 0 && p.currency !== importTemplatePresets[di - 1]?.currency ? 'border-t border-slate-800' : ''"
+                      @click="exportDataCsv(p.currency, p.denom)"
+                    >
+                      {{ t(`adminGlobalPricing.${p.labelKey}`) }}
+                    </button>
+                  </div>
+                </div>
                 <div ref="templateMenuRef" class="relative shrink-0">
                   <button
                     type="button"
                     class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
                     :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
                     :aria-expanded="templateMenuOpen"
-                    @click.stop="templateMenuOpen = !templateMenuOpen"
+                    @click.stop="toggleTemplateMenu"
                   >
                     {{
                       exportingTemplate ? t('common.submitting') : t('adminGlobalPricing.exportTemplateMenu')
@@ -1257,8 +1469,26 @@ async function onCsvFileChange(ev: Event) {
                   <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thSources') }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thCodeIn') }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thCodeOut') }}</th>
-                  <th class="align-middle px-3 py-2">{{ thQuotaInLabel }}</th>
-                  <th class="align-middle px-3 py-2">{{ thQuotaOutLabel }}</th>
+                  <th class="align-middle px-3 py-2">
+                    <span class="block">{{ thQuotaInLabel }}</span>
+                    <span
+                      v-if="!codeRefShowQuotaOnly"
+                      class="mt-0.5 block text-[10px] font-normal text-slate-500"
+                    >{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                  </th>
+                  <th class="align-middle px-3 py-2">
+                    <span class="block">{{ thQuotaOutLabel }}</span>
+                    <span
+                      v-if="!codeRefShowQuotaOnly"
+                      class="mt-0.5 block text-[10px] font-normal text-slate-500"
+                    >{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                  </th>
+                  <th class="align-middle px-3 py-2">
+                    <span class="block">{{ t('adminGlobalPricing.thMarkup') }}</span>
+                    <span class="mt-0.5 block text-[10px] font-normal text-slate-500">{{
+                      t('adminGlobalPricing.thMarkupSub')
+                    }}</span>
+                  </th>
                   <th class="align-middle px-3 py-2">{{ t('adminGroups.thIn') }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGroups.thOut') }}</th>
                   <th class="align-middle px-3 py-2 text-center">{{ t('adminGroups.thEn') }}</th>
@@ -1354,31 +1584,61 @@ async function onCsvFileChange(ev: Event) {
                     </div>
                   </td>
                   <td class="align-middle px-2 py-2">
-                    <input
-                      :value="quotaInputDisplay(r, idx, 'in')"
-                      type="text"
-                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
-                      :placeholder="quotaInPlaceholder"
-                      :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
-                      autocomplete="off"
-                      @focus="onQuotaFocus(r, idx, 'in')"
-                      @input="onQuotaInput(idx, 'in', $event)"
-                      @blur="commitQuotaBlur(r, idx, 'in')"
-                    />
+                    <div class="flex flex-col gap-0.5">
+                      <input
+                        :value="quotaInputDisplay(r, idx, 'in')"
+                        type="text"
+                        :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                        class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                        :placeholder="quotaInPlaceholder"
+                        :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
+                        autocomplete="off"
+                        @focus="onQuotaFocus(r, idx, 'in')"
+                        @input="onQuotaInput(idx, 'in', $event)"
+                        @blur="commitQuotaBlur(r, idx, 'in')"
+                      />
+                      <span
+                        v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
+                        class="font-mono text-[10px] tabular-nums text-slate-500"
+                      >{{
+                        t('adminGlobalPricing.quotaBillingCell', {
+                          q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
+                        })
+                      }}</span>
+                    </div>
+                  </td>
+                  <td class="align-middle px-2 py-2">
+                    <div class="flex flex-col gap-0.5">
+                      <input
+                        :value="quotaInputDisplay(r, idx, 'out')"
+                        type="text"
+                        :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                        class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                        :placeholder="quotaOutPlaceholder"
+                        :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
+                        autocomplete="off"
+                        @focus="onQuotaFocus(r, idx, 'out')"
+                        @input="onQuotaInput(idx, 'out', $event)"
+                        @blur="commitQuotaBlur(r, idx, 'out')"
+                      />
+                      <span
+                        v-if="r.quota_out_per_1k.trim() && billingChargePreview(r.quota_out_per_1k, r.markup_percent)"
+                        class="font-mono text-[10px] tabular-nums text-slate-500"
+                      >{{
+                        t('adminGlobalPricing.quotaBillingCell', {
+                          q: billingChargePreview(r.quota_out_per_1k, r.markup_percent),
+                        })
+                      }}</span>
+                    </div>
                   </td>
                   <td class="align-middle px-2 py-2">
                     <input
-                      :value="quotaInputDisplay(r, idx, 'out')"
+                      v-model="r.markup_percent"
                       type="text"
-                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
-                      :placeholder="quotaOutPlaceholder"
-                      :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
-                      autocomplete="off"
-                      @focus="onQuotaFocus(r, idx, 'out')"
-                      @input="onQuotaInput(idx, 'out', $event)"
-                      @blur="commitQuotaBlur(r, idx, 'out')"
+                      inputmode="decimal"
+                      class="th-input h-9 w-16 py-1 font-mono text-xs leading-normal"
+                      :placeholder="t('adminGlobalPricing.phMarkupSiteDefault')"
+                      :title="t('adminGlobalPricing.markupRowHint')"
                     />
                   </td>
                   <td class="align-middle px-2 py-2">
@@ -1642,30 +1902,50 @@ async function onCsvFileChange(ev: Event) {
                     />
                   </td>
                   <td class="px-2 py-2 align-middle">
-                    <input
-                      :value="quotaInputDisplay(r, idx, 'in')"
-                      type="text"
-                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
-                      :placeholder="quotaInPlaceholder"
-                      autocomplete="off"
-                      @focus="onQuotaFocus(r, idx, 'in')"
-                      @input="onQuotaInput(idx, 'in', $event)"
-                      @blur="commitQuotaBlur(r, idx, 'in')"
-                    />
+                    <div class="flex flex-col gap-0.5">
+                      <input
+                        :value="quotaInputDisplay(r, idx, 'in')"
+                        type="text"
+                        :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                        class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                        :placeholder="quotaInPlaceholder"
+                        autocomplete="off"
+                        @focus="onQuotaFocus(r, idx, 'in')"
+                        @input="onQuotaInput(idx, 'in', $event)"
+                        @blur="commitQuotaBlur(r, idx, 'in')"
+                      />
+                      <span
+                        v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
+                        class="font-mono text-[10px] tabular-nums text-slate-500"
+                      >{{
+                        t('adminGlobalPricing.quotaBillingCell', {
+                          q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
+                        })
+                      }}</span>
+                    </div>
                   </td>
                   <td class="px-2 py-2 align-middle">
-                    <input
-                      :value="quotaInputDisplay(r, idx, 'out')"
-                      type="text"
-                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
-                      :placeholder="quotaOutPlaceholder"
-                      autocomplete="off"
-                      @focus="onQuotaFocus(r, idx, 'out')"
-                      @input="onQuotaInput(idx, 'out', $event)"
-                      @blur="commitQuotaBlur(r, idx, 'out')"
-                    />
+                    <div class="flex flex-col gap-0.5">
+                      <input
+                        :value="quotaInputDisplay(r, idx, 'out')"
+                        type="text"
+                        :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                        class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                        :placeholder="quotaOutPlaceholder"
+                        autocomplete="off"
+                        @focus="onQuotaFocus(r, idx, 'out')"
+                        @input="onQuotaInput(idx, 'out', $event)"
+                        @blur="commitQuotaBlur(r, idx, 'out')"
+                      />
+                      <span
+                        v-if="r.quota_out_per_1k.trim() && billingChargePreview(r.quota_out_per_1k, r.markup_percent)"
+                        class="font-mono text-[10px] tabular-nums text-slate-500"
+                      >{{
+                        t('adminGlobalPricing.quotaBillingCell', {
+                          q: billingChargePreview(r.quota_out_per_1k, r.markup_percent),
+                        })
+                      }}</span>
+                    </div>
                   </td>
                   <td class="px-2 py-2 align-middle">
                     <input
