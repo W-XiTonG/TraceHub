@@ -12,6 +12,8 @@ import (
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/ent/invoiceprofile"
+	"tracehub/internal/ent/paymentorder"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/redeemledger"
@@ -40,6 +42,8 @@ type UserQuery struct {
 	withAdminAuditLogs       *AdminAuditLogQuery
 	withCreatedAnnouncements *AnnouncementQuery
 	withFeedbacks            *FeedbackQuery
+	withPaymentOrders        *PaymentOrderQuery
+	withInvoiceProfile       *InvoiceProfileQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -274,6 +278,50 @@ func (_q *UserQuery) QueryFeedbacks() *FeedbackQuery {
 	return query
 }
 
+// QueryPaymentOrders chains the current query on the "payment_orders" edge.
+func (_q *UserQuery) QueryPaymentOrders() *PaymentOrderQuery {
+	query := (&PaymentOrderClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(paymentorder.Table, paymentorder.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.PaymentOrdersTable, user.PaymentOrdersColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryInvoiceProfile chains the current query on the "invoice_profile" edge.
+func (_q *UserQuery) QueryInvoiceProfile() *InvoiceProfileQuery {
+	query := (&InvoiceProfileClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(invoiceprofile.Table, invoiceprofile.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.InvoiceProfileTable, user.InvoiceProfileColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (_q *UserQuery) First(ctx context.Context) (*User, error) {
@@ -475,6 +523,8 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withAdminAuditLogs:       _q.withAdminAuditLogs.Clone(),
 		withCreatedAnnouncements: _q.withCreatedAnnouncements.Clone(),
 		withFeedbacks:            _q.withFeedbacks.Clone(),
+		withPaymentOrders:        _q.withPaymentOrders.Clone(),
+		withInvoiceProfile:       _q.withInvoiceProfile.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -580,6 +630,28 @@ func (_q *UserQuery) WithFeedbacks(opts ...func(*FeedbackQuery)) *UserQuery {
 	return _q
 }
 
+// WithPaymentOrders tells the query-builder to eager-load the nodes that are connected to
+// the "payment_orders" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithPaymentOrders(opts ...func(*PaymentOrderQuery)) *UserQuery {
+	query := (&PaymentOrderClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPaymentOrders = query
+	return _q
+}
+
+// WithInvoiceProfile tells the query-builder to eager-load the nodes that are connected to
+// the "invoice_profile" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithInvoiceProfile(opts ...func(*InvoiceProfileQuery)) *UserQuery {
+	query := (&InvoiceProfileClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInvoiceProfile = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -658,7 +730,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [11]bool{
 			_q.withGroup != nil,
 			_q.withAPIKeys != nil,
 			_q.withUsageLogs != nil,
@@ -668,6 +740,8 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withAdminAuditLogs != nil,
 			_q.withCreatedAnnouncements != nil,
 			_q.withFeedbacks != nil,
+			_q.withPaymentOrders != nil,
+			_q.withInvoiceProfile != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -747,6 +821,20 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadFeedbacks(ctx, query, nodes,
 			func(n *User) { n.Edges.Feedbacks = []*Feedback{} },
 			func(n *User, e *Feedback) { n.Edges.Feedbacks = append(n.Edges.Feedbacks, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withPaymentOrders; query != nil {
+		if err := _q.loadPaymentOrders(ctx, query, nodes,
+			func(n *User) { n.Edges.PaymentOrders = []*PaymentOrder{} },
+			func(n *User, e *PaymentOrder) { n.Edges.PaymentOrders = append(n.Edges.PaymentOrders, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withInvoiceProfile; query != nil {
+		if err := _q.loadInvoiceProfile(ctx, query, nodes,
+			func(n *User) { n.Edges.InvoiceProfile = []*InvoiceProfile{} },
+			func(n *User, e *InvoiceProfile) { n.Edges.InvoiceProfile = append(n.Edges.InvoiceProfile, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1007,6 +1095,66 @@ func (_q *UserQuery) loadFeedbacks(ctx context.Context, query *FeedbackQuery, no
 	}
 	query.Where(predicate.Feedback(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.FeedbacksColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadPaymentOrders(ctx context.Context, query *PaymentOrderQuery, nodes []*User, init func(*User), assign func(*User, *PaymentOrder)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(paymentorder.FieldUserID)
+	}
+	query.Where(predicate.PaymentOrder(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.PaymentOrdersColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadInvoiceProfile(ctx context.Context, query *InvoiceProfileQuery, nodes []*User, init func(*User), assign func(*User, *InvoiceProfile)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(invoiceprofile.FieldUserID)
+	}
+	query.Where(predicate.InvoiceProfile(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.InvoiceProfileColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

@@ -116,6 +116,18 @@ func (f GroupModelRateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupModelRateMutation", m)
 }
 
+// The InvoiceProfileFunc type is an adapter to allow the use of ordinary
+// function as InvoiceProfile mutator.
+type InvoiceProfileFunc func(context.Context, *ent.InvoiceProfileMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f InvoiceProfileFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.InvoiceProfileMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InvoiceProfileMutation", m)
+}
+
 // The ModelCatalogEntryFunc type is an adapter to allow the use of ordinary
 // function as ModelCatalogEntry mutator.
 type ModelCatalogEntryFunc func(context.Context, *ent.ModelCatalogEntryMutation) (ent.Value, error)
@@ -138,6 +150,54 @@ func (f ModelCatalogSourceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModelCatalogSourceMutation", m)
+}
+
+// The PaymentLedgerFunc type is an adapter to allow the use of ordinary
+// function as PaymentLedger mutator.
+type PaymentLedgerFunc func(context.Context, *ent.PaymentLedgerMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PaymentLedgerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PaymentLedgerMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentLedgerMutation", m)
+}
+
+// The PaymentOrderFunc type is an adapter to allow the use of ordinary
+// function as PaymentOrder mutator.
+type PaymentOrderFunc func(context.Context, *ent.PaymentOrderMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PaymentOrderFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PaymentOrderMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentOrderMutation", m)
+}
+
+// The PaymentRefundFunc type is an adapter to allow the use of ordinary
+// function as PaymentRefund mutator.
+type PaymentRefundFunc func(context.Context, *ent.PaymentRefundMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PaymentRefundFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PaymentRefundMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentRefundMutation", m)
+}
+
+// The RechargePackageFunc type is an adapter to allow the use of ordinary
+// function as RechargePackage mutator.
+type RechargePackageFunc func(context.Context, *ent.RechargePackageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f RechargePackageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RechargePackageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RechargePackageMutation", m)
 }
 
 // The RedeemCodeFunc type is an adapter to allow the use of ordinary

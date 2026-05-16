@@ -68,6 +68,10 @@ const (
 	EdgeCreatedAnnouncements = "created_announcements"
 	// EdgeFeedbacks holds the string denoting the feedbacks edge name in mutations.
 	EdgeFeedbacks = "feedbacks"
+	// EdgePaymentOrders holds the string denoting the payment_orders edge name in mutations.
+	EdgePaymentOrders = "payment_orders"
+	// EdgeInvoiceProfile holds the string denoting the invoice_profile edge name in mutations.
+	EdgeInvoiceProfile = "invoice_profile"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table that holds the group relation/edge.
@@ -133,6 +137,20 @@ const (
 	FeedbacksInverseTable = "feedbacks"
 	// FeedbacksColumn is the table column denoting the feedbacks relation/edge.
 	FeedbacksColumn = "user_id"
+	// PaymentOrdersTable is the table that holds the payment_orders relation/edge.
+	PaymentOrdersTable = "payment_orders"
+	// PaymentOrdersInverseTable is the table name for the PaymentOrder entity.
+	// It exists in this package in order to avoid circular dependency with the "paymentorder" package.
+	PaymentOrdersInverseTable = "payment_orders"
+	// PaymentOrdersColumn is the table column denoting the payment_orders relation/edge.
+	PaymentOrdersColumn = "user_id"
+	// InvoiceProfileTable is the table that holds the invoice_profile relation/edge.
+	InvoiceProfileTable = "invoice_profiles"
+	// InvoiceProfileInverseTable is the table name for the InvoiceProfile entity.
+	// It exists in this package in order to avoid circular dependency with the "invoiceprofile" package.
+	InvoiceProfileInverseTable = "invoice_profiles"
+	// InvoiceProfileColumn is the table column denoting the invoice_profile relation/edge.
+	InvoiceProfileColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -402,6 +420,34 @@ func ByFeedbacks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newFeedbacksStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByPaymentOrdersCount orders the results by payment_orders count.
+func ByPaymentOrdersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPaymentOrdersStep(), opts...)
+	}
+}
+
+// ByPaymentOrders orders the results by payment_orders terms.
+func ByPaymentOrders(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPaymentOrdersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByInvoiceProfileCount orders the results by invoice_profile count.
+func ByInvoiceProfileCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInvoiceProfileStep(), opts...)
+	}
+}
+
+// ByInvoiceProfile orders the results by invoice_profile terms.
+func ByInvoiceProfile(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInvoiceProfileStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -463,5 +509,19 @@ func newFeedbacksStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(FeedbacksInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, FeedbacksTable, FeedbacksColumn),
+	)
+}
+func newPaymentOrdersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PaymentOrdersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PaymentOrdersTable, PaymentOrdersColumn),
+	)
+}
+func newInvoiceProfileStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InvoiceProfileInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, InvoiceProfileTable, InvoiceProfileColumn),
 	)
 }

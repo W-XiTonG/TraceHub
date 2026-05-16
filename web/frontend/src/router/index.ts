@@ -21,6 +21,7 @@ const router = createRouter({
         { path: 'balance-ledger', name: 'console-ledger', component: () => import('../views/BalanceLedgerView.vue') },
         { path: 'group', name: 'console-group', component: () => import('../views/GroupView.vue') },
         { path: 'billing', name: 'console-billing', component: () => import('../views/BillingView.vue') },
+        { path: 'payment-orders', name: 'console-payment-orders', component: () => import('../views/PaymentOrdersView.vue') },
         { path: 'settings', name: 'console-settings', component: () => import('../views/SettingsView.vue') },
         { path: 'redeem', name: 'redeem', component: () => import('../views/RedeemView.vue') },
         { path: 'feedback', name: 'console-feedback', component: () => import('../views/FeedbackView.vue') },
@@ -42,6 +43,9 @@ const router = createRouter({
         { path: 'redeem-codes', name: 'admin-redeem-codes', component: () => import('../views/AdminRedeemCodes.vue') },
         { path: 'redeem-ledger', name: 'admin-redeem-ledger', component: () => import('../views/AdminRedeemLedger.vue') },
         { path: 'feedbacks', name: 'admin-feedbacks', component: () => import('../views/AdminFeedbacks.vue') },
+        { path: 'payment/config', name: 'admin-payment-config', component: () => import('../views/AdminPaymentConfig.vue') },
+        { path: 'payment/orders', name: 'admin-payment-orders', component: () => import('../views/AdminPaymentOrders.vue') },
+        { path: 'payment/packages', name: 'admin-payment-packages', component: () => import('../views/AdminRechargePackages.vue') },
         {
           path: 'billing',
           component: () => import('../views/AdminBillingLayout.vue'),
@@ -81,8 +85,16 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  if (to.path === '/console/payment-orders' || to.path.startsWith('/admin/payment/orders') || to.path.startsWith('/admin/payment/packages')) {
+    const { useSiteMetaStore } = await import('../stores/siteMeta')
+    const siteMeta = useSiteMetaStore()
+    await siteMeta.ensureLoaded()
+    if (!siteMeta.onlinePaymentEnabled) {
+      return to.path.startsWith('/admin') ? { name: 'admin-payment-config' } : { name: 'console-billing' }
+    }
+  }
   if (to.path === '/admin/settings/no-bill') {
     return { name: 'admin-billing-no-bill', replace: true }
   }

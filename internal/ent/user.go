@@ -82,9 +82,13 @@ type UserEdges struct {
 	CreatedAnnouncements []*Announcement `json:"created_announcements,omitempty"`
 	// Feedbacks holds the value of the feedbacks edge.
 	Feedbacks []*Feedback `json:"feedbacks,omitempty"`
+	// PaymentOrders holds the value of the payment_orders edge.
+	PaymentOrders []*PaymentOrder `json:"payment_orders,omitempty"`
+	// InvoiceProfile holds the value of the invoice_profile edge.
+	InvoiceProfile []*InvoiceProfile `json:"invoice_profile,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [11]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -168,6 +172,24 @@ func (e UserEdges) FeedbacksOrErr() ([]*Feedback, error) {
 		return e.Feedbacks, nil
 	}
 	return nil, &NotLoadedError{edge: "feedbacks"}
+}
+
+// PaymentOrdersOrErr returns the PaymentOrders value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) PaymentOrdersOrErr() ([]*PaymentOrder, error) {
+	if e.loadedTypes[9] {
+		return e.PaymentOrders, nil
+	}
+	return nil, &NotLoadedError{edge: "payment_orders"}
+}
+
+// InvoiceProfileOrErr returns the InvoiceProfile value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) InvoiceProfileOrErr() ([]*InvoiceProfile, error) {
+	if e.loadedTypes[10] {
+		return e.InvoiceProfile, nil
+	}
+	return nil, &NotLoadedError{edge: "invoice_profile"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -376,6 +398,16 @@ func (_m *User) QueryCreatedAnnouncements() *AnnouncementQuery {
 // QueryFeedbacks queries the "feedbacks" edge of the User entity.
 func (_m *User) QueryFeedbacks() *FeedbackQuery {
 	return NewUserClient(_m.config).QueryFeedbacks(_m)
+}
+
+// QueryPaymentOrders queries the "payment_orders" edge of the User entity.
+func (_m *User) QueryPaymentOrders() *PaymentOrderQuery {
+	return NewUserClient(_m.config).QueryPaymentOrders(_m)
+}
+
+// QueryInvoiceProfile queries the "invoice_profile" edge of the User entity.
+func (_m *User) QueryInvoiceProfile() *InvoiceProfileQuery {
+	return NewUserClient(_m.config).QueryInvoiceProfile(_m)
 }
 
 // Update returns a builder for updating this User.

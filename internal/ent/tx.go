@@ -30,10 +30,20 @@ type Tx struct {
 	Group *GroupClient
 	// GroupModelRate is the client for interacting with the GroupModelRate builders.
 	GroupModelRate *GroupModelRateClient
+	// InvoiceProfile is the client for interacting with the InvoiceProfile builders.
+	InvoiceProfile *InvoiceProfileClient
 	// ModelCatalogEntry is the client for interacting with the ModelCatalogEntry builders.
 	ModelCatalogEntry *ModelCatalogEntryClient
 	// ModelCatalogSource is the client for interacting with the ModelCatalogSource builders.
 	ModelCatalogSource *ModelCatalogSourceClient
+	// PaymentLedger is the client for interacting with the PaymentLedger builders.
+	PaymentLedger *PaymentLedgerClient
+	// PaymentOrder is the client for interacting with the PaymentOrder builders.
+	PaymentOrder *PaymentOrderClient
+	// PaymentRefund is the client for interacting with the PaymentRefund builders.
+	PaymentRefund *PaymentRefundClient
+	// RechargePackage is the client for interacting with the RechargePackage builders.
+	RechargePackage *RechargePackageClient
 	// RedeemCode is the client for interacting with the RedeemCode builders.
 	RedeemCode *RedeemCodeClient
 	// RedeemLedger is the client for interacting with the RedeemLedger builders.
@@ -184,8 +194,13 @@ func (tx *Tx) init() {
 	tx.GlobalModelPricing = NewGlobalModelPricingClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)
 	tx.GroupModelRate = NewGroupModelRateClient(tx.config)
+	tx.InvoiceProfile = NewInvoiceProfileClient(tx.config)
 	tx.ModelCatalogEntry = NewModelCatalogEntryClient(tx.config)
 	tx.ModelCatalogSource = NewModelCatalogSourceClient(tx.config)
+	tx.PaymentLedger = NewPaymentLedgerClient(tx.config)
+	tx.PaymentOrder = NewPaymentOrderClient(tx.config)
+	tx.PaymentRefund = NewPaymentRefundClient(tx.config)
+	tx.RechargePackage = NewRechargePackageClient(tx.config)
 	tx.RedeemCode = NewRedeemCodeClient(tx.config)
 	tx.RedeemLedger = NewRedeemLedgerClient(tx.config)
 	tx.SystemConfig = NewSystemConfigClient(tx.config)

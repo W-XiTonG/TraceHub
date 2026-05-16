@@ -377,6 +377,32 @@ var (
 			},
 		},
 	}
+	// InvoiceProfilesColumns holds the columns for the "invoice_profiles" table.
+	InvoiceProfilesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "title_type", Type: field.TypeString, Size: 16, Default: "company"},
+		{Name: "company_name", Type: field.TypeString, Nullable: true, Size: 255},
+		{Name: "tax_id", Type: field.TypeString, Nullable: true, Size: 64},
+		{Name: "address", Type: field.TypeString, Nullable: true, Size: 500},
+		{Name: "email", Type: field.TypeString, Nullable: true, Size: 255},
+		{Name: "phone", Type: field.TypeString, Nullable: true, Size: 32},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// InvoiceProfilesTable holds the schema information for the "invoice_profiles" table.
+	InvoiceProfilesTable = &schema.Table{
+		Name:       "invoice_profiles",
+		Columns:    InvoiceProfilesColumns,
+		PrimaryKey: []*schema.Column{InvoiceProfilesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "invoice_profiles_users_invoice_profile",
+				Columns:    []*schema.Column{InvoiceProfilesColumns[8]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// ModelCatalogEntriesColumns holds the columns for the "model_catalog_entries" table.
 	ModelCatalogEntriesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -472,6 +498,149 @@ var (
 				Name:    "modelcatalogsource_channel_id",
 				Unique:  false,
 				Columns: []*schema.Column{ModelCatalogSourcesColumns[15]},
+			},
+		},
+	}
+	// PaymentLedgersColumns holds the columns for the "payment_ledgers" table.
+	PaymentLedgersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "order_id", Type: field.TypeInt},
+		{Name: "delta", Type: field.TypeInt64},
+		{Name: "balance_after", Type: field.TypeInt64},
+		{Name: "entry_type", Type: field.TypeString, Size: 32},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// PaymentLedgersTable holds the schema information for the "payment_ledgers" table.
+	PaymentLedgersTable = &schema.Table{
+		Name:       "payment_ledgers",
+		Columns:    PaymentLedgersColumns,
+		PrimaryKey: []*schema.Column{PaymentLedgersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paymentledger_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PaymentLedgersColumns[1], PaymentLedgersColumns[6]},
+			},
+			{
+				Name:    "paymentledger_order_id",
+				Unique:  false,
+				Columns: []*schema.Column{PaymentLedgersColumns[2]},
+			},
+		},
+	}
+	// PaymentOrdersColumns holds the columns for the "payment_orders" table.
+	PaymentOrdersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "order_no", Type: field.TypeString, Unique: true, Size: 64},
+		{Name: "provider", Type: field.TypeString, Size: 32},
+		{Name: "amount_cents", Type: field.TypeInt64},
+		{Name: "currency", Type: field.TypeString, Size: 8, Default: "CNY"},
+		{Name: "quota_amount", Type: field.TypeInt64},
+		{Name: "status", Type: field.TypeString, Size: 32, Default: "pending"},
+		{Name: "provider_txn_id", Type: field.TypeString, Nullable: true, Size: 128},
+		{Name: "pay_url", Type: field.TypeString, Nullable: true, Size: 2000},
+		{Name: "qr_code", Type: field.TypeString, Nullable: true, Size: 4000},
+		{Name: "package_id", Type: field.TypeInt, Nullable: true},
+		{Name: "invoice_requested", Type: field.TypeBool, Default: false},
+		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
+		{Name: "paid_at", Type: field.TypeTime, Nullable: true},
+		{Name: "expire_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// PaymentOrdersTable holds the schema information for the "payment_orders" table.
+	PaymentOrdersTable = &schema.Table{
+		Name:       "payment_orders",
+		Columns:    PaymentOrdersColumns,
+		PrimaryKey: []*schema.Column{PaymentOrdersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "payment_orders_users_payment_orders",
+				Columns:    []*schema.Column{PaymentOrdersColumns[17]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paymentorder_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PaymentOrdersColumns[17], PaymentOrdersColumns[15]},
+			},
+			{
+				Name:    "paymentorder_status_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PaymentOrdersColumns[6], PaymentOrdersColumns[15]},
+			},
+			{
+				Name:    "paymentorder_order_no",
+				Unique:  true,
+				Columns: []*schema.Column{PaymentOrdersColumns[1]},
+			},
+			{
+				Name:    "paymentorder_provider_txn_id",
+				Unique:  true,
+				Columns: []*schema.Column{PaymentOrdersColumns[7]},
+			},
+		},
+	}
+	// PaymentRefundsColumns holds the columns for the "payment_refunds" table.
+	PaymentRefundsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "order_id", Type: field.TypeInt},
+		{Name: "refund_no", Type: field.TypeString, Unique: true, Size: 64},
+		{Name: "amount_cents", Type: field.TypeInt64},
+		{Name: "quota_revoked", Type: field.TypeInt64},
+		{Name: "status", Type: field.TypeString, Size: 32, Default: "pending"},
+		{Name: "provider_refund_id", Type: field.TypeString, Nullable: true, Size: 128},
+		{Name: "reason", Type: field.TypeString, Nullable: true, Size: 500},
+		{Name: "operator_id", Type: field.TypeInt, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// PaymentRefundsTable holds the schema information for the "payment_refunds" table.
+	PaymentRefundsTable = &schema.Table{
+		Name:       "payment_refunds",
+		Columns:    PaymentRefundsColumns,
+		PrimaryKey: []*schema.Column{PaymentRefundsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paymentrefund_order_id",
+				Unique:  false,
+				Columns: []*schema.Column{PaymentRefundsColumns[1]},
+			},
+			{
+				Name:    "paymentrefund_refund_no",
+				Unique:  true,
+				Columns: []*schema.Column{PaymentRefundsColumns[2]},
+			},
+		},
+	}
+	// RechargePackagesColumns holds the columns for the "recharge_packages" table.
+	RechargePackagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Size: 120},
+		{Name: "amount_cents", Type: field.TypeInt64},
+		{Name: "quota_amount", Type: field.TypeInt64},
+		{Name: "bonus_quota", Type: field.TypeInt64, Default: 0},
+		{Name: "currency", Type: field.TypeString, Size: 8, Default: "CNY"},
+		{Name: "sort", Type: field.TypeInt, Default: 0},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// RechargePackagesTable holds the schema information for the "recharge_packages" table.
+	RechargePackagesTable = &schema.Table{
+		Name:       "recharge_packages",
+		Columns:    RechargePackagesColumns,
+		PrimaryKey: []*schema.Column{RechargePackagesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "rechargepackage_enabled_sort",
+				Unique:  false,
+				Columns: []*schema.Column{RechargePackagesColumns[7], RechargePackagesColumns[6]},
 			},
 		},
 	}
@@ -723,8 +892,13 @@ var (
 		GlobalModelPricingsTable,
 		GroupsTable,
 		GroupModelRatesTable,
+		InvoiceProfilesTable,
 		ModelCatalogEntriesTable,
 		ModelCatalogSourcesTable,
+		PaymentLedgersTable,
+		PaymentOrdersTable,
+		PaymentRefundsTable,
+		RechargePackagesTable,
 		RedeemCodesTable,
 		RedeemLedgersTable,
 		SystemConfigsTable,
@@ -741,8 +915,10 @@ func init() {
 	ChannelsTable.ForeignKeys[0].RefTable = GroupsTable
 	FeedbacksTable.ForeignKeys[0].RefTable = UsersTable
 	GroupModelRatesTable.ForeignKeys[0].RefTable = GroupsTable
+	InvoiceProfilesTable.ForeignKeys[0].RefTable = UsersTable
 	ModelCatalogEntriesTable.ForeignKeys[0].RefTable = ModelCatalogSourcesTable
 	ModelCatalogSourcesTable.ForeignKeys[0].RefTable = ChannelsTable
+	PaymentOrdersTable.ForeignKeys[0].RefTable = UsersTable
 	RedeemCodesTable.ForeignKeys[0].RefTable = UsersTable
 	RedeemCodesTable.ForeignKeys[1].RefTable = UsersTable
 	RedeemLedgersTable.ForeignKeys[0].RefTable = RedeemCodesTable

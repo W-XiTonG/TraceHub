@@ -17,8 +17,13 @@ import (
 	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
+	"tracehub/internal/ent/invoiceprofile"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
+	"tracehub/internal/ent/paymentledger"
+	"tracehub/internal/ent/paymentorder"
+	"tracehub/internal/ent/paymentrefund"
+	"tracehub/internal/ent/rechargepackage"
 	"tracehub/internal/ent/redeemcode"
 	"tracehub/internal/ent/redeemledger"
 	"tracehub/internal/ent/systemconfig"
@@ -97,8 +102,13 @@ func checkColumn(t, c string) error {
 			globalmodelpricing.Table:   globalmodelpricing.ValidColumn,
 			group.Table:                group.ValidColumn,
 			groupmodelrate.Table:       groupmodelrate.ValidColumn,
+			invoiceprofile.Table:       invoiceprofile.ValidColumn,
 			modelcatalogentry.Table:    modelcatalogentry.ValidColumn,
 			modelcatalogsource.Table:   modelcatalogsource.ValidColumn,
+			paymentledger.Table:        paymentledger.ValidColumn,
+			paymentorder.Table:         paymentorder.ValidColumn,
+			paymentrefund.Table:        paymentrefund.ValidColumn,
+			rechargepackage.Table:      rechargepackage.ValidColumn,
 			redeemcode.Table:           redeemcode.ValidColumn,
 			redeemledger.Table:         redeemledger.ValidColumn,
 			systemconfig.Table:         systemconfig.ValidColumn,

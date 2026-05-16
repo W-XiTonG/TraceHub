@@ -97,6 +97,7 @@ const canAccessAdmin = computed(() => ['admin', 'superadmin'].includes(auth.role
         <RouterLink to="/console/balance-ledger" class="th-nav-link">{{ t('layout.navLedger') }}</RouterLink>
         <RouterLink to="/console/group" class="th-nav-link">{{ t('layout.navGroup') }}</RouterLink>
         <RouterLink to="/console/billing" class="th-nav-link">{{ t('layout.navBilling') }}</RouterLink>
+        <RouterLink v-if="siteMeta.onlinePaymentEnabled" to="/console/payment-orders" class="th-nav-link">{{ t('layout.navPaymentOrders') }}</RouterLink>
         <RouterLink to="/console/redeem" class="th-nav-link">{{ t('layout.navRedeem') }}</RouterLink>
         <RouterLink to="/console/settings" class="th-nav-link">{{ t('layout.navSettings') }}</RouterLink>
         <RouterLink to="/docs" class="th-nav-link">{{ t('layout.navDocs') }}</RouterLink>

@@ -40,7 +40,7 @@ func BalanceLedger(db *sql.DB) gin.HandlerFunc {
 		entryType := strings.TrimSpace(c.Query("entry_type"))
 		if entryType != "" {
 			switch entryType {
-			case "api_usage", "redeem", "admin_adjust", "feedback_reward":
+			case "api_usage", "redeem", "admin_adjust", "feedback_reward", "payment_recharge", "payment_refund":
 			default:
 				entryType = ""
 			}
@@ -125,6 +125,15 @@ SELECT COUNT(*) FROM (
       f.reward_points AS delta
     FROM feedbacks f
     WHERE f.user_id = $1 AND f.review_state = 3 AND f.reward_points <> 0
+
+    UNION ALL
+
+    SELECT
+      pl.created_at,
+      CASE WHEN pl.entry_type = 'refund' THEN 'payment_refund' ELSE 'payment_recharge' END,
+      pl.delta::bigint
+    FROM payment_ledgers pl
+    WHERE pl.user_id = $1
   ) u
   WHERE ($3::text = '' OR entry_type = $3)
     AND ($4::timestamptz IS NULL OR event_time >= $4::timestamptz)
@@ -228,6 +237,23 @@ FROM (
     )::jsonb AS detail
   FROM feedbacks f
   WHERE f.user_id = $1 AND f.review_state = 3 AND f.reward_points <> 0
+
+  UNION ALL
+
+  SELECT
+    pl.created_at,
+    CASE WHEN pl.entry_type = 'refund' THEN 'payment_refund' ELSE 'payment_recharge' END,
+    pl.delta::bigint,
+    pl.balance_after,
+    4 AS sort_src,
+    pl.id AS sort_id,
+    json_build_object(
+      'payment_ledger_id', pl.id,
+      'order_id', pl.order_id,
+      'entry_type', pl.entry_type
+    )::jsonb AS detail
+  FROM payment_ledgers pl
+  WHERE pl.user_id = $1
 ) x
 WHERE ($3::text = '' OR entry_type = $3)
   AND ($4::timestamptz IS NULL OR event_time >= $4::timestamptz)

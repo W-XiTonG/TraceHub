@@ -21,6 +21,8 @@ type PubSiteMeta = {
   public_contact?: PublicContactPayload | null
   /** 全站渠道声明模型去重数（百位取整+）；未返回或低于展示阈值则为空 */
   declared_model_count_badge?: string
+  /** 在线支付总开关 */
+  online_payment_enabled?: boolean
 }
 
 function normalizePublicContact(raw: unknown): PublicContactPayload | null {
@@ -61,6 +63,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   const publicContact = ref<PublicContactPayload | null>(null)
   /** 全站渠道声明模型数展示文案（如 300+），来自 /api/pub/site-meta */
   const declaredModelCountBadge = ref('')
+  const onlinePaymentEnabled = ref(false)
   const loaded = ref(false)
   let inflight: Promise<void> | null = null
 
@@ -124,6 +127,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
         } else {
           declaredModelCountBadge.value = ''
         }
+        onlinePaymentEnabled.value = data.data.online_payment_enabled === true
       }
     } catch (e: unknown) {
       if (!axios.isAxiosError(e) || e.response?.status !== 404) {
@@ -158,6 +162,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     registerPromoText.value = ''
     publicContact.value = null
     declaredModelCountBadge.value = ''
+    onlinePaymentEnabled.value = false
     inflight = (async () => {
       try {
         await pullPubSiteMeta()
@@ -177,6 +182,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     registerPromoText,
     publicContact,
     declaredModelCountBadge,
+    onlinePaymentEnabled,
     hasPublicContact,
     loaded,
     displayName,

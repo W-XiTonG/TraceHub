@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import AnnouncementBell from '../components/AnnouncementBell.vue'
 
 const route = useRoute()
 const { t } = useI18n()
+const siteMeta = useSiteMetaStore()
+
+onMounted(() => void siteMeta.ensureLoaded())
 </script>
 
 <template>
@@ -32,6 +37,9 @@ const { t } = useI18n()
         <RouterLink to="/admin/model-market" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavMarket') }}</RouterLink>
         <RouterLink to="/admin/announcements" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavAnnouncements') }}</RouterLink>
         <RouterLink to="/admin/redeem-codes" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavRedeem') }}</RouterLink>
+        <RouterLink to="/admin/payment/config" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavPayment') }}</RouterLink>
+        <RouterLink v-if="siteMeta.onlinePaymentEnabled" to="/admin/payment/orders" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavPaymentOrders') }}</RouterLink>
+        <RouterLink v-if="siteMeta.onlinePaymentEnabled" to="/admin/payment/packages" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavPaymentPackages') }}</RouterLink>
         <RouterLink to="/admin/redeem-ledger" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavRedeemLedger') }}</RouterLink>
         <RouterLink to="/admin/feedbacks" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavFeedbacks') }}</RouterLink>
         <RouterLink :to="{ name: 'admin-billing-global-pricing' }" class="th-nav-link th-nav-link--amber">{{ t('layout.adminNavBilling') }}</RouterLink>

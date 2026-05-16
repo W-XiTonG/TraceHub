@@ -36,7 +36,7 @@ func AdminBalanceLedger(db *sql.DB) gin.HandlerFunc {
 		entryType := strings.TrimSpace(c.Query("entry_type"))
 		if entryType != "" {
 			switch entryType {
-			case "api_usage", "redeem", "admin_adjust", "feedback_reward":
+			case "api_usage", "redeem", "admin_adjust", "feedback_reward", "payment_recharge", "payment_refund":
 			default:
 				httpx.BadRequest(c, "无效的 entry_type")
 				return
@@ -161,6 +161,25 @@ FROM (
   FROM feedbacks f
   LEFT JOIN users u4 ON u4.id = f.user_id
   WHERE f.review_state = 3 AND f.reward_points <> 0
+
+  UNION ALL
+
+  SELECT
+    pl.created_at,
+    CASE WHEN pl.entry_type = 'refund' THEN 'payment_refund' ELSE 'payment_recharge' END,
+    pl.delta::bigint,
+    pl.balance_after,
+    pl.user_id,
+    COALESCE(u5.email, '')::text,
+    4,
+    pl.id,
+    json_build_object(
+      'payment_ledger_id', pl.id,
+      'order_id', pl.order_id,
+      'entry_type', pl.entry_type
+    )::jsonb
+  FROM payment_ledgers pl
+  LEFT JOIN users u5 ON u5.id = pl.user_id
 ) _ledger_q`
 
 func adminLedgerFilterSQL(uid int, email, entryType string) (where string, args []any) {

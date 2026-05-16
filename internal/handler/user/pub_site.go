@@ -7,12 +7,13 @@ import (
 	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/service/availmodels"
 	"tracehub/internal/service/billing"
+	"tracehub/internal/service/payment"
 
 	"github.com/gin-gonic/gin"
 )
 
 // PubSiteMeta GET /api/pub/site-meta — 无需登录；品牌名与图标供前端壳层使用。
-func PubSiteMeta(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+func PubSiteMeta(client *ent.Client, cfg *config.Config, payStore *payment.ConfigStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 避免浏览器/代理缓存导致恢复默认后仍读到旧的 brand_icon_url
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -45,6 +46,15 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 			if badge := billing.ModelCountHundredPlusBadge(n); badge != "" {
 				out["declared_model_count_badge"] = badge
 			}
+		}
+		if payStore != nil {
+			if cfgPay, err := payStore.Load(ctx); err == nil {
+				out["online_payment_enabled"] = cfgPay.OnlineEnabled
+			} else {
+				out["online_payment_enabled"] = false
+			}
+		} else {
+			out["online_payment_enabled"] = false
 		}
 		httpx.OK(c, out)
 	}

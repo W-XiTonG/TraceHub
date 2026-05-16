@@ -17,8 +17,10 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/sitecfg"
+	webhookhandler "tracehub/internal/handler/webhook"
 	"tracehub/internal/service/balancealert"
 	"tracehub/internal/service/billing"
+	"tracehub/internal/service/payment"
 	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
@@ -62,6 +64,18 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	r.Use(middleware.ZapLogger(opt.Log))
 	r.Use(middleware.CORS(opt.Config.Site.CORSOrigins))
 
+	payStore := payment.NewConfigStore(opt.Client, aesKey)
+	payCfg, _ := payStore.Load(context.Background())
+	paySvc := payment.NewService(opt.Client, opt.Config, payStore)
+	if payCfg.OnlineEnabled {
+		adminhandler.SeedDefaultPackages(opt.Client)
+		paySvc.StartExpiryWorker(context.Background())
+	}
+	payDeps := userhandler.PaymentDeps{Svc: paySvc}
+	payAdmin := adminhandler.PaymentAdminDeps{Svc: paySvc, AESKey: aesKey}
+	payWH := webhookhandler.PaymentWebhookDeps{Svc: paySvc}
+	payOnline := payment.OnlineOnly(paySvc)
+
 	r.GET("/health", func(c *gin.Context) {
 		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)
 		health.Liveness(op, opt.Config.AppVersion())(c)
@@ -70,7 +84,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		op := sitecfg.EffectiveOperatorDisplayName(c.Request.Context(), opt.Client, opt.Config)
 		health.Readiness(opt.Client, opt.Redis, op)(c)
 	})
-	r.GET("/api/pub/site-meta", userhandler.PubSiteMeta(opt.Client, opt.Config))
+	r.GET("/api/pub/site-meta", userhandler.PubSiteMeta(opt.Client, opt.Config, payStore))
 	uploadRoot := adminhandler.BrandUploadDir(opt.Config)
 	if mkErr := os.MkdirAll(uploadRoot, 0o755); mkErr != nil {
 		opt.Log.Warn("brand_upload_dir mkdir failed", zap.String("path", uploadRoot), zap.Error(mkErr))
@@ -241,6 +255,23 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	authUser.POST("/feedbacks", userhandler.CreateFeedback(opt.Client))
 	authUser.GET("/feedbacks", userhandler.ListMyFeedbacks(opt.Client))
 	authUser.GET("/feedbacks/:id", userhandler.GetFeedback(opt.Client))
+	authPay := authUser.Group("/payment")
+	authPay.Use(payOnline)
+	authPay.GET("/packages", userhandler.ListRechargePackages(opt.Client))
+	authPay.POST("/orders", userhandler.CreatePaymentOrder(payDeps))
+	authPay.GET("/orders", userhandler.ListPaymentOrders(opt.Client))
+	authPay.GET("/orders/:order_no", userhandler.GetPaymentOrder(opt.Client))
+	authPay.POST("/orders/:order_no/cancel", userhandler.CancelPaymentOrder(payDeps))
+	authPay.POST("/orders/:order_no/refund-request", userhandler.RefundRequestPaymentOrder(opt.Client))
+	authPay.GET("/invoice-profile", userhandler.GetInvoiceProfile(opt.Client))
+	authPay.PUT("/invoice-profile", userhandler.PutInvoiceProfile(opt.Client))
+
+	r.POST("/webhook/payment/alipay", webhookhandler.PaymentNotify(payWH, payment.ProviderAlipay))
+	r.POST("/webhook/payment/wxpay", webhookhandler.PaymentNotify(payWH, payment.ProviderWxpay))
+	r.POST("/webhook/payment/stripe", webhookhandler.PaymentNotify(payWH, payment.ProviderStripe))
+	r.POST("/webhook/payment/easypay", webhookhandler.PaymentNotify(payWH, payment.ProviderEasyPay))
+	r.GET("/webhook/payment/mock/pay", webhookhandler.MockPay(payWH))
+	r.POST("/webhook/payment/mock/pay", webhookhandler.MockPay(payWH))
 
 	chAdmin := adminhandler.ChannelDeps{Client: opt.Client, AESKey: aesKey}
 	mcAdmin := adminhandler.ModelCatalogDeps{Client: opt.Client, AESKey: aesKey}
@@ -320,6 +351,16 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/announcements/:id/unpublish", adminhandler.UnpublishAnnouncement(opt.Client))
 	a.GET("/feedbacks", adminhandler.ListFeedbacks(opt.Client))
 	a.PUT("/feedbacks/:id/review", adminhandler.ReviewFeedback(opt.Client))
+	a.GET("/payment/config", adminhandler.GetPaymentConfig(payAdmin))
+	a.PUT("/payment/config", adminhandler.PutPaymentConfig(payAdmin))
+	aPay := a.Group("/payment")
+	aPay.Use(payOnline)
+	aPay.GET("/orders", adminhandler.ListPaymentOrders(opt.Client))
+	aPay.POST("/orders/:id/refund", adminhandler.RefundPaymentOrder(payAdmin))
+	aPay.GET("/packages", adminhandler.ListRechargePackagesAdmin(opt.Client))
+	aPay.POST("/packages", adminhandler.CreateRechargePackage(opt.Client))
+	aPay.PUT("/packages/:id", adminhandler.UpdateRechargePackage(opt.Client))
+	aPay.DELETE("/packages/:id", adminhandler.DeleteRechargePackage(opt.Client))
 
 	upstreamprobe.StartWorker(context.Background(), opt.Log, opt.Client, aesKey)
 
