@@ -533,6 +533,81 @@ func DeleteGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
+func adminSitePricingFactors(ctx context.Context, client *ent.Client, cfg *config.Config) billing.SitePricingFactors {
+	cp := sitecfg.EffectiveCurrencyPricing(ctx, client, cfg)
+	return billing.SitePricingFactors{
+		QuotaPerYuan: cp.QuotaPerYuan,
+		QuotaPerUsd:  cp.QuotaPerUsd,
+		CnyPerUsd:    cp.CnyPerUsd,
+	}
+}
+
+// PostDeriveGlobalModelPricingQuota POST /api/admin/global-model-pricing/derive-quota — 由上游人民币/美元标价换算 quota_*_per_1k（与站点 site.currency_quota_per_yuan 等配置一致）。
+func PostDeriveGlobalModelPricingQuota(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if cfg == nil {
+			httpx.ServerError(c, "配置无效")
+			return
+		}
+		var req struct {
+			Currency          string   `json:"currency"`
+			DenominatorTokens int64    `json:"denominator_tokens"`
+			PriceIn           float64  `json:"price_in"`
+			PriceOut          *float64 `json:"price_out"`
+			MarginPercent     float64  `json:"margin_percent"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		cur := strings.TrimSpace(strings.ToLower(req.Currency))
+		po := 0.0
+		if req.PriceOut != nil {
+			po = *req.PriceOut
+		}
+		factors := adminSitePricingFactors(c.Request.Context(), client, cfg)
+		qIn, qOut, ri, ro, err := billing.DeriveGlobalQuotaPer1KPair(factors, cur, req.DenominatorTokens, req.PriceIn, po, req.MarginPercent)
+		if err != nil {
+			httpx.BadRequest(c, mapGlobalPricingDeriveError(err))
+			return
+		}
+		httpx.OK(c, gin.H{
+			"quota_in_per_1k":  qIn,
+			"quota_out_per_1k": qOut,
+			"resolved": gin.H{
+				"input":    ri,
+				"output":   ro,
+				"rounding": "ceil_to_int64",
+			},
+		})
+	}
+}
+
+func mapGlobalPricingDeriveError(err error) string {
+	if err == nil {
+		return ""
+	}
+	s := err.Error()
+	switch {
+	case strings.Contains(s, "currency_quota_per_yuan must be > 0"):
+		return "站点 currency_quota_per_yuan 须大于 0（人民币标价或美元经汇率换算时需要）"
+	case strings.Contains(s, "for USD upstream prices"):
+		return "美元标价须配置 currency_quota_per_usd > 0，或同时配置 pricing_cny_per_usd 与 currency_quota_per_yuan"
+	case strings.Contains(s, "denom_tokens"):
+		return "denominator_tokens 须为 1、1000 或 1000000"
+	case strings.Contains(s, "currency must be cny or usd"):
+		return "currency 须为 cny 或 usd"
+	case strings.Contains(s, "price must be"):
+		return "price 须为非负有限数字"
+	case strings.Contains(s, "margin_percent must be greater than -100"):
+		return "margin_percent 须大于 -100"
+	case strings.Contains(s, "margin_percent must be finite"):
+		return "margin_percent 无效"
+	default:
+		return s
+	}
+}
+
 func normGlobalPricingCSVHeader(s string) string {
 	return strings.TrimSpace(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(s)), "\ufeff"))
 }
@@ -575,7 +650,171 @@ func parseGlobalPricingOptionalInt64Cell(s string) (*int64, error) {
 	return &n, nil
 }
 
-// ExportGlobalModelPricingCSV GET /api/admin/global-model-pricing/export — UTF-8 CSV，含合并视图全量行（与页面列一致，便于表格编辑后导入）。
+func globalPricingInt64Ptr(n int64) *int64 {
+	p := n
+	return &p
+}
+
+// applyUpstreamQuotaDerivationCSV 当 upstream_currency 非空时，在未手填的 quota 侧用站点配置换算；双侧均已手填时报错。
+func applyUpstreamQuotaDerivationCSV(ctx context.Context, client *ent.Client, line int, get func(string) string, cfg *config.Config, qInCell, qOutCell *int64) (qIn, qOut *int64, errMsg string) {
+	qIn, qOut = qInCell, qOutCell
+	if cfg == nil {
+		return qIn, qOut, ""
+	}
+	cur := strings.TrimSpace(strings.ToLower(get("upstream_currency")))
+	if cur == "" {
+		has := strings.TrimSpace(get("upstream_denominator_tokens")) != "" ||
+			strings.TrimSpace(get("upstream_price_in")) != "" ||
+			strings.TrimSpace(get("upstream_price_out")) != "" ||
+			strings.TrimSpace(get("upstream_margin_percent")) != ""
+		if has {
+			return nil, nil, fmt.Sprintf("第 %d 行: 填写了上游单价列但未填 upstream_currency", line)
+		}
+		return qIn, qOut, ""
+	}
+	if qIn != nil && qOut != nil {
+		return nil, nil, fmt.Sprintf("第 %d 行: 已填写两侧 quota_*_per_1k 时不应再填 upstream_currency", line)
+	}
+
+	denomStr := strings.TrimSpace(get("upstream_denominator_tokens"))
+	if denomStr == "" {
+		return nil, nil, fmt.Sprintf("第 %d 行: 使用上游换算时须填 upstream_denominator_tokens（1、1000 或 1000000）", line)
+	}
+	denom, err := strconv.ParseInt(denomStr, 10, 64)
+	if err != nil || (denom != 1 && denom != 1000 && denom != 1_000_000) {
+		return nil, nil, fmt.Sprintf("第 %d 行: upstream_denominator_tokens 须为 1、1000 或 1000000", line)
+	}
+	pinS := strings.TrimSpace(get("upstream_price_in"))
+	if pinS == "" {
+		return nil, nil, fmt.Sprintf("第 %d 行: 使用上游换算时须填 upstream_price_in", line)
+	}
+	pin, err := strconv.ParseFloat(pinS, 64)
+	if err != nil || math.IsNaN(pin) || math.IsInf(pin, 0) || pin < 0 {
+		return nil, nil, fmt.Sprintf("第 %d 行: upstream_price_in 须为非负有限数字", line)
+	}
+	poutS := strings.TrimSpace(get("upstream_price_out"))
+	var pout float64
+	if poutS != "" {
+		pout, err = strconv.ParseFloat(poutS, 64)
+		if err != nil || math.IsNaN(pout) || math.IsInf(pout, 0) || pout < 0 {
+			return nil, nil, fmt.Sprintf("第 %d 行: upstream_price_out 须为非负有限数字", line)
+		}
+	}
+
+	margin := 0.0
+	if ms := strings.TrimSpace(get("upstream_margin_percent")); ms != "" {
+		margin, err = strconv.ParseFloat(ms, 64)
+		if err != nil || math.IsNaN(margin) || math.IsInf(margin, 0) {
+			return nil, nil, fmt.Sprintf("第 %d 行: upstream_margin_percent 无效", line)
+		}
+	}
+
+	factors := adminSitePricingFactors(ctx, client, cfg)
+	if factors.QuotaPerYuan <= 0 {
+		return nil, nil, "站点 currency_quota_per_yuan 须大于 0，方能从上游单价换算额度"
+	}
+
+	if qIn == nil {
+		di, _, err := billing.QuotaPer1KFromUpstreamPrice(factors, cur, denom, pin, margin)
+		if err != nil {
+			return nil, nil, fmt.Sprintf("第 %d 行: %s", line, mapGlobalPricingDeriveError(err))
+		}
+		qIn = globalPricingInt64Ptr(di)
+	}
+	if qOut == nil {
+		pForOut := pout
+		if pForOut <= 0 {
+			pForOut = pin
+		}
+		do, _, err := billing.QuotaPer1KFromUpstreamPrice(factors, cur, denom, pForOut, margin)
+		if err != nil {
+			return nil, nil, fmt.Sprintf("第 %d 行: %s", line, mapGlobalPricingDeriveError(err))
+		}
+		qOut = globalPricingInt64Ptr(do)
+	}
+	return qIn, qOut, ""
+}
+
+var (
+	globalPricingDataExportHeader = []string{
+		"model_name", "enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
+	}
+	globalPricingImportTemplateHeader = []string{
+		"model_name", "enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
+		"upstream_currency", "upstream_denominator_tokens", "upstream_price_in", "upstream_price_out", "upstream_margin_percent",
+	}
+)
+
+func writeGlobalPricingCSVBOM(w io.Writer) {
+	_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
+}
+
+func globalPricingDenomFilenameSuffix(denom int64) string {
+	switch denom {
+	case 1:
+		return "per-1"
+	case 1000:
+		return "per-1k"
+	case 1_000_000:
+		return "per-1m"
+	default:
+		return fmt.Sprintf("per-%d", denom)
+	}
+}
+
+func formatGlobalPricingUpstreamCSV(price float64) string {
+	if price < 0 || math.IsNaN(price) || math.IsInf(price, 0) {
+		return ""
+	}
+	abs := math.Abs(price)
+	switch {
+	case abs >= 100:
+		return strconv.FormatFloat(price, 'f', 2, 64)
+	case abs >= 1:
+		return strconv.FormatFloat(price, 'f', 4, 64)
+	case abs >= 0.0001:
+		return strconv.FormatFloat(price, 'f', 6, 64)
+	default:
+		return strconv.FormatFloat(price, 'g', 3, 64)
+	}
+}
+
+func upstreamPriceCellFromQuota(factors billing.SitePricingFactors, currency string, denom int64, quota *int64) string {
+	if quota == nil {
+		return ""
+	}
+	p, err := billing.UpstreamPriceFromQuotaPer1K(factors, currency, denom, *quota, 0)
+	if err != nil {
+		return ""
+	}
+	return formatGlobalPricingUpstreamCSV(p)
+}
+
+func parseGlobalPricingImportTemplateQuery(c *gin.Context) (currency string, denom int64, errMsg string) {
+	cur := strings.ToLower(strings.TrimSpace(c.Query("currency")))
+	switch cur {
+	case "cny", "rmb":
+		currency = "cny"
+	case "usd":
+		currency = "usd"
+	default:
+		return "", 0, "currency 须为 cny 或 usd"
+	}
+	denomStr := strings.TrimSpace(c.Query("denom"))
+	if denomStr == "" {
+		denomStr = strings.TrimSpace(c.Query("denominator_tokens"))
+	}
+	if denomStr == "" {
+		return "", 0, "denom 须为 1、1000 或 1000000"
+	}
+	d, err := strconv.ParseInt(denomStr, 10, 64)
+	if err != nil || (d != 1 && d != 1000 && d != 1_000_000) {
+		return "", 0, "denom 须为 1、1000 或 1000000"
+	}
+	return currency, d, ""
+}
+
+// ExportGlobalModelPricingCSV GET /api/admin/global-model-pricing/export — UTF-8 CSV，仅导出可回导的数据列（不含空的 upstream 模板列）。
 func ExportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -584,15 +823,12 @@ func ExportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 			httpx.ServerError(c, "导出失败")
 			return
 		}
-		fn := fmt.Sprintf("global-model-pricing-%s.csv", time.Now().Format("20060102-150405"))
+		fn := fmt.Sprintf("global-model-pricing-data-%s.csv", time.Now().Format("20060102-150405"))
 		c.Header("Content-Type", "text/csv; charset=utf-8")
 		c.Header("Content-Disposition", "attachment; filename="+fn)
-		_, _ = c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+		writeGlobalPricingCSVBOM(c.Writer)
 		w := csv.NewWriter(c.Writer)
-		_ = w.Write([]string{
-			"model_name", "code_in_per_1k", "code_out_per_1k", "sources",
-			"enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
-		})
+		_ = w.Write(globalPricingDataExportHeader)
 		for _, it := range list {
 			g := it.Global
 			enabled := true
@@ -608,12 +844,8 @@ func ExportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 				}
 				inR, outR = g.InputRate, g.OutputRate
 			}
-			src := strings.Join(it.Sources, "|")
 			_ = w.Write([]string{
 				it.ModelName,
-				strconv.FormatInt(it.CodeInPer1k, 10),
-				strconv.FormatInt(it.CodeOutPer1k, 10),
-				src,
 				strconv.FormatBool(enabled),
 				qIn,
 				qOut,
@@ -624,6 +856,69 @@ func ExportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 		w.Flush()
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		auditLog(client, adm.ID, "global_model_pricing.export_csv", "global_model_pricing", "", map[string]any{"rows": len(list)}, c)
+	}
+}
+
+// ExportGlobalModelPricingImportTemplate GET /api/admin/global-model-pricing/export/template?currency=cny|usd&denom=1|1000|1000000
+// 按币种与标价粒度导出导入模板：预填 upstream_currency/denominator；额度列留空；若全局库已有额度则反算填入上游价（margin 按 0）。
+func ExportGlobalModelPricingImportTemplate(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		currency, denom, errMsg := parseGlobalPricingImportTemplateQuery(c)
+		if errMsg != "" {
+			httpx.BadRequest(c, errMsg)
+			return
+		}
+		ctx := c.Request.Context()
+		list, err := availmodels.AllGlobalPricingWorkspaceItems(ctx, client)
+		if err != nil {
+			httpx.ServerError(c, "导出失败")
+			return
+		}
+		var factors billing.SitePricingFactors
+		if cfg != nil {
+			factors = adminSitePricingFactors(ctx, client, cfg)
+		}
+		denomStr := strconv.FormatInt(denom, 10)
+		fn := fmt.Sprintf("global-model-pricing-import-%s-%s-%s.csv",
+			currency, globalPricingDenomFilenameSuffix(denom), time.Now().Format("20060102-150405"))
+		c.Header("Content-Type", "text/csv; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename="+fn)
+		writeGlobalPricingCSVBOM(c.Writer)
+		w := csv.NewWriter(c.Writer)
+		_ = w.Write(globalPricingImportTemplateHeader)
+		for _, it := range list {
+			g := it.Global
+			enabled := true
+			inR, outR := 1.0, 1.0
+			var qInPtr, qOutPtr *int64
+			if g != nil {
+				enabled = g.Enabled
+				qInPtr, qOutPtr = g.QuotaInPer1k, g.QuotaOutPer1k
+				inR, outR = g.InputRate, g.OutputRate
+			}
+			pIn := upstreamPriceCellFromQuota(factors, currency, denom, qInPtr)
+			pOut := upstreamPriceCellFromQuota(factors, currency, denom, qOutPtr)
+			if pOut == "" && pIn != "" {
+				pOut = pIn
+			}
+			_ = w.Write([]string{
+				it.ModelName,
+				strconv.FormatBool(enabled),
+				"", "",
+				strconv.FormatFloat(inR, 'f', -1, 64),
+				strconv.FormatFloat(outR, 'f', -1, 64),
+				currency,
+				denomStr,
+				pIn,
+				pOut,
+				"0",
+			})
+		}
+		w.Flush()
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		auditLog(client, adm.ID, "global_model_pricing.export_import_template", "global_model_pricing", "", map[string]any{
+			"rows": len(list), "currency": currency, "denom": denom,
+		}, c)
 	}
 }
 
@@ -649,7 +944,8 @@ func readGlobalPricingUpload(c *gin.Context) ([]byte, string) {
 }
 
 // parseGlobalPricingCSVBytes parses CSV (UTF-8 BOM optional). errMsg is non-empty on validation/parse failure (Chinese).
-func parseGlobalPricingCSVBytes(body []byte) ([]globalPricingUpsertItem, string) {
+// cfg 非空时支持可选列 upstream_* 从上游标价换算额度（与 derive-quota 规则一致）。
+func parseGlobalPricingCSVBytes(ctx context.Context, client *ent.Client, body []byte, cfg *config.Config) ([]globalPricingUpsertItem, string) {
 	if len(body) >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF {
 		body = body[3:]
 	}
@@ -711,12 +1007,14 @@ func parseGlobalPricingCSVBytes(body []byte) ([]globalPricingUpsertItem, string)
 		if err != nil {
 			return nil, fmt.Sprintf("第 %d 行 quota_in_per_1k: %v", line, err)
 		}
-		qIn = vIn
 		vOut, err := parseGlobalPricingOptionalInt64Cell(get("quota_out_per_1k"))
 		if err != nil {
 			return nil, fmt.Sprintf("第 %d 行 quota_out_per_1k: %v", line, err)
 		}
-		qOut = vOut
+		qIn, qOut, upErr := applyUpstreamQuotaDerivationCSV(ctx, client, line, get, cfg, vIn, vOut)
+		if upErr != "" {
+			return nil, upErr
+		}
 		items = append(items, globalPricingUpsertItem{
 			ModelName:     name,
 			Enabled:       en,
@@ -733,15 +1031,14 @@ func parseGlobalPricingCSVBytes(body []byte) ([]globalPricingUpsertItem, string)
 }
 
 // PreviewGlobalModelPricingCSV POST /api/admin/global-model-pricing/import/preview — 仅解析校验，不落库。
-func PreviewGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
+func PreviewGlobalModelPricingCSV(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_ = client
 		body, errMsg := readGlobalPricingUpload(c)
 		if errMsg != "" {
 			httpx.BadRequest(c, errMsg)
 			return
 		}
-		items, perr := parseGlobalPricingCSVBytes(body)
+		items, perr := parseGlobalPricingCSVBytes(c.Request.Context(), client, body, cfg)
 		if perr != "" {
 			httpx.BadRequest(c, perr)
 			return
@@ -771,7 +1068,7 @@ func PreviewGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 }
 
 // ImportGlobalModelPricingCSV POST /api/admin/global-model-pricing/import — multipart 字段 `file`，UTF-8 CSV；表头须含 model_name、enabled、input_rate、output_rate、quota_in_per_1k、quota_out_per_1k（额度列可留空表示清空覆盖）。最多 5000 行数据。
-func ImportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
+func ImportGlobalModelPricingCSV(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		body, errMsg := readGlobalPricingUpload(c)
@@ -779,12 +1076,12 @@ func ImportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 			httpx.BadRequest(c, errMsg)
 			return
 		}
-		items, perr := parseGlobalPricingCSVBytes(body)
+		ctx := c.Request.Context()
+		items, perr := parseGlobalPricingCSVBytes(ctx, client, body, cfg)
 		if perr != "" {
 			httpx.BadRequest(c, perr)
 			return
 		}
-		ctx := c.Request.Context()
 		if br, err := upsertGlobalModelPricingBatch(ctx, client, items); br != "" {
 			httpx.BadRequest(c, br)
 			return
@@ -1078,6 +1375,10 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		ctx := c.Request.Context()
 		dbSet, dbVal := sitecfg.LoginCaptchaDBMeta(ctx, client)
 		dbSetBal, dbValBal := sitecfg.DefaultNewUserBalanceDBMeta(ctx, client)
+		dbSetYuan, dbValYuan := sitecfg.CurrencyQuotaPerYuanDBMeta(ctx, client)
+		dbSetUsd, dbValUsd := sitecfg.CurrencyQuotaPerUsdDBMeta(ctx, client)
+		dbSetRate, dbValRate := sitecfg.PricingCnyPerUsdDBMeta(ctx, client)
+		cp := sitecfg.EffectiveCurrencyPricing(ctx, client, cfg)
 		dbSetPromo, dbValPromo := sitecfg.RegisterPromoTextDBMeta(ctx, client)
 		dbSetNoBill, dbValNoBill := sitecfg.NoBillModelsDBMeta(ctx, client)
 		probeEnSet, probeEnVal, probeIntSet, probeIntVal, probeMetaErr := sitecfg.UpstreamModelProbeDBMeta(ctx, client)
@@ -1134,7 +1435,39 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"gateway_ip_blacklist":                   gwIPList,
 			"gateway_ip_blacklist_db_set":            gwIPSet,
 			"gateway_ip_blacklist_db_value":          strings.TrimSpace(gwIPRaw),
+			"currency_quota_per_yuan":                cp.QuotaPerYuan,
+			"currency_quota_per_yuan_file":           cfg.Site.CurrencyQuotaPerYuan,
+			"currency_quota_per_yuan_db_set":       dbSetYuan,
+			"currency_quota_per_yuan_db_value":     strings.TrimSpace(dbValYuan),
+			"currency_quota_per_usd":               cp.QuotaPerUsd,
+			"currency_quota_per_usd_file":          cfg.Site.CurrencyQuotaPerUsd,
+			"currency_quota_per_usd_db_set":        dbSetUsd,
+			"currency_quota_per_usd_db_value":      strings.TrimSpace(dbValUsd),
+			"pricing_cny_per_usd":                  cp.CnyPerUsd,
+			"pricing_cny_per_usd_file":             cfg.Site.PricingCnyPerUsd,
+			"pricing_cny_per_usd_db_set":           dbSetRate,
+			"pricing_cny_per_usd_db_value":         strings.TrimSpace(dbValRate),
 		})
+	}
+}
+
+// ResetAdminCurrencyPricingDefaults POST /api/admin/site-settings/reset-currency-pricing — 仅清除全站标价→额度换算三项，回退 YAML。
+func ResetAdminCurrencyPricingDefaults(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		ctx := c.Request.Context()
+		keys := []string{
+			sitecfg.SystemConfigKeyCurrencyQuotaPerYuan,
+			sitecfg.SystemConfigKeyCurrencyQuotaPerUsd,
+			sitecfg.SystemConfigKeyPricingCnyPerUsd,
+		}
+		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
+		if err != nil {
+			httpx.ServerError(c, "清除配置失败")
+			return
+		}
+		auditLog(client, adm.ID, "site.reset_currency_pricing", "system_config", "", map[string]any{"deleted_rows": n}, c)
+		httpx.OK(c, gin.H{"deleted_rows": n})
 	}
 }
 
@@ -1161,6 +1494,9 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyRoutingProbeFailThreshold,
 			sitecfg.SystemConfigKeyGatewayIPBlacklist,
 			sitecfg.SystemConfigKeyGatewayIPWhitelist,
+			sitecfg.SystemConfigKeyCurrencyQuotaPerYuan,
+			sitecfg.SystemConfigKeyCurrencyQuotaPerUsd,
+			sitecfg.SystemConfigKeyPricingCnyPerUsd,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
@@ -1864,6 +2200,8 @@ func DashboardOps(client *ent.Client, rdb *redis.Client, cfg *config.Config) gin
 		outline := gin.H{
 			"server_mode":             cfg.Server.Mode,
 			"currency_quota_per_yuan": cfg.Site.CurrencyQuotaPerYuan,
+			"currency_quota_per_usd":  cfg.Site.CurrencyQuotaPerUsd,
+			"pricing_cny_per_usd":     cfg.Site.PricingCnyPerUsd,
 			"cors_origins_count":      len(cfg.Site.CORSOrigins),
 			"realtime_call_mapping":   cfg.Site.RealtimeCallMappingEnabled,
 			"email_login_enabled":     cfg.Email.Enabled,

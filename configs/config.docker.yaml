@@ -18,6 +18,8 @@ site:
   no_bill_models: []
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
+  currency_quota_per_usd: 0
+  pricing_cny_per_usd: 0
   default_new_user_balance: 100000
   register_promo_text: "新用户注册即送额度，注册成功后自动到账。"
   cors_origins:

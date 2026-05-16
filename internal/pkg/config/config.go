@@ -58,9 +58,13 @@ type SecurityConfig struct {
 
 type SiteConfig struct {
 	// AppVersion 对外展示的应用版本号（首页页脚、/health、管理后台运维等）；空则默认 1.0.0。
-	AppVersion            string   `mapstructure:"app_version"`
-	APIKeyPrefix          string   `mapstructure:"api_key_prefix"`
-	CurrencyQuotaPerYuan  int64    `mapstructure:"currency_quota_per_yuan"`
+	AppVersion           string `mapstructure:"app_version"`
+	APIKeyPrefix         string `mapstructure:"api_key_prefix"`
+	CurrencyQuotaPerYuan int64  `mapstructure:"currency_quota_per_yuan"`
+	// CurrencyQuotaPerUsd 每 1 美元上游成本对应额度；>0 时「美元标价→额度」优先用本字段（否则用 pricing_cny_per_usd × currency_quota_per_yuan）。
+	CurrencyQuotaPerUsd int64 `mapstructure:"currency_quota_per_usd"`
+	// PricingCnyPerUsd 参考汇率：1 USD = R CNY；仅在未配置 currency_quota_per_usd 时用于美元标价换算。
+	PricingCnyPerUsd      float64  `mapstructure:"pricing_cny_per_usd"`
 	DefaultNewUserBalance int64    `mapstructure:"default_new_user_balance"`
 	CORSOrigins           []string `mapstructure:"cors_origins"`
 	// OperatorDisplayName 非空时写入 /health、/ready 的 JSON 字段 operator，便于运维与对外展示运营方。
@@ -126,6 +130,8 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.app_version", "1.0.0")
 	v.SetDefault("site.api_key_prefix", "sk-th-")
 	v.SetDefault("site.currency_quota_per_yuan", 10000)
+	v.SetDefault("site.currency_quota_per_usd", 0)
+	v.SetDefault("site.pricing_cny_per_usd", 0.0)
 	v.SetDefault("site.default_new_user_balance", 0)
 	v.SetDefault("site.cors_origins", []string{"*"})
 	v.SetDefault("site.realtime_call_mapping_enabled", false)

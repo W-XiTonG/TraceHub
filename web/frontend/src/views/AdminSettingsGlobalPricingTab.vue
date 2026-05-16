@@ -1,9 +1,12 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import axios from 'axios'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminModelIdCombobox } from '../composables/useAdminModelIdCombobox'
+import { useQuotaPer1kUpstreamField } from '../composables/useQuotaPer1kUpstreamField'
 import { http, type Envelope } from '../api/http'
+import { formatUpstreamPrice, upstreamPriceFromQuotaPer1K } from '../utils/upstreamQuotaDerive'
 
 const { t } = useI18n()
 
@@ -54,13 +57,33 @@ const busy = ref(true)
 const pageSaving = ref(false)
 const batchSaving = ref(false)
 const exporting = ref(false)
+const exportingTemplate = ref(false)
+const templateMenuOpen = ref(false)
+const templateMenuRef = ref<HTMLElement | null>(null)
 const importing = ref(false)
 const importPreviewOpen = ref(false)
 const importPreviewRows = ref<DraftRow[]>([])
 const importPreviewSubmitting = ref(false)
 const csvFileInput = ref<HTMLInputElement | null>(null)
+type DeriveUnitPreset = 'quota' | 'usd_1m' | 'usd_1k' | 'cny_1m' | 'cny_1k'
+const deriveUnitPreset = ref<DeriveUnitPreset>('usd_1m')
+const deriveMargin = ref('0')
+
+const codeRefShowQuotaOnly = computed(() => deriveUnitPreset.value === 'quota')
+
+const deriveCurrency = computed<'cny' | 'usd'>(() =>
+  deriveUnitPreset.value.startsWith('cny') ? 'cny' : 'usd',
+)
+const deriveDenom = computed(() => (deriveUnitPreset.value.endsWith('_1k') ? 1000 : 1_000_000))
+const sitePerYuan = ref<number | null>(null)
+const sitePerUsd = ref<number | null>(null)
+const siteCnyPerUsd = ref<number | null>(null)
 const flashMsg = ref('')
 const flashIsError = ref(false)
+/** 成功/提示自动关闭（毫秒）；错误稍长便于阅读 */
+const FLASH_DISMISS_MS = 3200
+const FLASH_ERROR_DISMISS_MS = 5500
+let flashDismissTimer: ReturnType<typeof setTimeout> | undefined
 
 /** 勾选行索引（与 `rows` 对齐）；`load` 后会清空 */
 const selectedRows = ref<number[]>([])
@@ -97,14 +120,33 @@ function rebuildRows() {
   rows.value = [...workspacePageDrafts.value, ...customDrafts.value]
 }
 
+function clearFlashDismissTimer() {
+  if (flashDismissTimer !== undefined) {
+    clearTimeout(flashDismissTimer)
+    flashDismissTimer = undefined
+  }
+}
+
 function clearFlash() {
+  clearFlashDismissTimer()
   flashMsg.value = ''
   flashIsError.value = false
 }
 
-function flashSuccess(text: string) {
-  flashIsError.value = false
+function showFlash(text: string, isError: boolean, dismissMs?: number) {
+  clearFlashDismissTimer()
+  flashIsError.value = isError
   flashMsg.value = text
+  const ms = dismissMs ?? (isError ? FLASH_ERROR_DISMISS_MS : FLASH_DISMISS_MS)
+  const shown = text
+  flashDismissTimer = setTimeout(() => {
+    flashDismissTimer = undefined
+    if (flashMsg.value === shown) clearFlash()
+  }, ms)
+}
+
+function flashSuccess(text: string) {
+  showFlash(text, false)
 }
 
 function httpErr(e: unknown): string {
@@ -116,8 +158,11 @@ function httpErr(e: unknown): string {
 }
 
 function flashError(e: unknown) {
-  flashIsError.value = true
-  flashMsg.value = httpErr(e)
+  showFlash(httpErr(e), true)
+}
+
+function flashWarn(text: string) {
+  showFlash(text, true)
 }
 
 function workspaceItemToDraft(w: WorkspaceRow): DraftRow {
@@ -217,13 +262,14 @@ function validateRowToItem(r: DraftRow): { ok: true; item: ApiPricingItem } | { 
 }
 
 function draftsToPersistItems(drafts: DraftRow[]): ApiPricingItem[] | null {
+  flushQuotaEdits(rows.value)
+  flushQuotaEdits(drafts)
   const items: ApiPricingItem[] = []
   for (const r of drafts) {
     if (!shouldPersistRow(r)) continue
     const v = validateRowToItem(r)
     if (!v.ok) {
-      flashMsg.value = v.message
-      flashIsError.value = true
+      flashWarn(v.message)
       return null
     }
     items.push(v.item)
@@ -248,20 +294,19 @@ function apiImportItemToDraft(it: ApiImportPreviewRow): DraftRow {
 
 /** 导入预览确认：跳过模型名为空的行；其余须通过 validateRowToItem */
 function importPreviewDraftsToItems(drafts: DraftRow[]): ApiPricingItem[] | null {
+  flushQuotaEdits(drafts)
   const items: ApiPricingItem[] = []
   for (const r of drafts) {
     if (!r.model_name.trim()) continue
     const v = validateRowToItem(r)
     if (!v.ok) {
-      flashMsg.value = v.message
-      flashIsError.value = true
+      flashWarn(v.message)
       return null
     }
     items.push(v.item)
   }
   if (items.length === 0) {
-    flashMsg.value = t('adminGlobalPricing.importPreviewNoRows')
-    flashIsError.value = true
+    flashWarn(t('adminGlobalPricing.importPreviewNoRows'))
     return null
   }
   return items
@@ -338,6 +383,53 @@ const anyListSaving = computed(
     busyResetFull.value ||
     importPreviewSubmitting.value,
 )
+
+const importTemplatePresets = [
+  { currency: 'cny' as const, denom: 1_000_000, labelKey: 'deriveUnitCny1m' },
+  { currency: 'cny' as const, denom: 1000, labelKey: 'deriveUnitCny1k' },
+  { currency: 'cny' as const, denom: 1, labelKey: 'deriveUnitCny1' },
+  { currency: 'usd' as const, denom: 1_000_000, labelKey: 'deriveUnitUsd1m' },
+  { currency: 'usd' as const, denom: 1000, labelKey: 'deriveUnitUsd1k' },
+  { currency: 'usd' as const, denom: 1, labelKey: 'deriveUnitUsd1' },
+]
+
+const showTemplateCurrentPreset = computed(() => deriveUnitPreset.value !== 'quota')
+
+function sitePricingFactors() {
+  return {
+    quotaPerYuan: sitePerYuan.value ?? 0,
+    quotaPerUsd: sitePerUsd.value ?? 0,
+    cnyPerUsd: siteCnyPerUsd.value ?? 0,
+  }
+}
+
+type CodeRefLine = { text: string; muted?: boolean }
+
+function displayCodeRefCell(ref: number | null | undefined): { lines: CodeRefLine[]; title?: string } {
+  if (ref == null) return { lines: [{ text: '—' }] }
+  if (codeRefShowQuotaOnly.value) return { lines: [{ text: String(ref) }] }
+  const quotaTitle = t('adminGlobalPricing.codeRefQuotaTitle', { q: ref })
+  const margin = parseDeriveMargin()
+  let upstreamText: string | null = null
+  if (margin !== null) {
+    const p = upstreamPriceFromQuotaPer1K(
+      sitePricingFactors(),
+      deriveCurrency.value,
+      deriveDenom.value,
+      ref,
+      margin,
+    )
+    if (p !== null) upstreamText = formatUpstreamPrice(p)
+  }
+  if (upstreamText === null) return { lines: [{ text: String(ref) }] }
+  return {
+    lines: [
+      { text: upstreamText },
+      { text: String(ref), muted: true },
+    ],
+    title: quotaTitle,
+  }
+}
 
 const selectAllInput = ref<HTMLInputElement | null>(null)
 watch(
@@ -575,8 +667,7 @@ async function resetCurrentPage() {
 async function resetSelectedRows() {
   clearFlash()
   if (!selectedRows.value.length) {
-    flashMsg.value = t('adminGlobalPricing.nothingSelected')
-    flashIsError.value = true
+    flashWarn(t('adminGlobalPricing.nothingSelected'))
     return
   }
   const drafts: DraftRow[] = []
@@ -690,8 +781,7 @@ async function saveFullWorkspace() {
 async function saveSelectedRows() {
   clearFlash()
   if (!selectedRows.value.length) {
-    flashMsg.value = t('adminGlobalPricing.nothingSelected')
-    flashIsError.value = true
+    flashWarn(t('adminGlobalPricing.nothingSelected'))
     return
   }
   const drafts: DraftRow[] = []
@@ -721,14 +811,14 @@ async function saveOneRow(idx: number) {
   const r = rows.value[idx]
   if (!r) return
   clearFlash()
+  flushQuotaEdits(rows.value)
   if (!shouldPersistRow(r)) {
     flashSuccess(t('adminGlobalPricing.nothingToSaveRow'))
     return
   }
   const v = validateRowToItem(r)
   if (!v.ok) {
-    flashMsg.value = v.message
-    flashIsError.value = true
+    flashWarn(v.message)
     return
   }
   rowSavingIdx.value = idx
@@ -743,7 +833,78 @@ async function saveOneRow(idx: number) {
   }
 }
 
-onMounted(() => void load())
+async function loadSitePricingMeta() {
+  try {
+    const { data } = await http.get<
+      Envelope<{
+        currency_quota_per_yuan?: number
+        currency_quota_per_usd?: number
+        pricing_cny_per_usd?: number
+      }>
+    >('/api/admin/site-settings')
+    if (data.code !== 0 || !data.data) return
+    const d = data.data
+    if (typeof d.currency_quota_per_yuan === 'number') sitePerYuan.value = d.currency_quota_per_yuan
+    if (typeof d.currency_quota_per_usd === 'number') sitePerUsd.value = d.currency_quota_per_usd
+    if (typeof d.pricing_cny_per_usd === 'number') siteCnyPerUsd.value = d.pricing_cny_per_usd
+  } catch {
+    /* ignore */
+  }
+}
+
+function parseDeriveMargin(): number | null {
+  const margin = Number(String(deriveMargin.value).trim() || '0')
+  if (!Number.isFinite(margin)) return null
+  return margin
+}
+
+const {
+  priceUnitLabel,
+  quotaInputDisplay,
+  onQuotaFocus,
+  onQuotaInput,
+  commitQuotaBlur,
+  flushQuotaEdits,
+} = useQuotaPer1kUpstreamField({
+  codeRefShowQuotaOnly,
+  deriveCurrency,
+  deriveDenom,
+  deriveMargin,
+  sitePricingFactors,
+  parseDeriveMargin,
+})
+
+const thQuotaInLabel = computed(() =>
+  codeRefShowQuotaOnly.value
+    ? t('adminGlobalPricing.thQuotaIn')
+    : t('adminGlobalPricing.thQuotaInUpstream', { unit: priceUnitLabel.value }),
+)
+const thQuotaOutLabel = computed(() =>
+  codeRefShowQuotaOnly.value
+    ? t('adminGlobalPricing.thQuotaOut')
+    : t('adminGlobalPricing.thQuotaOutUpstream', { unit: priceUnitLabel.value }),
+)
+const quotaInPlaceholder = computed(() =>
+  codeRefShowQuotaOnly.value
+    ? t('adminGlobalPricing.phOptional')
+    : t('adminGlobalPricing.phQuotaUpstreamIn', { cur: priceUnitLabel.value }),
+)
+const quotaOutPlaceholder = computed(() =>
+  codeRefShowQuotaOnly.value
+    ? t('adminGlobalPricing.phOptional')
+    : t('adminGlobalPricing.phQuotaUpstreamOut', { cur: priceUnitLabel.value }),
+)
+
+onMounted(() => {
+  void load()
+  void loadSitePricingMeta()
+  document.addEventListener('click', onTemplateMenuDocClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onTemplateMenuDocClick)
+  clearFlashDismissTimer()
+})
 
 function parseExportFilename(cd: string | undefined): string {
   if (!cd) return 'global-model-pricing.csv'
@@ -758,28 +919,66 @@ function parseExportFilename(cd: string | undefined): string {
   }
 }
 
-async function exportCsv() {
+async function downloadCsvBlob(
+  url: string,
+  params: Record<string, string | number> | undefined,
+  fallbackName: string,
+  successKey: 'exported' | 'exportedTemplate',
+) {
+  const res = await http.get(url, { params, responseType: 'blob' })
+  const name = parseExportFilename(res.headers['content-disposition'] as string | undefined) || fallbackName
+  const blob =
+    res.data instanceof Blob ? res.data : new Blob([res.data as BlobPart], { type: 'text/csv;charset=utf-8' })
+  const objUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = objUrl
+  a.download = name
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(objUrl)
+  flashSuccess(t(`adminGlobalPricing.${successKey}`))
+}
+
+async function exportDataCsv() {
   clearFlash()
   exporting.value = true
   try {
-    const res = await http.get('/api/admin/global-model-pricing/export', { responseType: 'blob' })
-    const name = parseExportFilename(res.headers['content-disposition'] as string | undefined)
-    const blob = res.data instanceof Blob ? res.data : new Blob([res.data as BlobPart], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-    flashSuccess(t('adminGlobalPricing.exported'))
+    await downloadCsvBlob('/api/admin/global-model-pricing/export', undefined, 'global-model-pricing-data.csv', 'exported')
   } catch (e: unknown) {
     flashError(e)
   } finally {
     exporting.value = false
   }
+}
+
+async function exportImportTemplate(currency: 'cny' | 'usd', denom: number) {
+  clearFlash()
+  exportingTemplate.value = true
+  templateMenuOpen.value = false
+  try {
+    await downloadCsvBlob(
+      '/api/admin/global-model-pricing/export/template',
+      { currency, denom },
+      `global-model-pricing-import-${currency}.csv`,
+      'exportedTemplate',
+    )
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    exportingTemplate.value = false
+  }
+}
+
+function exportImportTemplateCurrentUnit() {
+  void exportImportTemplate(deriveCurrency.value, deriveDenom.value)
+}
+
+function onTemplateMenuDocClick(ev: MouseEvent) {
+  if (!templateMenuOpen.value) return
+  const el = templateMenuRef.value
+  if (el && !el.contains(ev.target as Node)) templateMenuOpen.value = false
 }
 
 function triggerCsvImport() {
@@ -803,8 +1002,7 @@ async function onCsvFileChange(ev: Event) {
     if (data.code !== 0) throw new Error(data.message || 'preview')
     const raw = data.data?.items
     if (!Array.isArray(raw) || raw.length === 0) {
-      flashMsg.value = t('adminGlobalPricing.importPreviewEmpty')
-      flashIsError.value = true
+      flashWarn(t('adminGlobalPricing.importPreviewEmpty'))
       return
     }
     importPreviewRows.value = raw.map(apiImportItemToDraft)
@@ -838,6 +1036,46 @@ async function onCsvFileChange(ev: Event) {
             <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
             <span v-else>{{ t('adminGlobalPricing.modelSuggestHint') }}</span>
           </p>
+
+          <div
+            class="th-admin-pricing-toolbar mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 text-xs"
+          >
+            <label class="flex items-center gap-2">
+              <span class="th-admin-pricing-toolbar__label shrink-0">{{ t('adminGlobalPricing.deriveBarLabel') }}</span>
+              <select
+                v-model="deriveUnitPreset"
+                class="th-select th-select--inline th-select--pricing-unit"
+              >
+                <option value="quota">{{ t('adminGlobalPricing.deriveUnitQuota') }}</option>
+                <option value="usd_1m">{{ t('adminGlobalPricing.deriveUnitUsd1m') }}</option>
+                <option value="usd_1k">{{ t('adminGlobalPricing.deriveUnitUsd1k') }}</option>
+                <option value="cny_1m">{{ t('adminGlobalPricing.deriveUnitCny1m') }}</option>
+                <option value="cny_1k">{{ t('adminGlobalPricing.deriveUnitCny1k') }}</option>
+              </select>
+            </label>
+            <details v-if="!codeRefShowQuotaOnly" class="th-pricing-advanced">
+              <summary>{{ t('adminGlobalPricing.deriveAdvanced') }}</summary>
+              <div class="th-pricing-advanced-panel">
+                <span class="th-admin-pricing-toolbar__label whitespace-nowrap">{{
+                  t('adminGlobalPricing.deriveMarginShort')
+                }}</span>
+                <input
+                  v-model="deriveMargin"
+                  type="text"
+                  inputmode="decimal"
+                  class="th-input font-mono tabular-nums"
+                  autocomplete="off"
+                />
+              </div>
+            </details>
+            <span class="th-admin-pricing-toolbar__sep" aria-hidden="true" />
+            <RouterLink
+              :to="{ name: 'admin-billing-pricing-conversion' }"
+              class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs leading-9 text-cyan-300/90 hover:bg-slate-800"
+            >
+              {{ t('adminGlobalPricing.linkConversionSettings') }}
+            </RouterLink>
+          </div>
 
           <div class="mb-3 space-y-2 border-b border-slate-800/60 pb-3">
             <div
@@ -927,15 +1165,61 @@ async function onCsvFileChange(ev: Event) {
                 <button
                   type="button"
                   class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="exporting || importing || importPreviewSubmitting || importPreviewOpen || busy"
-                  @click="exportCsv"
+                  :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                  @click="exportDataCsv"
                 >
-                  {{ exporting ? t('common.submitting') : t('adminGlobalPricing.exportCsv') }}
+                  {{ exporting ? t('common.submitting') : t('adminGlobalPricing.exportDataCsv') }}
                 </button>
+                <div ref="templateMenuRef" class="relative shrink-0">
+                  <button
+                    type="button"
+                    class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                    :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                    :aria-expanded="templateMenuOpen"
+                    @click.stop="templateMenuOpen = !templateMenuOpen"
+                  >
+                    {{
+                      exportingTemplate ? t('common.submitting') : t('adminGlobalPricing.exportTemplateMenu')
+                    }}
+                    <span class="text-[10px] text-slate-500" aria-hidden="true">▾</span>
+                  </button>
+                  <div
+                    v-if="templateMenuOpen"
+                    class="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[10.5rem] overflow-hidden rounded-lg border border-slate-700 bg-slate-900 py-1 shadow-xl ring-1 ring-black/20"
+                    role="menu"
+                    @click.stop
+                  >
+                    <button
+                      v-if="showTemplateCurrentPreset"
+                      type="button"
+                      role="menuitem"
+                      class="block w-full px-3 py-2 text-left text-xs text-cyan-200 hover:bg-slate-800"
+                      @click="exportImportTemplateCurrentUnit"
+                    >
+                      {{ t('adminGlobalPricing.exportTemplateCurrent', { unit: priceUnitLabel }) }}
+                    </button>
+                    <div
+                      v-if="showTemplateCurrentPreset"
+                      class="my-1 border-t border-slate-800"
+                      role="separator"
+                    />
+                    <button
+                      v-for="(p, ti) in importTemplatePresets"
+                      :key="`tpl-${p.currency}-${p.denom}`"
+                      type="button"
+                      role="menuitem"
+                      class="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+                      :class="ti > 0 && p.currency !== importTemplatePresets[ti - 1]?.currency ? 'border-t border-slate-800' : ''"
+                      @click="exportImportTemplate(p.currency, p.denom)"
+                    >
+                      {{ t(`adminGlobalPricing.${p.labelKey}`) }}
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="exporting || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
+                  :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
                   @click="triggerCsvImport"
                 >
                   {{ importing ? t('common.submitting') : t('adminGlobalPricing.importCsv') }}
@@ -973,8 +1257,8 @@ async function onCsvFileChange(ev: Event) {
                   <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thSources') }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thCodeIn') }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thCodeOut') }}</th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thQuotaIn') }}</th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thQuotaOut') }}</th>
+                  <th class="align-middle px-3 py-2">{{ thQuotaInLabel }}</th>
+                  <th class="align-middle px-3 py-2">{{ thQuotaOutLabel }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGroups.thIn') }}</th>
                   <th class="align-middle px-3 py-2">{{ t('adminGroups.thOut') }}</th>
                   <th class="align-middle px-3 py-2 text-center">{{ t('adminGroups.thEn') }}</th>
@@ -1046,29 +1330,55 @@ async function onCsvFileChange(ev: Event) {
                     </div>
                   </td>
                   <td class="align-middle px-2 py-2 font-mono text-slate-400">
-                    {{ r.code_in_ref != null ? r.code_in_ref : '—' }}
+                    <div
+                      class="flex flex-col gap-0.5 tabular-nums"
+                      :title="displayCodeRefCell(r.code_in_ref).title"
+                    >
+                      <span
+                        v-for="(line, li) in displayCodeRefCell(r.code_in_ref).lines"
+                        :key="`cin-${li}`"
+                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
+                      >{{ line.text }}</span>
+                    </div>
                   </td>
                   <td class="align-middle px-2 py-2 font-mono text-slate-400">
-                    {{ r.code_out_ref != null ? r.code_out_ref : '—' }}
+                    <div
+                      class="flex flex-col gap-0.5 tabular-nums"
+                      :title="displayCodeRefCell(r.code_out_ref).title"
+                    >
+                      <span
+                        v-for="(line, li) in displayCodeRefCell(r.code_out_ref).lines"
+                        :key="`cout-${li}`"
+                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
+                      >{{ line.text }}</span>
+                    </div>
                   </td>
                   <td class="align-middle px-2 py-2">
                     <input
-                      v-model="r.quota_in_per_1k"
+                      :value="quotaInputDisplay(r, idx, 'in')"
                       type="text"
-                      inputmode="numeric"
-                      class="th-input h-9 w-24 py-1 font-mono text-xs leading-normal"
-                      :placeholder="t('adminGlobalPricing.phOptional')"
+                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                      :placeholder="quotaInPlaceholder"
+                      :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
                       autocomplete="off"
+                      @focus="onQuotaFocus(r, idx, 'in')"
+                      @input="onQuotaInput(idx, 'in', $event)"
+                      @blur="commitQuotaBlur(r, idx, 'in')"
                     />
                   </td>
                   <td class="align-middle px-2 py-2">
                     <input
-                      v-model="r.quota_out_per_1k"
+                      :value="quotaInputDisplay(r, idx, 'out')"
                       type="text"
-                      inputmode="numeric"
-                      class="th-input h-9 w-24 py-1 font-mono text-xs leading-normal"
-                      :placeholder="t('adminGlobalPricing.phOptional')"
+                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                      :placeholder="quotaOutPlaceholder"
+                      :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
                       autocomplete="off"
+                      @focus="onQuotaFocus(r, idx, 'out')"
+                      @input="onQuotaInput(idx, 'out', $event)"
+                      @blur="commitQuotaBlur(r, idx, 'out')"
                     />
                   </td>
                   <td class="align-middle px-2 py-2">
@@ -1256,16 +1566,18 @@ async function onCsvFileChange(ev: Event) {
     </article>
 
     <Teleport to="body">
-      <div
-        v-if="flashMsg"
-        id="global-pricing-flash"
-        class="pointer-events-none fixed left-1/2 top-20 z-[10050] max-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border px-4 py-2.5 text-center text-xs shadow-lg backdrop-blur-sm"
-        :class="flashIsError ? 'th-admin-flash--error' : 'th-admin-flash--success'"
-        role="status"
-        aria-live="polite"
-      >
-        {{ flashMsg }}
-      </div>
+      <Transition name="th-admin-flash-fade">
+        <div
+          v-if="flashMsg"
+          id="global-pricing-flash"
+          class="pointer-events-none fixed left-1/2 top-20 z-[10050] max-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border px-4 py-2.5 text-center text-xs shadow-lg backdrop-blur-sm"
+          :class="flashIsError ? 'th-admin-flash--error' : 'th-admin-flash--success'"
+          role="status"
+          aria-live="polite"
+        >
+          {{ flashMsg }}
+        </div>
+      </Transition>
     </Teleport>
 
     <Teleport to="body">
@@ -1298,10 +1610,10 @@ async function onCsvFileChange(ev: Event) {
                       {{ t('adminGlobalPricing.importPreviewModelCol') }}
                     </th>
                     <th class="th-import-preview-th px-2 py-2.5 text-left">
-                      {{ t('adminGlobalPricing.thQuotaIn') }}
+                      {{ thQuotaInLabel }}
                     </th>
                     <th class="th-import-preview-th px-2 py-2.5 text-left">
-                      {{ t('adminGlobalPricing.thQuotaOut') }}
+                      {{ thQuotaOutLabel }}
                     </th>
                     <th class="th-import-preview-th px-2 py-2.5 text-left">
                       {{ t('adminGroups.thIn') }}
@@ -1331,22 +1643,28 @@ async function onCsvFileChange(ev: Event) {
                   </td>
                   <td class="px-2 py-2 align-middle">
                     <input
-                      v-model="r.quota_in_per_1k"
+                      :value="quotaInputDisplay(r, idx, 'in')"
                       type="text"
-                      inputmode="numeric"
-                      class="th-input h-9 w-24 py-1 font-mono text-xs leading-normal"
-                      :placeholder="t('adminGlobalPricing.phOptional')"
+                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                      :placeholder="quotaInPlaceholder"
                       autocomplete="off"
+                      @focus="onQuotaFocus(r, idx, 'in')"
+                      @input="onQuotaInput(idx, 'in', $event)"
+                      @blur="commitQuotaBlur(r, idx, 'in')"
                     />
                   </td>
                   <td class="px-2 py-2 align-middle">
                     <input
-                      v-model="r.quota_out_per_1k"
+                      :value="quotaInputDisplay(r, idx, 'out')"
                       type="text"
-                      inputmode="numeric"
-                      class="th-input h-9 w-24 py-1 font-mono text-xs leading-normal"
-                      :placeholder="t('adminGlobalPricing.phOptional')"
+                      :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                      class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                      :placeholder="quotaOutPlaceholder"
                       autocomplete="off"
+                      @focus="onQuotaFocus(r, idx, 'out')"
+                      @input="onQuotaInput(idx, 'out', $event)"
+                      @blur="commitQuotaBlur(r, idx, 'out')"
                     />
                   </td>
                   <td class="px-2 py-2 align-middle">

@@ -18,6 +18,13 @@ var (
 	errDefaultNewUserBalanceInvalid = errors.New("site.default_new_user_balance 须为非负十进制整数")
 	errDefaultNewUserBalanceRange   = errors.New("site.default_new_user_balance 超出允许范围")
 
+	errCurrencyQuotaPerYuanEmpty   = errors.New("site.currency_quota_per_yuan 不能为空")
+	errCurrencyQuotaPerYuanInvalid = errors.New("site.currency_quota_per_yuan 须为大于 0 的整数")
+	errCurrencyQuotaPerUsdEmpty    = errors.New("site.currency_quota_per_usd 不能为空")
+	errCurrencyQuotaPerUsdInvalid  = errors.New("site.currency_quota_per_usd 须为非负整数")
+	errPricingCnyPerUsdEmpty       = errors.New("site.pricing_cny_per_usd 不能为空")
+	errPricingCnyPerUsdInvalid     = errors.New("site.pricing_cny_per_usd 须为非负数字")
+
 	errAPIPublicBaseURLInvalid = errors.New("site.api.public_base_url 须为 http(s) URL，路径仅可为空或 /v1")
 	errAPIPublicBaseURLPath    = errors.New("site.api.public_base_url 路径仅允许为空或 /v1")
 	errAPIPublicBaseURLTooLong = errors.New("site.api.public_base_url 过长")

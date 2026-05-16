@@ -12,7 +12,7 @@ import (
 	adminhandler "tracehub/internal/handler/admin"
 	gatewayhandler "tracehub/internal/handler/gateway"
 	"tracehub/internal/handler/health"
-	userhandler 	"tracehub/internal/handler/user"
+	userhandler "tracehub/internal/handler/user"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
@@ -277,10 +277,12 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.DELETE("/groups/:id", adminhandler.DeleteGroup(opt.Client))
 	a.GET("/groups/:id/model-rates", adminhandler.ListGroupModelRates(opt.Client))
 	a.PUT("/groups/:id/model-rates", adminhandler.PutGroupModelRates(opt.Client))
+	a.POST("/global-model-pricing/derive-quota", adminhandler.PostDeriveGlobalModelPricingQuota(opt.Client, opt.Config))
 	a.GET("/global-model-pricing/workspace", adminhandler.GetGlobalModelPricingWorkspace(opt.Client))
 	a.GET("/global-model-pricing/export", adminhandler.ExportGlobalModelPricingCSV(opt.Client))
-	a.POST("/global-model-pricing/import/preview", adminhandler.PreviewGlobalModelPricingCSV(opt.Client))
-	a.POST("/global-model-pricing/import", adminhandler.ImportGlobalModelPricingCSV(opt.Client))
+	a.GET("/global-model-pricing/export/template", adminhandler.ExportGlobalModelPricingImportTemplate(opt.Client, opt.Config))
+	a.POST("/global-model-pricing/import/preview", adminhandler.PreviewGlobalModelPricingCSV(opt.Client, opt.Config))
+	a.POST("/global-model-pricing/import", adminhandler.ImportGlobalModelPricingCSV(opt.Client, opt.Config))
 	a.GET("/global-model-pricing", adminhandler.ListGlobalModelPricing(opt.Client))
 	a.PUT("/global-model-pricing", adminhandler.PutGlobalModelPricing(opt.Client))
 	a.DELETE("/global-model-pricing", adminhandler.DeleteGlobalModelPricing(opt.Client))
@@ -295,6 +297,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/config", adminhandler.GetSystemConfig(opt.Client))
 	a.GET("/site-settings", adminhandler.GetAdminSiteSettings(opt.Client, opt.Config))
 	a.POST("/site-settings/reset-defaults", adminhandler.ResetAdminSiteSettingsDefaults(opt.Client))
+	a.POST("/site-settings/reset-currency-pricing", adminhandler.ResetAdminCurrencyPricingDefaults(opt.Client))
 	a.GET("/site-brand/icons", adminhandler.GetBrandIconLibrary(opt.Config))
 	a.DELETE("/site-brand/icons/:filename", adminhandler.DeleteBrandIcon(opt.Client, opt.Config))
 	a.POST("/site-upload/brand-icon", adminhandler.PostBrandIconUpload(opt.Client, opt.Config))

@@ -10,10 +10,14 @@ provide(adminSiteSettingsKey, ctx)
 const { t } = useI18n()
 const route = useRoute()
 
-const hideGlobalSaveBar = computed(() => route.name === 'admin-billing-global-pricing')
+const hideGlobalSaveBar = computed(
+  () =>
+    route.name === 'admin-billing-global-pricing' || route.name === 'admin-billing-pricing-conversion',
+)
 
 const billingTabs = [
   { name: 'admin-billing-global-pricing' as const, labelKey: 'adminBilling.tabGlobalPricing' as const },
+  { name: 'admin-billing-pricing-conversion' as const, labelKey: 'adminBilling.tabConversion' as const },
   { name: 'admin-billing-no-bill' as const, labelKey: 'adminBilling.tabNoBill' as const },
 ]
 

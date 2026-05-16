@@ -48,6 +48,12 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateRoutingProbeFailThreshold(value)
 	case SystemConfigKeyGatewayIPBlacklist:
 		return ValidateGatewayIPBlacklistJSON(value)
+	case SystemConfigKeyCurrencyQuotaPerYuan:
+		return ValidateCurrencyQuotaPerYuan(value)
+	case SystemConfigKeyCurrencyQuotaPerUsd:
+		return ValidateCurrencyQuotaPerUsd(value)
+	case SystemConfigKeyPricingCnyPerUsd:
+		return ValidatePricingCnyPerUsd(value)
 	default:
 		return nil
 	}

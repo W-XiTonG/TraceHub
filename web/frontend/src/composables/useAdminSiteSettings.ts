@@ -52,6 +52,10 @@ export type SiteSettingsPayload = {
   routing_probe_fail_threshold?: number
   gateway_ip_blacklist?: string[]
   gateway_ip_blacklist_db_set?: boolean
+  /** 以下三项来自运行配置 YAML，供全站计价换算等只读展示 */
+  currency_quota_per_yuan?: number
+  currency_quota_per_usd?: number
+  pricing_cny_per_usd?: number
 }
 
 export function createAdminSiteSettings() {

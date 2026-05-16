@@ -26,6 +26,10 @@ site:
   #   - "gpt-4o-mini"
   api_key_prefix: "sk-th-"
   currency_quota_per_yuan: 10000
+  # 可选：每 1 美元上游成本对应多少「额度」；>0 时管理端「美元→额度」优先用此项（否则用 pricing_cny_per_usd × currency_quota_per_yuan）
+  # currency_quota_per_usd: 0
+  # 可选：美元兑人民币参考价（1 USD = 多少 CNY）；未配 currency_quota_per_usd 时美元标价换算需要此项且须 >0
+  # pricing_cny_per_usd: 7.2
   default_new_user_balance: 5000 # 试用额度（额度单位）
   # 注册页与官网首页推广说明（可被管理后台覆盖）；留空则不展示
   # register_promo_text: "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。"

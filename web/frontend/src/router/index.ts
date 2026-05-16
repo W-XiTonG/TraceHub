@@ -53,6 +53,11 @@ const router = createRouter({
               component: () => import('../views/AdminSettingsGlobalPricingTab.vue'),
             },
             {
+              path: 'pricing-conversion',
+              name: 'admin-billing-pricing-conversion',
+              component: () => import('../views/AdminSettingsPricingConversionTab.vue'),
+            },
+            {
               path: 'no-bill',
               name: 'admin-billing-no-bill',
               component: () => import('../views/AdminSettingsNoBillTab.vue'),
