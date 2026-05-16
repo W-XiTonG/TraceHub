@@ -14,6 +14,7 @@ import (
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/feedback"
+	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/modelcatalogentry"
@@ -93,6 +94,7 @@ func checkColumn(t, c string) error {
 			channel.Table:              channel.ValidColumn,
 			dashboardaggregation.Table: dashboardaggregation.ValidColumn,
 			feedback.Table:             feedback.ValidColumn,
+			globalmodelpricing.Table:   globalmodelpricing.ValidColumn,
 			group.Table:                group.ValidColumn,
 			groupmodelrate.Table:       groupmodelrate.ValidColumn,
 			modelcatalogentry.Table:    modelcatalogentry.ValidColumn,

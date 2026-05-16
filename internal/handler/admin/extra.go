@@ -1,8 +1,12 @@
 package adminhandler
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
+	"errors"
+	"fmt"
+	"io"
 	"math"
 	"runtime"
 	"sort"
@@ -15,6 +19,7 @@ import (
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/redeemcode"
@@ -22,16 +27,17 @@ import (
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/gateway/router"
 	"tracehub/internal/handler/health"
 	"tracehub/internal/middleware"
-	"tracehub/internal/gateway/router"
-	"tracehub/internal/service/billing"
 	"tracehub/internal/pkg/alertconfig"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
 	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
+	"tracehub/internal/service/availmodels"
+	"tracehub/internal/service/billing"
 
 	"github.com/gin-gonic/gin"
 	redis "github.com/redis/go-redis/v9"
@@ -342,6 +348,412 @@ func ListGroupModelRates(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
+// GetGlobalModelPricingWorkspace GET /api/admin/global-model-pricing/workspace — 合并列表（内置表 ∪ 渠道 ∪ 目录 ∪ 全局库）与代码基准。
+// 查询参数：q（可选，model_name 子串，不区分大小写）、page（默认 1）、page_size（默认 50，最大 200）。
+func GetGlobalModelPricingWorkspace(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		q := strings.TrimSpace(c.Query("q"))
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+		items, total, pageOut, err := availmodels.GlobalModelPricingWorkspacePage(ctx, client, q, page, ps)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		outPS := ps
+		if outPS <= 0 {
+			outPS = 50
+		}
+		if outPS > 200 {
+			outPS = 200
+		}
+		httpx.OK(c, gin.H{
+			"items":     items,
+			"total":     total,
+			"page":      pageOut,
+			"page_size": outPS,
+			"q":         q,
+		})
+	}
+}
+
+// ListGlobalModelPricing GET /api/admin/global-model-pricing — 全站模型计价（含 disabled）。
+func ListGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		list, err := client.GlobalModelPricing.Query().
+			Order(ent.Asc(globalmodelpricing.FieldModelName)).
+			All(ctx)
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		httpx.OK(c, gin.H{"items": list, "total": len(list)})
+	}
+}
+
+type globalPricingUpsertItem struct {
+	ModelName     string
+	Enabled       bool
+	QuotaInPer1k  *int64
+	QuotaOutPer1k *int64
+	InputRate     float64
+	OutputRate    float64
+}
+
+// upsertGlobalModelPricingBatch 执行批量 upsert。badRequest 非空返回 400；err 非空返回 500。
+func upsertGlobalModelPricingBatch(ctx context.Context, client *ent.Client, items []globalPricingUpsertItem) (badRequest string, err error) {
+	for _, it := range items {
+		name := strings.TrimSpace(it.ModelName)
+		if name == "" {
+			return "model_name 不能为空", nil
+		}
+		if it.QuotaInPer1k != nil && *it.QuotaInPer1k < 0 {
+			return "quota_in_per_1k 不能为负", nil
+		}
+		if it.QuotaOutPer1k != nil && *it.QuotaOutPer1k < 0 {
+			return "quota_out_per_1k 不能为负", nil
+		}
+		inR, outR := it.InputRate, it.OutputRate
+		if inR <= 0 || math.IsNaN(inR) || math.IsInf(inR, 0) {
+			return "input_rate 须大于 0", nil
+		}
+		if outR <= 0 || math.IsNaN(outR) || math.IsInf(outR, 0) {
+			return "output_rate 须大于 0", nil
+		}
+		existing, qerr := client.GlobalModelPricing.Query().
+			Where(globalmodelpricing.ModelNameEQ(name)).
+			Only(ctx)
+		if ent.IsNotFound(qerr) {
+			cr := client.GlobalModelPricing.Create().
+				SetModelName(name).
+				SetEnabled(it.Enabled).
+				SetInputRate(inR).
+				SetOutputRate(outR)
+			if it.QuotaInPer1k != nil {
+				cr.SetQuotaInPer1k(*it.QuotaInPer1k)
+			}
+			if it.QuotaOutPer1k != nil {
+				cr.SetQuotaOutPer1k(*it.QuotaOutPer1k)
+			}
+			if _, err := cr.Save(ctx); err != nil {
+				return "", err
+			}
+		} else if qerr == nil {
+			up := client.GlobalModelPricing.UpdateOne(existing).
+				SetEnabled(it.Enabled).
+				SetInputRate(inR).
+				SetOutputRate(outR)
+			if it.QuotaInPer1k != nil {
+				up.SetQuotaInPer1k(*it.QuotaInPer1k)
+			} else {
+				up.ClearQuotaInPer1k()
+			}
+			if it.QuotaOutPer1k != nil {
+				up.SetQuotaOutPer1k(*it.QuotaOutPer1k)
+			} else {
+				up.ClearQuotaOutPer1k()
+			}
+			if err := up.Exec(ctx); err != nil {
+				return "", err
+			}
+		} else {
+			return "", qerr
+		}
+	}
+	return "", nil
+}
+
+// PutGlobalModelPricing PUT /api/admin/global-model-pricing — 按 model_name 批量 upsert。
+func PutGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		var req struct {
+			Items []struct {
+				ModelName     string  `json:"model_name"`
+				Enabled       bool    `json:"enabled"`
+				QuotaInPer1k  *int64  `json:"quota_in_per_1k"`
+				QuotaOutPer1k *int64  `json:"quota_out_per_1k"`
+				InputRate     float64 `json:"input_rate"`
+				OutputRate    float64 `json:"output_rate"`
+			} `json:"items"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.BadRequest(c, "参数无效")
+			return
+		}
+		ctx := c.Request.Context()
+		items := make([]globalPricingUpsertItem, 0, len(req.Items))
+		for _, it := range req.Items {
+			items = append(items, globalPricingUpsertItem{
+				ModelName:     it.ModelName,
+				Enabled:       it.Enabled,
+				QuotaInPer1k:  it.QuotaInPer1k,
+				QuotaOutPer1k: it.QuotaOutPer1k,
+				InputRate:     it.InputRate,
+				OutputRate:    it.OutputRate,
+			})
+		}
+		if br, err := upsertGlobalModelPricingBatch(ctx, client, items); br != "" {
+			httpx.BadRequest(c, br)
+			return
+		} else if err != nil {
+			httpx.ServerError(c, "保存失败")
+			return
+		}
+		billing.InvalidateGlobalModelPricingCacheAdmin()
+		auditLog(client, adm.ID, "global_model_pricing.put", "global_model_pricing", "", map[string]any{"count": len(req.Items)}, c)
+		httpx.OKMsg(c, "已保存", nil)
+	}
+}
+
+// DeleteGlobalModelPricing DELETE /api/admin/global-model-pricing?model_name= — 删除一条全站模型计价配置。
+func DeleteGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		name := strings.TrimSpace(c.Query("model_name"))
+		if name == "" {
+			httpx.BadRequest(c, "缺少 model_name")
+			return
+		}
+		ctx := c.Request.Context()
+		n, err := client.GlobalModelPricing.Delete().Where(globalmodelpricing.ModelNameEQ(name)).Exec(ctx)
+		if err != nil {
+			httpx.ServerError(c, "删除失败")
+			return
+		}
+		if n == 0 {
+			httpx.BadRequest(c, "记录不存在")
+			return
+		}
+		billing.InvalidateGlobalModelPricingCacheAdmin()
+		auditLog(client, adm.ID, "global_model_pricing.delete", "global_model_pricing", name, nil, c)
+		httpx.OKMsg(c, "已删除", nil)
+	}
+}
+
+func normGlobalPricingCSVHeader(s string) string {
+	return strings.TrimSpace(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(s)), "\ufeff"))
+}
+
+func parseGlobalPricingCSVHeaderIndex(header []string) map[string]int {
+	idx := make(map[string]int)
+	for i, h := range header {
+		key := normGlobalPricingCSVHeader(h)
+		if key != "" {
+			idx[key] = i
+		}
+	}
+	return idx
+}
+
+func parseGlobalPricingEnabledCell(s string) (bool, error) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	switch s {
+	case "1", "true", "yes", "y", "t", "是", "启用", "on":
+		return true, nil
+	case "0", "false", "no", "n", "f", "否", "禁用", "off":
+		return false, nil
+	default:
+		return false, fmt.Errorf("enabled 须为 true/false、1/0、是/否 等，当前为 %q", s)
+	}
+}
+
+func parseGlobalPricingOptionalInt64Cell(s string) (*int64, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, nil
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("须为整数: %q", s)
+	}
+	if n < 0 {
+		return nil, fmt.Errorf("不能为负: %d", n)
+	}
+	return &n, nil
+}
+
+// ExportGlobalModelPricingCSV GET /api/admin/global-model-pricing/export — UTF-8 CSV，含合并视图全量行（与页面列一致，便于表格编辑后导入）。
+func ExportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		list, err := availmodels.AllGlobalPricingWorkspaceItems(ctx, client)
+		if err != nil {
+			httpx.ServerError(c, "导出失败")
+			return
+		}
+		fn := fmt.Sprintf("global-model-pricing-%s.csv", time.Now().Format("20060102-150405"))
+		c.Header("Content-Type", "text/csv; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename="+fn)
+		_, _ = c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+		w := csv.NewWriter(c.Writer)
+		_ = w.Write([]string{
+			"model_name", "code_in_per_1k", "code_out_per_1k", "sources",
+			"enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
+		})
+		for _, it := range list {
+			g := it.Global
+			enabled := true
+			qIn, qOut := "", ""
+			inR, outR := 1.0, 1.0
+			if g != nil {
+				enabled = g.Enabled
+				if g.QuotaInPer1k != nil {
+					qIn = strconv.FormatInt(*g.QuotaInPer1k, 10)
+				}
+				if g.QuotaOutPer1k != nil {
+					qOut = strconv.FormatInt(*g.QuotaOutPer1k, 10)
+				}
+				inR, outR = g.InputRate, g.OutputRate
+			}
+			src := strings.Join(it.Sources, "|")
+			_ = w.Write([]string{
+				it.ModelName,
+				strconv.FormatInt(it.CodeInPer1k, 10),
+				strconv.FormatInt(it.CodeOutPer1k, 10),
+				src,
+				strconv.FormatBool(enabled),
+				qIn,
+				qOut,
+				strconv.FormatFloat(inR, 'f', -1, 64),
+				strconv.FormatFloat(outR, 'f', -1, 64),
+			})
+		}
+		w.Flush()
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		auditLog(client, adm.ID, "global_model_pricing.export_csv", "global_model_pricing", "", map[string]any{"rows": len(list)}, c)
+	}
+}
+
+// ImportGlobalModelPricingCSV POST /api/admin/global-model-pricing/import — multipart 字段 `file`，UTF-8 CSV；表头须含 model_name、enabled、input_rate、output_rate、quota_in_per_1k、quota_out_per_1k（额度列可留空表示清空覆盖）。最多 5000 行数据。
+func ImportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		fh, err := c.FormFile("file")
+		if err != nil {
+			httpx.BadRequest(c, "请上传 file 字段（CSV）")
+			return
+		}
+		if fh.Size > 8<<20 {
+			httpx.BadRequest(c, "文件过大（最大 8MB）")
+			return
+		}
+		src, err := fh.Open()
+		if err != nil {
+			httpx.BadRequest(c, "无法读取文件")
+			return
+		}
+		defer src.Close()
+		body, err := io.ReadAll(src)
+		if err != nil {
+			httpx.ServerError(c, "读取失败")
+			return
+		}
+		if len(body) >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF {
+			body = body[3:]
+		}
+		r := csv.NewReader(bytes.NewReader(body))
+		r.FieldsPerRecord = -1
+		r.LazyQuotes = true
+		header, err := r.Read()
+		if err != nil {
+			httpx.BadRequest(c, "CSV 表头无效")
+			return
+		}
+		col := parseGlobalPricingCSVHeaderIndex(header)
+		reqCols := []string{"model_name", "enabled", "input_rate", "output_rate", "quota_in_per_1k", "quota_out_per_1k"}
+		for _, k := range reqCols {
+			if _, ok := col[k]; !ok {
+				httpx.BadRequest(c, "缺少列 "+k+"（请使用「导出」生成的表头；额度列可留空表示清空覆盖）")
+				return
+			}
+		}
+		var items []globalPricingUpsertItem
+		line := 1
+		for {
+			rec, err := r.Read()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				httpx.BadRequest(c, fmt.Sprintf("第 %d 行解析失败", line+1))
+				return
+			}
+			line++
+			if line > 5001 {
+				httpx.BadRequest(c, "超过 5000 行数据上限")
+				return
+			}
+			get := func(key string) string {
+				i, ok := col[key]
+				if !ok || i >= len(rec) {
+					return ""
+				}
+				return rec[i]
+			}
+			name := strings.TrimSpace(get("model_name"))
+			if name == "" {
+				continue
+			}
+			en, err := parseGlobalPricingEnabledCell(get("enabled"))
+			if err != nil {
+				httpx.BadRequest(c, fmt.Sprintf("第 %d 行: %v", line, err))
+				return
+			}
+			inS := strings.TrimSpace(get("input_rate"))
+			outS := strings.TrimSpace(get("output_rate"))
+			inR, err := strconv.ParseFloat(inS, 64)
+			if err != nil {
+				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 input_rate 无效", line))
+				return
+			}
+			outR, err := strconv.ParseFloat(outS, 64)
+			if err != nil {
+				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 output_rate 无效", line))
+				return
+			}
+			var qIn, qOut *int64
+			vIn, err := parseGlobalPricingOptionalInt64Cell(get("quota_in_per_1k"))
+			if err != nil {
+				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 quota_in_per_1k: %v", line, err))
+				return
+			}
+			qIn = vIn
+			vOut, err := parseGlobalPricingOptionalInt64Cell(get("quota_out_per_1k"))
+			if err != nil {
+				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 quota_out_per_1k: %v", line, err))
+				return
+			}
+			qOut = vOut
+			items = append(items, globalPricingUpsertItem{
+				ModelName:     name,
+				Enabled:       en,
+				QuotaInPer1k:  qIn,
+				QuotaOutPer1k: qOut,
+				InputRate:     inR,
+				OutputRate:    outR,
+			})
+		}
+		if len(items) == 0 {
+			httpx.BadRequest(c, "没有有效数据行")
+			return
+		}
+		ctx := c.Request.Context()
+		if br, err := upsertGlobalModelPricingBatch(ctx, client, items); br != "" {
+			httpx.BadRequest(c, br)
+			return
+		} else if err != nil {
+			httpx.ServerError(c, "导入保存失败")
+			return
+		}
+		billing.InvalidateGlobalModelPricingCacheAdmin()
+		auditLog(client, adm.ID, "global_model_pricing.import_csv", "global_model_pricing", "", map[string]any{"count": len(items)}, c)
+		httpx.OK(c, gin.H{"count": len(items)})
+	}
+}
+
 func ListRedeemCodes(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -640,30 +1052,30 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
 		httpx.OK(c, gin.H{
-			"brand_name":                        sitecfg.EffectiveBrandName(ctx, client),
-			"brand_icon_url":                    sitecfg.StoredBrandIconURL(ctx, client),
-			"login_captcha_enabled":             sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
-			"login_captcha_file":                cfg.Site.LoginCaptcha.Enabled,
-			"login_captcha_db_set":              dbSet,
-			"login_captcha_db_value":            strings.TrimSpace(dbVal),
-			"operator_display_name":             sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
-			"operator_display_file":             strings.TrimSpace(cfg.Site.OperatorDisplayName),
-			"default_new_user_balance":          sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg),
-			"default_new_user_balance_file":     cfg.Site.DefaultNewUserBalance,
-			"default_new_user_balance_db_set":   dbSetBal,
-			"default_new_user_balance_db_value": strings.TrimSpace(dbValBal),
-			"register_promo_text":               sitecfg.EffectiveRegisterPromoText(ctx, client, cfg),
-			"register_promo_text_file":          strings.TrimSpace(cfg.Site.RegisterPromoText),
-			"register_promo_text_db_set":        dbSetPromo,
-			"register_promo_text_db_value":      strings.TrimSpace(dbValPromo),
-			"no_bill_models":                    sitecfg.EffectiveNoBillModels(ctx, client, cfg),
-			"no_bill_models_file":                cfg.Site.NoBillModels,
-			"no_bill_models_db_set":             dbSetNoBill,
-			"no_bill_models_db_value":           strings.TrimSpace(dbValNoBill),
-			"api_public_base_url":               sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
-			"public_contact":                    sitecfg.EffectivePublicContactData(ctx, client),
-			"upstream_model_probe_enabled":             sitecfg.EffectiveUpstreamModelProbeEnabled(ctx, client),
-			"upstream_model_probe_interval_minutes":    sitecfg.EffectiveUpstreamModelProbeIntervalMinutes(ctx, client),
+			"brand_name":                             sitecfg.EffectiveBrandName(ctx, client),
+			"brand_icon_url":                         sitecfg.StoredBrandIconURL(ctx, client),
+			"login_captcha_enabled":                  sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
+			"login_captcha_file":                     cfg.Site.LoginCaptcha.Enabled,
+			"login_captcha_db_set":                   dbSet,
+			"login_captcha_db_value":                 strings.TrimSpace(dbVal),
+			"operator_display_name":                  sitecfg.EffectiveOperatorDisplayName(ctx, client, cfg),
+			"operator_display_file":                  strings.TrimSpace(cfg.Site.OperatorDisplayName),
+			"default_new_user_balance":               sitecfg.EffectiveDefaultNewUserBalance(ctx, client, cfg),
+			"default_new_user_balance_file":          cfg.Site.DefaultNewUserBalance,
+			"default_new_user_balance_db_set":        dbSetBal,
+			"default_new_user_balance_db_value":      strings.TrimSpace(dbValBal),
+			"register_promo_text":                    sitecfg.EffectiveRegisterPromoText(ctx, client, cfg),
+			"register_promo_text_file":               strings.TrimSpace(cfg.Site.RegisterPromoText),
+			"register_promo_text_db_set":             dbSetPromo,
+			"register_promo_text_db_value":           strings.TrimSpace(dbValPromo),
+			"no_bill_models":                         sitecfg.EffectiveNoBillModels(ctx, client, cfg),
+			"no_bill_models_file":                    cfg.Site.NoBillModels,
+			"no_bill_models_db_set":                  dbSetNoBill,
+			"no_bill_models_db_value":                strings.TrimSpace(dbValNoBill),
+			"api_public_base_url":                    sitecfg.EffectiveAPIPublicBaseURL(ctx, client),
+			"public_contact":                         sitecfg.EffectivePublicContactData(ctx, client),
+			"upstream_model_probe_enabled":           sitecfg.EffectiveUpstreamModelProbeEnabled(ctx, client),
+			"upstream_model_probe_interval_minutes":  sitecfg.EffectiveUpstreamModelProbeIntervalMinutes(ctx, client),
 			"upstream_model_probe_enabled_db_set":    probeEnSet,
 			"upstream_model_probe_enabled_db_value":  strings.TrimSpace(probeEnVal),
 			"upstream_model_probe_interval_db_set":   probeIntSet,
@@ -675,9 +1087,9 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"routing_auto_health_from_probe":         routingDefaults.AutoHealthFromProbe,
 			"routing_probe_fail_threshold":           routingDefaults.ProbeFailThreshold,
 			"routing_db_meta":                        routingMeta,
-			"gateway_ip_blacklist":                 gwIPList,
-			"gateway_ip_blacklist_db_set":          gwIPSet,
-			"gateway_ip_blacklist_db_value":        strings.TrimSpace(gwIPRaw),
+			"gateway_ip_blacklist":                   gwIPList,
+			"gateway_ip_blacklist_db_set":            gwIPSet,
+			"gateway_ip_blacklist_db_value":          strings.TrimSpace(gwIPRaw),
 		})
 	}
 }

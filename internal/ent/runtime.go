@@ -10,6 +10,7 @@ import (
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/feedback"
+	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/modelcatalogentry"
@@ -368,6 +369,48 @@ func init() {
 	feedback.DefaultUpdatedAt = feedbackDescUpdatedAt.Default.(func() time.Time)
 	// feedback.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	feedback.UpdateDefaultUpdatedAt = feedbackDescUpdatedAt.UpdateDefault.(func() time.Time)
+	globalmodelpricingFields := schema.GlobalModelPricing{}.Fields()
+	_ = globalmodelpricingFields
+	// globalmodelpricingDescModelName is the schema descriptor for model_name field.
+	globalmodelpricingDescModelName := globalmodelpricingFields[0].Descriptor()
+	// globalmodelpricing.ModelNameValidator is a validator for the "model_name" field. It is called by the builders before save.
+	globalmodelpricing.ModelNameValidator = func() func(string) error {
+		validators := globalmodelpricingDescModelName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(model_name string) error {
+			for _, fn := range fns {
+				if err := fn(model_name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// globalmodelpricingDescEnabled is the schema descriptor for enabled field.
+	globalmodelpricingDescEnabled := globalmodelpricingFields[1].Descriptor()
+	// globalmodelpricing.DefaultEnabled holds the default value on creation for the enabled field.
+	globalmodelpricing.DefaultEnabled = globalmodelpricingDescEnabled.Default.(bool)
+	// globalmodelpricingDescInputRate is the schema descriptor for input_rate field.
+	globalmodelpricingDescInputRate := globalmodelpricingFields[4].Descriptor()
+	// globalmodelpricing.DefaultInputRate holds the default value on creation for the input_rate field.
+	globalmodelpricing.DefaultInputRate = globalmodelpricingDescInputRate.Default.(float64)
+	// globalmodelpricingDescOutputRate is the schema descriptor for output_rate field.
+	globalmodelpricingDescOutputRate := globalmodelpricingFields[5].Descriptor()
+	// globalmodelpricing.DefaultOutputRate holds the default value on creation for the output_rate field.
+	globalmodelpricing.DefaultOutputRate = globalmodelpricingDescOutputRate.Default.(float64)
+	// globalmodelpricingDescCreatedAt is the schema descriptor for created_at field.
+	globalmodelpricingDescCreatedAt := globalmodelpricingFields[6].Descriptor()
+	// globalmodelpricing.DefaultCreatedAt holds the default value on creation for the created_at field.
+	globalmodelpricing.DefaultCreatedAt = globalmodelpricingDescCreatedAt.Default.(func() time.Time)
+	// globalmodelpricingDescUpdatedAt is the schema descriptor for updated_at field.
+	globalmodelpricingDescUpdatedAt := globalmodelpricingFields[7].Descriptor()
+	// globalmodelpricing.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	globalmodelpricing.DefaultUpdatedAt = globalmodelpricingDescUpdatedAt.Default.(func() time.Time)
+	// globalmodelpricing.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	globalmodelpricing.UpdateDefaultUpdatedAt = globalmodelpricingDescUpdatedAt.UpdateDefault.(func() time.Time)
 	groupFields := schema.Group{}.Fields()
 	_ = groupFields
 	// groupDescName is the schema descriptor for name field.

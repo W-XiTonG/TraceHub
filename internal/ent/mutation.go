@@ -14,6 +14,7 @@ import (
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/feedback"
+	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/modelcatalogentry"
@@ -45,6 +46,7 @@ const (
 	TypeChannel              = "Channel"
 	TypeDashboardAggregation = "DashboardAggregation"
 	TypeFeedback             = "Feedback"
+	TypeGlobalModelPricing   = "GlobalModelPricing"
 	TypeGroup                = "Group"
 	TypeGroupModelRate       = "GroupModelRate"
 	TypeModelCatalogEntry    = "ModelCatalogEntry"
@@ -8773,6 +8775,888 @@ func (m *FeedbackMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Feedback edge %s", name)
+}
+
+// GlobalModelPricingMutation represents an operation that mutates the GlobalModelPricing nodes in the graph.
+type GlobalModelPricingMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	model_name          *string
+	enabled             *bool
+	quota_in_per_1k     *int64
+	addquota_in_per_1k  *int64
+	quota_out_per_1k    *int64
+	addquota_out_per_1k *int64
+	input_rate          *float64
+	addinput_rate       *float64
+	output_rate         *float64
+	addoutput_rate      *float64
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*GlobalModelPricing, error)
+	predicates          []predicate.GlobalModelPricing
+}
+
+var _ ent.Mutation = (*GlobalModelPricingMutation)(nil)
+
+// globalmodelpricingOption allows management of the mutation configuration using functional options.
+type globalmodelpricingOption func(*GlobalModelPricingMutation)
+
+// newGlobalModelPricingMutation creates new mutation for the GlobalModelPricing entity.
+func newGlobalModelPricingMutation(c config, op Op, opts ...globalmodelpricingOption) *GlobalModelPricingMutation {
+	m := &GlobalModelPricingMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGlobalModelPricing,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withGlobalModelPricingID sets the ID field of the mutation.
+func withGlobalModelPricingID(id int) globalmodelpricingOption {
+	return func(m *GlobalModelPricingMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *GlobalModelPricing
+		)
+		m.oldValue = func(ctx context.Context) (*GlobalModelPricing, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().GlobalModelPricing.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withGlobalModelPricing sets the old GlobalModelPricing of the mutation.
+func withGlobalModelPricing(node *GlobalModelPricing) globalmodelpricingOption {
+	return func(m *GlobalModelPricingMutation) {
+		m.oldValue = func(context.Context) (*GlobalModelPricing, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GlobalModelPricingMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GlobalModelPricingMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *GlobalModelPricingMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *GlobalModelPricingMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().GlobalModelPricing.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetModelName sets the "model_name" field.
+func (m *GlobalModelPricingMutation) SetModelName(s string) {
+	m.model_name = &s
+}
+
+// ModelName returns the value of the "model_name" field in the mutation.
+func (m *GlobalModelPricingMutation) ModelName() (r string, exists bool) {
+	v := m.model_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelName returns the old "model_name" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldModelName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelName: %w", err)
+	}
+	return oldValue.ModelName, nil
+}
+
+// ResetModelName resets all changes to the "model_name" field.
+func (m *GlobalModelPricingMutation) ResetModelName() {
+	m.model_name = nil
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *GlobalModelPricingMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *GlobalModelPricingMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *GlobalModelPricingMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetQuotaInPer1k sets the "quota_in_per_1k" field.
+func (m *GlobalModelPricingMutation) SetQuotaInPer1k(i int64) {
+	m.quota_in_per_1k = &i
+	m.addquota_in_per_1k = nil
+}
+
+// QuotaInPer1k returns the value of the "quota_in_per_1k" field in the mutation.
+func (m *GlobalModelPricingMutation) QuotaInPer1k() (r int64, exists bool) {
+	v := m.quota_in_per_1k
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuotaInPer1k returns the old "quota_in_per_1k" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldQuotaInPer1k(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuotaInPer1k is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuotaInPer1k requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuotaInPer1k: %w", err)
+	}
+	return oldValue.QuotaInPer1k, nil
+}
+
+// AddQuotaInPer1k adds i to the "quota_in_per_1k" field.
+func (m *GlobalModelPricingMutation) AddQuotaInPer1k(i int64) {
+	if m.addquota_in_per_1k != nil {
+		*m.addquota_in_per_1k += i
+	} else {
+		m.addquota_in_per_1k = &i
+	}
+}
+
+// AddedQuotaInPer1k returns the value that was added to the "quota_in_per_1k" field in this mutation.
+func (m *GlobalModelPricingMutation) AddedQuotaInPer1k() (r int64, exists bool) {
+	v := m.addquota_in_per_1k
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearQuotaInPer1k clears the value of the "quota_in_per_1k" field.
+func (m *GlobalModelPricingMutation) ClearQuotaInPer1k() {
+	m.quota_in_per_1k = nil
+	m.addquota_in_per_1k = nil
+	m.clearedFields[globalmodelpricing.FieldQuotaInPer1k] = struct{}{}
+}
+
+// QuotaInPer1kCleared returns if the "quota_in_per_1k" field was cleared in this mutation.
+func (m *GlobalModelPricingMutation) QuotaInPer1kCleared() bool {
+	_, ok := m.clearedFields[globalmodelpricing.FieldQuotaInPer1k]
+	return ok
+}
+
+// ResetQuotaInPer1k resets all changes to the "quota_in_per_1k" field.
+func (m *GlobalModelPricingMutation) ResetQuotaInPer1k() {
+	m.quota_in_per_1k = nil
+	m.addquota_in_per_1k = nil
+	delete(m.clearedFields, globalmodelpricing.FieldQuotaInPer1k)
+}
+
+// SetQuotaOutPer1k sets the "quota_out_per_1k" field.
+func (m *GlobalModelPricingMutation) SetQuotaOutPer1k(i int64) {
+	m.quota_out_per_1k = &i
+	m.addquota_out_per_1k = nil
+}
+
+// QuotaOutPer1k returns the value of the "quota_out_per_1k" field in the mutation.
+func (m *GlobalModelPricingMutation) QuotaOutPer1k() (r int64, exists bool) {
+	v := m.quota_out_per_1k
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuotaOutPer1k returns the old "quota_out_per_1k" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldQuotaOutPer1k(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuotaOutPer1k is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuotaOutPer1k requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuotaOutPer1k: %w", err)
+	}
+	return oldValue.QuotaOutPer1k, nil
+}
+
+// AddQuotaOutPer1k adds i to the "quota_out_per_1k" field.
+func (m *GlobalModelPricingMutation) AddQuotaOutPer1k(i int64) {
+	if m.addquota_out_per_1k != nil {
+		*m.addquota_out_per_1k += i
+	} else {
+		m.addquota_out_per_1k = &i
+	}
+}
+
+// AddedQuotaOutPer1k returns the value that was added to the "quota_out_per_1k" field in this mutation.
+func (m *GlobalModelPricingMutation) AddedQuotaOutPer1k() (r int64, exists bool) {
+	v := m.addquota_out_per_1k
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearQuotaOutPer1k clears the value of the "quota_out_per_1k" field.
+func (m *GlobalModelPricingMutation) ClearQuotaOutPer1k() {
+	m.quota_out_per_1k = nil
+	m.addquota_out_per_1k = nil
+	m.clearedFields[globalmodelpricing.FieldQuotaOutPer1k] = struct{}{}
+}
+
+// QuotaOutPer1kCleared returns if the "quota_out_per_1k" field was cleared in this mutation.
+func (m *GlobalModelPricingMutation) QuotaOutPer1kCleared() bool {
+	_, ok := m.clearedFields[globalmodelpricing.FieldQuotaOutPer1k]
+	return ok
+}
+
+// ResetQuotaOutPer1k resets all changes to the "quota_out_per_1k" field.
+func (m *GlobalModelPricingMutation) ResetQuotaOutPer1k() {
+	m.quota_out_per_1k = nil
+	m.addquota_out_per_1k = nil
+	delete(m.clearedFields, globalmodelpricing.FieldQuotaOutPer1k)
+}
+
+// SetInputRate sets the "input_rate" field.
+func (m *GlobalModelPricingMutation) SetInputRate(f float64) {
+	m.input_rate = &f
+	m.addinput_rate = nil
+}
+
+// InputRate returns the value of the "input_rate" field in the mutation.
+func (m *GlobalModelPricingMutation) InputRate() (r float64, exists bool) {
+	v := m.input_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInputRate returns the old "input_rate" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldInputRate(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInputRate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInputRate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInputRate: %w", err)
+	}
+	return oldValue.InputRate, nil
+}
+
+// AddInputRate adds f to the "input_rate" field.
+func (m *GlobalModelPricingMutation) AddInputRate(f float64) {
+	if m.addinput_rate != nil {
+		*m.addinput_rate += f
+	} else {
+		m.addinput_rate = &f
+	}
+}
+
+// AddedInputRate returns the value that was added to the "input_rate" field in this mutation.
+func (m *GlobalModelPricingMutation) AddedInputRate() (r float64, exists bool) {
+	v := m.addinput_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetInputRate resets all changes to the "input_rate" field.
+func (m *GlobalModelPricingMutation) ResetInputRate() {
+	m.input_rate = nil
+	m.addinput_rate = nil
+}
+
+// SetOutputRate sets the "output_rate" field.
+func (m *GlobalModelPricingMutation) SetOutputRate(f float64) {
+	m.output_rate = &f
+	m.addoutput_rate = nil
+}
+
+// OutputRate returns the value of the "output_rate" field in the mutation.
+func (m *GlobalModelPricingMutation) OutputRate() (r float64, exists bool) {
+	v := m.output_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOutputRate returns the old "output_rate" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldOutputRate(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOutputRate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOutputRate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOutputRate: %w", err)
+	}
+	return oldValue.OutputRate, nil
+}
+
+// AddOutputRate adds f to the "output_rate" field.
+func (m *GlobalModelPricingMutation) AddOutputRate(f float64) {
+	if m.addoutput_rate != nil {
+		*m.addoutput_rate += f
+	} else {
+		m.addoutput_rate = &f
+	}
+}
+
+// AddedOutputRate returns the value that was added to the "output_rate" field in this mutation.
+func (m *GlobalModelPricingMutation) AddedOutputRate() (r float64, exists bool) {
+	v := m.addoutput_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOutputRate resets all changes to the "output_rate" field.
+func (m *GlobalModelPricingMutation) ResetOutputRate() {
+	m.output_rate = nil
+	m.addoutput_rate = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *GlobalModelPricingMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *GlobalModelPricingMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *GlobalModelPricingMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *GlobalModelPricingMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *GlobalModelPricingMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *GlobalModelPricingMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the GlobalModelPricingMutation builder.
+func (m *GlobalModelPricingMutation) Where(ps ...predicate.GlobalModelPricing) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GlobalModelPricingMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GlobalModelPricingMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GlobalModelPricing, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GlobalModelPricingMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GlobalModelPricingMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GlobalModelPricing).
+func (m *GlobalModelPricingMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GlobalModelPricingMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.model_name != nil {
+		fields = append(fields, globalmodelpricing.FieldModelName)
+	}
+	if m.enabled != nil {
+		fields = append(fields, globalmodelpricing.FieldEnabled)
+	}
+	if m.quota_in_per_1k != nil {
+		fields = append(fields, globalmodelpricing.FieldQuotaInPer1k)
+	}
+	if m.quota_out_per_1k != nil {
+		fields = append(fields, globalmodelpricing.FieldQuotaOutPer1k)
+	}
+	if m.input_rate != nil {
+		fields = append(fields, globalmodelpricing.FieldInputRate)
+	}
+	if m.output_rate != nil {
+		fields = append(fields, globalmodelpricing.FieldOutputRate)
+	}
+	if m.created_at != nil {
+		fields = append(fields, globalmodelpricing.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, globalmodelpricing.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GlobalModelPricingMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case globalmodelpricing.FieldModelName:
+		return m.ModelName()
+	case globalmodelpricing.FieldEnabled:
+		return m.Enabled()
+	case globalmodelpricing.FieldQuotaInPer1k:
+		return m.QuotaInPer1k()
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		return m.QuotaOutPer1k()
+	case globalmodelpricing.FieldInputRate:
+		return m.InputRate()
+	case globalmodelpricing.FieldOutputRate:
+		return m.OutputRate()
+	case globalmodelpricing.FieldCreatedAt:
+		return m.CreatedAt()
+	case globalmodelpricing.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GlobalModelPricingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case globalmodelpricing.FieldModelName:
+		return m.OldModelName(ctx)
+	case globalmodelpricing.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case globalmodelpricing.FieldQuotaInPer1k:
+		return m.OldQuotaInPer1k(ctx)
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		return m.OldQuotaOutPer1k(ctx)
+	case globalmodelpricing.FieldInputRate:
+		return m.OldInputRate(ctx)
+	case globalmodelpricing.FieldOutputRate:
+		return m.OldOutputRate(ctx)
+	case globalmodelpricing.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case globalmodelpricing.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown GlobalModelPricing field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GlobalModelPricingMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case globalmodelpricing.FieldModelName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelName(v)
+		return nil
+	case globalmodelpricing.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case globalmodelpricing.FieldQuotaInPer1k:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuotaInPer1k(v)
+		return nil
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuotaOutPer1k(v)
+		return nil
+	case globalmodelpricing.FieldInputRate:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInputRate(v)
+		return nil
+	case globalmodelpricing.FieldOutputRate:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOutputRate(v)
+		return nil
+	case globalmodelpricing.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case globalmodelpricing.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GlobalModelPricing field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GlobalModelPricingMutation) AddedFields() []string {
+	var fields []string
+	if m.addquota_in_per_1k != nil {
+		fields = append(fields, globalmodelpricing.FieldQuotaInPer1k)
+	}
+	if m.addquota_out_per_1k != nil {
+		fields = append(fields, globalmodelpricing.FieldQuotaOutPer1k)
+	}
+	if m.addinput_rate != nil {
+		fields = append(fields, globalmodelpricing.FieldInputRate)
+	}
+	if m.addoutput_rate != nil {
+		fields = append(fields, globalmodelpricing.FieldOutputRate)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GlobalModelPricingMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case globalmodelpricing.FieldQuotaInPer1k:
+		return m.AddedQuotaInPer1k()
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		return m.AddedQuotaOutPer1k()
+	case globalmodelpricing.FieldInputRate:
+		return m.AddedInputRate()
+	case globalmodelpricing.FieldOutputRate:
+		return m.AddedOutputRate()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GlobalModelPricingMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case globalmodelpricing.FieldQuotaInPer1k:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQuotaInPer1k(v)
+		return nil
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQuotaOutPer1k(v)
+		return nil
+	case globalmodelpricing.FieldInputRate:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddInputRate(v)
+		return nil
+	case globalmodelpricing.FieldOutputRate:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOutputRate(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GlobalModelPricing numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GlobalModelPricingMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(globalmodelpricing.FieldQuotaInPer1k) {
+		fields = append(fields, globalmodelpricing.FieldQuotaInPer1k)
+	}
+	if m.FieldCleared(globalmodelpricing.FieldQuotaOutPer1k) {
+		fields = append(fields, globalmodelpricing.FieldQuotaOutPer1k)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GlobalModelPricingMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GlobalModelPricingMutation) ClearField(name string) error {
+	switch name {
+	case globalmodelpricing.FieldQuotaInPer1k:
+		m.ClearQuotaInPer1k()
+		return nil
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		m.ClearQuotaOutPer1k()
+		return nil
+	}
+	return fmt.Errorf("unknown GlobalModelPricing nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GlobalModelPricingMutation) ResetField(name string) error {
+	switch name {
+	case globalmodelpricing.FieldModelName:
+		m.ResetModelName()
+		return nil
+	case globalmodelpricing.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case globalmodelpricing.FieldQuotaInPer1k:
+		m.ResetQuotaInPer1k()
+		return nil
+	case globalmodelpricing.FieldQuotaOutPer1k:
+		m.ResetQuotaOutPer1k()
+		return nil
+	case globalmodelpricing.FieldInputRate:
+		m.ResetInputRate()
+		return nil
+	case globalmodelpricing.FieldOutputRate:
+		m.ResetOutputRate()
+		return nil
+	case globalmodelpricing.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case globalmodelpricing.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown GlobalModelPricing field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GlobalModelPricingMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GlobalModelPricingMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GlobalModelPricingMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GlobalModelPricingMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GlobalModelPricingMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GlobalModelPricingMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GlobalModelPricingMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown GlobalModelPricing unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GlobalModelPricingMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown GlobalModelPricing edge %s", name)
 }
 
 // GroupMutation represents an operation that mutates the Group nodes in the graph.

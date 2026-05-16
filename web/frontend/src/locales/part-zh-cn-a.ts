@@ -166,6 +166,7 @@ export default {
     adminNavRedeem: '兑换码',
     adminNavRedeemLedger: '兑换入账',
     adminNavFeedbacks: '问题反馈',
+    adminNavBilling: '计费',
     adminNavSystem: '系统配置',
     adminConsoleTitle: '切换到用户控制台（用量、API Key、充值等）',
     adminTopSubtitle: '管理端',

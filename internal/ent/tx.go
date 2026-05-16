@@ -24,6 +24,8 @@ type Tx struct {
 	DashboardAggregation *DashboardAggregationClient
 	// Feedback is the client for interacting with the Feedback builders.
 	Feedback *FeedbackClient
+	// GlobalModelPricing is the client for interacting with the GlobalModelPricing builders.
+	GlobalModelPricing *GlobalModelPricingClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
 	// GroupModelRate is the client for interacting with the GroupModelRate builders.
@@ -179,6 +181,7 @@ func (tx *Tx) init() {
 	tx.Channel = NewChannelClient(tx.config)
 	tx.DashboardAggregation = NewDashboardAggregationClient(tx.config)
 	tx.Feedback = NewFeedbackClient(tx.config)
+	tx.GlobalModelPricing = NewGlobalModelPricingClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)
 	tx.GroupModelRate = NewGroupModelRateClient(tx.config)
 	tx.ModelCatalogEntry = NewModelCatalogEntryClient(tx.config)

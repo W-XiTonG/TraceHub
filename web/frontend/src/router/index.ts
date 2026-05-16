@@ -43,6 +43,23 @@ const router = createRouter({
         { path: 'redeem-ledger', name: 'admin-redeem-ledger', component: () => import('../views/AdminRedeemLedger.vue') },
         { path: 'feedbacks', name: 'admin-feedbacks', component: () => import('../views/AdminFeedbacks.vue') },
         {
+          path: 'billing',
+          component: () => import('../views/AdminBillingLayout.vue'),
+          redirect: { name: 'admin-billing-global-pricing' },
+          children: [
+            {
+              path: 'global-pricing',
+              name: 'admin-billing-global-pricing',
+              component: () => import('../views/AdminSettingsGlobalPricingTab.vue'),
+            },
+            {
+              path: 'no-bill',
+              name: 'admin-billing-no-bill',
+              component: () => import('../views/AdminSettingsNoBillTab.vue'),
+            },
+          ],
+        },
+        {
           path: 'settings',
           component: () => import('../views/AdminSettingsLayout.vue'),
           redirect: { name: 'admin-settings-brand' },
@@ -50,7 +67,6 @@ const router = createRouter({
             { path: 'brand', name: 'admin-settings-brand', component: () => import('../views/AdminSettingsBrandTab.vue') },
             { path: 'public', name: 'admin-settings-public', component: () => import('../views/AdminSettingsPublicTab.vue') },
             { path: 'signup', name: 'admin-settings-signup', component: () => import('../views/AdminSettingsSignupTab.vue') },
-            { path: 'no-bill', name: 'admin-settings-no-bill', component: () => import('../views/AdminSettingsNoBillTab.vue') },
             { path: 'security', name: 'admin-settings-security', component: () => import('../views/AdminSettingsSecurityTab.vue') },
             { path: 'gateway', name: 'admin-settings-gateway-ops', component: () => import('../views/AdminSettingsGatewayOpsTab.vue') },
           ],
@@ -62,6 +78,12 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
+  if (to.path === '/admin/settings/no-bill') {
+    return { name: 'admin-billing-no-bill', replace: true }
+  }
+  if (to.path === '/admin/settings/global-pricing') {
+    return { name: 'admin-billing-global-pricing', replace: true }
+  }
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }

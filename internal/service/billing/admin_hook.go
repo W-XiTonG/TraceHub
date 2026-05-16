@@ -14,3 +14,10 @@ func InvalidateNoBillModelsCacheAdmin() {
 		adminEngine.InvalidateNoBillModelsCache()
 	}
 }
+
+// InvalidateGlobalModelPricingCacheAdmin 管理端更新全局模型计价后调用。
+func InvalidateGlobalModelPricingCacheAdmin() {
+	if adminEngine != nil {
+		adminEngine.InvalidateGlobalModelPricingCache()
+	}
+}

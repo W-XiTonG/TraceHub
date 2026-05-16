@@ -488,8 +488,14 @@ POST /api/user/redeem
 | `/api/admin/groups/:id` | DELETE | 删除分组 |
 | `/api/admin/groups/:id/model-rates` | GET | 分组模型倍率列表（含 `billable`） |
 | `/api/admin/groups/:id/model-rates` | PUT | 批量更新分组模型倍率；每项可含 `billable`（默认 `true` 表示计费，`false` 表示该分组下该模型不计费） |
+| `/api/admin/global-model-pricing/workspace` | GET | 管理端合并视图：模型 ID 为 **代码内置 `DefaultQuotaPer1K` 键 ∪ 全站已启用渠道声明（`models` / `model_alias`）∪ 模型市场 visible+enabled ∪ 已有 `global_model_pricings` 行** 的并集（排序）。每项含 `code_in_per_1k` / `code_out_per_1k`（`billing.LookupPricing`）、`sources`（`builtin` / `channel` / `catalog` / `global_db` 子集）、`global`（若库中有该行则嵌入完整记录，否则省略）。**查询参数**：`q`（可选，`model_name` 子串，不区分大小写）、`page`（默认 1）、`page_size`（默认 50，最大 200）。**响应**：`items`（当前页）、`total`（筛选后条数）、`page`（越界时校正后的页码）、`page_size`、`q`（回显已应用筛选词）。 |
+| `/api/admin/global-model-pricing/export` | GET | 下载 UTF-8 CSV（带 BOM），列为 `model_name`、`code_in_per_1k`、`code_out_per_1k`、`sources`、`enabled`、`quota_in_per_1k`、`quota_out_per_1k`、`input_rate`、`output_rate`；数据为**合并工作区全量**（与 workspace 逻辑一致，不分页）。 |
+| `/api/admin/global-model-pricing/import` | POST | `multipart/form-data` 字段 **`file`**（CSV）。表头须含 `model_name`、`enabled`、`input_rate`、`output_rate`、`quota_in_per_1k`、`quota_out_per_1k`（建议直接使用导出文件；额度列可留空表示清空覆盖）；`enabled` 支持 true/false、1/0、是/否 等。最多 **5000** 条数据行；文件最大 8MB。成功返回 `{ count }` 并批量 upsert（与 PUT 语义一致）。 |
+| `/api/admin/global-model-pricing` | GET | 全站模型计价列表（独立表 `global_model_pricings`，含 `enabled=false` 行） |
+| `/api/admin/global-model-pricing` | PUT | 批量 upsert；每项：`model_name`、`enabled`、`quota_in_per_1k` / `quota_out_per_1k`（可选，缺省或更新时传空表示不覆盖代码内建基准）、`input_rate` / `output_rate`（须 >0）。**优先级**：分组 `GroupModelRate`（且 `enabled`）覆盖本表 in/out 倍率；本表覆盖代码内建 `LookupPricing` 基准（仅对已填写的 quota 维度）；无分组倍率行时本表提供默认 in/out 倍率。 |
+| `/api/admin/global-model-pricing` | DELETE | 查询参数 `model_name`：删除一条全站模型计价配置 |
 
-全局「免计费模型」由 `site.no_bill_models` 提供：配置文件 `site.no_bill_models`（YAML 字符串数组）与/或 `PUT /api/admin/config` 写入键 `site.no_bill_models`（JSON 字符串数组）；聚合展示见 `GET /api/admin/site-settings` 管理端「系统配置」页。
+全局「免计费模型」由 `site.no_bill_models` 提供：配置文件 `site.no_bill_models`（YAML 字符串数组）与/或 `PUT /api/admin/config` 写入键 `site.no_bill_models`（JSON 字符串数组）；聚合展示见 `GET /api/admin/site-settings`，管理端在「计费 → 不计费模型」中编辑。
 
 **创建分组请求示例**：
 

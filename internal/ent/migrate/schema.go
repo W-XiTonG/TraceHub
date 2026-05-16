@@ -291,6 +291,24 @@ var (
 			},
 		},
 	}
+	// GlobalModelPricingsColumns holds the columns for the "global_model_pricings" table.
+	GlobalModelPricingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "model_name", Type: field.TypeString, Unique: true, Size: 255},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "quota_in_per_1k", Type: field.TypeInt64, Nullable: true},
+		{Name: "quota_out_per_1k", Type: field.TypeInt64, Nullable: true},
+		{Name: "input_rate", Type: field.TypeFloat64, Default: 1},
+		{Name: "output_rate", Type: field.TypeFloat64, Default: 1},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// GlobalModelPricingsTable holds the schema information for the "global_model_pricings" table.
+	GlobalModelPricingsTable = &schema.Table{
+		Name:       "global_model_pricings",
+		Columns:    GlobalModelPricingsColumns,
+		PrimaryKey: []*schema.Column{GlobalModelPricingsColumns[0]},
+	}
 	// GroupsColumns holds the columns for the "groups" table.
 	GroupsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -701,6 +719,7 @@ var (
 		ChannelsTable,
 		DashboardAggregationsTable,
 		FeedbacksTable,
+		GlobalModelPricingsTable,
 		GroupsTable,
 		GroupModelRatesTable,
 		ModelCatalogEntriesTable,

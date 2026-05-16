@@ -162,6 +162,7 @@ export default {
     adminNavRedeem: 'Redeem codes',
     adminNavRedeemLedger: 'Redeem credits',
     adminNavFeedbacks: 'Feedback',
+    adminNavBilling: 'Billing',
     adminNavSystem: 'Site settings',
     adminConsoleTitle: 'Switch to user console (usage, API keys, billing)',
     adminTopSubtitle: 'Admin',

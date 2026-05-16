@@ -10,18 +10,17 @@ provide(adminSiteSettingsKey, ctx)
 const { t } = useI18n()
 const route = useRoute()
 
-onMounted(() => {
-  void ctx.refresh()
-})
-
 const settingTabs = [
   { name: 'admin-settings-brand' as const, labelKey: 'adminSystem.tabBrand' as const },
   { name: 'admin-settings-public' as const, labelKey: 'adminSystem.tabPublic' as const },
   { name: 'admin-settings-signup' as const, labelKey: 'adminSystem.tabSignup' as const },
-  { name: 'admin-settings-no-bill' as const, labelKey: 'adminSystem.tabNoBill' as const },
   { name: 'admin-settings-security' as const, labelKey: 'adminSystem.tabSecurity' as const },
   { name: 'admin-settings-gateway-ops' as const, labelKey: 'adminSystem.tabGatewayOps' as const },
 ]
+
+onMounted(() => {
+  void ctx.refresh()
+})
 </script>
 
 <template>

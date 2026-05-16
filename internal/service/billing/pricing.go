@@ -12,11 +12,11 @@ var DefaultQuotaPer1K = map[string]struct {
 	In  int64
 	Out int64
 }{
-	"gpt-4o":                     {300, 1200},
-	"gpt-4o-mini":                {50, 200},
-	"gpt-4-turbo":                {500, 1500},
-	"gpt-4":                      {600, 1800},
-	"gpt-3.5-turbo":              {50, 150},
+	"gpt-4o":        {300, 1200},
+	"gpt-4o-mini":   {50, 200},
+	"gpt-4-turbo":   {500, 1500},
+	"gpt-4":         {600, 1800},
+	"gpt-3.5-turbo": {50, 150},
 	// GPT-5 系列：较长键须保留以便 longestPrefixPricingKey 将 gpt-5.5 与 gpt-5 区分（勿仅配 gpt-5）。
 	// gpt-5.5：按两路上游「每百万美元」最贵一档 max($4,$5)/max($30,$32)≈$5/$32，额度与成本同比例；数值整体 ×1.05 作约 5% 毛利（分组/模型倍率仍为乘子）。
 	"gpt-5.5":                    {525, 3360},
@@ -142,6 +142,18 @@ func CandidateGroupModelRateNames(model string) []string {
 	add(stripOpenAIModelDateSuffix(m))
 	if k := ResolvePricingTableKey(model); k != "" {
 		add(k)
+	}
+	return out
+}
+
+// BuiltinPricingModelIDSet 返回 DefaultQuotaPer1K 中的键（trim 后），供管理端合并列表等使用。
+func BuiltinPricingModelIDSet() map[string]struct{} {
+	out := make(map[string]struct{}, len(DefaultQuotaPer1K))
+	for k := range DefaultQuotaPer1K {
+		k = strings.TrimSpace(k)
+		if k != "" {
+			out[k] = struct{}{}
+		}
 	}
 	return out
 }

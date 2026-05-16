@@ -195,16 +195,16 @@ func DistinctDeclaredModelCountSiteWide(ctx context.Context, client *ent.Client)
 
 // ConsoleModel 控制台合并列表：网关渠道可调度模型 + 模型市场中对用户可见的目录条目。
 type ConsoleModel struct {
-	ID                    string `json:"id"`
-	Object                string `json:"object"`
-	Created               int64  `json:"created"`
-	OwnedBy               string `json:"owned_by"`
-	DisplayName           string `json:"display_name,omitempty"`
-	InGateway             bool   `json:"in_gateway"`
-	InCatalog             bool   `json:"in_catalog"`
-	UpstreamListStatus    string `json:"upstream_list_status,omitempty"`    // listed|not_listed|mixed
-	UpstreamListCheckedAt string `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
-	Labels                []string `json:"labels,omitempty"`                 // 类型标签（启发式 + 可选目录 metadata）
+	ID                    string   `json:"id"`
+	Object                string   `json:"object"`
+	Created               int64    `json:"created"`
+	OwnedBy               string   `json:"owned_by"`
+	DisplayName           string   `json:"display_name,omitempty"`
+	InGateway             bool     `json:"in_gateway"`
+	InCatalog             bool     `json:"in_catalog"`
+	UpstreamListStatus    string   `json:"upstream_list_status,omitempty"`     // listed|not_listed|mixed
+	UpstreamListCheckedAt string   `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
+	Labels                []string `json:"labels,omitempty"`                   // 类型标签（启发式 + 可选目录 metadata）
 }
 
 // ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关侧仍以 ListForGroup 为准。
@@ -298,4 +298,176 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]
 		out = append(out, *byID[id])
 	}
 	return out, nil
+}
+
+// GlobalPricingWorkspaceItem 管理端「全局计价」合并视图的一行：含代码基准、来源标签与可选的全局库记录。
+type GlobalPricingWorkspaceItem struct {
+	ModelName    string                  `json:"model_name"`
+	CodeInPer1k  int64                   `json:"code_in_per_1k"`
+	CodeOutPer1k int64                   `json:"code_out_per_1k"`
+	Sources      []string                `json:"sources"`
+	Global       *ent.GlobalModelPricing `json:"global,omitempty"`
+}
+
+// EnabledChannelDeclaredModelKeys 返回全站「已启用」渠道在 models 与 model_alias 中声明的键（trim、去重）。
+func EnabledChannelDeclaredModelKeys(ctx context.Context, client *ent.Client) (map[string]struct{}, error) {
+	channels, err := client.Channel.Query().Where(channel.Enabled(true)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	all, _ := collectChannelModelKeys(channels)
+	return all, nil
+}
+
+// VisibleCatalogModelIDs 返回模型市场中 visible 且 enabled 条目的 model_id 集合。
+func VisibleCatalogModelIDs(ctx context.Context, client *ent.Client) (map[string]struct{}, error) {
+	rows, err := client.ModelCatalogEntry.Query().
+		Where(
+			modelcatalogentry.Visible(true),
+			modelcatalogentry.Enabled(true),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		id := strings.TrimSpace(row.ModelID)
+		if id != "" {
+			out[id] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
+func buildGlobalPricingWorkspaceList(ctx context.Context, client *ent.Client) ([]GlobalPricingWorkspaceItem, error) {
+	builtin := billing.BuiltinPricingModelIDSet()
+	ch, err := EnabledChannelDeclaredModelKeys(ctx, client)
+	if err != nil {
+		return nil, err
+	}
+	cat, err := VisibleCatalogModelIDs(ctx, client)
+	if err != nil {
+		return nil, err
+	}
+	gRows, err := client.GlobalModelPricing.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	byName := make(map[string]*ent.GlobalModelPricing, len(gRows))
+	for _, row := range gRows {
+		n := strings.TrimSpace(row.ModelName)
+		if n != "" {
+			byName[n] = row
+		}
+	}
+	set := make(map[string]struct{})
+	for k := range builtin {
+		set[k] = struct{}{}
+	}
+	for k := range ch {
+		set[k] = struct{}{}
+	}
+	for k := range cat {
+		set[k] = struct{}{}
+	}
+	for n := range byName {
+		set[n] = struct{}{}
+	}
+	ids := make([]string, 0, len(set))
+	for id := range set {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]GlobalPricingWorkspaceItem, 0, len(ids))
+	for _, name := range ids {
+		cin, cout := billing.LookupPricing(name)
+		src := make([]string, 0, 4)
+		if _, ok := builtin[name]; ok {
+			src = append(src, "builtin")
+		}
+		if _, ok := ch[name]; ok {
+			src = append(src, "channel")
+		}
+		if _, ok := cat[name]; ok {
+			src = append(src, "catalog")
+		}
+		if _, ok := byName[name]; ok {
+			src = append(src, "global_db")
+		}
+		sort.Strings(src)
+		item := GlobalPricingWorkspaceItem{
+			ModelName:    name,
+			CodeInPer1k:  cin,
+			CodeOutPer1k: cout,
+			Sources:      src,
+		}
+		if g, ok := byName[name]; ok {
+			item.Global = g
+		}
+		out = append(out, item)
+	}
+	return out, nil
+}
+
+func filterWorkspaceByModelQuery(all []GlobalPricingWorkspaceItem, q string) []GlobalPricingWorkspaceItem {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return all
+	}
+	ql := strings.ToLower(q)
+	out := make([]GlobalPricingWorkspaceItem, 0)
+	for _, it := range all {
+		if strings.Contains(strings.ToLower(it.ModelName), ql) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+func pageGlobalPricingWorkspace(filtered []GlobalPricingWorkspaceItem, page, pageSize int) (items []GlobalPricingWorkspaceItem, total int, pageOut int) {
+	total = len(filtered)
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
+	pageOut = page
+	if pageOut < 1 {
+		pageOut = 1
+	}
+	maxPage := 1
+	if total > 0 {
+		maxPage = (total + pageSize - 1) / pageSize
+	}
+	if pageOut > maxPage {
+		pageOut = maxPage
+	}
+	offset := (pageOut - 1) * pageSize
+	if offset >= len(filtered) {
+		return []GlobalPricingWorkspaceItem{}, total, pageOut
+	}
+	end := offset + pageSize
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return append([]GlobalPricingWorkspaceItem(nil), filtered[offset:end]...), total, pageOut
+}
+
+// GlobalModelPricingWorkspacePage 在合并全表上做 model_name 子串筛选（不区分大小写）与分页。
+// 返回当前页数据、筛选后总数、校正后的页码（防止越界）。
+func GlobalModelPricingWorkspacePage(ctx context.Context, client *ent.Client, q string, page, pageSize int) ([]GlobalPricingWorkspaceItem, int, int, error) {
+	all, err := buildGlobalPricingWorkspaceList(ctx, client)
+	if err != nil {
+		return nil, 0, page, err
+	}
+	filtered := filterWorkspaceByModelQuery(all, q)
+	items, total, pageOut := pageGlobalPricingWorkspace(filtered, page, pageSize)
+	return items, total, pageOut, nil
+}
+
+// AllGlobalPricingWorkspaceItems 返回合并后的全量工作区行（无筛选分页），供 CSV 导出等使用。
+func AllGlobalPricingWorkspaceItems(ctx context.Context, client *ent.Client) ([]GlobalPricingWorkspaceItem, error) {
+	return buildGlobalPricingWorkspaceList(ctx, client)
 }

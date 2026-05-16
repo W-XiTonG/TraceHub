@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"tracehub/internal/ent"
+	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/pkg/config"
@@ -25,25 +26,81 @@ type Engine struct {
 	noBillMu      sync.Mutex
 	noBillList    []string
 	noBillExpires time.Time
+
+	globalPricingMu      sync.Mutex
+	globalPricingByModel map[string]*ent.GlobalModelPricing
+	globalPricingExpires time.Time
 }
 
 const noBillListCacheTTL = 60 * time.Second
 
-func (e *Engine) multipliers(ctx context.Context, u *ent.User, model string) (groupMul, userMul, inRate, outRate float64, err error) {
-	groupMul = 1
-	userMul = 1
-	inRate, outRate = 1, 1
-	if u != nil {
-		userMul = u.RateMultiplier
-		if u.Edges.Group != nil {
-			groupMul = u.Edges.Group.RateMultiplier
-			if gmr := e.lookupGroupModelRateRow(ctx, u.Edges.Group.ID, model); gmr != nil && gmr.Enabled {
-				inRate = gmr.InputRate
-				outRate = gmr.OutputRate
-			}
+const globalModelPricingCacheTTL = 60 * time.Second
+
+func (e *Engine) groupUserMultipliers(u *ent.User) (groupMul, userMul float64) {
+	groupMul, userMul = 1, 1
+	if u == nil {
+		return
+	}
+	userMul = u.RateMultiplier
+	if u.Edges.Group != nil {
+		groupMul = u.Edges.Group.RateMultiplier
+	}
+	return
+}
+
+func (e *Engine) cachedGlobalPricingByModel(ctx context.Context) map[string]*ent.GlobalModelPricing {
+	if e.Client == nil {
+		return nil
+	}
+	now := time.Now()
+	e.globalPricingMu.Lock()
+	if now.Before(e.globalPricingExpires) && e.globalPricingByModel != nil {
+		m := e.globalPricingByModel
+		e.globalPricingMu.Unlock()
+		return m
+	}
+	e.globalPricingMu.Unlock()
+
+	list, err := e.Client.GlobalModelPricing.Query().Where(globalmodelpricing.EnabledEQ(true)).All(ctx)
+	if err != nil {
+		e.globalPricingMu.Lock()
+		prev := e.globalPricingByModel
+		e.globalPricingMu.Unlock()
+		if prev != nil {
+			return prev
+		}
+		return nil
+	}
+	byName := make(map[string]*ent.GlobalModelPricing, len(list))
+	for _, row := range list {
+		byName[row.ModelName] = row
+	}
+	e.globalPricingMu.Lock()
+	e.globalPricingByModel = byName
+	e.globalPricingExpires = now.Add(globalModelPricingCacheTTL)
+	e.globalPricingMu.Unlock()
+	return byName
+}
+
+func (e *Engine) lookupGlobalModelPricingRow(ctx context.Context, model string) *ent.GlobalModelPricing {
+	byName := e.cachedGlobalPricingByModel(ctx)
+	if len(byName) == 0 {
+		return nil
+	}
+	for _, name := range CandidateGroupModelRateNames(model) {
+		if row, ok := byName[name]; ok {
+			return row
 		}
 	}
-	return groupMul, userMul, inRate, outRate, nil
+	return nil
+}
+
+// InvalidateGlobalModelPricingCache 管理端更新全局模型计价后调用。
+func (e *Engine) InvalidateGlobalModelPricingCache() {
+	e.globalPricingMu.Lock()
+	e.globalPricingByModel = nil
+	e.globalPricingExpires = time.Time{}
+	e.globalPricingMu.Unlock()
 }
 
 func (e *Engine) lookupGroupModelRateRow(ctx context.Context, groupID int, model string) *ent.GroupModelRate {
@@ -151,7 +208,7 @@ func (e *Engine) ChargeWithPromptCache(ctx context.Context, u *ent.User, model s
 	return e.chargeTokens(ctx, u, model, promptTokens, completionTokens, cachedPromptTokens)
 }
 
-// ModelBillRates 缓存一次 LookupPricing + multipliers（含 GroupModelRate 查询）结果；
+// ModelBillRates 缓存一次 LookupPricing、全局/分组倍率与 billable 判定结果；
 // 同一次请求内预检余额与实扣可复用，避免对同一 (用户, model) 重复打库。
 type ModelBillRates struct {
 	groupMul, userMul, inRate, outRate float64
@@ -160,11 +217,29 @@ type ModelBillRates struct {
 }
 
 // ModelBillRates 拉取该用户在指定 logical model 下的计价因子（与 Charge 一致）。
+// 基准价：代码内建 LookupPricing，可被全局 GlobalModelPricing 的非空 quota 覆盖（分组暂无基准价字段）。
+// in/out 倍率：分组 GroupModelRate（enabled）优先；否则全局 GlobalModelPricing（enabled）；否则 1。
 func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string) (ModelBillRates, error) {
 	in1k, out1k := LookupPricing(model)
-	gm, um, ir, or, err := e.multipliers(ctx, u, model)
-	if err != nil {
-		return ModelBillRates{}, err
+	glo := e.lookupGlobalModelPricingRow(ctx, model)
+	if glo != nil && glo.Enabled {
+		if glo.QuotaInPer1k != nil {
+			in1k = *glo.QuotaInPer1k
+		}
+		if glo.QuotaOutPer1k != nil {
+			out1k = *glo.QuotaOutPer1k
+		}
+	}
+	gm, um := e.groupUserMultipliers(u)
+	ir, or := 1.0, 1.0
+	if u != nil && u.Edges.Group != nil {
+		if gmr := e.lookupGroupModelRateRow(ctx, u.Edges.Group.ID, model); gmr != nil && gmr.Enabled {
+			ir, or = gmr.InputRate, gmr.OutputRate
+		} else if glo != nil && glo.Enabled {
+			ir, or = glo.InputRate, glo.OutputRate
+		}
+	} else if glo != nil && glo.Enabled {
+		ir, or = glo.InputRate, glo.OutputRate
 	}
 	return ModelBillRates{
 		groupMul: gm, userMul: um, inRate: ir, outRate: or,
