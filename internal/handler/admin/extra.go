@@ -627,117 +627,161 @@ func ExportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
+// readGlobalPricingUpload reads multipart field "file" (max 8MB). errMsg is non-empty on failure.
+func readGlobalPricingUpload(c *gin.Context) ([]byte, string) {
+	fh, err := c.FormFile("file")
+	if err != nil {
+		return nil, "请上传 file 字段（CSV）"
+	}
+	if fh.Size > 8<<20 {
+		return nil, "文件过大（最大 8MB）"
+	}
+	src, err := fh.Open()
+	if err != nil {
+		return nil, "无法读取文件"
+	}
+	defer src.Close()
+	body, err := io.ReadAll(src)
+	if err != nil {
+		return nil, "读取失败"
+	}
+	return body, ""
+}
+
+// parseGlobalPricingCSVBytes parses CSV (UTF-8 BOM optional). errMsg is non-empty on validation/parse failure (Chinese).
+func parseGlobalPricingCSVBytes(body []byte) ([]globalPricingUpsertItem, string) {
+	if len(body) >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF {
+		body = body[3:]
+	}
+	r := csv.NewReader(bytes.NewReader(body))
+	r.FieldsPerRecord = -1
+	r.LazyQuotes = true
+	header, err := r.Read()
+	if err != nil {
+		return nil, "CSV 表头无效"
+	}
+	col := parseGlobalPricingCSVHeaderIndex(header)
+	reqCols := []string{"model_name", "enabled", "input_rate", "output_rate", "quota_in_per_1k", "quota_out_per_1k"}
+	for _, k := range reqCols {
+		if _, ok := col[k]; !ok {
+			return nil, "缺少列 " + k + "（请使用「导出」生成的表头；额度列可留空表示清空覆盖）"
+		}
+	}
+	var items []globalPricingUpsertItem
+	line := 1
+	for {
+		rec, err := r.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Sprintf("第 %d 行解析失败", line+1)
+		}
+		line++
+		if line > 5001 {
+			return nil, "超过 5000 行数据上限"
+		}
+		get := func(key string) string {
+			i, ok := col[key]
+			if !ok || i >= len(rec) {
+				return ""
+			}
+			return rec[i]
+		}
+		name := strings.TrimSpace(get("model_name"))
+		if name == "" {
+			continue
+		}
+		en, err := parseGlobalPricingEnabledCell(get("enabled"))
+		if err != nil {
+			return nil, fmt.Sprintf("第 %d 行: %v", line, err)
+		}
+		inS := strings.TrimSpace(get("input_rate"))
+		outS := strings.TrimSpace(get("output_rate"))
+		inR, err := strconv.ParseFloat(inS, 64)
+		if err != nil {
+			return nil, fmt.Sprintf("第 %d 行 input_rate 无效", line)
+		}
+		outR, err := strconv.ParseFloat(outS, 64)
+		if err != nil {
+			return nil, fmt.Sprintf("第 %d 行 output_rate 无效", line)
+		}
+		var qIn, qOut *int64
+		vIn, err := parseGlobalPricingOptionalInt64Cell(get("quota_in_per_1k"))
+		if err != nil {
+			return nil, fmt.Sprintf("第 %d 行 quota_in_per_1k: %v", line, err)
+		}
+		qIn = vIn
+		vOut, err := parseGlobalPricingOptionalInt64Cell(get("quota_out_per_1k"))
+		if err != nil {
+			return nil, fmt.Sprintf("第 %d 行 quota_out_per_1k: %v", line, err)
+		}
+		qOut = vOut
+		items = append(items, globalPricingUpsertItem{
+			ModelName:     name,
+			Enabled:       en,
+			QuotaInPer1k:  qIn,
+			QuotaOutPer1k: qOut,
+			InputRate:     inR,
+			OutputRate:    outR,
+		})
+	}
+	if len(items) == 0 {
+		return nil, "没有有效数据行"
+	}
+	return items, ""
+}
+
+// PreviewGlobalModelPricingCSV POST /api/admin/global-model-pricing/import/preview — 仅解析校验，不落库。
+func PreviewGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_ = client
+		body, errMsg := readGlobalPricingUpload(c)
+		if errMsg != "" {
+			httpx.BadRequest(c, errMsg)
+			return
+		}
+		items, perr := parseGlobalPricingCSVBytes(body)
+		if perr != "" {
+			httpx.BadRequest(c, perr)
+			return
+		}
+		type itemOut struct {
+			ModelName     string  `json:"model_name"`
+			Enabled       bool    `json:"enabled"`
+			InputRate     float64 `json:"input_rate"`
+			OutputRate    float64 `json:"output_rate"`
+			QuotaInPer1k  *int64  `json:"quota_in_per_1k,omitempty"`
+			QuotaOutPer1k *int64  `json:"quota_out_per_1k,omitempty"`
+		}
+		out := make([]itemOut, len(items))
+		for i := range items {
+			it := items[i]
+			out[i] = itemOut{
+				ModelName:     it.ModelName,
+				Enabled:       it.Enabled,
+				InputRate:     it.InputRate,
+				OutputRate:    it.OutputRate,
+				QuotaInPer1k:  it.QuotaInPer1k,
+				QuotaOutPer1k: it.QuotaOutPer1k,
+			}
+		}
+		httpx.OK(c, gin.H{"count": len(out), "items": out})
+	}
+}
+
 // ImportGlobalModelPricingCSV POST /api/admin/global-model-pricing/import — multipart 字段 `file`，UTF-8 CSV；表头须含 model_name、enabled、input_rate、output_rate、quota_in_per_1k、quota_out_per_1k（额度列可留空表示清空覆盖）。最多 5000 行数据。
 func ImportGlobalModelPricingCSV(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
-		fh, err := c.FormFile("file")
-		if err != nil {
-			httpx.BadRequest(c, "请上传 file 字段（CSV）")
+		body, errMsg := readGlobalPricingUpload(c)
+		if errMsg != "" {
+			httpx.BadRequest(c, errMsg)
 			return
 		}
-		if fh.Size > 8<<20 {
-			httpx.BadRequest(c, "文件过大（最大 8MB）")
-			return
-		}
-		src, err := fh.Open()
-		if err != nil {
-			httpx.BadRequest(c, "无法读取文件")
-			return
-		}
-		defer src.Close()
-		body, err := io.ReadAll(src)
-		if err != nil {
-			httpx.ServerError(c, "读取失败")
-			return
-		}
-		if len(body) >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF {
-			body = body[3:]
-		}
-		r := csv.NewReader(bytes.NewReader(body))
-		r.FieldsPerRecord = -1
-		r.LazyQuotes = true
-		header, err := r.Read()
-		if err != nil {
-			httpx.BadRequest(c, "CSV 表头无效")
-			return
-		}
-		col := parseGlobalPricingCSVHeaderIndex(header)
-		reqCols := []string{"model_name", "enabled", "input_rate", "output_rate", "quota_in_per_1k", "quota_out_per_1k"}
-		for _, k := range reqCols {
-			if _, ok := col[k]; !ok {
-				httpx.BadRequest(c, "缺少列 "+k+"（请使用「导出」生成的表头；额度列可留空表示清空覆盖）")
-				return
-			}
-		}
-		var items []globalPricingUpsertItem
-		line := 1
-		for {
-			rec, err := r.Read()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			if err != nil {
-				httpx.BadRequest(c, fmt.Sprintf("第 %d 行解析失败", line+1))
-				return
-			}
-			line++
-			if line > 5001 {
-				httpx.BadRequest(c, "超过 5000 行数据上限")
-				return
-			}
-			get := func(key string) string {
-				i, ok := col[key]
-				if !ok || i >= len(rec) {
-					return ""
-				}
-				return rec[i]
-			}
-			name := strings.TrimSpace(get("model_name"))
-			if name == "" {
-				continue
-			}
-			en, err := parseGlobalPricingEnabledCell(get("enabled"))
-			if err != nil {
-				httpx.BadRequest(c, fmt.Sprintf("第 %d 行: %v", line, err))
-				return
-			}
-			inS := strings.TrimSpace(get("input_rate"))
-			outS := strings.TrimSpace(get("output_rate"))
-			inR, err := strconv.ParseFloat(inS, 64)
-			if err != nil {
-				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 input_rate 无效", line))
-				return
-			}
-			outR, err := strconv.ParseFloat(outS, 64)
-			if err != nil {
-				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 output_rate 无效", line))
-				return
-			}
-			var qIn, qOut *int64
-			vIn, err := parseGlobalPricingOptionalInt64Cell(get("quota_in_per_1k"))
-			if err != nil {
-				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 quota_in_per_1k: %v", line, err))
-				return
-			}
-			qIn = vIn
-			vOut, err := parseGlobalPricingOptionalInt64Cell(get("quota_out_per_1k"))
-			if err != nil {
-				httpx.BadRequest(c, fmt.Sprintf("第 %d 行 quota_out_per_1k: %v", line, err))
-				return
-			}
-			qOut = vOut
-			items = append(items, globalPricingUpsertItem{
-				ModelName:     name,
-				Enabled:       en,
-				QuotaInPer1k:  qIn,
-				QuotaOutPer1k: qOut,
-				InputRate:     inR,
-				OutputRate:    outR,
-			})
-		}
-		if len(items) == 0 {
-			httpx.BadRequest(c, "没有有效数据行")
+		items, perr := parseGlobalPricingCSVBytes(body)
+		if perr != "" {
+			httpx.BadRequest(c, perr)
 			return
 		}
 		ctx := c.Request.Context()

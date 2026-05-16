@@ -279,6 +279,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.PUT("/groups/:id/model-rates", adminhandler.PutGroupModelRates(opt.Client))
 	a.GET("/global-model-pricing/workspace", adminhandler.GetGlobalModelPricingWorkspace(opt.Client))
 	a.GET("/global-model-pricing/export", adminhandler.ExportGlobalModelPricingCSV(opt.Client))
+	a.POST("/global-model-pricing/import/preview", adminhandler.PreviewGlobalModelPricingCSV(opt.Client))
 	a.POST("/global-model-pricing/import", adminhandler.ImportGlobalModelPricingCSV(opt.Client))
 	a.GET("/global-model-pricing", adminhandler.ListGlobalModelPricing(opt.Client))
 	a.PUT("/global-model-pricing", adminhandler.PutGlobalModelPricing(opt.Client))

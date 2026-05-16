@@ -1319,6 +1319,35 @@
   min-height: 2.75rem;
 }
 
+/* 全局计价 CSV 导入预览：表壳与表头随 --th-user-table-* / --th-text-muted；不设 overflow:hidden 以免破坏 thead sticky */
+.th-import-preview-table {
+  border: 1px solid var(--th-user-table-border);
+  border-radius: 0.5rem;
+}
+
+.th-import-preview-table tbody tr + tr td {
+  border-top: 1px solid var(--th-user-table-line);
+}
+
+.th-import-preview-table thead .th-import-preview-th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--th-user-table-line);
+  background: var(--th-user-table-head-bg);
+  color: var(--th-text-muted);
+  font-weight: 500;
+}
+
+/* 与反馈弹窗默认主按钮高度区分：底部栏用紧凑尺寸 */
+.th-import-preview-modal.th-feedback-modal .th-import-preview-footer .th-btn-primary-flat {
+  min-height: 2.25rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
 .th-feedback-modal__label {
   color: var(--th-text-muted);
 }

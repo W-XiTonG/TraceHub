@@ -55,6 +55,9 @@ const pageSaving = ref(false)
 const batchSaving = ref(false)
 const exporting = ref(false)
 const importing = ref(false)
+const importPreviewOpen = ref(false)
+const importPreviewRows = ref<DraftRow[]>([])
+const importPreviewSubmitting = ref(false)
 const csvFileInput = ref<HTMLInputElement | null>(null)
 const flashMsg = ref('')
 const flashIsError = ref(false)
@@ -173,6 +176,16 @@ type ApiPricingItem = {
   output_rate: number
 }
 
+/** 导入预览接口返回的单行（与 PUT 项字段一致） */
+type ApiImportPreviewRow = {
+  model_name: string
+  enabled: boolean
+  quota_in_per_1k?: number | null
+  quota_out_per_1k?: number | null
+  input_rate: number
+  output_rate: number
+}
+
 /** 校验单行并构造 PUT 项；失败时返回错误文案（已本地化键路径由调用方包 t） */
 function validateRowToItem(r: DraftRow): { ok: true; item: ApiPricingItem } | { ok: false; message: string } {
   const name = r.model_name.trim()
@@ -218,6 +231,68 @@ function draftsToPersistItems(drafts: DraftRow[]): ApiPricingItem[] | null {
   return items
 }
 
+function apiImportItemToDraft(it: ApiImportPreviewRow): DraftRow {
+  return {
+    model_name: it.model_name,
+    isCustom: false,
+    locked: false,
+    enabled: it.enabled,
+    quota_in_per_1k:
+      it.quota_in_per_1k != null && it.quota_in_per_1k !== undefined ? String(it.quota_in_per_1k) : '',
+    quota_out_per_1k:
+      it.quota_out_per_1k != null && it.quota_out_per_1k !== undefined ? String(it.quota_out_per_1k) : '',
+    input_rate: it.input_rate,
+    output_rate: it.output_rate,
+  }
+}
+
+/** 导入预览确认：跳过模型名为空的行；其余须通过 validateRowToItem */
+function importPreviewDraftsToItems(drafts: DraftRow[]): ApiPricingItem[] | null {
+  const items: ApiPricingItem[] = []
+  for (const r of drafts) {
+    if (!r.model_name.trim()) continue
+    const v = validateRowToItem(r)
+    if (!v.ok) {
+      flashMsg.value = v.message
+      flashIsError.value = true
+      return null
+    }
+    items.push(v.item)
+  }
+  if (items.length === 0) {
+    flashMsg.value = t('adminGlobalPricing.importPreviewNoRows')
+    flashIsError.value = true
+    return null
+  }
+  return items
+}
+
+function closeImportPreview() {
+  importPreviewOpen.value = false
+  importPreviewRows.value = []
+}
+
+function removeImportPreviewRow(idx: number) {
+  importPreviewRows.value.splice(idx, 1)
+}
+
+async function confirmImportPreview() {
+  clearFlash()
+  const items = importPreviewDraftsToItems(importPreviewRows.value)
+  if (items === null) return
+  importPreviewSubmitting.value = true
+  try {
+    await putPricingItems(items)
+    await load()
+    closeImportPreview()
+    flashSuccess(t('adminGlobalPricing.imported', { count: items.length }))
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    importPreviewSubmitting.value = false
+  }
+}
+
 async function putPricingItems(items: ApiPricingItem[]): Promise<void> {
   const { data } = await http.put<Envelope<unknown>>('/api/admin/global-model-pricing', { items })
   if (data.code !== 0) throw new Error(data.message || 'save')
@@ -260,7 +335,8 @@ const anyListSaving = computed(
     savingFull.value ||
     busyResetPage.value ||
     busyResetSelected.value ||
-    busyResetFull.value,
+    busyResetFull.value ||
+    importPreviewSubmitting.value,
 )
 
 const selectAllInput = ref<HTMLInputElement | null>(null)
@@ -720,11 +796,19 @@ async function onCsvFileChange(ev: Event) {
   try {
     const fd = new FormData()
     fd.append('file', file)
-    const { data } = await http.post<Envelope<{ count: number }>>('/api/admin/global-model-pricing/import', fd)
-    if (data.code !== 0) throw new Error(data.message || 'import')
-    const n = typeof data.data?.count === 'number' ? data.data.count : 0
-    await load()
-    flashSuccess(t('adminGlobalPricing.imported', { count: n }))
+    const { data } = await http.post<Envelope<{ count: number; items: ApiImportPreviewRow[] }>>(
+      '/api/admin/global-model-pricing/import/preview',
+      fd,
+    )
+    if (data.code !== 0) throw new Error(data.message || 'preview')
+    const raw = data.data?.items
+    if (!Array.isArray(raw) || raw.length === 0) {
+      flashMsg.value = t('adminGlobalPricing.importPreviewEmpty')
+      flashIsError.value = true
+      return
+    }
+    importPreviewRows.value = raw.map(apiImportItemToDraft)
+    importPreviewOpen.value = true
   } catch (e: unknown) {
     flashError(e)
   } finally {
@@ -843,7 +927,7 @@ async function onCsvFileChange(ev: Event) {
                 <button
                   type="button"
                   class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="exporting || importing || busy"
+                  :disabled="exporting || importing || importPreviewSubmitting || importPreviewOpen || busy"
                   @click="exportCsv"
                 >
                   {{ exporting ? t('common.submitting') : t('adminGlobalPricing.exportCsv') }}
@@ -851,7 +935,7 @@ async function onCsvFileChange(ev: Event) {
                 <button
                   type="button"
                   class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="exporting || importing || anyListSaving || busy"
+                  :disabled="exporting || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
                   @click="triggerCsvImport"
                 >
                   {{ importing ? t('common.submitting') : t('adminGlobalPricing.importCsv') }}
@@ -1181,6 +1265,145 @@ async function onCsvFileChange(ev: Event) {
         aria-live="polite"
       >
         {{ flashMsg }}
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="importPreviewOpen"
+        class="th-feedback-backdrop fixed inset-0 z-[10045] flex items-center justify-center p-4 sm:p-6"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('adminGlobalPricing.importPreviewTitle')"
+        @click.self="closeImportPreview"
+      >
+        <div
+          class="th-feedback-modal th-import-preview-modal thin-scrollbar flex max-h-[min(85vh,52rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl"
+          @click.stop
+        >
+          <div class="th-feedback-modal__head shrink-0 px-5 py-4">
+            <h4 class="th-feedback-modal__title text-base font-semibold">{{ t('adminGlobalPricing.importPreviewTitle') }}</h4>
+            <p class="th-feedback-modal__intro mt-1.5 text-xs leading-relaxed">{{ t('adminGlobalPricing.importPreviewIntro') }}</p>
+            <p class="th-feedback-modal__muted mt-1 text-[11px]">
+              {{ t('adminGlobalPricing.importPreviewCount', { n: importPreviewRows.length }) }}
+            </p>
+          </div>
+          <!-- border-collapse 会破坏表头 sticky；表头样式见 .th-import-preview-th -->
+          <div class="thin-scrollbar min-h-0 flex-1 overflow-auto px-3 pb-3 pt-0 sm:px-5 sm:pb-5">
+            <div class="th-import-preview-table">
+              <table class="w-full min-w-[640px] border-separate border-spacing-0 text-left text-xs">
+                <thead>
+                  <tr>
+                    <th class="th-import-preview-th px-2 py-2.5 text-left">
+                      {{ t('adminGlobalPricing.importPreviewModelCol') }}
+                    </th>
+                    <th class="th-import-preview-th px-2 py-2.5 text-left">
+                      {{ t('adminGlobalPricing.thQuotaIn') }}
+                    </th>
+                    <th class="th-import-preview-th px-2 py-2.5 text-left">
+                      {{ t('adminGlobalPricing.thQuotaOut') }}
+                    </th>
+                    <th class="th-import-preview-th px-2 py-2.5 text-left">
+                      {{ t('adminGroups.thIn') }}
+                    </th>
+                    <th class="th-import-preview-th px-2 py-2.5 text-left">
+                      {{ t('adminGroups.thOut') }}
+                    </th>
+                    <th class="th-import-preview-th px-2 py-2.5 text-center">
+                      {{ t('adminGroups.thEn') }}
+                    </th>
+                    <th class="th-import-preview-th w-20 px-1 py-2.5 text-right">
+                      {{ t('adminGlobalPricing.thActions') }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr v-for="(r, idx) in importPreviewRows" :key="`ipr-${idx}-${r.model_name}`">
+                  <td class="px-2 py-2 align-middle">
+                    <input
+                      v-model="r.model_name"
+                      type="text"
+                      class="th-input h-9 min-w-[10rem] max-w-[20rem] py-1 font-mono text-xs leading-normal"
+                      autocomplete="off"
+                      spellcheck="false"
+                      :placeholder="t('adminGroups.modelIdPh')"
+                    />
+                  </td>
+                  <td class="px-2 py-2 align-middle">
+                    <input
+                      v-model="r.quota_in_per_1k"
+                      type="text"
+                      inputmode="numeric"
+                      class="th-input h-9 w-24 py-1 font-mono text-xs leading-normal"
+                      :placeholder="t('adminGlobalPricing.phOptional')"
+                      autocomplete="off"
+                    />
+                  </td>
+                  <td class="px-2 py-2 align-middle">
+                    <input
+                      v-model="r.quota_out_per_1k"
+                      type="text"
+                      inputmode="numeric"
+                      class="th-input h-9 w-24 py-1 font-mono text-xs leading-normal"
+                      :placeholder="t('adminGlobalPricing.phOptional')"
+                      autocomplete="off"
+                    />
+                  </td>
+                  <td class="px-2 py-2 align-middle">
+                    <input
+                      v-model.number="r.input_rate"
+                      type="number"
+                      step="0.01"
+                      class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
+                    />
+                  </td>
+                  <td class="px-2 py-2 align-middle">
+                    <input
+                      v-model.number="r.output_rate"
+                      type="number"
+                      step="0.01"
+                      class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
+                    />
+                  </td>
+                  <td class="px-2 py-2 text-center align-middle">
+                    <input v-model="r.enabled" type="checkbox" class="h-4 w-4 cursor-pointer accent-cyan-600" />
+                  </td>
+                  <td class="px-1 py-2 text-right align-middle">
+                    <button
+                      type="button"
+                      class="th-pg-btn-ghost th-admin-pricing-row-act"
+                      :disabled="importPreviewSubmitting"
+                      @click="removeImportPreviewRow(idx)"
+                    >
+                      {{ t('adminGlobalPricing.importPreviewRemoveRow') }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </div>
+          <div
+            class="th-modal-footer-bar th-modal-divider-t th-import-preview-footer flex shrink-0 flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-end"
+          >
+            <button
+              type="button"
+              class="th-modal-secondary-btn inline-flex h-9 items-center justify-center px-4 text-xs disabled:opacity-40"
+              :disabled="importPreviewSubmitting"
+              @click="closeImportPreview"
+            >
+              {{ t('adminGlobalPricing.importPreviewCancel') }}
+            </button>
+            <button
+              type="button"
+              class="th-btn-primary-flat inline-flex h-9 items-center justify-center px-4 text-xs disabled:opacity-40"
+              :disabled="importPreviewSubmitting || !importPreviewRows.length"
+              @click="confirmImportPreview"
+            >
+              {{ importPreviewSubmitting ? t('common.submitting') : t('adminGlobalPricing.importPreviewConfirm') }}
+            </button>
+          </div>
+        </div>
       </div>
     </Teleport>
 
