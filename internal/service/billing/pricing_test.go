@@ -69,3 +69,15 @@ func TestLookupPricing_Unknown(t *testing.T) {
 		t.Fatalf("fallback got %d,%d", in, out)
 	}
 }
+
+func TestLookupPricing_GptImage2Family(t *testing.T) {
+	for _, m := range []string{"gpt-image-2", "gpt-image-2-all", "gpt-image-2-vip"} {
+		in, out := LookupPricing(m)
+		if in != 480 || out != 2880 {
+			t.Fatalf("%s got %d,%d", m, in, out)
+		}
+	}
+	if got := ResolvePricingTableKey("gpt-image-2-enterprise-alias"); got != "gpt-image-2" {
+		t.Fatalf("prefix got %q want gpt-image-2", got)
+	}
+}

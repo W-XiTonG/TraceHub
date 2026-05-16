@@ -42,6 +42,9 @@ var DefaultQuotaPer1K = map[string]struct {
 	"gpt-4o-mini-tts": {50, 200},
 	"tts-1":           {50, 400},
 	"whisper-1":       {25, 100},
+	// gpt-image-2：上游常见标价为输入 $4 / 输出 $24 每百万 token（与 gpt-4o 表内比例一致：×120）；前缀命中 gpt-image-2-all、gpt-image-2-vip 等。
+	// 官方 gpt-image-1 为文本/图像 token 分项计价且数值不同，若直连 OpenAI 原价请按需改表或走分组模型倍率。
+	"gpt-image-2": {480, 2880},
 }
 
 // openAIModelDateSuffix matches trailing snapshot dates on OpenAI model IDs, e.g. gpt-4o-2024-08-06.

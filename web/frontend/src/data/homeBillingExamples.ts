@@ -29,4 +29,5 @@ export const homeBillingExampleRows: HomeBillingExampleRow[] = [
   { model: 'text-embedding-3-large', inPer1k: 65, outPer1k: 65 },
   { model: 'text-embedding-3-small', inPer1k: 15, outPer1k: 15 },
   { model: 'text-embedding-ada-002', inPer1k: 10, outPer1k: 10 },
+  { model: 'gpt-image-2', inPer1k: 480, outPer1k: 2880 },
 ].sort((a, b) => a.inPer1k + a.outPer1k - (b.inPer1k + b.outPer1k))
