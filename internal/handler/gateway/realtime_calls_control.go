@@ -102,7 +102,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 		ch := route.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Realtime 通话控制，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -154,7 +154,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 		}
 		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+			WriteGatewayChannelConfigError(c)
 			return
 		}
 
@@ -172,7 +172,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 		resp, err := relay.ForwardOpenAIPostWithHeaders(c.Request.Context(), baseURL, secret, subpath, patched, openAIPassthroughHeaders(c), "")
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(route.LogicalModel, ct, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		defer relay.DrainBody(resp.Body)
@@ -186,7 +186,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 			if outCT == "" {
 				outCT = "application/json"
 			}
-			c.Data(resp.StatusCode, outCT, raw)
+			WriteClientProxy(c, resp.StatusCode, outCT, raw)
 			return
 		}
 
@@ -208,7 +208,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 		if outCT == "" {
 			outCT = "application/json"
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		WriteClientProxy(c, resp.StatusCode, outCT, raw)
 	}
 }
 

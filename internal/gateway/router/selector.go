@@ -33,6 +33,15 @@ func modelMatch(ch *ent.Channel, requested string) (upstream string, ok bool) {
 	if req == "" {
 		return "", false
 	}
+	// 别名优先：models 与 alias 键同名时须映射到上游 ID（如火山 ep-），不能只用列表里的公开名。
+	if ch.ModelAlias != nil {
+		if u, ok := ch.ModelAlias[req]; ok {
+			u = strings.TrimSpace(u)
+			if u != "" {
+				return u, true
+			}
+		}
+	}
 	for _, m := range ch.Models {
 		id := strings.TrimSpace(m)
 		if id == "" {
@@ -40,16 +49,6 @@ func modelMatch(ch *ent.Channel, requested string) (upstream string, ok bool) {
 		}
 		if id == req {
 			return id, true
-		}
-	}
-	if ch.ModelAlias != nil {
-		for alias, u := range ch.ModelAlias {
-			if strings.TrimSpace(alias) == req {
-				u = strings.TrimSpace(u)
-				if u != "" {
-					return u, true
-				}
-			}
 		}
 	}
 	return "", false
@@ -159,6 +158,8 @@ func DefaultBaseURL(chType string) string {
 		return "https://api.anthropic.com/v1"
 	case "gemini":
 		return "https://generativelanguage.googleapis.com"
+	case "volcengine":
+		return "https://ark.cn-beijing.volces.com/api/v3"
 	default:
 		return ""
 	}

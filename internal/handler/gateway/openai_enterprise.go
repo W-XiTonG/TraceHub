@@ -108,7 +108,7 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	ch := sel.Channel
 	ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
 	if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
-		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持该 OpenAI 企业管理接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+		middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
 
@@ -145,7 +145,7 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 		secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 	}
 	if strings.TrimSpace(secret) == "" {
-		middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+		WriteGatewayChannelConfigError(c)
 		return nil, nil, nil, "", "", "", false, br
 	}
 	return u, k, sel, secret, baseURL, ct, true, br
@@ -214,7 +214,7 @@ func enterpriseForwardJSON(
 	}
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	ch := sel.Channel
@@ -230,7 +230,7 @@ func enterpriseForwardJSON(
 				outCT = h
 			}
 		}
-		c.Data(res.StatusCode, outCT, res.Body)
+		WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 		return
 	}
 	usage := parseUsageFlexible(res.Body)
@@ -248,7 +248,7 @@ func enterpriseForwardJSON(
 			outCT = h
 		}
 	}
-	c.Data(res.StatusCode, outCT, res.Body)
+	WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 }
 
 func enterpriseForwardStream(
@@ -278,7 +278,7 @@ func enterpriseForwardStream(
 	resp, err := relay.ForwardOpenAIHTTPLong(c.Request.Context(), baseURL, secret, method, relPath, nil, rawQuery, h)
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	defer relay.DrainBody(resp.Body)
@@ -292,7 +292,7 @@ func enterpriseForwardStream(
 		if outCT == "" {
 			outCT = "application/json"
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		WriteClientProxy(c, resp.StatusCode, outCT, raw)
 		return
 	}
 
@@ -364,7 +364,7 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 	resp, err := relay.ForwardOpenAIHTTPLong(c.Request.Context(), baseURL, secret, http.MethodPost, relPath, outBody, rawQuery, h)
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	defer relay.DrainBody(resp.Body)
@@ -378,7 +378,7 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 		if outCT == "" {
 			outCT = "application/json"
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		WriteClientProxy(c, resp.StatusCode, outCT, raw)
 		return
 	}
 
@@ -437,7 +437,7 @@ func enterpriseForwardBinaryDownload(
 	resp, err := relay.ForwardOpenAIHTTPLong(c.Request.Context(), baseURL, secret, http.MethodGet, relPath, nil, rawQuery, openAIPassthroughHeaders(c))
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	defer relay.DrainBody(resp.Body)
@@ -451,7 +451,7 @@ func enterpriseForwardBinaryDownload(
 		if outCT == "" {
 			outCT = "application/json"
 		}
-		c.Data(resp.StatusCode, outCT, raw)
+		WriteClientProxy(c, resp.StatusCode, outCT, raw)
 		return
 	}
 
@@ -551,7 +551,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 		resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, "files", contentType, body, openAIPassthroughHeaders(c), "")
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		defer relay.DrainBody(resp.Body)
@@ -561,7 +561,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 		if resp.StatusCode >= 400 {
 			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-			c.Data(resp.StatusCode, "application/json", raw)
+			WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 			return
 		}
 		usage := parseUsageFlexible(raw)
@@ -575,7 +575,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-		c.Data(resp.StatusCode, "application/json", raw)
+		WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 	}
 }
 

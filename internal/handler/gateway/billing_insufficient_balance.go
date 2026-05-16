@@ -21,7 +21,7 @@ const (
 
 const (
 	billingPhasePrecheck     = "precheck"
-	billingPhasePostUpstream = "post_upstream"
+	billingPhasePostSettle = "post_settle"
 )
 
 func balancePrecheckInsufficientMessage(balance, costPre int64, promptToks, compAssumed int) string {
@@ -43,7 +43,7 @@ func balancePrecheckInsufficientMessage(balance, costPre int64, promptToks, comp
 		tip = "若预检仍偏高，可尝试调低 max_tokens / max_completion_tokens 以降低预检；不足时请充值。"
 	}
 	return fmt.Sprintf(
-		"余额不足（预检）：当前余额 %d，本次预检需 %d（还差 %d）。估算：输入约 %d token，%s。预检不假设 prompt cache；请求成功后将按实际上游用量扣费。%s",
+		"余额不足（预检）：当前余额 %d，本次预检需 %d（还差 %d）。估算：输入约 %d token，%s。预检不假设 prompt cache；请求成功后将按实际用量扣费。%s",
 		balance, costPre, shortfall, promptToks, compPhrase, tip,
 	)
 }
@@ -54,7 +54,7 @@ func insufficientBalancePostDebitMessage(balance, cost int64) string {
 		shortfall = 0
 	}
 	return fmt.Sprintf(
-		"余额不足：当前余额 %d，无法扣除本次用量 %d（还差 %d）。上游已完成响应时请充值后再试。",
+		"余额不足：当前余额 %d，无法扣除本次用量 %d（还差 %d）。本次请求已处理完成，请充值后再试。",
 		balance, cost, shortfall,
 	)
 }
@@ -71,7 +71,7 @@ func precheck402Headers(balance, costPre int64, promptToks, compAssumed int) map
 
 func postDebit402Headers(balance, cost int64) map[string]string {
 	return map[string]string{
-		headerBillingPhase:  billingPhasePostUpstream,
+		headerBillingPhase:  billingPhasePostSettle,
 		headerBalance:       strconv.FormatInt(balance, 10),
 		headerDebitCost:     strconv.FormatInt(cost, 10),
 		headerEstimatedCost: strconv.FormatInt(cost, 10),

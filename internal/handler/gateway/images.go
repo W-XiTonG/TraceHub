@@ -118,7 +118,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片编辑/变体，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -163,7 +163,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 		}
 		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+			WriteGatewayChannelConfigError(c)
 			return
 		}
 
@@ -180,7 +180,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 		resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, upstreamRelPath, contentType, body, openAIPassthroughHeaders(c), "")
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		defer relay.DrainBody(resp.Body)
@@ -190,7 +190,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-			c.Data(resp.StatusCode, "application/json", raw)
+			WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 			return
 		}
 		var buf bytes.Buffer
@@ -262,7 +262,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型暂不支持图片生成，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -302,7 +302,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		ch = sel.Channel
@@ -311,7 +311,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 		if res.StatusCode >= 400 {
 			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
-			c.Data(res.StatusCode, "application/json", res.Body)
+			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 			return
 		}
 		usage := ParseOpenAIUsageJSON(res.Body)
@@ -326,7 +326,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
-		c.Data(res.StatusCode, "application/json", res.Body)
+		WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 	}
 }
 

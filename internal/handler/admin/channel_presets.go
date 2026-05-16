@@ -30,12 +30,29 @@ func modelMatchesChannelType(modelID, channelType string) bool {
 		return strings.HasPrefix(m, "claude")
 	case "gemini":
 		return strings.HasPrefix(m, "gemini")
+	case "volcengine":
+		return strings.Contains(m, "seedance") || strings.Contains(m, "doubao-seedance") ||
+			strings.HasPrefix(m, "seedance")
 	default:
 		return true
 	}
 }
 
+var volcengineVideoPresetModels = []string{
+	// Seedance 2.0（方舟官方 Model ID，非简写 seedance-2-0）
+	"doubao-seedance-2-0-260128",
+	"doubao-seedance-2-0-fast-260128",
+	"doubao-seedance-1-0-pro-250528",
+	"doubao-seedance-1-0-lite-250528",
+	"doubao-seedance-1-0-lite-i2v-250428", // 图生视频专用；方舟常需 model_alias → ep- 接入点
+	"doubao-seedance-1-5-pro-251215",
+	"seedance-1-0-pro",
+}
+
 func builtInModelIDsForChannelType(channelType string) []string {
+	if strings.EqualFold(strings.TrimSpace(channelType), "volcengine") {
+		return append([]string(nil), volcengineVideoPresetModels...)
+	}
 	var out []string
 	for _, id := range billing.DefaultModelIDs() {
 		if modelMatchesChannelType(id, channelType) {
@@ -125,8 +142,9 @@ func ChannelModelPresets(client *ent.Client) gin.HandlerFunc {
 func FetchUpstreamModelList() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			APIBaseURL string `json:"api_base_url"`
-			APIKey     string `json:"api_key"`
+			APIBaseURL  string `json:"api_base_url"`
+			APIKey      string `json:"api_key"`
+			ChannelType string `json:"channel_type"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -137,9 +155,13 @@ func FetchUpstreamModelList() gin.HandlerFunc {
 			httpx.BadRequest(c, "api_key 必填")
 			return
 		}
+		baseURL := strings.TrimSpace(req.APIBaseURL)
+		if baseURL == "" && strings.EqualFold(strings.TrimSpace(req.ChannelType), "volcengine") {
+			baseURL = "https://ark.cn-beijing.volces.com/api/v3"
+		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 55*time.Second)
 		defer cancel()
-		ids, fetchedURL, err := upstreamprobe.FetchUpstreamModelIDs(ctx, req.APIBaseURL, key)
+		ids, fetchedURL, err := upstreamprobe.FetchUpstreamModelIDs(ctx, baseURL, key)
 		if err != nil {
 			msg := err.Error()
 			if strings.Contains(msg, "invalid api_base_url") ||
@@ -161,7 +183,7 @@ func FetchUpstreamModelList() gin.HandlerFunc {
 			httpx.Err(c, http.StatusBadGateway, 50201, "连接上游失败（请检查网络、代理与 api_base_url）: "+msg)
 			return
 		}
-		base, _ := upstreamprobe.NormalizeOpenAICompatBaseURL(req.APIBaseURL)
+		base, _ := upstreamprobe.NormalizeOpenAICompatBaseURL(baseURL)
 		httpx.OK(c, gin.H{
 			"model_ids":         ids,
 			"count":             len(ids),

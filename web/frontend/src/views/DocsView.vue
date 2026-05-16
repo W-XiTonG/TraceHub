@@ -25,6 +25,7 @@ const toc = computed(() => [
   { id: 'doc-console', label: t('docs.tocConsole') },
   { id: 'doc-auth', label: t('docs.tocAuth') },
   { id: 'doc-gateway', label: t('docs.tocGateway') },
+  { id: 'doc-volc-media', label: t('docs.tocVolc') },
   { id: 'doc-headers', label: t('docs.tocHeaders') },
   { id: 'doc-routing', label: t('docs.tocRouting') },
   { id: 'doc-user-api', label: t('docs.tocUserApi') },
@@ -256,11 +257,22 @@ onUnmounted(() => {
               <li><span class="text-emerald-400/90">POST</span> /v1/images/variations</li>
             </ul>
 
+            <h3 class="mt-6">{{ t('docs.catVideo') }}</h3>
+            <p class="text-sm text-slate-500">{{ t('docs.catVideoP') }}</p>
+            <ul class="docs-endpoint-list mt-3 font-mono text-xs">
+              <li>{{ t('docs.epVideo1') }}</li>
+              <li>{{ t('docs.epVideo2') }}</li>
+              <li>{{ t('docs.epVideo3') }}</li>
+              <li>{{ t('docs.epVideo4') }}</li>
+              <li>{{ t('docs.epVideo5') }}</li>
+            </ul>
+
             <h3 class="mt-6">{{ t('docs.catAudio') }}</h3>
-            <ul class="docs-endpoint-list font-mono text-xs">
-              <li><span class="text-emerald-400/90">POST</span> /v1/audio/transcriptions</li>
-              <li><span class="text-emerald-400/90">POST</span> /v1/audio/translations</li>
-              <li><span class="text-emerald-400/90">POST</span> /v1/audio/speech</li>
+            <p class="text-sm text-slate-500">{{ t('docs.catAudioP') }}</p>
+            <ul class="docs-endpoint-list mt-3 font-mono text-xs">
+              <li>{{ t('docs.epAudio1') }}</li>
+              <li>{{ t('docs.epAudio2') }}</li>
+              <li>{{ t('docs.epAudio3') }}</li>
             </ul>
 
             <h3 class="mt-6">{{ t('docs.catModels') }}</h3>
@@ -292,6 +304,20 @@ onUnmounted(() => {
 
             <h3 class="mt-6">{{ t('docs.passthroughH3') }}</h3>
             <p class="text-sm text-slate-400">{{ t('docs.passthroughP') }}</p>
+          </section>
+
+          <section id="doc-volc-media" class="docs-section th-glass rounded-[var(--th-radius-lg)] p-6 md:p-8">
+            <h2>{{ t('docs.tocVolc') }}</h2>
+            <h3 class="mt-4">{{ t('docs.volcMediaH3') }}</h3>
+            <p class="text-sm leading-relaxed text-slate-400">{{ t('docs.volcMediaP') }}</p>
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>{{ t('docs.volcSeedanceLi1') }}</li>
+              <li>{{ t('docs.volcSeedanceLi2') }}</li>
+              <li>{{ t('docs.volcSeed3dLi1') }}</li>
+              <li>{{ t('docs.volcSeed3dLi2') }}</li>
+              <li>{{ t('docs.volcSeed3dLi3') }}</li>
+            </ul>
+            <p class="mt-4 text-sm text-slate-500">{{ t('docs.volcFoot') }}</p>
           </section>
 
           <section id="doc-headers" class="docs-section th-glass rounded-[var(--th-radius-lg)] p-6 md:p-8">
@@ -506,6 +532,12 @@ onUnmounted(() => {
               <dd>{{ t('docs.fq5a') }}</dd>
               <dt>{{ t('docs.fq6q') }}</dt>
               <dd>{{ t('docs.fq6a') }}</dd>
+              <dt>{{ t('docs.fq7q') }}</dt>
+              <dd>{{ t('docs.fq7a') }}</dd>
+              <dt>{{ t('docs.fq8q') }}</dt>
+              <dd>{{ t('docs.fq8a') }}</dd>
+              <dt>{{ t('docs.fq9q') }}</dt>
+              <dd>{{ t('docs.fq9a') }}</dd>
             </dl>
             <div class="mt-6 border-t border-white/[0.06] pt-6">
               <ContactCardDisclosure align="start" summary-key="home.contactHintDocsFaq" />

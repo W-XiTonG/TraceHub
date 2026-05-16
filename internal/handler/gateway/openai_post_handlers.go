@@ -99,7 +99,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	}
 	ctPreview := strings.ToLower(strings.TrimSpace(previewSel.Channel.ChannelType))
 	if !router.IsOpenAICompatChannelType(ctPreview, d.OpenAICompatExtras) {
-		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持该 OpenAI 接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+		middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 		return
 	}
 
@@ -138,7 +138,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 		})
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ctPreview, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	ch := sel.Channel
@@ -148,7 +148,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	if res.StatusCode >= 400 {
 		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
 		logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
-		c.Data(res.StatusCode, "application/json", res.Body)
+		WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 		return
 	}
 	usage := parseUsageFlexible(res.Body)
@@ -162,7 +162,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
-	c.Data(res.StatusCode, "application/json", res.Body)
+	WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 }
 
 func parseEmbeddingsBody(body []byte) (model string, inputEst string, err error) {

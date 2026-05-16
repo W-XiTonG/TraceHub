@@ -77,7 +77,9 @@ onMounted(() => void load())
       </label>
       <input v-model="cfg.easypay_pid" class="th-input w-full" placeholder="EasyPay PID" />
       <input v-model="cfg.site_base_url" class="th-input w-full" :placeholder="t('adminPayment.siteBase')" />
-      <button type="button" class="th-btn-primary" :disabled="saving" @click="save">{{ t('adminPayment.save') }}</button>
+      <button type="button" class="th-btn-primary disabled:cursor-not-allowed disabled:opacity-50" :disabled="saving" @click="save">
+        {{ saving ? t('adminCommon.saving') : t('adminPayment.save') }}
+      </button>
       <p v-if="msg" class="text-sm text-emerald-400">{{ msg }}</p>
     </div>
   </div>

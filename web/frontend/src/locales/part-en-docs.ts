@@ -26,7 +26,7 @@ export default {
     introP1:
       'TraceHub is an AI API gateway: it connects upstream providers (OpenAI-style APIs, DeepSeek, Gemini, etc.—depending on admin configuration) and exposes an OpenAI-compatible /v1 HTTP API to clients, with users, API keys, groups, model visibility, billing and request logs on the platform. Use the official OpenAI SDK, LangChain or any HTTP client—only change Base URL and credentials to TraceHub’s.',
     introP2:
-      'This page is the public documentation hub; fuller field-level specs and ops notes live in docs/development-docs/api-design.md and related Markdown in the repo.',
+      'This page is the public documentation hub; fuller API details are in docs/development-docs/api-design.md (video §2.6, audio §2.7, Volcengine video/3D §2.8).',
     conceptsH2: 'Core concepts',
     cJwt: 'User & JWT',
     cJwtD:
@@ -94,7 +94,30 @@ export default {
     epChat2: 'POST /v1/completions — legacy text completions',
     catEmb: 'Embeddings & moderation',
     catImg: 'Images',
+    catVideo: 'Video',
+    catVideoP:
+      'Aligned with the OpenAI Video API: create async jobs, poll status, download output, delete jobs. Retrieve/download/delete must include the routing model in query or headers (?model=… or X-TraceHub-Model).',
+    epVideo1: 'POST /v1/videos — create job (JSON or multipart, input_reference for image-to-video)',
+    epVideo2: 'GET /v1/videos/:video_id — status (queued / in_progress / completed / failed)',
+    epVideo3: 'GET /v1/videos/:video_id/content — download output (e.g. video/mp4)',
+    epVideo4: 'DELETE /v1/videos/:video_id — delete job',
+    epVideo5: 'GET /v1/videos — list (requires model for routing)',
     catAudio: 'Audio',
+    catAudioP:
+      'Aligned with the OpenAI Audio API: speech synthesis, transcription, translation. Transcription/translation use multipart (file + model); speech uses JSON (model + input + voice).',
+    epAudio1: 'POST /v1/audio/speech — TTS; response is audio binary',
+    epAudio2: 'POST /v1/audio/transcriptions — speech-to-text (multipart)',
+    epAudio3: 'POST /v1/audio/translations — translate audio to English (multipart)',
+    tocVolc: 'Volcengine video / 3D',
+    volcMediaH3: 'Volcengine Ark (volcengine channel)',
+    volcMediaP:
+      'For channel_type volcengine, POST /v1/videos is adapted to Ark POST /api/v3/contents/generations/tasks. Use this platform’s base URL and API key; set model to the Ark Model ID (dated id, e.g. doubao-seedance-2-0-260128).',
+    volcSeedanceLi1: 'Seedance video: OpenAI-style prompt + seconds + size, or native Ark content[] (recommended for Seedance 2.0 multimodal).',
+    volcSeedanceLi2: 'Image-to-video (Seedance): use a public image URL in JSON content or image_url. Multipart local first-frame upload is only auto-supported for Seed3D (below).',
+    volcSeed3dLi1: 'Seed3D (doubao-seed3d-*): still POST /v1/videos, but a reference image is required; do not send seconds, size, duration, resolution, etc.',
+    volcSeed3dLi2: 'Reference image: public URL or base64 in JSON, image_url inside content[], or multipart input_reference (gateway converts to content).',
+    volcSeed3dLi3: 'Optional 3D flags in prompt text (e.g. --fileformat glb). See api-design.md §2.8.',
+    volcFoot: 'Full request shapes, billing, and errors: api-design.md §§2.6–2.8.',
     catModels: 'Models',
     catResp: 'Responses API',
     catRt: 'Realtime (sessions, calls, WebSocket)',
@@ -249,5 +272,14 @@ export default {
     fq6q: 'How do I set up active/standby upstreams?',
     fq6a:
       'Create two (or more) channels for the same model with different priority values and set group strategy to priority; enable failover globally or per group for automatic switchover after retryable errors.',
+    fq7q: 'How do I call Volcengine Seedance / Seed3D?',
+    fq7a:
+      'Use POST /v1/videos (and the same GET/DELETE paths) with the Ark Model ID. Seedance accepts OpenAI video fields or native content[]. Seed3D requires a reference image and must not include video duration/resolution fields—see “Volcengine video / 3D” and api-design.md §2.8.',
+    fq8q: 'Why does Ark name differ from the model id in the list?',
+    fq8a:
+      'Ark /models returns a short name for display; API calls use id (e.g. doubao-seedance-2-0-260128). TraceHub lists and routing use id. Use channel model_alias to map a short logical name.',
+    fq9q: 'Video job stuck in in_progress?',
+    fq9a:
+      'Poll GET /v1/videos/{id}?model=…, then GET …/content when completed. On failure check error fields and usage logs; for Volcengine ensure the model is activated and image URLs are reachable upstream.',
   },
 } as const

@@ -30,6 +30,12 @@ type ChatMsg = {
   imageOutputs?: string[]
   /** 语音合成：浏览器 blob URL，仅本会话有效 */
   audioUrl?: string
+  /** 文生视频：浏览器 blob URL，仅本会话有效 */
+  videoUrl?: string
+  videoJobId?: string
+  videoStatus?: string
+  /** 用户消息附带的可选首帧预览 */
+  videoRefUrl?: string
 }
 
 const apiKey = ref('')
@@ -246,22 +252,40 @@ function pgModelKindLabel(k: string): string {
 const filteredPlaygroundModels = computed(() => {
   const rows = models.value
   const raw = modelSearchQuery.value.trim().toLowerCase()
-  if (!raw) return rows
-  const parts = raw.split(/\s+/).filter(Boolean)
-  const idSet = playgroundRegistryIds.value
-  return rows.filter((r) => {
-    const id = r.id.toLowerCase()
-    const regText = idSet?.has(r.id) ? pgRegistryCell(r).text.toLowerCase() : ''
-    const rhText = r.routerHealth ? pgRouterHealthCell(r.routerHealth).text.toLowerCase() : ''
-    const kindBlob = (r.labels ?? []).map((k) => pgModelKindLabel(k).toLowerCase()).join(' ')
-    return parts.every(
-      (p) => id.includes(p) || regText.includes(p) || rhText.includes(p) || kindBlob.includes(p),
-    )
-  })
+  let list = rows
+  if (raw) {
+    const parts = raw.split(/\s+/).filter(Boolean)
+    const idSet = playgroundRegistryIds.value
+    list = rows.filter((r) => {
+      const id = r.id.toLowerCase()
+      const regText = idSet?.has(r.id) ? pgRegistryCell(r).text.toLowerCase() : ''
+      const rhText = r.routerHealth ? pgRouterHealthCell(r.routerHealth).text.toLowerCase() : ''
+      const kindBlob = (r.labels ?? []).map((k) => pgModelKindLabel(k).toLowerCase()).join(' ')
+      return parts.every(
+        (p) => id.includes(p) || regText.includes(p) || rhText.includes(p) || kindBlob.includes(p),
+      )
+    })
+  }
+  if (playMode.value === 'video') {
+    list = [...list].sort((a, b) => {
+      const av = (a.labels ?? []).includes('video') ? 0 : 1
+      const bv = (b.labels ?? []).includes('video') ? 0 : 1
+      if (av !== bv) return av - bv
+      return a.id.localeCompare(b.id)
+    })
+  }
+  return list
 })
 
-/** 对话补全 / 文生图 / 音频（OpenAI 兼容 /v1/audio/*） */
-const playMode = ref<'chat' | 'image' | 'audio'>('chat')
+const showVideoModelHint = computed(() => {
+  if (playMode.value !== 'video') return false
+  const row = selectedModelRow.value
+  if (!row?.id) return false
+  return !(row.labels ?? []).includes('video')
+})
+
+/** 对话补全 / 文生图 / 文生视频 / 音频（OpenAI 兼容 /v1/audio/*） */
+const playMode = ref<'chat' | 'image' | 'audio' | 'video'>('chat')
 /** 音频试玩子模式 */
 const audioPlaySub = ref<'speech' | 'transcribe' | 'translate'>('speech')
 const imageGenSize = ref('1024x1024')
@@ -283,6 +307,21 @@ const PG_IMAGE_MAX_BYTES = 15 * 1024 * 1024
 const PG_AUDIO_MAX_BYTES = 25 * 1024 * 1024
 const PG_IMAGE_ACCEPT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const PG_IMAGE_GEN_SIZES = ['256x256', '512x512', '1024x1024', '1024x1792', '1792x1024'] as const
+
+const PG_VIDEO_MAX_BYTES = 15 * 1024 * 1024
+const PG_VIDEO_POLL_MS = 3000
+const PG_VIDEO_POLL_MAX = 120
+const PG_VIDEO_SIZES = ['1280x720', '720x1280', '1920x1080', '1024x1024'] as const
+
+const videoSeconds = ref('8')
+const videoSize = ref('1280x720')
+const videoRefFile = ref<File | null>(null)
+const videoRefPreviewUrl = ref('')
+const videoUploadErr = ref('')
+const videoFileInputRef = ref<HTMLInputElement | null>(null)
+const videoPollAbort = ref<AbortController | null>(null)
+const activeVideoJobId = ref('')
+const activeVideoAssistantId = ref('')
 
 /** 语音合成：音色、语速（与上游 OpenAI 风格字段一致） */
 const audioSpeechVoice = ref('alloy')
@@ -371,6 +410,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onPlaygroundVisibility)
   window.removeEventListener('resize', onWinReposition)
   window.removeEventListener('scroll', onWinReposition, true)
+  cancelVideoGeneration()
+  clearVideoRefPreview()
+  for (const m of messages.value) revokeMsgMedia(m)
 })
 
 let apiKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -411,11 +453,16 @@ watch(customBody, (on, prev) => {
   }
 })
 
-watch(playMode, (m) => {
-  if (m === 'image' || m === 'audio') {
+watch(playMode, (m, prev) => {
+  if (m === 'image' || m === 'audio' || m === 'video') {
     customBody.value = false
     useStream.value = false
   }
+  if (prev === 'video' && m !== 'video') {
+    cancelVideoGeneration()
+    clearVideoRefPreview()
+  }
+  if (m !== 'video') videoUploadErr.value = ''
 })
 
 watch(
@@ -471,7 +518,8 @@ function loadSettings() {
     if (typeof j.useMaxTokens === 'boolean') useMaxTokens.value = j.useMaxTokens
     if (typeof j.useStream === 'boolean') useStream.value = j.useStream
     if (typeof j.useImage === 'boolean') useImage.value = j.useImage
-    if (j.playMode === 'chat' || j.playMode === 'image' || j.playMode === 'audio') playMode.value = j.playMode
+    if (j.playMode === 'chat' || j.playMode === 'image' || j.playMode === 'audio' || j.playMode === 'video')
+      playMode.value = j.playMode
     if (j.audioPlaySub === 'speech' || j.audioPlaySub === 'transcribe' || j.audioPlaySub === 'translate')
       audioPlaySub.value = j.audioPlaySub
     if (typeof j.audioSpeechVoice === 'string') audioSpeechVoice.value = j.audioSpeechVoice
@@ -481,6 +529,9 @@ function loadSettings() {
       imageGenSize.value = j.imageGenSize
     if (j.imageResponseFormat === 'url' || j.imageResponseFormat === 'b64_json')
       imageResponseFormat.value = j.imageResponseFormat
+    if (typeof j.videoSeconds === 'string' && j.videoSeconds.trim()) videoSeconds.value = j.videoSeconds.trim()
+    if (typeof j.videoSize === 'string' && (PG_VIDEO_SIZES as readonly string[]).includes(j.videoSize))
+      videoSize.value = j.videoSize
     if (typeof j.useSeed === 'boolean') useSeed.value = j.useSeed
     if (typeof j.seed === 'number') seed.value = j.seed
     if (typeof j.assistantMarkdown === 'boolean') assistantMarkdown.value = j.assistantMarkdown
@@ -512,6 +563,8 @@ function persistSettings() {
     sttLanguage: sttLanguage.value,
     imageGenSize: imageGenSize.value,
     imageResponseFormat: imageResponseFormat.value,
+    videoSeconds: videoSeconds.value,
+    videoSize: videoSize.value,
     useSeed: useSeed.value,
     seed: seed.value,
     assistantMarkdown: assistantMarkdown.value,
@@ -546,6 +599,8 @@ watch(
     sttLanguage,
     imageGenSize,
     imageResponseFormat,
+    videoSeconds,
+    videoSize,
     useSeed,
     seed,
     assistantMarkdown,
@@ -626,9 +681,268 @@ function onPlaygroundImageFile(ev: Event) {
   reader.readAsDataURL(file)
 }
 
-function revokeMsgAudio(m: ChatMsg) {
-  const u = m.audioUrl
-  if (u?.startsWith('blob:')) URL.revokeObjectURL(u)
+function revokeMsgMedia(m: ChatMsg) {
+  if (m.audioUrl?.startsWith('blob:')) URL.revokeObjectURL(m.audioUrl)
+  if (m.videoUrl?.startsWith('blob:')) URL.revokeObjectURL(m.videoUrl)
+}
+
+function clearVideoRefPreview() {
+  if (videoRefPreviewUrl.value.startsWith('blob:')) URL.revokeObjectURL(videoRefPreviewUrl.value)
+  videoRefPreviewUrl.value = ''
+  videoRefFile.value = null
+  if (videoFileInputRef.value) videoFileInputRef.value.value = ''
+}
+
+function openPlaygroundVideoRefPicker() {
+  videoUploadErr.value = ''
+  videoFileInputRef.value?.click()
+}
+
+function onPlaygroundVideoRefFile(ev: Event) {
+  const el = ev.target as HTMLInputElement
+  const file = el.files?.[0]
+  el.value = ''
+  if (!file) return
+  if (!PG_IMAGE_ACCEPT_TYPES.has(file.type)) {
+    videoUploadErr.value = t('playground.imageUploadType')
+    return
+  }
+  if (file.size > PG_VIDEO_MAX_BYTES) {
+    videoUploadErr.value = t('playground.imageUploadSize', {
+      maxMb: Math.floor(PG_VIDEO_MAX_BYTES / 1024 / 1024),
+    })
+    return
+  }
+  videoUploadErr.value = ''
+  clearVideoRefPreview()
+  videoRefFile.value = file
+  videoRefPreviewUrl.value = URL.createObjectURL(file)
+}
+
+function stopVideoPoll() {
+  videoPollAbort.value?.abort()
+  videoPollAbort.value = null
+}
+
+function cancelVideoGeneration() {
+  stopVideoPoll()
+  const jobId = activeVideoJobId.value
+  const assistantId = activeVideoAssistantId.value
+  const m = model.value.trim()
+  const k = apiKey.value.trim()
+  if (jobId && m && k) {
+    void pgw.videoDelete(k, stickySession.value, m, jobId).catch(() => {})
+  }
+  if (assistantId) {
+    patchAssistantVideo(assistantId, t('playground.videoStatusCancelled'), {
+      videoJobId: jobId || undefined,
+      videoStatus: 'cancelled',
+    })
+  }
+  activeVideoJobId.value = ''
+  activeVideoAssistantId.value = ''
+  if (sending.value) sending.value = false
+}
+
+function videoStatusLabel(status: string): string {
+  const s = status.toLowerCase()
+  if (s === 'queued') return t('playground.videoStatusQueued')
+  if (s === 'in_progress' || s === 'processing') return t('playground.videoStatusInProgress')
+  if (s === 'completed') return t('playground.videoStatusCompleted')
+  if (s === 'failed') return t('playground.videoStatusFailed')
+  if (s === 'cancelled' || s === 'canceled') return t('playground.videoStatusCancelled')
+  return status
+}
+
+function formatVideoPollingCaption(snap: pgw.VideoJobSnapshot): string {
+  const status = videoStatusLabel(snap.status)
+  const progress =
+    snap.progress != null && Number.isFinite(snap.progress) ? ` · ${Math.round(snap.progress)}%` : ''
+  return t('playground.videoPolling', { status, progress })
+}
+
+function patchAssistantVideo(
+  id: string,
+  content: string,
+  extra?: Partial<Pick<ChatMsg, 'videoUrl' | 'videoJobId' | 'videoStatus'>>,
+) {
+  messages.value = messages.value.map((m) => {
+    if (m.id !== id) return m
+    if (extra?.videoUrl !== undefined && m.videoUrl?.startsWith('blob:') && m.videoUrl !== extra.videoUrl) {
+      URL.revokeObjectURL(m.videoUrl)
+    }
+    return {
+      ...m,
+      content,
+      ...(extra?.videoUrl !== undefined ? { videoUrl: extra.videoUrl } : {}),
+      ...(extra?.videoJobId !== undefined ? { videoJobId: extra.videoJobId } : {}),
+      ...(extra?.videoStatus !== undefined ? { videoStatus: extra.videoStatus } : {}),
+    }
+  })
+}
+
+async function pollVideoUntilDone(assistantId: string, videoId: string, modelName: string) {
+  const k = apiKey.value.trim()
+  let polls = 0
+  while (polls < PG_VIDEO_POLL_MAX) {
+    if (videoPollAbort.value?.signal.aborted) return
+    await new Promise((r) => setTimeout(r, PG_VIDEO_POLL_MS))
+    if (videoPollAbort.value?.signal.aborted) return
+    polls++
+    try {
+      const snap = await pgw.videoRetrieve(
+        k,
+        stickySession.value,
+        modelName,
+        videoId,
+        videoPollAbort.value?.signal,
+      )
+      lastResponse.value = snap.raw
+      patchAssistantVideo(assistantId, formatVideoPollingCaption(snap), {
+        videoJobId: videoId,
+        videoStatus: snap.status,
+      })
+      const st = snap.status.toLowerCase()
+      if (st === 'completed') {
+        const { blob } = await pgw.videoContent(
+          k,
+          stickySession.value,
+          modelName,
+          videoId,
+          videoPollAbort.value?.signal,
+        )
+        const blobUrl = URL.createObjectURL(blob)
+        patchAssistantVideo(assistantId, t('playground.videoCompleted'), {
+          videoUrl: blobUrl,
+          videoJobId: videoId,
+          videoStatus: 'completed',
+        })
+        return
+      }
+      if (st === 'failed' || st === 'cancelled' || st === 'canceled') {
+        const err = snap.error?.trim() || t('playground.videoFailed')
+        patchAssistantVideo(assistantId, `【${t('playground.error')}】\n\n${err}`, {
+          videoJobId: videoId,
+          videoStatus: snap.status,
+        })
+        return
+      }
+    } catch (e: unknown) {
+      if (videoPollAbort.value?.signal.aborted) return
+      const msg = e instanceof Error ? e.message : String(e)
+      patchAssistantVideo(assistantId, `【${t('playground.error')}】\n\n${msg}`, {
+        videoJobId: videoId,
+        videoStatus: 'failed',
+      })
+      return
+    }
+  }
+  patchAssistantVideo(assistantId, `【${t('playground.error')}】\n\n${t('playground.videoPollTimeout')}`, {
+    videoJobId: videoId,
+    videoStatus: 'failed',
+  })
+}
+
+async function retryVideoMessage(m: ChatMsg) {
+  if (!m.videoJobId || !model.value.trim() || !apiKey.value.trim()) return
+  const assistantId = m.id
+  activeVideoAssistantId.value = assistantId
+  activeVideoJobId.value = m.videoJobId
+  stopVideoPoll()
+  videoPollAbort.value = new AbortController()
+  sending.value = true
+  modelsErr.value = ''
+  patchAssistantVideo(assistantId, formatVideoPollingCaption({ videoId: m.videoJobId, status: 'in_progress', raw: '' }), {
+    videoJobId: m.videoJobId,
+    videoStatus: 'in_progress',
+  })
+  try {
+    await pollVideoUntilDone(assistantId, m.videoJobId, model.value.trim())
+  } finally {
+    sending.value = false
+    activeVideoJobId.value = ''
+    activeVideoAssistantId.value = ''
+    stopVideoPoll()
+  }
+}
+
+async function sendVideoGeneration(prompt: string) {
+  const k = apiKey.value.trim()
+  if (!k) {
+    modelsErr.value = t('playground.needKey')
+    return
+  }
+  if (!model.value.trim()) {
+    modelsErr.value = t('playground.needModel')
+    return
+  }
+
+  const modelName = model.value.trim()
+  const refSnap = videoRefPreviewUrl.value || undefined
+  messages.value = [
+    ...messages.value,
+    { id: uid(), role: 'user', content: prompt, videoRefUrl: refSnap },
+  ]
+  input.value = ''
+
+  const assistantId = uid()
+  messages.value = [
+    ...messages.value,
+    { id: assistantId, role: 'assistant', content: '', videoStatus: 'queued' },
+  ]
+
+  lastRequest.value = ''
+  lastResponse.value = ''
+  streamLog.value = ''
+  modelsErr.value = ''
+  sending.value = true
+  stopVideoPoll()
+  videoPollAbort.value = new AbortController()
+  activeVideoAssistantId.value = assistantId
+
+  try {
+    let snap: pgw.VideoJobSnapshot
+    if (videoRefFile.value) {
+      const fdOpts = {
+        model: modelName,
+        prompt,
+        seconds: videoSeconds.value.trim() || '8',
+        size: videoSize.value,
+        file: videoRefFile.value,
+      }
+      lastRequest.value = `[multipart] model=${modelName} prompt=${prompt} seconds=${fdOpts.seconds} size=${fdOpts.size}`
+      snap = await pgw.videoCreateMultipart(k, stickySession.value, fdOpts, videoPollAbort.value.signal)
+    } else {
+      const body: Record<string, unknown> = {
+        model: modelName,
+        prompt,
+        seconds: videoSeconds.value.trim() || '8',
+        size: videoSize.value,
+      }
+      lastRequest.value = JSON.stringify(body, null, 2)
+      snap = await pgw.videoCreate(k, stickySession.value, body, videoPollAbort.value.signal)
+    }
+    lastResponse.value = snap.raw
+    if (!snap.videoId) {
+      throw new Error(t('playground.videoFailed'))
+    }
+    activeVideoJobId.value = snap.videoId
+    patchAssistantVideo(assistantId, t('playground.videoCreated', { id: snap.videoId }), {
+      videoJobId: snap.videoId,
+      videoStatus: snap.status,
+    })
+    await pollVideoUntilDone(assistantId, snap.videoId, modelName)
+  } catch (e: unknown) {
+    if (videoPollAbort.value?.signal.aborted) return
+    const msg = e instanceof Error ? e.message : String(e)
+    modelsErr.value = msg
+    patchAssistantVideo(assistantId, `【${t('playground.error')}】\n\n${msg}`, { videoStatus: 'failed' })
+  } finally {
+    sending.value = false
+    activeVideoJobId.value = ''
+    activeVideoAssistantId.value = ''
+    stopVideoPoll()
+  }
 }
 
 function openPlaygroundAudioPicker() {
@@ -771,7 +1085,7 @@ async function sendAudioMultipart() {
 function patchAssistantAudio(id: string, content: string, audioUrl?: string) {
   messages.value = messages.value.map((m) => {
     if (m.id !== id) return m
-    revokeMsgAudio(m)
+    revokeMsgMedia(m)
     return { ...m, content, audioUrl }
   })
 }
@@ -918,6 +1232,10 @@ async function sendMessage() {
 
   if (playMode.value === 'image') {
     await sendImageGeneration(text)
+    return
+  }
+  if (playMode.value === 'video') {
+    await sendVideoGeneration(text)
     return
   }
 
@@ -1090,7 +1408,9 @@ function stopStream() {
 
 /** 新建会话：清空右侧消息与本地缓存；自定义 JSON 模式下同时把请求体里的 messages 置空，避免旧多模态历史仍被发出。 */
 function startNewPlaygroundSession() {
-  for (const m of messages.value) revokeMsgAudio(m)
+  cancelVideoGeneration()
+  clearVideoRefPreview()
+  for (const m of messages.value) revokeMsgMedia(m)
   messages.value = []
   input.value = ''
   lastResponse.value = ''
@@ -1120,8 +1440,8 @@ function startNewPlaygroundSession() {
 function persistConversation() {
   try {
     const safe = messages.value.map((m) => {
-      const { audioUrl, ...rest } = m
-      if (audioUrl?.startsWith('blob:')) return rest
+      const { audioUrl, videoUrl, ...rest } = m
+      if (audioUrl?.startsWith('blob:') || videoUrl?.startsWith('blob:')) return rest
       return m
     })
     localStorage.setItem(LS_MSG, JSON.stringify(safe))
@@ -1136,7 +1456,7 @@ function copyText(s: string) {
 
 function removeMessage(id: string) {
   const target = messages.value.find((m) => m.id === id)
-  if (target) revokeMsgAudio(target)
+  if (target) revokeMsgMedia(target)
   messages.value = messages.value.filter((m) => m.id !== id)
 }
 
@@ -1301,6 +1621,7 @@ const chatScrollEl = ref<HTMLElement | null>(null)
 
 const sidebarPlaygroundDesc = computed(() => {
   if (playMode.value === 'image') return t('playground.descImage')
+  if (playMode.value === 'video') return t('playground.descVideo')
   if (playMode.value === 'audio') {
     if (audioPlaySub.value === 'speech') return t('playground.descAudioSpeech')
     if (audioPlaySub.value === 'transcribe') return t('playground.descAudioTranscribe')
@@ -1311,6 +1632,7 @@ const sidebarPlaygroundDesc = computed(() => {
 
 const chatHeaderTitle = computed(() => {
   if (playMode.value === 'image') return t('playground.chatTitleImage')
+  if (playMode.value === 'video') return t('playground.chatTitleVideo')
   if (playMode.value === 'audio') {
     if (audioPlaySub.value === 'speech') return t('playground.chatTitleAudioSpeech')
     if (audioPlaySub.value === 'transcribe') return t('playground.chatTitleAudioTranscribe')
@@ -1325,6 +1647,9 @@ const chatHeaderSubtitle = computed(() => {
       imageResponseFormat.value === 'url' ? t('playground.imageFormatUrl') : t('playground.imageFormatB64')
     }`
   }
+  if (playMode.value === 'video') {
+    return `${model.value || '—'} · ${videoSeconds.value}s · ${videoSize.value}`
+  }
   if (playMode.value === 'audio') {
     if (audioPlaySub.value === 'speech')
       return `${model.value || '—'} · ${t('playground.audioVoice')}: ${audioSpeechVoice.value.trim() || 'alloy'}`
@@ -1335,6 +1660,7 @@ const chatHeaderSubtitle = computed(() => {
 
 const emptyPanelHint = computed(() => {
   if (playMode.value === 'image') return t('playground.emptyImage')
+  if (playMode.value === 'video') return t('playground.emptyVideo')
   if (playMode.value === 'audio' && audioPlaySub.value === 'speech') return t('playground.emptyAudioSpeech')
   if (playMode.value === 'audio' && audioPlaySub.value === 'transcribe') return t('playground.emptyAudioTranscribe')
   if (playMode.value === 'audio') return t('playground.emptyAudioTranslate')
@@ -1343,6 +1669,7 @@ const emptyPanelHint = computed(() => {
 
 const inputFooterPh = computed(() => {
   if (playMode.value === 'image') return t('playground.inputPhImage')
+  if (playMode.value === 'video') return t('playground.inputPhVideo')
   if (playMode.value === 'audio' && audioPlaySub.value === 'speech') return t('playground.inputPhAudioSpeech')
   if (playMode.value === 'audio' && audioPlaySub.value === 'transcribe') return t('playground.inputPhAudioStt')
   if (playMode.value === 'audio') return t('playground.inputPhAudioTranslate')
@@ -1353,6 +1680,7 @@ const showRegenerateForCurrentMode = computed(
   () =>
     playMode.value === 'chat' ||
     playMode.value === 'image' ||
+    playMode.value === 'video' ||
     (playMode.value === 'audio' && audioPlaySub.value === 'speech'),
 )
 
@@ -1394,17 +1722,17 @@ function fmtNum(n: number) {
           {{ sidebarPlaygroundDesc }}
         </p>
         <p class="mt-2 border-l-2 border-cyan-500/45 pl-2.5 text-[11px] leading-relaxed th-pg-muted">
-          {{ t('playground.billingHint') }}
+          {{ playMode === 'video' ? t('playground.billingHintVideo') : t('playground.billingHint') }}
         </p>
       </div>
 
       <div class="thin-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4">
         <div class="th-pg-card th-pg-card--emph space-y-2 p-3">
           <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('playground.playMode') }}</p>
-          <div class="th-pg-seg flex w-full" role="group" :aria-label="t('playground.playMode')">
+          <div class="th-pg-seg th-pg-seg--modes" role="group" :aria-label="t('playground.playMode')">
             <button
               type="button"
-              class="th-pg-seg__btn min-w-0 flex-1 text-xs"
+              class="th-pg-seg__btn"
               :class="{ 'th-pg-seg__btn--active': playMode === 'chat' }"
               :aria-pressed="playMode === 'chat'"
               @click="playMode = 'chat'"
@@ -1413,7 +1741,7 @@ function fmtNum(n: number) {
             </button>
             <button
               type="button"
-              class="th-pg-seg__btn min-w-0 flex-1 text-xs"
+              class="th-pg-seg__btn"
               :class="{ 'th-pg-seg__btn--active': playMode === 'image' }"
               :aria-pressed="playMode === 'image'"
               @click="playMode = 'image'"
@@ -1422,7 +1750,16 @@ function fmtNum(n: number) {
             </button>
             <button
               type="button"
-              class="th-pg-seg__btn min-w-0 flex-1 text-xs"
+              class="th-pg-seg__btn"
+              :class="{ 'th-pg-seg__btn--active': playMode === 'video' }"
+              :aria-pressed="playMode === 'video'"
+              @click="playMode = 'video'"
+            >
+              {{ t('playground.modeVideo') }}
+            </button>
+            <button
+              type="button"
+              class="th-pg-seg__btn"
               :class="{ 'th-pg-seg__btn--active': playMode === 'audio' }"
               :aria-pressed="playMode === 'audio'"
               @click="playMode = 'audio'"
@@ -1670,6 +2007,7 @@ function fmtNum(n: number) {
                 </div>
               </div>
             </Teleport>
+            <p v-if="showVideoModelHint" class="mt-1.5 text-[11px] text-amber-400/95">{{ t('playground.videoModelHint') }}</p>
           </div>
 
           <div v-if="playMode === 'image'" class="th-pg-card space-y-3 p-3">
@@ -1691,6 +2029,61 @@ function fmtNum(n: number) {
                 <option value="url">{{ t('playground.imageFormatUrl') }}</option>
                 <option value="b64_json">{{ t('playground.imageFormatB64') }}</option>
               </select>
+            </div>
+          </div>
+
+          <div v-if="playMode === 'video'" class="th-pg-card space-y-3 p-3">
+            <div>
+              <label class="text-xs text-slate-500">{{ t('playground.videoSeconds') }}</label>
+              <input
+                v-model="videoSeconds"
+                type="text"
+                class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+                placeholder="8"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">{{ t('playground.videoSize') }}</label>
+              <select
+                v-model="videoSize"
+                class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+              >
+                <option v-for="s in PG_VIDEO_SIZES" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">{{ t('playground.videoRefImage') }}</label>
+              <input
+                ref="videoFileInputRef"
+                type="file"
+                class="sr-only"
+                accept="image/jpeg,image/png,image/webp"
+                :aria-label="t('playground.videoRefImage')"
+                @change="onPlaygroundVideoRefFile"
+              />
+              <div class="mt-1 flex flex-wrap items-center gap-2">
+                <button type="button" class="th-pg-btn-ghost px-2 py-1 text-xs" @click="openPlaygroundVideoRefPicker">
+                  {{ t('playground.videoRefPick') }}
+                </button>
+                <button
+                  v-if="videoRefFile"
+                  type="button"
+                  class="th-pg-btn-ghost px-2 py-1 text-xs"
+                  @click="clearVideoRefPreview"
+                >
+                  {{ t('playground.videoRefClear') }}
+                </button>
+              </div>
+              <img
+                v-if="videoRefPreviewUrl"
+                :src="videoRefPreviewUrl"
+                alt=""
+                class="mt-2 max-h-28 max-w-full rounded-lg border border-white/10 object-contain"
+              />
+              <p v-if="videoUploadErr" class="mt-1 text-[11px] text-rose-400/95">{{ videoUploadErr }}</p>
+              <p class="mt-1 text-[11px] th-pg-muted">
+                {{ t('playground.videoRefHint', { maxMb: Math.floor(PG_VIDEO_MAX_BYTES / 1024 / 1024) }) }}
+              </p>
             </div>
           </div>
 
@@ -1993,6 +2386,17 @@ function fmtNum(n: number) {
               class="th-pg-msg flex min-w-0 flex-col gap-0 rounded-2xl border px-3.5 py-2 text-sm"
               :class="m.role === 'user' ? 'th-pg-msg--user' : 'th-pg-msg--assistant'"
             >
+              <div v-if="m.role === 'assistant' && m.videoStatus" class="mb-1.5">
+                <span
+                  class="inline-flex items-center rounded-full border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-200/95"
+                >
+                  {{ videoStatusLabel(m.videoStatus) }}
+                  <span v-if="m.videoJobId" class="ml-1 font-mono opacity-70">· {{ m.videoJobId.slice(0, 12) }}…</span>
+                </span>
+              </div>
+              <div v-if="m.role === 'assistant' && m.videoUrl" class="mb-2 w-full max-w-md">
+                <video :src="m.videoUrl" controls class="max-w-full rounded-lg border border-white/10 bg-slate-950/80" />
+              </div>
               <div v-if="m.role === 'assistant' && m.audioUrl" class="mb-2 w-full max-w-md">
                 <audio :src="m.audioUrl" controls class="w-full rounded-lg border border-white/10 bg-slate-950/80" />
               </div>
@@ -2006,9 +2410,9 @@ function fmtNum(n: number) {
                   @error="(($event.target as HTMLImageElement).style.display = 'none')"
                 />
               </div>
-              <div v-if="m.imageUrl" class="mb-2 shrink-0">
+              <div v-if="m.imageUrl || m.videoRefUrl" class="mb-2 shrink-0">
                 <img
-                  :src="m.imageUrl"
+                  :src="m.imageUrl || m.videoRefUrl"
                   alt=""
                   class="max-h-40 max-w-full rounded-lg border border-white/10 object-contain"
                   @error="(($event.target as HTMLImageElement).style.display = 'none')"
@@ -2082,6 +2486,22 @@ function fmtNum(n: number) {
                 </svg>
               </button>
               <button
+                v-if="m.role === 'assistant' && playMode === 'video' && m.videoJobId && !m.videoUrl && (m.videoStatus === 'failed' || m.videoStatus === 'cancelled')"
+                type="button"
+                class="th-pg-icon-btn"
+                :title="t('playground.videoRetry')"
+                :aria-label="t('playground.videoRetry')"
+                @click="retryVideoMessage(m)"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+              </button>
+              <button
                 v-if="m.role === 'assistant' && showRegenerateForCurrentMode"
                 type="button"
                 class="th-pg-icon-btn th-pg-icon-btn--regen"
@@ -2147,6 +2567,14 @@ function fmtNum(n: number) {
               @click="stopStream"
             >
               {{ t('playground.stop') }}
+            </button>
+            <button
+              v-if="sending && playMode === 'video'"
+              type="button"
+              class="th-pg-btn-amber"
+              @click="cancelVideoGeneration"
+            >
+              {{ t('playground.videoCancel') }}
             </button>
             <button
               type="button"

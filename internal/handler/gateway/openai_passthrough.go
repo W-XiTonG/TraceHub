@@ -135,7 +135,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 OpenAI 兼容透传，请使用 openai / deepseek 或配置的 openai_compat_channel_types")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -185,7 +185,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 			}
 			if strings.TrimSpace(secret) == "" {
-				middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+				WriteGatewayChannelConfigError(c)
 				return
 			}
 			upBody := body
@@ -200,7 +200,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			resp, err := relay.ForwardOpenAIHTTP(c.Request.Context(), baseURL, secret, method, rest, upBody, rawQuery, openAIPassthroughHeaders(c))
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				WriteGatewayTransportError(c, err)
 				return
 			}
 			defer relay.DrainBody(resp.Body)
@@ -252,7 +252,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				if oct == "" {
 					oct = "application/json"
 				}
-				c.Data(resp.StatusCode, oct, out)
+				WriteClientProxy(c, resp.StatusCode, oct, out)
 				return
 			}
 			usage := parseUsageFlexible(out)
@@ -268,7 +268,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			if oct == "" {
 				oct = "application/json"
 			}
-			c.Data(resp.StatusCode, oct, out)
+			WriteClientProxy(c, resp.StatusCode, oct, out)
 			return
 		}
 
@@ -293,7 +293,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		ch = sel.Channel
@@ -308,7 +308,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 					oct = h
 				}
 			}
-			c.Data(res.StatusCode, oct, res.Body)
+			WriteClientProxy(c, res.StatusCode, oct, res.Body)
 			return
 		}
 		usage := parseUsageFlexible(res.Body)
@@ -326,7 +326,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				oct = h
 			}
 		}
-		c.Data(res.StatusCode, oct, res.Body)
+		WriteClientProxy(c, res.StatusCode, oct, res.Body)
 	}
 }
 

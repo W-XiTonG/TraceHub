@@ -76,7 +76,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		ch := sel.Channel
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Realtime WebSocket，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -107,7 +107,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 		}
 		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+			WriteGatewayChannelConfigError(c)
 			return
 		}
 
@@ -161,7 +161,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 				_ = upResp.Body.Close()
 			}
 			_ = clientConn.WriteControl(websocket.CloseMessage,
-				websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "upstream connection failed"),
+				websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "service unavailable"),
 				time.Now().Add(5*time.Second))
 			return
 		}

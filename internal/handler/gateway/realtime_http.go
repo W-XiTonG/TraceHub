@@ -24,7 +24,7 @@ func RealtimeSessions(d ChatDeps) gin.HandlerFunc {
 		}
 		model, est, err := extractRealtimeSessionRoutingModel(body, c.Request.URL.Query())
 		if err != nil || model == "" {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model：请在 JSON 中设置 model，或在 Query 增加 model=（与 OpenAI 兼容并用于选渠道）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model：请在 JSON 中设置 model，或在 Query 增加 model= 参数")
 			return
 		}
 		openAIForwardJSONCustomPatch(c, d, body, model, est, 2048, "realtime/sessions", router.PatchModelInBody)

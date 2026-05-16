@@ -375,6 +375,18 @@ func (e *Engine) UserBalance(ctx context.Context, userID int) (int64, error) {
 	return u.Balance, nil
 }
 
+// CreditBalance 增加用户余额（视频任务精调退还等）。
+func (e *Engine) CreditBalance(ctx context.Context, userID int64, amount int64) error {
+	if amount <= 0 {
+		return nil
+	}
+	_, err := e.Client.User.Update().
+		Where(user.IDEQ(int(userID))).
+		AddBalance(amount).
+		Save(ctx)
+	return err
+}
+
 func (e *Engine) DeductBalance(ctx context.Context, userID int64, amount int64) error {
 	if amount < 0 {
 		return fmt.Errorf("billing: negative deduct amount")

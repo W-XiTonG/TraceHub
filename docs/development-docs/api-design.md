@@ -203,6 +203,195 @@ POST /v1/images/generations
 
 ---
 
+### 2.6 视频生成（OpenAI Videos API）
+
+与 [OpenAI Video generation](https://developers.openai.com/api/docs/guides/video-generation) 对齐。选路模型名：创建请求体中的 `model`；查询/下载/删除需 Query `model=…` 或请求头 `X-TraceHub-Model`。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/v1/videos` | 创建异步视频任务（JSON 或 `multipart/form-data`，含 `input_reference` 图生视频） |
+| GET | `/v1/videos/{video_id}` | 查询任务状态（`queued` / `in_progress` / `completed` / `failed`） |
+| GET | `/v1/videos/{video_id}/content` | 下载成品视频（`video/mp4` 等） |
+| DELETE | `/v1/videos/{video_id}` | 删除任务 |
+| GET | `/v1/videos` | 列表（需 `model` 选路） |
+
+**渠道**：`openai` / `deepseek` / `site.openai_compat_channel_types` 直转上游 `/videos`；`volcengine`（火山方舟）经网关字段适配后转发，默认 `api_base_url` 为 `https://ark.cn-beijing.volces.com/api/v3`。
+
+**计费**：`POST /v1/videos` 按模型+时长预扣；`GET /v1/videos/{id}` 在 `status=completed` 时读取上游 `usage.seconds` 或 `seconds`/`duration` 精调（补扣/退还差额）；Redis 键 `tracehub:video:job:{user_id}:{video_id}` 保证同一任务只结算一次；轮询与 `content` 下载不重复扣费。
+
+```json
+POST /v1/videos
+{
+  "model": "sora-2",
+  "prompt": "A cat walking in the rain",
+  "seconds": "8",
+  "size": "1280x720"
+}
+```
+
+**查询 / 下载 / 删除示例**：
+
+```http
+GET /v1/videos/{video_id}?model=sora-2
+Authorization: Bearer sk-th-xxx
+X-TraceHub-Model: sora-2
+
+GET /v1/videos/{video_id}/content?model=sora-2
+DELETE /v1/videos/{video_id}?model=sora-2
+```
+
+创建响应与 OpenAI Video 对象类似（含 `id`、`status` 等）；`volcengine` 渠道下网关会将上游方舟任务响应规范化（如 `task_id` → `id`）。
+
+---
+
+### 2.7 音频（OpenAI Audio API）
+
+与 [OpenAI Audio](https://platform.openai.com/docs/api-reference/audio) 对齐，由网关按渠道类型转发至上游对应路径。
+
+| 方法 | 路径 | Content-Type | 说明 |
+|------|------|----------------|------|
+| POST | `/v1/audio/speech` | `application/json` | 语音合成（TTS），请求体含 `model`、`input`（文本）、`voice` 等 |
+| POST | `/v1/audio/transcriptions` | `multipart/form-data` | 语音转文字，字段含 `file`、`model`，可选 `prompt`、`language` |
+| POST | `/v1/audio/translations` | `multipart/form-data` | 语音翻译为英文文本，字段与转写类似 |
+
+**选路**：请求 JSON 或 multipart 中的 `model`；无 `model` 时可用 Query `?model=` 或头 `X-TraceHub-Model`。
+
+**示例（TTS）**：
+
+```json
+POST /v1/audio/speech
+{
+  "model": "tts-1",
+  "input": "你好，世界",
+  "voice": "alloy"
+}
+```
+
+成功时响应体为音频二进制（如 `audio/mpeg`），非 JSON。
+
+**示例（转写）**：
+
+```http
+POST /v1/audio/transcriptions
+Content-Type: multipart/form-data
+
+model=whisper-1
+file=@sample.mp3
+```
+
+**计费**：按部署与分组模型倍率规则从余额扣费；具体单价以管理端计费配置为准。
+
+---
+
+### 2.8 火山方舟：视频与 3D（`volcengine` 渠道）
+
+当请求选路至 **`channel_type = volcengine`** 时，`/v1/videos` 在网关内转换为方舟 **`POST /api/v3/contents/generations/tasks`**（非 OpenAI 原生 `/videos`）。对外仍使用 **§2.6** 的路径与 API Key，无需单独「火山专用」Base URL。
+
+#### 2.8.1 模型 ID
+
+- 请求与渠道配置请使用方舟 **Model ID**（如 `doubao-seedance-2-0-260128`），与 `GET https://ark.cn-beijing.volces.com/api/v3/models` 返回的 `id` 一致。
+- 上游 JSON 中的短字段 **`name`**（如 `doubao-seedance-2-0`）仅作展示；若要用短名调用，请在渠道配置 **`model_alias`**（键为逻辑名，值为完整 `id` 或 `ep-` 接入点）。
+
+#### 2.8.2 Seedance 视频（文生视频 / 图生视频）
+
+**OpenAI 形态（网关自动转换）**：
+
+```json
+POST /v1/videos
+{
+  "model": "doubao-seedance-1-5-pro-251215",
+  "prompt": "一只猫在雨中行走",
+  "seconds": "8",
+  "size": "1280x720"
+}
+```
+
+**方舟原生 `content[]`（推荐 Seedance 2.0 多模态）**：若 body 已含非空 `content` 数组，网关透传并补全兼容字段，例如：
+
+```json
+{
+  "model": "doubao-seedance-2-0-260128",
+  "content": [
+    { "type": "text", "text": "镜头缓慢推进" },
+    {
+      "type": "image_url",
+      "image_url": { "url": "https://example.com/ref.jpg" },
+      "role": "first_frame"
+    }
+  ],
+  "duration": 11,
+  "ratio": "16:9",
+  "generate_audio": true
+}
+```
+
+**图生视频（公网图）**：在 JSON 中提供 `image_url` 或 `content` 内 `image_url`；**不要**依赖 multipart `input_reference`（火山渠道下本地首帧上传仅 **Seed3D** 支持，见下）。
+
+#### 2.8.3 Seed3D 图生 3D（`doubao-seed3d-*`）
+
+3D 生成**必须提供参考图**，且**不能**携带视频参数 `duration`、`resolution`、`ratio`、`seconds`、`size`（网关会自动剔除）。
+
+对外仍调用 **`POST /v1/videos`**，`model` 填 Seed3D 的 Model ID，例如 `doubao-seed3d-2-0-260328`。
+
+**方式 A：JSON + 公网图片 URL**
+
+```json
+{
+  "model": "doubao-seed3d-2-0-260328",
+  "prompt": "生成卡通小狗 --fileformat glb",
+  "image_url": "https://example.com/reference.png"
+}
+```
+
+**方式 B：JSON + 原生 content**
+
+```json
+{
+  "model": "doubao-seed3d-2-0-260328",
+  "content": [
+    { "type": "text", "text": "生成卡通小狗 --fileformat glb" },
+    {
+      "type": "image_url",
+      "image_url": { "url": "https://example.com/reference.png" }
+    }
+  ]
+}
+```
+
+**方式 C：multipart 本地上传**（试玩 / 部分客户端）
+
+```http
+POST /v1/videos
+Content-Type: multipart/form-data
+
+model=doubao-seed3d-2-0-260328
+prompt=生成卡通小狗 --fileformat glb
+input_reference=@local.jpg
+```
+
+网关将文件编码为 data URL 并写入方舟要求的 `content`（`text` + `image_url`）。
+
+**prompt 可选参数**（写入 `text` 或 `prompt` 字符串，以方舟文档为准）：如 `--fileformat glb|obj|usd|usdz`、`--subdivisionlevel` 等。
+
+#### 2.8.4 任务查询与下载
+
+与 §2.6 相同：`GET /v1/videos/{id}`、`GET .../content`、`DELETE`；Query 或头中须带选路 `model`。
+
+完成后 `content` 下载行为依赖上游返回（视频为 `content.video_url`；3D 产物类型以方舟为准）。
+
+#### 2.8.5 常见错误
+
+| 上游提示 | 含义 | 处理 |
+|----------|------|------|
+| `not activated` | 账号未开通该 Model ID 的 API | 在方舟控制台开通；确认渠道 API Key 与 curl 测试为同一账号 |
+| `duration` / `resolution` must be empty | 对 Seed3D 误传了视频参数 | 去掉 `seconds`、`size` 等 |
+| missing `content` | Seed3D body 格式不正确 | 使用 §2.8.3 的 `content` 或带图 JSON |
+| `image_data` / 参考图相关 | 未提供图片或格式不对 | 提供公网 URL、base64，或 multipart `input_reference` |
+
+网关错误响应可能含 `X-TraceHub-Routing-Model`、`X-TraceHub-Upstream-Model`、`X-TraceHub-Channel-Id` 便于排查。
+
+---
+
 ## 三、用户 API（用户中心接口）
 
 > **认证方式**：JWT（`Authorization: Bearer <jwt_token>`）或 API Key

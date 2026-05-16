@@ -45,6 +45,15 @@ var DefaultQuotaPer1K = map[string]struct {
 	// gpt-image-2：上游常见标价为输入 $4 / 输出 $24 每百万 token（与 gpt-4o 表内比例一致：×120）；前缀命中 gpt-image-2-all、gpt-image-2-vip 等。
 	// 官方 gpt-image-1 为文本/图像 token 分项计价且数值不同，若直连 OpenAI 原价请按需改表或走分组模型倍率。
 	"gpt-image-2": {480, 2880},
+	// Video（按秒计价：In 表示每秒额度，Out 未使用）
+	"sora-2-pro":          {1500, 0},
+	"sora-2":              {800, 0},
+	"doubao-seedance-2-0": {900, 0},
+	"doubao-seedance":     {500, 0},
+	"seedance":            {600, 0},
+	"kling":               {700, 0},
+	"veo":                 {900, 0},
+	"hunyuan-video":       {550, 0},
 }
 
 // openAIModelDateSuffix matches trailing snapshot dates on OpenAI model IDs, e.g. gpt-4o-2024-08-06.

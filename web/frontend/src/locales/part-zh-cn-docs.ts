@@ -27,7 +27,7 @@ export default {
     introP1:
       'TraceHub 是一类 AI API 网关：在后台接入多种上游渠道（OpenAI 形态、DeepSeek、Gemini 等，具体以管理员配置为准），对调用方统一暴露 OpenAI 兼容的 /v1 HTTP API，并在平台侧完成用户、API Key、分组、模型可见性、计费与用量日志等能力。您可以使用官方 OpenAI SDK、LangChain、自研 HTTP 客户端等，只需把 Base URL 与密钥换成 TraceHub 提供的即可。',
     introP2:
-      '本页为对外文档中心；更完整的接口字段与运维说明仍可在仓库的 docs/development-docs/api-design.md 等 Markdown 中查阅。',
+      '本页为对外文档中心；更完整的接口字段与运维说明见仓库 docs/development-docs/api-design.md（含视频 §2.6、音频 §2.7、火山视频/3D §2.8）。',
     conceptsH2: '核心概念',
     cJwt: '用户与 JWT',
     cJwtD:
@@ -94,7 +94,30 @@ export default {
     epChat2: 'POST /v1/completions — Legacy 文本补全',
     catEmb: '向量与审核',
     catImg: '图像',
+    catVideo: '视频',
+    catVideoP:
+      '与 OpenAI Video API 对齐：创建异步任务、轮询状态、下载成品、删除任务。查询/下载/删除须在 Query 或请求头中携带用于选路的 model（如 ?model=xxx 或 X-TraceHub-Model）。',
+    epVideo1: 'POST /v1/videos — 创建任务（JSON 或 multipart，含 input_reference 图生）',
+    epVideo2: 'GET /v1/videos/:video_id — 查询状态（queued / in_progress / completed / failed）',
+    epVideo3: 'GET /v1/videos/:video_id/content — 下载成品（如 video/mp4）',
+    epVideo4: 'DELETE /v1/videos/:video_id — 删除任务',
+    epVideo5: 'GET /v1/videos — 列表（须带 model 选路）',
     catAudio: '音频',
+    catAudioP:
+      '与 OpenAI Audio API 对齐：语音合成、语音转写、语音翻译。转写/翻译为 multipart（file + model）；合成为 JSON（model + input + voice）。',
+    epAudio1: 'POST /v1/audio/speech — 语音合成（TTS），响应为音频二进制',
+    epAudio2: 'POST /v1/audio/transcriptions — 语音转文字（multipart）',
+    epAudio3: 'POST /v1/audio/translations — 语音翻译为英文（multipart）',
+    tocVolc: '火山视频 / 3D',
+    volcMediaH3: '火山方舟（volcengine 渠道）',
+    volcMediaP:
+      '当渠道类型为 volcengine 时，/v1/videos 在网关内转发为方舟 POST /api/v3/contents/generations/tasks。对外仍用本平台 Base URL 与 API Key，模型名请使用方舟 Model ID（带日期后缀的 id，如 doubao-seedance-2-0-260128）。',
+    volcSeedanceLi1: 'Seedance 视频：可用 prompt + seconds + size（OpenAI 形态），或直接提交方舟原生 content[]（适合 Seedance 2.0 多模态）。',
+    volcSeedanceLi2: '图生视频（Seedance）：请在 JSON 的 content 或 image_url 中提供公网可访问图片 URL；multipart 本地上传首帧仅适用于 Seed3D（见下）。',
+    volcSeed3dLi1: 'Seed3D（doubao-seed3d-*）：仍调用 POST /v1/videos，但必须提供参考图；不要传 seconds、size、duration、resolution 等视频参数。',
+    volcSeed3dLi2: '参考图方式：JSON 中 image_url / image_data（公网 URL 或 base64）、content 内 image_url，或 multipart 字段 input_reference（网关会转为 content）。',
+    volcSeed3dLi3: 'prompt 可含方舟 3D 参数（如 --fileformat glb），详见 docs/development-docs/api-design.md §2.8。',
+    volcFoot: '完整字段说明、计费与常见错误见仓库 api-design.md 第 2.6–2.8 节。',
     catModels: '模型列表',
     catResp: 'Responses API',
     catRt: 'Realtime（会话、通话、WebSocket 等）',
@@ -249,5 +272,14 @@ export default {
     fq6q: '如何配置多上游主备？',
     fq6a:
       '为同一 model 创建两条（或多条）渠道并设置不同 priority，分组策略选「优先级」；若需主渠道故障后自动切备，在分组或系统设定中开启 failover 并设置最大重试次数。',
+    fq7q: '火山 Seedance / Seed3D 怎么调用？',
+    fq7a:
+      '统一使用 POST /v1/videos（及 GET/DELETE 同一套路径），model 填方舟 Model ID。Seedance 可按 OpenAI 视频格式传 prompt、seconds、size，或使用 content[]。Seed3D 必须带参考图，且不能传视频时长/分辨率参数；详见文档「火山视频 / 3D」与 api-design.md §2.8。',
+    fq8q: '为什么文档里的 name 和可用模型列表的 id 不一致？',
+    fq8a:
+      '方舟 /models 返回的 name 是短展示名，真正用于 API 的是 id（如 doubao-seedance-2-0-260128）。TraceHub 列表与请求均使用 id；若需短名调用，请在渠道配置 model_alias。',
+    fq9q: '视频任务创建成功但一直 in_progress？',
+    fq9a:
+      '视频/3D 为异步任务，需轮询 GET /v1/videos/{id}?model=...。完成后用 GET .../content 下载。若长时间失败，查看响应 error 与调用日志；火山侧需确认模型已开通且参考图 URL 可被上游访问。',
   },
 } as const

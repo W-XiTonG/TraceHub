@@ -121,7 +121,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 		}
 		if strings.TrimSpace(secret) == "" {
-			middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+			WriteGatewayChannelConfigError(c)
 			return
 		}
 
@@ -145,7 +145,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if err != nil {
 					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err)
 					metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-					middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+					WriteGatewayTransportError(c, err)
 					return
 				}
 				defer relay.DrainBody(resp.Body)
@@ -154,8 +154,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if resp.StatusCode >= 400 {
 					rawErr, _ := io.ReadAll(resp.Body)
 					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil)
-					out := augmentUpstreamJSONModelNotExistChatHint(rawErr)
-					setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
+					out := SanitizeClientProxyBody(resp.StatusCode, "application/json", rawErr)
 					c.Writer.Header().Set("Content-Type", "application/json")
 					c.Writer.WriteHeader(resp.StatusCode)
 					if f, ok := c.Writer.(http.Flusher); ok {
@@ -215,18 +214,17 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				})
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				WriteGatewayTransportError(c, err)
 				return
 			}
 			ch = sel.Channel
 			ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			if res.StatusCode >= 400 {
-				setTraceHubChatDebugHeaders(c.Writer.Header(), ch.ID, model, sel.UpstreamModel)
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
-				out := augmentUpstreamJSONModelNotExistChatHint(res.Body)
+				out := SanitizeClientProxyBody(res.StatusCode, "application/json", res.Body)
 				logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, out)
-				c.Data(res.StatusCode, "application/json", out)
+				WriteClientProxy(c, res.StatusCode, "application/json", out)
 				return
 			}
 			usage := ParseOpenAIUsageJSON(res.Body)
@@ -238,7 +236,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
-			c.Data(res.StatusCode, "application/json", res.Body)
+			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 
 		case ct == "claude":
 			if stream {
@@ -253,11 +251,11 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					var u *relay.UpstreamJSONError
 					if errors.As(err, &u) {
 						metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(u.StatusCode)).Inc()
-						c.Data(u.StatusCode, "application/json", u.Body)
+						WriteClientProxy(c, u.StatusCode, "application/json", u.Body)
 						return
 					}
 					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
-					middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+					WriteGatewayTransportError(c, err)
 					return
 				}
 				if pt2 == 0 {
@@ -282,10 +280,10 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
 				if status >= 400 {
-					c.Data(status, "application/json", out)
+					WriteClientProxy(c, status, "application/json", out)
 					return
 				}
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				WriteGatewayTransportError(c, err)
 				return
 			}
 			usage := ParseOpenAIUsageJSON(out)
@@ -297,7 +295,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
-			c.Data(status, "application/json", out)
+			WriteClientProxy(c, status, "application/json", out)
 
 		case ct == "gemini":
 			if stream {
@@ -312,11 +310,11 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					var u *relay.UpstreamJSONError
 					if errors.As(err, &u) {
 						metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(u.StatusCode)).Inc()
-						c.Data(u.StatusCode, "application/json", u.Body)
+						WriteClientProxy(c, u.StatusCode, "application/json", u.Body)
 						return
 					}
 					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
-					middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+					WriteGatewayTransportError(c, err)
 					return
 				}
 				if pt2 == 0 {
@@ -341,10 +339,10 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
 				if status >= 400 {
-					c.Data(status, "application/json", out)
+					WriteClientProxy(c, status, "application/json", out)
 					return
 				}
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				WriteGatewayTransportError(c, err)
 				return
 			}
 			usage := ParseOpenAIUsageJSON(out)
@@ -356,7 +354,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
-			c.Data(status, "application/json", out)
+			WriteClientProxy(c, status, "application/json", out)
 
 		default:
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "暂不支持的渠道类型: "+ch.ChannelType)

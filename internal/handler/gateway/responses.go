@@ -64,7 +64,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 		}
 		ctPreview := strings.ToLower(strings.TrimSpace(previewSel.Channel.ChannelType))
 		if !router.IsOpenAICompatChannelType(ctPreview, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Responses API，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -109,7 +109,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 			secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, ch)
 			if !ok {
-				middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+				WriteGatewayChannelConfigError(c)
 				return
 			}
 			patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
@@ -123,7 +123,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			if err != nil {
 				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err)
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				WriteGatewayTransportError(c, err)
 				return
 			}
 			defer relay.DrainBody(resp.Body)
@@ -133,7 +133,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil)
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, rawErr)
-				c.Data(resp.StatusCode, "application/json", rawErr)
+				WriteClientProxy(c, resp.StatusCode, "application/json", rawErr)
 				return
 			}
 			h := resp.Header.Get("Content-Type")
@@ -184,7 +184,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, "openai", "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		ch := sel.Channel
@@ -193,7 +193,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 		if res.StatusCode >= 400 {
 			metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
-			c.Data(res.StatusCode, "application/json", res.Body)
+			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 			return
 		}
 		usage := parseUsageFlexible(res.Body)
@@ -205,7 +205,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
-		c.Data(res.StatusCode, "application/json", res.Body)
+		WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 	}
 }
 

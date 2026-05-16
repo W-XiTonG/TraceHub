@@ -2286,6 +2286,22 @@
   border: 1px solid var(--th-border-strong);
   background: rgba(0, 0, 0, 0.14);
 }
+/* 试玩页四种模式：固定 2×2，避免窄侧栏内 flex 换行错位 */
+.th-pg-seg.th-pg-seg--modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 2px;
+}
+.th-pg-seg.th-pg-seg--modes .th-pg-seg__btn {
+  width: 100%;
+  min-width: 0;
+  flex: none;
+  white-space: nowrap;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  font-size: 0.6875rem;
+}
 .th-pg-seg__btn {
   cursor: pointer;
   border: none;

@@ -2,9 +2,13 @@
 import axios from 'axios'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AdminActionBanner from '../components/admin/AdminActionBanner.vue'
+import { adminHttpErrMessage, useAdminActionFeedback } from '../composables/useAdminActionFeedback'
 import { http, type Envelope } from '../api/http'
 
 const { t } = useI18n()
+const { flashMsg, flashIsError, busy, clearFlash, flashInfo, flashError, flashSuccess, runAction, flashScrollId } =
+  useAdminActionFeedback()
 
 type Ch = {
   id: number
@@ -12,6 +16,7 @@ type Ch = {
   channel_type: string
   channel_name: string
   models: string[]
+  model_alias?: Record<string, string>
   enabled: boolean
   api_base_url?: string
   auth_type?: string
@@ -37,6 +42,7 @@ const form = reactive({
   api_key: '',
   api_base_url: '',
   modelsStr: 'gpt-4o,gpt-4o-mini',
+  modelAliasStr: '',
   priority: 0,
   weight: 100,
 })
@@ -48,6 +54,7 @@ const editForm = reactive({
   api_key: '',
   api_base_url: '',
   modelsStr: '',
+  modelAliasStr: '',
   priority: 0,
   weight: 100,
   concurrency: 2,
@@ -59,9 +66,36 @@ const editForm = reactive({
   reset_error_count: false,
 })
 
+function parseModelAliasJson(raw: string): Record<string, string> | null {
+  const t = raw.trim()
+  if (!t) return {}
+  try {
+    const o = JSON.parse(t) as unknown
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+      const key = k.trim()
+      const val = typeof v === 'string' ? v.trim() : ''
+      if (key && val) out[key] = val
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+function formatModelAliasJson(m?: Record<string, string>): string {
+  if (!m || !Object.keys(m).length) return ''
+  return JSON.stringify(m, null, 2)
+}
+
 const presetLoading = ref(false)
 const fetchLoading = ref(false)
 const probingId = ref<number | null>(null)
+const editSaving = ref(false)
+const editModalMsg = ref('')
+const editModalIsError = ref(false)
+/** 表单内联提示（预设/拉取）；保存类操作用顶部 AdminActionBanner */
 const presetHint = ref('')
 
 /** 分组下拉用字符串 v-model，避免动态 option 与 v-model.number 在部分浏览器下不同步 */
@@ -140,22 +174,19 @@ async function applyPresets(mode: 'merged' | 'built_in' | 'catalog') {
       return
     }
     setIds(pick)
-    presetHint.value = t('adminChannels.presetMerged', { n: pick.length })
+    const hint = t('adminChannels.presetMerged', { n: pick.length })
+    presetHint.value = hint
+    flashInfo(hint)
   } catch (e: unknown) {
     presetHint.value = httpErrMessage(e)
+    flashError(e)
   } finally {
     presetLoading.value = false
   }
 }
 
 function httpErrMessage(e: unknown): string {
-  if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
-    const d = e.response.data as { message?: string }
-    if (typeof d.message === 'string' && d.message.trim()) {
-      return d.message.trim()
-    }
-  }
-  return e instanceof Error ? e.message : t('adminCommon.requestFail')
+  return adminHttpErrMessage(e, t('adminCommon.requestFail'))
 }
 
 /** 网关偶发把 code 打成字符串；兼容 Number(code)===0 */
@@ -207,11 +238,15 @@ async function fetchFromUpstream() {
   }
   fetchLoading.value = true
   try {
+    const base =
+      form.api_base_url.trim() ||
+      (form.channel_type === 'volcengine' ? 'https://ark.cn-beijing.volces.com/api/v3' : '')
     const { data } = await http.post<Envelope<{ model_ids: string[]; count: number }>>(
       '/api/admin/channel-models/fetch-upstream',
       {
         api_key: form.api_key,
-        api_base_url: form.api_base_url || undefined,
+        api_base_url: base || undefined,
+        channel_type: form.channel_type,
       },
     )
     if (!envelopeOk(data)) throw new Error(data.message || t('adminCommon.loadFail'))
@@ -223,9 +258,12 @@ async function fetchFromUpstream() {
       return
     }
     setIds(ids)
-    presetHint.value = t('adminChannels.upstreamMerged', { n: ids.length })
+    const hint = t('adminChannels.upstreamMerged', { n: ids.length })
+    presetHint.value = hint
+    flashInfo(hint)
   } catch (e: unknown) {
     presetHint.value = httpErrMessage(e)
+    flashError(e)
   } finally {
     fetchLoading.value = false
   }
@@ -261,21 +299,37 @@ async function load() {
 
 async function createCh() {
   const models = form.modelsStr.split(',').map((s) => s.trim()).filter(Boolean)
-  await http.post('/api/admin/channels', {
-    group_id: form.group_id,
-    channel_type: form.channel_type,
-    channel_name: form.channel_name,
-    auth_type: 'api_key',
-    api_key: form.api_key,
-    api_base_url: form.api_base_url,
-    models,
-    priority: form.priority,
-    weight: form.weight,
-    concurrency: 2,
-    enabled: true,
+  await runAction({
+    validate: () => {
+      if (!form.channel_name.trim()) return t('adminChannels.needName')
+      if (!form.api_key.trim()) return t('adminChannels.needApiKeyCreate')
+      if (!models.length) return t('adminChannels.needModels')
+      if (!form.group_id) return t('adminChannels.needGroup')
+      if (parseModelAliasJson(form.modelAliasStr) === null) return t('adminChannels.modelAliasInvalid')
+      return null
+    },
+    successMessage: t('adminChannels.channelCreated'),
+    action: async () => {
+      const model_alias = parseModelAliasJson(form.modelAliasStr) ?? {}
+      const { data } = await http.post<Envelope<unknown>>('/api/admin/channels', {
+        group_id: form.group_id,
+        channel_type: form.channel_type,
+        channel_name: form.channel_name.trim(),
+        auth_type: 'api_key',
+        api_key: form.api_key,
+        api_base_url: form.api_base_url,
+        models,
+        model_alias,
+        priority: form.priority,
+        weight: form.weight,
+        concurrency: 2,
+        enabled: true,
+      })
+      if (!envelopeOk(data)) throw new Error(data.message || t('adminCommon.requestFail'))
+      form.api_key = ''
+    },
+    onSuccess: () => load(),
   })
-  form.api_key = ''
-  await load()
 }
 
 function openEdit(ch: Ch) {
@@ -284,6 +338,7 @@ function openEdit(ch: Ch) {
   editForm.api_key = ''
   editForm.api_base_url = ch.api_base_url || ''
   editForm.modelsStr = (ch.models || []).join(',')
+  editForm.modelAliasStr = formatModelAliasJson(ch.model_alias)
   editForm.priority = ch.priority ?? 0
   editForm.weight = ch.weight ?? 100
   editForm.concurrency = ch.concurrency ?? 2
@@ -293,33 +348,64 @@ function openEdit(ch: Ch) {
   editForm.error_count = ch.error_count ?? 0
   editForm.last_error_msg = ch.last_error_msg || ''
   editForm.reset_error_count = false
+  editModalMsg.value = ''
+  editModalIsError.value = false
   editOpen.value = true
 }
 
 async function saveEdit() {
   const models = editForm.modelsStr.split(',').map((s) => s.trim()).filter(Boolean)
-  const body: Record<string, unknown> = {
-    channel_name: editForm.channel_name,
-    api_base_url: editForm.api_base_url,
-    models,
-    priority: editForm.priority,
-    weight: editForm.weight,
-    concurrency: editForm.concurrency,
-    enabled: editForm.enabled,
-    schedulable: editForm.schedulable,
-    health_status: editForm.health_status,
-    reset_error_count: editForm.reset_error_count,
+  editSaving.value = true
+  clearFlash()
+  editModalMsg.value = ''
+  const model_alias = parseModelAliasJson(editForm.modelAliasStr)
+  if (model_alias === null) {
+    editModalMsg.value = t('adminChannels.modelAliasInvalid')
+    editModalIsError.value = true
+    editSaving.value = false
+    return
   }
-  if (editForm.api_key.trim()) body.api_key = editForm.api_key.trim()
-  await http.put(`/api/admin/channels/${editForm.id}`, body)
-  editOpen.value = false
-  await load()
+  try {
+    const body: Record<string, unknown> = {
+      channel_name: editForm.channel_name.trim(),
+      api_base_url: editForm.api_base_url,
+      models,
+      model_alias,
+      priority: editForm.priority,
+      weight: editForm.weight,
+      concurrency: editForm.concurrency,
+      enabled: editForm.enabled,
+      schedulable: editForm.schedulable,
+      health_status: editForm.health_status,
+      reset_error_count: editForm.reset_error_count,
+    }
+    if (editForm.api_key.trim()) body.api_key = editForm.api_key.trim()
+    const { data } = await http.put<Envelope<unknown>>(`/api/admin/channels/${editForm.id}`, body)
+    if (!envelopeOk(data)) throw new Error(data.message || t('adminCommon.requestFail'))
+    editOpen.value = false
+    flashSuccess(t('adminChannels.channelUpdated'))
+    await load()
+  } catch (e: unknown) {
+    editModalIsError.value = true
+    editModalMsg.value = httpErrMessage(e)
+    flashError(e)
+  } finally {
+    editSaving.value = false
+  }
 }
 
 async function remove(id: number) {
   if (!confirm(t('adminChannels.confirmDelete'))) return
-  await http.delete(`/api/admin/channels/${id}`)
-  await load()
+  await runAction({
+    successMessage: t('adminChannels.channelDeleted'),
+    action: async () => {
+      const { data } = await http.delete<Envelope<unknown>>(`/api/admin/channels/${id}`)
+      if (data && typeof data === 'object' && 'code' in data && !envelopeOk(data)) {
+        throw new Error((data as Envelope<unknown>).message || t('adminCommon.requestFail'))
+      }
+    },
+    onSuccess: () => load(),
+  })
 }
 
 onMounted(load)
@@ -406,15 +492,19 @@ function modelProbeBadge(ch: Ch, modelId: string): { text: string; title: string
 async function probeChannelNow(ch: Ch) {
   probingId.value = ch.id
   presetHint.value = ''
+  clearFlash()
   try {
     const { data } = await http.post<Envelope<{ model_upstream_probe?: Record<string, unknown> }>>(
       `/api/admin/channels/${ch.id}/probe-upstream-models`,
       {},
     )
     if (!envelopeOk(data)) throw new Error((data as { message?: string }).message || t('adminCommon.requestFail'))
+    flashMsg.value = t('adminChannels.probeDone')
+    flashIsError.value = false
     await load()
   } catch (e: unknown) {
     presetHint.value = httpErrMessage(e)
+    flashError(e)
   } finally {
     probingId.value = null
   }
@@ -428,6 +518,15 @@ async function probeChannelNow(ch: Ch) {
         <h1 class="text-2xl font-bold tracking-tight text-white">{{ t('adminChannels.pageTitle') }}</h1>
         <p class="text-sm text-slate-500">{{ t('adminChannels.pageDesc') }}</p>
       </div>
+
+      <AdminActionBanner
+        :message="flashMsg"
+        :is-error="flashIsError"
+        :loading="busy"
+        :scroll-id="flashScrollId"
+        class="mb-4"
+      />
+
       <div class="rounded-2xl border border-slate-800/90 bg-gradient-to-b from-slate-900/90 to-slate-950 p-6 shadow-xl shadow-black/20 ring-1 ring-white/5">
         <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">{{ t('adminChannels.formNewTitle') }}</h2>
         <div class="grid max-w-2xl gap-4 text-sm">
@@ -456,6 +555,7 @@ async function probeChannelNow(ch: Ch) {
                 <option value="deepseek">deepseek</option>
                 <option value="claude">claude</option>
                 <option value="gemini">gemini</option>
+                <option value="volcengine">volcengine</option>
               </select>
             </div>
           </div>
@@ -506,6 +606,16 @@ async function probeChannelNow(ch: Ch) {
               :placeholder="t('adminChannels.modelsPh')"
             />
           </label>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblModelAlias') }}</span>
+            <textarea
+              v-model="form.modelAliasStr"
+              rows="4"
+              class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs leading-relaxed text-slate-200 outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/15"
+              :placeholder="t('adminChannels.modelAliasPh')"
+            />
+            <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminChannels.modelAliasHint') }}</p>
+          </label>
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
@@ -551,10 +661,11 @@ async function probeChannelNow(ch: Ch) {
           <p v-if="presetHint" class="rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">{{ presetHint }}</p>
           <button
             type="button"
-            class="th-btn-primary-flat w-full max-w-xs px-4 py-2.5 text-sm sm:w-auto"
+            class="th-btn-primary-flat w-full max-w-xs px-4 py-2.5 text-sm sm:w-auto disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="busy"
             @click="createCh"
           >
-            {{ t('adminChannels.saveChannel') }}
+            {{ busy ? t('adminChannels.savingChannel') : t('adminChannels.saveChannel') }}
           </button>
         </div>
       </div>
@@ -743,6 +854,16 @@ async function probeChannelNow(ch: Ch) {
               <span class="text-xs text-slate-400">{{ t('adminChannels.lblModels') }}</span>
               <textarea v-model="editForm.modelsStr" rows="3" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" />
             </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-slate-400">{{ t('adminChannels.lblModelAlias') }}</span>
+              <textarea
+                v-model="editForm.modelAliasStr"
+                rows="4"
+                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs leading-relaxed"
+                :placeholder="t('adminChannels.modelAliasPh')"
+              />
+              <p class="text-[10px] leading-relaxed text-slate-500">{{ t('adminChannels.modelAliasHint') }}</p>
+            </label>
             <div class="grid grid-cols-2 gap-3">
               <label class="flex flex-col gap-1 text-xs text-slate-400">
                 {{ t('adminChannels.priority') }}
@@ -779,9 +900,18 @@ async function probeChannelNow(ch: Ch) {
               <input v-model="editForm.reset_error_count" type="checkbox" /> {{ t('adminChannels.resetErrorCount') }}
             </label>
           </div>
+          <p
+            v-if="editModalMsg"
+            class="mt-4 rounded-lg border px-3 py-2 text-xs"
+            :class="editModalIsError ? 'th-admin-flash--error' : 'th-admin-flash--success'"
+          >
+            {{ editModalMsg }}
+          </p>
           <div class="mt-6 flex justify-end gap-2">
-            <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400" @click="editOpen = false">{{ t('adminCommon.cancel') }}</button>
-            <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm" @click="saveEdit">{{ t('adminCommon.save') }}</button>
+            <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400" :disabled="editSaving" @click="editOpen = false">{{ t('adminCommon.cancel') }}</button>
+            <button type="button" class="th-btn-primary-flat px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" :disabled="editSaving" @click="saveEdit">
+              {{ editSaving ? t('adminChannels.savingChannel') : t('adminCommon.save') }}
+            </button>
           </div>
         </div>
       </div>

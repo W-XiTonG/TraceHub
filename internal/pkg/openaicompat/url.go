@@ -92,7 +92,9 @@ func NormalizeOpenAIAPIRoot(raw string) (string, error) {
 			break
 		}
 	}
-	if p == "" || p == "/" {
+	if IsArkAPIv3Root(p) {
+		// 火山方舟：…/api/v3/chat/completions、/api/v3/videos、/api/v3/models
+	} else if p == "" || p == "/" {
 		p = "/v1"
 	} else if !strings.HasSuffix(p, "/v1") {
 		p = p + "/v1"

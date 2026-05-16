@@ -45,6 +45,10 @@ site:
   #
   # 三～五：OpenAI 兼容扩展（可选）
   # openai_compat_channel_types: [] # 例: ["siliconflow"] — 与 openai 一样走 /v1 JSON 透传的额外渠道类型名
+  #
+  # 视频（/v1/videos*）：openai_compat 渠道直转；另可建 channel_type=volcengine，api_base_url 例:
+  #   https://ark.cn-beijing.volces.com/api/v3
+  # models 填 doubao-seedance-* / seedance 等；model_alias 映射用户请求名 → 方舟 endpoint 模型名
   # block_openai_account_admin_paths: true # 四：默认拦截 /v1 下 organizations、organization、dashboard、billing 等账号/控制台类路径
   # openai_account_admin_deny_prefixes: [] # 相对 /v1/ 的额外拒绝前缀
   # openai_passthrough:

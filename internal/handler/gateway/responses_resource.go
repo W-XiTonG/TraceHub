@@ -94,7 +94,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 	}
 	ctPreview := strings.ToLower(strings.TrimSpace(previewSel.Channel.ChannelType))
 	if !router.IsOpenAICompatChannelType(ctPreview, d.OpenAICompatExtras) {
-		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持 Responses 资源接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+		middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 		return
 	}
 
@@ -129,7 +129,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 		})
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ctPreview, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	ch := sel.Channel
@@ -145,7 +145,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 				outCT = h
 			}
 		}
-		c.Data(res.StatusCode, outCT, res.Body)
+		WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 		return
 	}
 	usage := parseUsageFlexible(res.Body)
@@ -163,5 +163,5 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 			outCT = h
 		}
 	}
-	c.Data(res.StatusCode, outCT, res.Body)
+	WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 }

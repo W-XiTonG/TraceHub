@@ -485,7 +485,7 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 	resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, rel, contentType, body, openAIPassthroughHeaders(c), "")
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-		middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+		WriteGatewayTransportError(c, err)
 		return
 	}
 	defer relay.DrainBody(resp.Body)
@@ -494,7 +494,7 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 	if resp.StatusCode >= 400 {
 		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 		logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, raw)
-		c.Data(resp.StatusCode, "application/json", raw)
+		WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 		return
 	}
 		usage := parseUsageFlexible(raw)
@@ -508,7 +508,7 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
-	c.Data(resp.StatusCode, "application/json", raw)
+	WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 }
 
 func OpenAIVectorStoreFilesList(d ChatDeps) gin.HandlerFunc {

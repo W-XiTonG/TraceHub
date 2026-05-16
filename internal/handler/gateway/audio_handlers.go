@@ -104,7 +104,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		ch := sel.Channel
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持音频接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -158,7 +158,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 				secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
 			}
 			if strings.TrimSpace(secret) == "" {
-				middleware.WriteOpenAIError(c, 503, "upstream_error", "渠道未配置有效凭证")
+				WriteGatewayChannelConfigError(c)
 				return
 			}
 			body, contentType, err := rebuildMultipartWithUpstreamModel(form, sel.UpstreamModel)
@@ -169,7 +169,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			resp, err := relay.ForwardOpenAIMultipart(c.Request.Context(), baseURL, secret, upstreamRelPath, contentType, body, openAIPassthroughHeaders(c), "text/event-stream")
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
-				middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+				WriteGatewayTransportError(c, err)
 				return
 			}
 			defer relay.DrainBody(resp.Body)
@@ -185,7 +185,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 				if outCT == "" {
 					outCT = "application/json"
 				}
-				c.Data(resp.StatusCode, outCT, raw)
+				WriteClientProxy(c, resp.StatusCode, outCT, raw)
 				return
 			}
 			for _, k := range []string{"Content-Type", "Cache-Control"} {
@@ -241,7 +241,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		ch = sel.Channel
@@ -256,7 +256,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 					outCT = h
 				}
 			}
-			c.Data(res.StatusCode, outCT, res.Body)
+			WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 			return
 		}
 		usage := parseUsageFlexible(res.Body)
@@ -274,7 +274,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 				outCT = h
 			}
 		}
-		c.Data(res.StatusCode, outCT, res.Body)
+		WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 	}
 }
 
@@ -321,7 +321,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		ch := sel.Channel
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持音频接口，请使用 OpenAI 兼容渠道（openai / deepseek 或 site.openai_compat_channel_types）")
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
 
@@ -359,7 +359,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, chType, "transport_err").Inc()
-			middleware.WriteOpenAIError(c, 503, "upstream_error", err.Error())
+			WriteGatewayTransportError(c, err)
 			return
 		}
 		ch = sel.Channel
@@ -375,7 +375,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 					outCT = h
 				}
 			}
-			c.Data(res.StatusCode, outCT, res.Body)
+			WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 			return
 		}
 
@@ -407,7 +407,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 				outCT = h
 			}
 		}
-		c.Data(res.StatusCode, outCT, res.Body)
+		WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/pkg/safehttp"
 
 	"github.com/google/uuid"
@@ -31,12 +32,15 @@ func NormalizeOpenAICompatBaseURL(raw string) (string, error) {
 		return "", fmt.Errorf("api_base_url 仅支持 http/https")
 	}
 	path := strings.TrimSuffix(u.Path, "/")
-	if path == "" || path == "/" {
-		u.Path = "/v1"
-	} else if !strings.HasSuffix(path, "/v1") {
-		u.Path = path + "/v1"
-	} else {
+	switch {
+	case openaicompat.IsArkAPIv3Root(path):
 		u.Path = path
+	case path == "" || path == "/":
+		u.Path = "/v1"
+	case strings.HasSuffix(path, "/v1"):
+		u.Path = path
+	default:
+		u.Path = path + "/v1"
 	}
 	u.RawQuery = ""
 	u.Fragment = ""

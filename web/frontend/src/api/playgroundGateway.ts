@@ -127,15 +127,9 @@ function parseOpenAIError(text: string): string {
   }
 }
 
-/** 网关在上游 4xx 或计费 402 时返回的诊断头（需 CORS Expose-Headers；正式 API 与控制台试玩共用） */
+/** 网关计费诊断头（需 CORS Expose-Headers；正式 API 与控制台试玩共用） */
 export function traceHubGatewayErrorDetails(res: Response): string {
-  const r = res.headers.get('X-TraceHub-Routing-Model')?.trim()
-  const u = res.headers.get('X-TraceHub-Upstream-Model')?.trim()
-  const cid = res.headers.get('X-TraceHub-Channel-Id')?.trim()
   let out = ''
-  if (r || u || cid) {
-    out += `\n\n[TraceHub 选路] routing_model=${r ?? '—'} | upstream_model=${u ?? '—'} | channel_id=${cid ?? '—'}\n若 upstream 与上游控制台不一致，请检查渠道「模型 ID / 别名」配置。`
-  }
   const phase = res.headers.get('X-TraceHub-Billing-Phase')?.trim()
   const bal = res.headers.get('X-TraceHub-Balance')?.trim()
   const est = res.headers.get('X-TraceHub-Estimated-Cost')?.trim()
@@ -259,4 +253,172 @@ export async function audioMultipart(
     throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
   }
   return { raw }
+}
+
+export type VideoJobSnapshot = {
+  videoId: string
+  status: string
+  progress?: number
+  seconds?: number
+  error?: string
+  raw: string
+}
+
+function videoAuthHeaders(apiKey: string, sticky: string, model: string): Record<string, string> {
+  const h: Record<string, string> = {
+    Authorization: `Bearer ${apiKey.trim()}`,
+    [STICKY_HDR]: sticky,
+  }
+  const m = model.trim()
+  if (m) h['X-TraceHub-Model'] = m
+  return h
+}
+
+/** 解析创建/查询视频任务响应中的 id 与 status。 */
+export function parseVideoJobResponse(raw: string): VideoJobSnapshot {
+  const j = JSON.parse(raw) as Record<string, unknown>
+  let videoId = ''
+  for (const k of ['id', 'video_id', 'task_id']) {
+    const v = j[k]
+    if (typeof v === 'string' && v.trim()) {
+      videoId = v.trim()
+      break
+    }
+  }
+  let status = 'queued'
+  if (typeof j.status === 'string' && j.status.trim()) {
+    status = j.status.trim().toLowerCase()
+  }
+  let progress: number | undefined
+  if (typeof j.progress === 'number' && Number.isFinite(j.progress)) progress = j.progress
+  let seconds: number | undefined
+  if (typeof j.seconds === 'string') {
+    const n = parseInt(j.seconds, 10)
+    if (Number.isFinite(n)) seconds = n
+  } else if (typeof j.seconds === 'number') {
+    seconds = j.seconds
+  } else if (typeof j.duration === 'number') {
+    seconds = j.duration
+  }
+  let errMsg = ''
+  const err = j.error
+  if (err && typeof err === 'object' && err !== null) {
+    const em = (err as { message?: string }).message
+    if (typeof em === 'string') errMsg = em
+  } else if (typeof err === 'string') {
+    errMsg = err
+  }
+  return { videoId, status, progress, seconds, error: errMsg || undefined, raw }
+}
+
+/** POST /v1/videos（JSON） */
+export async function videoCreate(
+  apiKey: string,
+  sticky: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<VideoJobSnapshot> {
+  const res = await fetch('/v1/videos', {
+    method: 'POST',
+    headers: {
+      ...videoAuthHeaders(apiKey, sticky, String(body.model ?? '')),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal,
+  })
+  const raw = await res.text()
+  if (!res.ok) {
+    throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  return parseVideoJobResponse(raw)
+}
+
+/** POST /v1/videos（multipart，含 input_reference 首帧图） */
+export async function videoCreateMultipart(
+  apiKey: string,
+  sticky: string,
+  opts: { model: string; prompt: string; seconds: string; size: string; file?: File },
+  signal?: AbortSignal,
+): Promise<VideoJobSnapshot> {
+  const fd = new FormData()
+  fd.append('model', opts.model.trim())
+  fd.append('prompt', opts.prompt.trim())
+  fd.append('seconds', opts.seconds.trim())
+  if (opts.size.trim()) fd.append('size', opts.size.trim())
+  if (opts.file) fd.append('input_reference', opts.file, opts.file.name)
+
+  const res = await fetch('/v1/videos', {
+    method: 'POST',
+    headers: videoAuthHeaders(apiKey, sticky, opts.model),
+    body: fd,
+    signal,
+  })
+  const raw = await res.text()
+  if (!res.ok) {
+    throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  return parseVideoJobResponse(raw)
+}
+
+/** GET /v1/videos/{id} */
+export async function videoRetrieve(
+  apiKey: string,
+  sticky: string,
+  model: string,
+  videoId: string,
+  signal?: AbortSignal,
+): Promise<VideoJobSnapshot> {
+  const q = new URLSearchParams({ model: model.trim() })
+  const res = await fetch(`/v1/videos/${encodeURIComponent(videoId)}?${q}`, {
+    method: 'GET',
+    headers: videoAuthHeaders(apiKey, sticky, model),
+    signal,
+  })
+  const raw = await res.text()
+  if (!res.ok) {
+    throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  return parseVideoJobResponse(raw)
+}
+
+/** GET /v1/videos/{id}/content */
+export async function videoContent(
+  apiKey: string,
+  sticky: string,
+  model: string,
+  videoId: string,
+  signal?: AbortSignal,
+): Promise<{ blob: Blob; contentType: string }> {
+  const q = new URLSearchParams({ model: model.trim() })
+  const res = await fetch(`/v1/videos/${encodeURIComponent(videoId)}/content?${q}`, {
+    method: 'GET',
+    headers: videoAuthHeaders(apiKey, sticky, model),
+    signal,
+  })
+  const contentType = res.headers.get('Content-Type')?.trim() || 'video/mp4'
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error((parseOpenAIError(text) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
+  const blob = await res.blob()
+  return { blob, contentType }
+}
+
+/** DELETE /v1/videos/{id} */
+export async function videoDelete(
+  apiKey: string,
+  sticky: string,
+  model: string,
+  videoId: string,
+): Promise<void> {
+  const q = new URLSearchParams({ model: model.trim() })
+  const res = await fetch(`/v1/videos/${encodeURIComponent(videoId)}?${q}`, {
+    method: 'DELETE',
+    headers: videoAuthHeaders(apiKey, sticky, model),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error((parseOpenAIError(text) || `${res.status}`) + traceHubGatewayErrorDetails(res))
+  }
 }
