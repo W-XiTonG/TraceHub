@@ -68,6 +68,9 @@ function isRowSelected(idx: number): boolean {
 
 const rowSavingIdx = ref<number | null>(null)
 const savingFull = ref(false)
+const busyResetPage = ref(false)
+const busyResetSelected = ref(false)
+const busyResetFull = ref(false)
 
 const {
   modelSuggestLoading,
@@ -250,7 +253,15 @@ const someVisibleSelected = computed(() => {
   return rows.value.some((_, i) => set.has(i))
 })
 
-const anyListSaving = computed(() => pageSaving.value || batchSaving.value || savingFull.value)
+const anyListSaving = computed(
+  () =>
+    pageSaving.value ||
+    batchSaving.value ||
+    savingFull.value ||
+    busyResetPage.value ||
+    busyResetSelected.value ||
+    busyResetFull.value,
+)
 
 const selectAllInput = ref<HTMLInputElement | null>(null)
 watch(
@@ -396,13 +407,41 @@ function addRow() {
   rebuildRows()
 }
 
+function planResetFromDrafts(drafts: DraftRow[]): { deleteNames: string[]; customToRemove: DraftRow[] } {
+  const deleteNames = new Set<string>()
+  const customToRemove: DraftRow[] = []
+  for (const r of drafts) {
+    if (r.isCustom) {
+      customToRemove.push(r)
+      continue
+    }
+    if (r.id != null) {
+      const n = r.model_name.trim()
+      if (n) deleteNames.add(n)
+    }
+  }
+  return { deleteNames: [...deleteNames], customToRemove }
+}
+
+async function deleteGlobalPricingByName(modelName: string): Promise<void> {
+  const { data } = await http.delete<Envelope<unknown>>('/api/admin/global-model-pricing', {
+    params: { model_name: modelName },
+  })
+  if (data.code !== 0) throw new Error(data.message || 'reset')
+}
+
+function removeCustomDraftRows(toRemove: DraftRow[]) {
+  if (!toRemove.length) return
+  const rm = new Set(toRemove)
+  customDrafts.value = customDrafts.value.filter((x) => !rm.has(x))
+  rebuildRows()
+}
+
 async function resetRow(idx: number) {
   const r = rows.value[idx]
   if (!r) return
   if (r.isCustom) {
-    const ci = customDrafts.value.findIndex((x) => x === r)
-    if (ci >= 0) customDrafts.value.splice(ci, 1)
-    rebuildRows()
+    removeCustomDraftRows([r])
     flashSuccess(t('adminGlobalPricing.resetCustomRemoved'))
     return
   }
@@ -411,10 +450,7 @@ async function resetRow(idx: number) {
     if (!confirm(t('adminGlobalPricing.resetConfirm', { name: r.model_name.trim() }))) return
     clearFlash()
     try {
-      const { data } = await http.delete<Envelope<unknown>>('/api/admin/global-model-pricing', {
-        params: { model_name: r.model_name.trim() },
-      })
-      if (data.code !== 0) throw new Error(data.message || 'reset')
+      await deleteGlobalPricingByName(r.model_name.trim())
       await load()
       flashSuccess(t('adminGlobalPricing.resetDone', { name: r.model_name.trim() }))
     } catch (e: unknown) {
@@ -426,6 +462,111 @@ async function resetRow(idx: number) {
 
 function canShowReset(r: DraftRow): boolean {
   return r.isCustom === true || r.id != null || r.locked === false || r.locked === undefined
+}
+
+async function resetCurrentPage() {
+  clearFlash()
+  const drafts = [...workspacePageDrafts.value, ...customDrafts.value]
+  const { deleteNames, customToRemove } = planResetFromDrafts(drafts)
+  if (!deleteNames.length && !customToRemove.length) {
+    flashSuccess(t('adminGlobalPricing.nothingToResetPage'))
+    return
+  }
+  if (
+    !confirm(
+      t('adminGlobalPricing.resetPageConfirm', {
+        db: deleteNames.length,
+        custom: customToRemove.length,
+      }),
+    )
+  )
+    return
+  busyResetPage.value = true
+  try {
+    for (const name of deleteNames) {
+      await deleteGlobalPricingByName(name)
+    }
+    removeCustomDraftRows(customToRemove)
+    await load()
+    flashSuccess(t('adminGlobalPricing.resetBatchDone', { db: deleteNames.length, custom: customToRemove.length }))
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    busyResetPage.value = false
+  }
+}
+
+async function resetSelectedRows() {
+  clearFlash()
+  if (!selectedRows.value.length) {
+    flashMsg.value = t('adminGlobalPricing.nothingSelected')
+    flashIsError.value = true
+    return
+  }
+  const drafts: DraftRow[] = []
+  for (const i of selectedRows.value) {
+    const r = rows.value[i]
+    if (r) drafts.push(r)
+  }
+  const { deleteNames, customToRemove } = planResetFromDrafts(drafts)
+  if (!deleteNames.length && !customToRemove.length) {
+    flashSuccess(t('adminGlobalPricing.nothingToResetSelection'))
+    return
+  }
+  if (
+    !confirm(
+      t('adminGlobalPricing.resetSelectedConfirm', {
+        db: deleteNames.length,
+        custom: customToRemove.length,
+      }),
+    )
+  )
+    return
+  busyResetSelected.value = true
+  try {
+    for (const name of deleteNames) {
+      await deleteGlobalPricingByName(name)
+    }
+    removeCustomDraftRows(customToRemove)
+    await load()
+    flashSuccess(t('adminGlobalPricing.resetBatchDone', { db: deleteNames.length, custom: customToRemove.length }))
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    busyResetSelected.value = false
+  }
+}
+
+async function resetFullWorkspace() {
+  clearFlash()
+  busyResetFull.value = true
+  try {
+    const drafts = await buildFullSaveDrafts()
+    const { deleteNames, customToRemove } = planResetFromDrafts(drafts)
+    if (!deleteNames.length && !customToRemove.length) {
+      flashSuccess(t('adminGlobalPricing.nothingToResetFull'))
+      return
+    }
+    if (
+      !confirm(
+        t('adminGlobalPricing.resetFullConfirm', {
+          db: deleteNames.length,
+          custom: customToRemove.length,
+        }),
+      )
+    )
+      return
+    for (const name of deleteNames) {
+      await deleteGlobalPricingByName(name)
+    }
+    removeCustomDraftRows(customToRemove)
+    await load()
+    flashSuccess(t('adminGlobalPricing.resetBatchDone', { db: deleteNames.length, custom: customToRemove.length }))
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    busyResetFull.value = false
+  }
 }
 
 async function saveCurrentPage() {
@@ -911,42 +1052,79 @@ async function onCsvFileChange(ev: Event) {
             role="group"
             :aria-label="t('adminGlobalPricing.bottomBarAria')"
           >
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
-                @click="addRow"
+            <div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <div
+                class="flex flex-wrap items-center gap-1.5"
+                role="group"
+                :aria-label="t('adminGlobalPricing.bottomToolbarGroupSave')"
               >
-                {{ t('adminGroups.addRow') }}
-              </button>
-              <button
-                type="button"
-                class="th-btn-primary-flat px-4 py-1.5 text-xs"
-                :disabled="anyListSaving || busy"
-                @click="saveCurrentPage"
+                <button type="button" class="th-admin-toolbar-btn" @click="addRow">
+                  {{ t('adminGroups.addRow') }}
+                </button>
+                <button
+                  type="button"
+                  class="th-btn-primary-flat th-admin-toolbar-primary"
+                  :disabled="anyListSaving || busy"
+                  @click="saveCurrentPage"
+                >
+                  {{ pageSaving ? t('common.submitting') : t('adminGlobalPricing.saveCurrentPage') }}
+                </button>
+                <button
+                  type="button"
+                  class="th-admin-toolbar-btn"
+                  :disabled="anyListSaving || busy"
+                  :title="t('adminGlobalPricing.saveFullHint')"
+                  @click="saveFullWorkspace"
+                >
+                  {{ savingFull ? t('common.submitting') : t('adminGlobalPricing.saveFull') }}
+                </button>
+                <button
+                  type="button"
+                  class="th-admin-toolbar-btn"
+                  :disabled="anyListSaving || busy || !selectedRows.length || rowSavingIdx !== null"
+                  @click="saveSelectedRows"
+                >
+                  {{ batchSaving ? t('common.submitting') : t('adminGlobalPricing.saveSelected') }}
+                </button>
+              </div>
+              <div class="hidden h-6 w-px shrink-0 bg-slate-600/50 sm:block" aria-hidden="true" />
+              <div
+                class="flex flex-wrap items-center gap-1.5"
+                role="group"
+                :aria-label="t('adminGlobalPricing.bottomToolbarGroupReset')"
               >
-                {{ pageSaving ? t('common.submitting') : t('adminGlobalPricing.saveCurrentPage') }}
-              </button>
+                <button
+                  type="button"
+                  class="th-admin-toolbar-btn"
+                  :disabled="anyListSaving || busy || rowSavingIdx !== null"
+                  :title="t('adminGlobalPricing.resetPageHint')"
+                  @click="resetCurrentPage"
+                >
+                  {{ busyResetPage ? t('common.submitting') : t('adminGlobalPricing.resetCurrentPage') }}
+                </button>
+                <button
+                  type="button"
+                  class="th-admin-toolbar-btn th-admin-toolbar-btn--danger"
+                  :disabled="anyListSaving || busy || rowSavingIdx !== null"
+                  :title="t('adminGlobalPricing.resetFullHint')"
+                  @click="resetFullWorkspace"
+                >
+                  {{ busyResetFull ? t('common.submitting') : t('adminGlobalPricing.resetFull') }}
+                </button>
+                <button
+                  type="button"
+                  class="th-admin-toolbar-btn"
+                  :disabled="anyListSaving || busy || !selectedRows.length || rowSavingIdx !== null"
+                  :title="t('adminGlobalPricing.resetSelectedHint')"
+                  @click="resetSelectedRows"
+                >
+                  {{ busyResetSelected ? t('common.submitting') : t('adminGlobalPricing.resetSelected') }}
+                </button>
+              </div>
+              <div class="hidden h-6 w-px shrink-0 bg-slate-600/50 sm:block" aria-hidden="true" />
               <button
                 type="button"
-                class="rounded-lg border border-violet-500/50 bg-violet-950/40 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-950/70 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="anyListSaving || busy"
-                :title="t('adminGlobalPricing.saveFullHint')"
-                @click="saveFullWorkspace"
-              >
-                {{ savingFull ? t('common.submitting') : t('adminGlobalPricing.saveFull') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="anyListSaving || busy || !selectedRows.length || rowSavingIdx !== null"
-                @click="saveSelectedRows"
-              >
-                {{ batchSaving ? t('common.submitting') : t('adminGlobalPricing.saveSelected') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                class="th-admin-toolbar-btn sm:shrink-0"
                 :disabled="anyListSaving || busy || rowSavingIdx !== null"
                 @click="load"
               >

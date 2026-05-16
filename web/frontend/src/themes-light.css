@@ -1233,6 +1233,30 @@ html[data-th-theme="paper"] .th-pg-btn-ghost:hover {
   border-color: rgba(15, 23, 42, 0.18);
 }
 
+html[data-th-theme="dawn"] .th-admin-toolbar-btn,
+html[data-th-theme="paper"] .th-admin-toolbar-btn {
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.62);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+html[data-th-theme="dawn"] .th-admin-toolbar-btn:hover:not(:disabled),
+html[data-th-theme="paper"] .th-admin-toolbar-btn:hover:not(:disabled) {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+html[data-th-theme="dawn"] .th-admin-toolbar-btn.th-admin-toolbar-btn--danger,
+html[data-th-theme="paper"] .th-admin-toolbar-btn.th-admin-toolbar-btn--danger {
+  border-color: var(--th-btn-flat-danger-border);
+  color: var(--th-btn-flat-danger-fg);
+  background: var(--th-btn-flat-danger-bg);
+}
+html[data-th-theme="dawn"] .th-admin-toolbar-btn.th-admin-toolbar-btn--danger:hover:not(:disabled),
+html[data-th-theme="paper"] .th-admin-toolbar-btn.th-admin-toolbar-btn--danger:hover:not(:disabled) {
+  background: var(--th-btn-flat-danger-hover-bg);
+}
+
 html[data-th-theme="dawn"] .th-pg-btn-ghost--icon.th-pg-btn-ghost--danger:hover,
 html[data-th-theme="paper"] .th-pg-btn-ghost--icon.th-pg-btn-ghost--danger:hover {
   background: rgba(254, 226, 226, 0.92);

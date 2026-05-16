@@ -812,7 +812,7 @@ export default {
     savedSelected: 'Saved {n} selected row(s).',
     savedOne: 'Saved “{name}”.',
     nothingToSaveRow: 'Nothing to submit for this row.',
-    nothingSelected: 'Select one or more rows first.',
+    nothingSelected: 'Select one or more rows in the table first.',
     nothingToSaveSelection: 'No selected rows need submitting.',
     reset: 'Reset',
     resetHint: 'Clear the global database override for this model (code defaults and group rates apply).',
@@ -820,6 +820,25 @@ export default {
     resetConfirm: 'Reset global pricing for “{name}”? This removes the database row.',
     resetDone: 'Reset “{name}”.',
     resetCustomRemoved: 'Removed the draft custom row.',
+    resetCurrentPage: 'Reset current page',
+    resetFull: 'Reset all (filtered)',
+    resetSelected: 'Reset selected',
+    resetPageHint:
+      'Deletes global DB overrides for workspace rows on this page that have a saved row, and removes all bottom custom draft rows.',
+    resetFullHint:
+      'Loads the full filtered list, deletes global DB overrides for rows that have one, and removes all bottom custom draft rows. May be slow for very large lists.',
+    resetSelectedHint:
+      'For checked rows: deletes global DB overrides where present; removes custom draft rows from the list.',
+    resetPageConfirm:
+      'Reset the current page? This removes {db} global pricing row(s) from the database and clears {custom} bottom custom draft row(s).',
+    resetSelectedConfirm:
+      'Reset the selected rows? This removes {db} global pricing row(s) from the database and clears {custom} custom draft row(s).',
+    resetFullConfirm:
+      'Reset everything for the current filter? This removes {db} global pricing row(s) from the database and clears {custom} bottom custom draft row(s).',
+    resetBatchDone: 'Done: removed {db} database row(s), cleared {custom} custom draft row(s).',
+    nothingToResetPage: 'Nothing to reset on this page (no saved global rows and no bottom custom rows).',
+    nothingToResetSelection: 'No selected rows can be reset.',
+    nothingToResetFull: 'Nothing to reset for the current filter.',
     empty: 'No rows yet; add a row and save.',
     saved: 'Saved',
     saveFail: 'Save failed',
@@ -833,7 +852,7 @@ export default {
     modelSuggestHint:
       'Model ID column: focus the field or click the chevron for suggestions (model catalog + channel-type presets across all channels). You can still type any id.',
     workspaceHint:
-      'Rows merge the built-in pricing table, enabled channels, visible catalog entries, and existing global DB rows. Use “Save current page”, “Save all (filtered)”, “Save selected”, or per-row Save; only changed or custom rows are submitted.',
+      'Rows merge the built-in pricing table, enabled channels, visible catalog entries, and existing global DB rows. Save or reset the current page, the full filtered list, or selected rows; only changed or custom rows are submitted; reset removes DB overrides and clears bottom custom drafts.',
     thSources: 'Sources',
     thCodeIn: 'Code in /1k',
     thCodeOut: 'Code out /1k',
@@ -848,7 +867,7 @@ export default {
     pageTotal: '{total} rows',
     pageStatus: 'Page {page} / {pages}',
     customRowsHint:
-      '“Add row” at the bottom adds custom models (not paginated/filtered). “Save current page” / “Save all (filtered)” include them; “Save selected” only saves checked rows.',
+      '“Add row” at the bottom adds custom models (not paginated/filtered). “Save/reset current page or full list” includes them; “Save selected” / “Reset selected” only affects checked rows.',
     exportCsv: 'Export CSV',
     exported: 'Download started',
     importCsv: 'Import CSV',
@@ -856,6 +875,8 @@ export default {
     csvRoundTripHint:
       'UTF-8 CSV with BOM for Excel. After editing, import writes rows by model_name. Headers must match export; blank quota cells clear overrides. Max 5000 data rows per upload.',
     paginationBottomAria: 'Pagination below table',
+    bottomToolbarGroupSave: 'Save and submit',
+    bottomToolbarGroupReset: 'Reset and clear drafts',
     bottomBarAria: 'Save actions and pagination',
   },
   adminNoBill: {

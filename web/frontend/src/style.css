@@ -1514,6 +1514,60 @@
   opacity: 0.4;
 }
 
+/* 管理端表格底栏：次要按钮（与 th-btn-primary-flat 搭配；浅色见 themes-light） */
+.th-admin-toolbar-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0.375rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-border-strong);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--th-text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease,
+    opacity 0.12s ease;
+}
+.th-admin-toolbar-btn:hover:not(:disabled) {
+  background: var(--th-ghost-hover-bg);
+  color: var(--th-text);
+  border-color: color-mix(in srgb, var(--th-accent) 28%, var(--th-border-strong));
+}
+.th-admin-toolbar-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.th-admin-toolbar-btn--danger {
+  border-color: var(--th-btn-flat-danger-border);
+  background: var(--th-btn-flat-danger-bg);
+  color: var(--th-btn-flat-danger-fg);
+}
+.th-admin-toolbar-btn--danger:hover:not(:disabled) {
+  background: var(--th-btn-flat-danger-hover-bg);
+}
+
+.th-admin-toolbar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--th-accent) 32%, transparent);
+}
+
+.th-btn-primary-flat.th-admin-toolbar-primary {
+  min-height: 2rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 /* API Key 列表：状态列扁平徽标 */
 .th-badge-apikey {
   display: inline-flex;
