@@ -402,6 +402,7 @@ export default {
     thCost: '費用',
     thIp: '用戶端 IP',
     thStatus: '狀態',
+    thError: '錯誤資訊',
     lblFilterUser: '使用者 ID',
     lblFilterEmail: '使用者郵箱',
     lblFilterModel: '模型',

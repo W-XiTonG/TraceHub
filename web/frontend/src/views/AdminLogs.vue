@@ -23,6 +23,7 @@ type Log = {
   completion_tokens: number
   total_cost: number
   status_code?: number | null
+  error_message?: string
   request_time: string
   ip_address?: string
 }
@@ -208,6 +209,7 @@ onMounted(() => void load())
             <th class="px-3 py-2">{{ t('adminLogs.thCost') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thIp') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thStatus') }}</th>
+            <th class="max-w-[12rem] px-3 py-2">{{ t('adminLogs.thError') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -230,6 +232,12 @@ onMounted(() => void load())
               {{ (l.ip_address ?? '').trim() || t('adminCommon.dash') }}
             </td>
             <td class="whitespace-nowrap px-3 py-2 font-mono text-slate-400">{{ l.status_code ?? '—' }}</td>
+            <td
+              class="max-w-[12rem] truncate px-3 py-2 text-[11px] text-amber-200/80"
+              :title="l.error_message || ''"
+            >
+              {{ l.error_message?.trim() || t('adminCommon.dash') }}
+            </td>
           </tr>
         </tbody>
       </table>

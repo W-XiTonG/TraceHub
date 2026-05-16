@@ -237,11 +237,11 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, &em, time.Since(start))
+					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
 				return
 			}
 			out, _ := io.ReadAll(resp.Body)
@@ -263,7 +263,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
 			oct := ctOut
 			if oct == "" {
 				oct = "application/json"
@@ -319,7 +319,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 		oct := "application/json"
 		if res.Headers != nil {
 			if h := res.Headers.Get("Content-Type"); h != "" {

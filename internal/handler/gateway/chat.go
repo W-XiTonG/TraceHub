@@ -62,6 +62,9 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或 messages 无效")
 			return
 		}
+		if rec := UsageRecorderFrom(c); rec != nil {
+			rec.SetModel(model)
+		}
 
 		fresh, err := d.Client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(c.Request.Context())
 		if err != nil {
@@ -88,6 +91,9 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
+		if rec := UsageRecorderFrom(c); rec != nil {
+			rec.SetChannel(ch.ID, sel.UpstreamModel)
+		}
 
 		promptToks, err := EstimateChatPromptTokensFromRequestBody(body, sel.UpstreamModel, d.Billing)
 		if err != nil {
@@ -193,12 +199,12 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil)
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 				return
 			}
 
@@ -235,7 +241,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 
 		case ct == "claude":
@@ -268,11 +274,11 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
+					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
+				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 				return
 			}
 			out, status, err := relay.CallClaudeMessages(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
@@ -294,7 +300,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
 			WriteClientProxy(c, status, "application/json", out)
 
 		case ct == "gemini":
@@ -327,11 +333,11 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
+					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
+				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 				return
 			}
 			out, status, err := relay.CallGeminiGenerateContent(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
@@ -353,7 +359,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
 			WriteClientProxy(c, status, "application/json", out)
 
 		default:

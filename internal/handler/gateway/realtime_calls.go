@@ -170,7 +170,7 @@ func RealtimeCallsWebRTC(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 
 		if d.RTCall.MappingEnabled && d.RDB != nil {
 			ttl := d.RTCall.MappingTTLSec

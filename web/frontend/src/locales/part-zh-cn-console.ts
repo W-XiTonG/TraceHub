@@ -433,6 +433,7 @@ export default {
     thTokCol: 'Token',
     thCost: '额度消耗',
     thStatus: '状态',
+    thError: '错误信息',
     thIp: '客户端 IP',
     thLatency: '耗时 ms',
     empty: '暂无记录',

@@ -104,6 +104,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 
 	gate := r.Group("/v1")
 	gate.Use(middleware.GatewayAPIKeyAuth(opt.Client))
+	gate.Use(gatewayhandler.GatewayUsageRecorder(opt.Client))
 	gate.Use(middleware.DenyOpenAIAccountAdminUnderV1(opt.Config.Site.BlockOpenAIAccountAdminPaths, opt.Config.Site.OpenAIAccountAdminDenyPrefixes))
 
 	gwBase := gatewayhandler.ChatDeps{

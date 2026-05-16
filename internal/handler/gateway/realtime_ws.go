@@ -46,6 +46,9 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "missing model query parameter")
 			return
 		}
+		if rec := UsageRecorderFrom(c); rec != nil {
+			rec.SetModel(model)
+		}
 
 		uAny, _ := c.Get(middleware.CtxGateUserKey)
 		kAny, _ := c.Get(middleware.CtxGateAPIKeyKey)
@@ -74,6 +77,9 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		ch := sel.Channel
+		if rec := UsageRecorderFrom(c); rec != nil {
+			rec.SetChannel(ch.ID, sel.UpstreamModel)
+		}
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
 		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
@@ -160,6 +166,11 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			if upResp != nil && upResp.Body != nil {
 				_ = upResp.Body.Close()
 			}
+			if rec := UsageRecorderFrom(c); rec != nil {
+				rec.SetModel(model)
+				rec.SetChannel(ch.ID, sel.UpstreamModel)
+				rec.SaveFail(http.StatusServiceUnavailable, "upstream WebSocket dial failed", promptToks, compToks, 0)
+			}
 			_ = clientConn.WriteControl(websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "service unavailable"),
 				time.Now().Add(5*time.Second))
@@ -175,7 +186,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			slog.Warn("realtime ws deduct failed", "user_id", u.ID, "err", err)
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compToks, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compToks, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 
 		t0 := time.Now()
 		bridgeWebSockets(c.Request.Context(), clientConn, upConn)

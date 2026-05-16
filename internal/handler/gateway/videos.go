@@ -186,7 +186,7 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 		})
 	}
 	metrics.GatewayRequests.WithLabelValues(parsed.Model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, parsed.Model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, parsed.Model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
 	WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 }
 
@@ -266,7 +266,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), costPre, false); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 		return
 	}
 	vid := parseVideoIDFromJSON(outBody)
@@ -276,7 +276,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 		})
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }
 
@@ -370,7 +370,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 			}
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, 0, 0, 0, 0, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, 0, 0, 0, 0, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 		WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 	}
 }
@@ -467,9 +467,9 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 			tag = "video_settle_refund"
 		}
 		em := tag + ":" + id
-		go saveUsage(d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, settle.Seconds, 0, 0, adjCost, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, settle.Seconds, 0, 0, adjCost, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 	} else {
-		go saveUsage(d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, 0, 0, 0, 0, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, 0, 0, 0, 0, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 	}
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }

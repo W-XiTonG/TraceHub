@@ -302,6 +302,7 @@ onMounted(() => {
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thTokCol') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thCost') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thStatus') }}</th>
+            <th v-if="!compact" class="hidden max-w-[12rem] px-3 py-2.5 font-medium lg:table-cell">{{ t('logsPage.thError') }}</th>
             <th class="whitespace-nowrap px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thIp') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thLatency') }}</th>
             <th class="px-3 py-2.5 text-right font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thActions') }}</th>
@@ -335,6 +336,14 @@ onMounted(() => {
               </span>
             </td>
             <td
+              v-if="!compact"
+              class="hidden max-w-[12rem] truncate px-3 text-[11px] text-amber-200/80 lg:table-cell"
+              :class="compact ? '' : 'py-2.5'"
+              :title="row.error_message || ''"
+            >
+              {{ row.error_message?.trim() || t('modelsPage.dash') }}
+            </td>
+            <td
               class="max-w-[9rem] truncate px-3 font-mono text-xs text-slate-400"
               :class="compact ? 'py-1.5' : 'py-2.5'"
               :title="row.ip_address || ''"
@@ -354,10 +363,10 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="items.length && !displayItems.length">
-            <td :colspan="compact ? 9 : 10" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.noClientMatch') }}</td>
+            <td :colspan="compact ? 9 : 11" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.noClientMatch') }}</td>
           </tr>
           <tr v-if="!items.length">
-            <td :colspan="compact ? 9 : 10" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
+            <td :colspan="compact ? 9 : 11" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
           </tr>
         </tbody>
       </table>

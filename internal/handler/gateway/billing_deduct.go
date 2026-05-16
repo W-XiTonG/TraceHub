@@ -40,6 +40,8 @@ func gatewayDeduct(c *gin.Context, eng *billing.Engine, userID int64, cost int64
 			"user_id", userID, "cost", cost, "err", err)
 		return err
 	}
-	middleware.WriteOpenAIError(c, 500, "api_error", "扣费失败，请稍后重试或联系管理员")
+	msg := "扣费失败，请稍后重试或联系管理员"
+	noteUsageErrorFromContext(c, msg)
+	middleware.WriteOpenAIError(c, 500, "api_error", msg)
 	return err
 }

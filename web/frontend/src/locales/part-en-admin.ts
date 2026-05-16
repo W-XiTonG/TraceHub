@@ -405,6 +405,7 @@ export default {
     thCost: 'Cost',
     thIp: 'Client IP',
     thStatus: 'HTTP',
+    thError: 'Error',
     lblFilterUser: 'User ID',
     lblFilterEmail: 'User email',
     lblFilterModel: 'Model',

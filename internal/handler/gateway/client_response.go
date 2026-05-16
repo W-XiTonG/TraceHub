@@ -140,10 +140,12 @@ func mustMarshalOpenAIError(errType, msg string) []byte {
 
 // WriteGatewayTransportError 传输失败时返回通用文案，不暴露 URL/dial 等细节。
 func WriteGatewayTransportError(c *gin.Context, _ error) {
+	noteUsageErrorFromContext(c, MsgServiceUnavailable)
 	middleware.WriteOpenAIError(c, http.StatusServiceUnavailable, "api_error", MsgServiceUnavailable)
 }
 
 // WriteGatewayChannelConfigError 渠道凭证未配置等平台侧错误。
 func WriteGatewayChannelConfigError(c *gin.Context) {
+	noteUsageErrorFromContext(c, MsgChannelMisconfigured)
 	middleware.WriteOpenAIError(c, http.StatusServiceUnavailable, "api_error", MsgChannelMisconfigured)
 }

@@ -200,7 +200,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
-			go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, route.LogicalModel, route.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, route.LogicalModel, route.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		}
 
 		metrics.GatewayRequests.WithLabelValues(route.LogicalModel, ct, "200").Inc()

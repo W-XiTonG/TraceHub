@@ -430,6 +430,7 @@ export default {
     thTokCol: 'Token',
     thCost: '额度消耗',
     thStatus: '狀態',
+    thError: '錯誤資訊',
     thIp: '用戶端 IP',
     thLatency: '耗时 ms',
     empty: '暫無记录',

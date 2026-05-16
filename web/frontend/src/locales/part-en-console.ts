@@ -432,6 +432,7 @@ export default {
     thTokCol: 'Tokens',
     thCost: 'Quota used',
     thStatus: 'Status',
+    thError: 'Error',
     thIp: 'Client IP',
     thLatency: 'Latency (ms)',
     empty: 'No records',

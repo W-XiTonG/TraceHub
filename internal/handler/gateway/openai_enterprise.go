@@ -241,7 +241,7 @@ func enterpriseForwardJSON(
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 	outCT := "application/json"
 	if res.Headers != nil {
 		if h := res.Headers.Get("Content-Type"); h != "" {
@@ -325,11 +325,11 @@ func enterpriseForwardStream(
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
 
 // enterpriseForwardPostSSE POST JSON 且上游返回 text/event-stream（如 Thread Run 流式）。
@@ -411,11 +411,11 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
 
 func enterpriseForwardBinaryDownload(
@@ -483,11 +483,11 @@ func enterpriseForwardBinaryDownload(
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, 0, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, 0, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, 0, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, 0, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 }
 
 // --- Files ---
@@ -574,7 +574,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		go saveUsage(d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 		WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 	}
 }

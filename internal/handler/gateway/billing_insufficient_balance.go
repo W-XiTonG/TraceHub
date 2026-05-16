@@ -81,11 +81,13 @@ func postDebit402Headers(balance, cost int64) map[string]string {
 // WriteInsufficientBalance402Precheck 网关预检阶段余额不足（402）。
 func WriteInsufficientBalance402Precheck(c *gin.Context, balance, costPre int64, promptToks, compAssumed int) {
 	msg := balancePrecheckInsufficientMessage(balance, costPre, promptToks, compAssumed)
+	noteUsageErrorFromContext(c, msg)
 	middleware.WriteOpenAIErrorWithHeaders(c, 402, "insufficient_balance_error", msg, precheck402Headers(balance, costPre, promptToks, compAssumed))
 }
 
 // WriteInsufficientBalance402PostDebit 上游已成功但本地扣费失败（402）。
 func WriteInsufficientBalance402PostDebit(c *gin.Context, balance, cost int64) {
 	msg := insufficientBalancePostDebitMessage(balance, cost)
+	noteUsageErrorFromContext(c, msg)
 	middleware.WriteOpenAIErrorWithHeaders(c, 402, "insufficient_balance_error", msg, postDebit402Headers(balance, cost))
 }

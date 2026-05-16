@@ -401,6 +401,7 @@ export default {
     thCost: '费用',
     thIp: '客户端 IP',
     thStatus: '状态',
+    thError: '错误信息',
     lblFilterUser: '用户 ID',
     lblFilterEmail: '用户邮箱',
     lblFilterModel: '模型',
