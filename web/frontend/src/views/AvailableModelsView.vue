@@ -2,6 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import {
+  formatModelPricingDisplay,
+  modelHasDisplayAlias,
+  modelTitle,
+  type ModelPricing,
+  type PriceCurrency,
+  type SiteCurrencyFactors,
+} from '../utils/modelPricingDisplay'
 
 const { t } = useI18n()
 
@@ -16,6 +24,7 @@ type ModelItem = {
   upstream_list_status?: string
   upstream_list_checked_at?: string
   labels?: string[]
+  pricing?: ModelPricing
 }
 
 type ModelsPayload = {
@@ -24,11 +33,61 @@ type ModelsPayload = {
   group_id: number
   group_assigned: boolean
   hint?: string
+  currency_quota_per_yuan?: number
+  currency_quota_per_usd?: number
+  pricing_cny_per_usd?: number
 }
+
+const PRICE_CURRENCY_KEY = 'tracehub.models.priceCurrency'
 
 const payload = ref<ModelsPayload | null>(null)
 const err = ref('')
 const q = ref('')
+const priceCurrency = ref<PriceCurrency>(
+  (typeof localStorage !== 'undefined' && localStorage.getItem(PRICE_CURRENCY_KEY) === 'cny'
+    ? 'cny'
+    : 'usd') as PriceCurrency,
+)
+
+const currencyFactors = computed((): SiteCurrencyFactors => {
+  const p = payload.value
+  const quotaPerYuan =
+    typeof p?.currency_quota_per_yuan === 'number' && p.currency_quota_per_yuan > 0
+      ? p.currency_quota_per_yuan
+      : 10000
+  const quotaPerUsd =
+    typeof p?.currency_quota_per_usd === 'number' && p.currency_quota_per_usd > 0
+      ? p.currency_quota_per_usd
+      : 0
+  const cnyPerUsd =
+    typeof p?.pricing_cny_per_usd === 'number' && p.pricing_cny_per_usd > 0 ? p.pricing_cny_per_usd : 0
+  return { quotaPerYuan, quotaPerUsd, cnyPerUsd }
+})
+
+const pricingLabels = computed(() => ({
+  free: t('modelsPage.priceFree'),
+  in: t('modelsPage.priceIn'),
+  out: t('modelsPage.priceOut'),
+  unified: t('modelsPage.priceUnified'),
+  perMillion: t('modelsPage.pricePerMillion'),
+  quotaPer1k: t('modelsPage.priceQuotaPer1k'),
+  quotaUnit: t('modelsPage.priceQuotaUnit'),
+  symbolUsd: '$',
+  symbolCny: '¥',
+}))
+
+function setPriceCurrency(c: PriceCurrency) {
+  priceCurrency.value = c
+  try {
+    localStorage.setItem(PRICE_CURRENCY_KEY, c)
+  } catch {
+    /* ignore */
+  }
+}
+
+function modelPricingCell(m: ModelItem) {
+  return formatModelPricingDisplay(m.pricing, priceCurrency.value, currencyFactors.value, pricingLabels.value)
+}
 
 const filtered = computed(() => {
   const items = payload.value?.items ?? []
@@ -39,10 +98,12 @@ const filtered = computed(() => {
       m.id.toLowerCase().includes(s) ||
       (m.owned_by ?? '').toLowerCase().includes(s) ||
       (m.display_name ?? '').toLowerCase().includes(s) ||
+      modelTitle(m.display_name, m.id).toLowerCase().includes(s) ||
       (m.upstream_list_status ?? '').toLowerCase().includes(s)
     ) {
       return true
     }
+    if (modelPricingCell(m).searchBlob.toLowerCase().includes(s)) return true
     if (upstreamListCell(m).text.toLowerCase().includes(s)) return true
     const lb = modelLabelsSearchBlob(m)
     return lb.includes(s)
@@ -174,6 +235,36 @@ onMounted(load)
           class="th-input max-w-md flex-1 min-w-[200px]"
           :aria-label="t('modelsPage.searchAria')"
         />
+        <div
+          class="inline-flex rounded-lg border border-white/[0.08] bg-slate-950/60 p-0.5"
+          role="group"
+          :aria-label="t('modelsPage.priceCurrencyAria')"
+        >
+          <button
+            type="button"
+            class="rounded-md px-2.5 py-1 text-xs font-medium transition"
+            :class="
+              priceCurrency === 'usd'
+                ? 'bg-cyan-500/20 text-cyan-100 shadow-sm ring-1 ring-cyan-400/30'
+                : 'text-slate-500 hover:text-slate-300'
+            "
+            @click="setPriceCurrency('usd')"
+          >
+            {{ t('modelsPage.priceCurrencyUsd') }}
+          </button>
+          <button
+            type="button"
+            class="rounded-md px-2.5 py-1 text-xs font-medium transition"
+            :class="
+              priceCurrency === 'cny'
+                ? 'bg-cyan-500/20 text-cyan-100 shadow-sm ring-1 ring-cyan-400/30'
+                : 'text-slate-500 hover:text-slate-300'
+            "
+            @click="setPriceCurrency('cny')"
+          >
+            {{ t('modelsPage.priceCurrencyCny') }}
+          </button>
+        </div>
         <span class="text-xs text-slate-500">{{ t('modelsPage.count', { total: payload.total, n: filtered.length }) }}</span>
       </div>
 
@@ -182,9 +273,9 @@ onMounted(load)
           <table class="w-full text-left text-sm">
             <thead class="sticky top-0 z-10">
               <tr class="border-b border-white/[0.06] bg-slate-900/95 text-xs uppercase tracking-wider text-slate-500 shadow-[0_1px_0_rgba(0,0,0,0.35)] backdrop-blur-sm">
-                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thId') }}</th>
+                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thModel') }}</th>
+                <th class="px-4 py-3 font-medium" :title="t('modelsPage.priceHint')">{{ t('modelsPage.thPrice') }}</th>
                 <th class="px-4 py-3 font-medium" :title="t('modelsPage.labelsHint')">{{ t('modelsPage.thLabels') }}</th>
-                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thDisplay') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thSource') }}</th>
                 <th class="px-4 py-3 font-medium" :title="t('modelsPage.thUpstreamListHint')">{{ t('modelsPage.thUpstreamList') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thOwner') }}</th>
@@ -192,7 +283,33 @@ onMounted(load)
             </thead>
             <tbody class="divide-y divide-white/[0.06]">
               <tr v-for="m in filtered" :key="m.id" class="transition hover:bg-white/[0.03]">
-                <td class="px-4 py-3 font-mono text-sm text-cyan-100/95">{{ m.id }}</td>
+                <td class="px-4 py-3">
+                  <div class="font-medium text-slate-200">{{ modelTitle(m.display_name, m.id) }}</div>
+                  <div
+                    v-if="modelHasDisplayAlias(m.display_name)"
+                    class="mt-0.5 font-mono text-xs text-slate-500"
+                    :title="m.id"
+                  >
+                    {{ m.id }}
+                  </div>
+                </td>
+                <td class="px-4 py-3" :title="t('modelsPage.priceHint')">
+                  <template v-for="price in [modelPricingCell(m)]" :key="`${m.id}-price`">
+                    <span
+                      v-if="price.free"
+                      class="inline-flex rounded-full border border-emerald-500/25 bg-emerald-950/40 px-2 py-0.5 text-xs font-medium text-emerald-300/95"
+                    >
+                      {{ price.fiatPrimary }}
+                    </span>
+                    <template v-else-if="price.fiatPrimary">
+                      <p class="text-sm tabular-nums text-amber-100/90">{{ price.fiatPrimary }}</p>
+                      <p v-if="price.quotaSecondary" class="mt-0.5 text-xs tabular-nums text-slate-500">
+                        {{ price.quotaSecondary }}
+                      </p>
+                    </template>
+                    <span v-else class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
+                  </template>
+                </td>
                 <td class="px-4 py-3">
                   <div class="flex flex-wrap gap-1">
                     <span
@@ -206,7 +323,6 @@ onMounted(load)
                     <span v-if="!(m.labels && m.labels.length)" class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-slate-300">{{ m.display_name || t('modelsPage.dash') }}</td>
                 <td class="px-4 py-3">
                   <span v-if="m.in_gateway && m.in_catalog" class="text-xs text-emerald-400/90">{{ t('modelsPage.srcBoth') }}</span>
                   <span v-else-if="m.in_gateway" class="text-xs text-cyan-400/90">{{ t('modelsPage.srcGw') }}</span>

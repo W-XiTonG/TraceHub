@@ -338,6 +338,14 @@ func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string) 
 	}, nil
 }
 
+// EffectiveQuotaPer1k 返回对该用户生效的每千 token 额度（入/出），与 Cost(1000,0,0)、Cost(0,1000,0) 一致。
+func (b ModelBillRates) EffectiveQuotaPer1k() (in, out int64) {
+	if !b.Billable {
+		return 0, 0
+	}
+	return b.Cost(1000, 0, 0), b.Cost(0, 1000, 0)
+}
+
 // Cost 与 ChargeWithPromptCache 数值一致（含 cached prompt 分层与向上取整）。
 func (b ModelBillRates) Cost(promptTokens, completionTokens, cachedPromptTokens int) int64 {
 	if !b.Billable {

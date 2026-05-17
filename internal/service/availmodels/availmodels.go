@@ -193,18 +193,27 @@ func DistinctDeclaredModelCountSiteWide(ctx context.Context, client *ent.Client)
 	return DeclaredModelDistinctCount(channels), nil
 }
 
+// ModelPricing 用户侧展示的有效单价（与 billing.ModelBillRates 一致）。
+type ModelPricing struct {
+	Billable      bool   `json:"billable"`
+	QuotaInPer1k  int64  `json:"quota_in_per_1k"`
+	QuotaOutPer1k int64  `json:"quota_out_per_1k"`
+	PricingUnit   string `json:"pricing_unit"` // per_1k_tokens
+}
+
 // ConsoleModel 控制台合并列表：网关渠道可调度模型 + 模型市场中对用户可见的目录条目。
 type ConsoleModel struct {
-	ID                    string   `json:"id"`
-	Object                string   `json:"object"`
-	Created               int64    `json:"created"`
-	OwnedBy               string   `json:"owned_by"`
-	DisplayName           string   `json:"display_name,omitempty"`
-	InGateway             bool     `json:"in_gateway"`
-	InCatalog             bool     `json:"in_catalog"`
-	UpstreamListStatus    string   `json:"upstream_list_status,omitempty"`     // listed|not_listed|mixed
-	UpstreamListCheckedAt string   `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
-	Labels                []string `json:"labels,omitempty"`                   // 类型标签（启发式 + 可选目录 metadata）
+	ID                    string        `json:"id"`
+	Object                string        `json:"object"`
+	Created               int64         `json:"created"`
+	OwnedBy               string        `json:"owned_by"`
+	DisplayName           string        `json:"display_name,omitempty"`
+	InGateway             bool          `json:"in_gateway"`
+	InCatalog             bool          `json:"in_catalog"`
+	UpstreamListStatus    string        `json:"upstream_list_status,omitempty"`     // listed|not_listed|mixed
+	UpstreamListCheckedAt string        `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
+	Labels                []string      `json:"labels,omitempty"`                   // 类型标签（启发式 + 可选目录 metadata）
+	Pricing               *ModelPricing `json:"pricing,omitempty"`
 }
 
 // ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关侧仍以 ListForGroup 为准。

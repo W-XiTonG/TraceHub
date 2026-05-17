@@ -15,8 +15,10 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/redeemutil"
+	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/service/availmodels"
+	"tracehub/internal/service/billing"
 
 	"github.com/gin-gonic/gin"
 )
@@ -166,7 +168,7 @@ func MyGroup(client *ent.Client) gin.HandlerFunc {
 }
 
 // AvailableModels 控制台模型列表：合并「分组下渠道可调度的模型」与「模型市场中对用户可见的目录」。
-func AvailableModels(client *ent.Client) gin.HandlerFunc {
+func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		gid := u.GroupID
@@ -175,6 +177,26 @@ func AvailableModels(client *ent.Client) gin.HandlerFunc {
 		if err != nil {
 			httpx.ServerError(c, "读取模型列表失败")
 			return
+		}
+		billUser := u
+		if eng != nil {
+			fu, qerr := client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(ctx)
+			if qerr == nil {
+				billUser = fu
+			}
+			for i := range items {
+				br, brErr := eng.ModelBillRates(ctx, billUser, items[i].ID)
+				if brErr != nil {
+					continue
+				}
+				in, out := br.EffectiveQuotaPer1k()
+				items[i].Pricing = &availmodels.ModelPricing{
+					Billable:      br.Billable,
+					QuotaInPer1k:  in,
+					QuotaOutPer1k: out,
+					PricingUnit:   "per_1k_tokens",
+				}
+			}
 		}
 		hint := ""
 		switch {
@@ -185,12 +207,20 @@ func AvailableModels(client *ent.Client) gin.HandlerFunc {
 		case len(items) > 0 && countGateway(items) == 0:
 			hint = "当前分组下暂无渠道可用模型；下列均为模型市场目录，请在管理后台为该分组配置启用且健康的渠道。"
 		}
+		cp := sitecfg.EffectiveCurrencyPricing(ctx, client, cfg)
+		unit := cp.QuotaPerYuan
+		if unit <= 0 {
+			unit = 10000
+		}
 		httpx.OK(c, gin.H{
-			"items":          items,
-			"total":          len(items),
-			"group_id":       gid,
-			"group_assigned": gid > 0,
-			"hint":           hint,
+			"items":                   items,
+			"total":                   len(items),
+			"group_id":                gid,
+			"group_assigned":          gid > 0,
+			"hint":                    hint,
+			"currency_quota_per_yuan": unit,
+			"currency_quota_per_usd":  cp.QuotaPerUsd,
+			"pricing_cny_per_usd":     cp.CnyPerUsd,
 		})
 	}
 }
