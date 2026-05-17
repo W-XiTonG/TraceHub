@@ -221,6 +221,46 @@ var (
 			},
 		},
 	}
+	// ChannelModelPricingsColumns holds the columns for the "channel_model_pricings" table.
+	ChannelModelPricingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "model_name", Type: field.TypeString, Size: 255},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "quota_in_per_1k", Type: field.TypeInt64, Nullable: true},
+		{Name: "quota_out_per_1k", Type: field.TypeInt64, Nullable: true},
+		{Name: "input_rate", Type: field.TypeFloat64, Default: 1},
+		{Name: "output_rate", Type: field.TypeFloat64, Default: 1},
+		{Name: "markup_percent", Type: field.TypeFloat64, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "channel_id", Type: field.TypeInt},
+	}
+	// ChannelModelPricingsTable holds the schema information for the "channel_model_pricings" table.
+	ChannelModelPricingsTable = &schema.Table{
+		Name:       "channel_model_pricings",
+		Columns:    ChannelModelPricingsColumns,
+		PrimaryKey: []*schema.Column{ChannelModelPricingsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "channel_model_pricings_channels_channel_model_pricings",
+				Columns:    []*schema.Column{ChannelModelPricingsColumns[10]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "channelmodelpricing_channel_id_model_name",
+				Unique:  true,
+				Columns: []*schema.Column{ChannelModelPricingsColumns[10], ChannelModelPricingsColumns[1]},
+			},
+			{
+				Name:    "channelmodelpricing_model_name",
+				Unique:  false,
+				Columns: []*schema.Column{ChannelModelPricingsColumns[1]},
+			},
+		},
+	}
 	// DashboardAggregationsColumns holds the columns for the "dashboard_aggregations" table.
 	DashboardAggregationsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -887,6 +927,7 @@ var (
 		AdminAuditLogsTable,
 		AnnouncementsTable,
 		ChannelsTable,
+		ChannelModelPricingsTable,
 		DashboardAggregationsTable,
 		FeedbacksTable,
 		GlobalModelPricingsTable,
@@ -913,6 +954,7 @@ func init() {
 	AdminAuditLogsTable.ForeignKeys[0].RefTable = UsersTable
 	AnnouncementsTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelsTable.ForeignKeys[0].RefTable = GroupsTable
+	ChannelModelPricingsTable.ForeignKeys[0].RefTable = ChannelsTable
 	FeedbacksTable.ForeignKeys[0].RefTable = UsersTable
 	GroupModelRatesTable.ForeignKeys[0].RefTable = GroupsTable
 	InvoiceProfilesTable.ForeignKeys[0].RefTable = UsersTable

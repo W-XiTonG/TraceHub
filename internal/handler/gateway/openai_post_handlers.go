@@ -115,7 +115,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	if preChargeComp > 0 {
 		preChargeComp = completionTokensFallback(preChargeComp)
 	}
-	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, previewSel.Channel.ID)
 	costPre := br.Cost(promptToks, preChargeComp, 0)
 	if u.Balance < costPre {
 		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, preChargeComp)

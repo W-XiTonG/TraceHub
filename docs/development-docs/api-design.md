@@ -687,6 +687,11 @@ POST /api/user/redeem
 | `/api/admin/global-model-pricing` | GET | 全站模型计价列表（独立表 `global_model_pricings`，含 `enabled=false` 行） |
 | `/api/admin/global-model-pricing` | PUT | 批量 upsert；每项含可选 `markup_percent`（`null`/省略表示清除行内覆盖、用全站默认）。**扣费**：`quota_*` 为成本基数；有效加成 = 行内 `markup_percent` 若已设，否则 `site.default_pricing_markup_percent`；`billing.ModelBillRates.Cost` 在 token×quota×倍率之后乘 `(1+加成%)`，再乘分组/用户倍率。 |
 | `/api/admin/global-model-pricing` | DELETE | 查询参数 `model_name`：删除一条全站模型计价配置 |
+| `/api/admin/channel-model-pricing/workspace` | GET | **渠道**合并视图：行集合 = 指定渠道的 `models` ∪ `model_alias` 键 ∪ 已有 `channel_model_pricings` 行。**Query**：`channel_id`（必填）、`q`、`page`、`page_size`（同全局 workspace）。每项含 `code_in_per_1k` / `code_out_per_1k`、`sources`（`channel_declared` / `channel_db`）、`channel`（库行）、`global`（同模型全站行，供对照）。 |
+| `/api/admin/channel-model-pricing` | PUT | 批量 upsert；每项须含 `channel_id`、`model_name` 及与全局相同的计价字段。 |
+| `/api/admin/channel-model-pricing` | DELETE | Query：`channel_id`、`model_name` |
+
+**扣费优先级**（`billing.ModelBillRates`）：分组 `GroupModelRate`（含 `billable`）> 渠道 `channel_model_pricings`（非空字段覆盖）> 全站 `global_model_pricings` > 代码内建 `DefaultQuotaPer1K`。网关在 `SelectChannel` 之后传入 `channel_id` 取价。
 
 全局「免计费模型」由 `site.no_bill_models` 提供：配置文件 `site.no_bill_models`（YAML 字符串数组）与/或 `PUT /api/admin/config` 写入键 `site.no_bill_models`（JSON 字符串数组）；聚合展示见 `GET /api/admin/site-settings`，管理端在「计费 → 不计费模型」中编辑。
 

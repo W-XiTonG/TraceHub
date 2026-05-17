@@ -129,7 +129,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 		var costPre int64
 		var br billing.ModelBillRates
 		if promptToks > 0 {
-			br, _ = d.Billing.ModelBillRates(c.Request.Context(), u, route.LogicalModel)
+			br, _ = d.Billing.ModelBillRates(c.Request.Context(), u, route.LogicalModel, ch.ID)
 			compAssumed := completionTokensFallback(maxComp)
 			costPre = br.Cost(promptToks, compAssumed, 0)
 			if u.Balance < costPre {

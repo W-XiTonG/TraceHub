@@ -35,3 +35,10 @@ func InvalidateGroupModelRateCacheAdmin(groupID int) {
 		adminEngine.InvalidateGroupModelRateCache(groupID)
 	}
 }
+
+// InvalidateChannelModelPricingCacheAdmin 管理端更新渠道模型计价后调用；channelID<=0 清空全部渠道缓存。
+func InvalidateChannelModelPricingCacheAdmin(channelID int) {
+	if adminEngine != nil {
+		adminEngine.InvalidateChannelModelPricingCache(channelID)
+	}
+}

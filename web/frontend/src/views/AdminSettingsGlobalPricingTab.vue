@@ -50,7 +50,38 @@ type WorkspaceRow = {
   code_out_per_1k: number
   sources: string[]
   global?: ApiRow | null
+  channel?: ApiRow | null
 }
+
+type ChannelListItem = {
+  id: number
+  channel_name?: string
+  channel_type: string
+  enabled?: boolean
+}
+
+/** 空字符串 = 全站默认；正整数 = 按渠道覆盖 */
+const selectedChannelId = ref<number | ''>('')
+const channelOptions = ref<ChannelListItem[]>([])
+const channelsLoading = ref(false)
+
+const activeChannelId = computed(() => {
+  const id = selectedChannelId.value
+  if (id === '' || id == null) return 0
+  const n = typeof id === 'number' ? id : Number(id)
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0
+})
+
+const isChannelScope = computed(() => activeChannelId.value > 0)
+
+const selectedChannelLabel = computed(() => {
+  if (!isChannelScope.value) return ''
+  const id = activeChannelId.value
+  const ch = channelOptions.value.find((c) => c.id === id)
+  if (!ch) return `#${id}`
+  const name = (ch.channel_name || '').trim()
+  return name ? `${name} (#${id})` : `#${id} · ${ch.channel_type}`
+})
 
 const customDrafts = ref<DraftRow[]>([])
 const workspacePageDrafts = ref<DraftRow[]>([])
@@ -179,7 +210,7 @@ function flashWarn(text: string) {
 }
 
 function workspaceItemToDraft(w: WorkspaceRow): DraftRow {
-  const g = w.global
+  const g = isChannelScope.value ? w.channel : w.global
   return {
     id: g?.id,
     model_name: w.model_name,
@@ -395,6 +426,14 @@ async function confirmImportPreview() {
 }
 
 async function putPricingItems(items: ApiPricingItem[]): Promise<void> {
+  if (isChannelScope.value) {
+    const payload = items.map((it) => ({ ...it, channel_id: activeChannelId.value }))
+    const { data } = await http.put<Envelope<unknown>>('/api/admin/channel-model-pricing', {
+      items: payload,
+    })
+    if (data.code !== 0) throw new Error(data.message || 'save')
+    return
+  }
   const { data } = await http.put<Envelope<unknown>>('/api/admin/global-model-pricing', { items })
   if (data.code !== 0) throw new Error(data.message || 'save')
 }
@@ -504,11 +543,19 @@ async function fetchAllWorkspaceDrafts(): Promise<DraftRow[]> {
   let totalCount = 0
   const byName = new Map<string, DraftRow>()
   const q = searchApplied.value.trim() || undefined
+  const workspacePath = isChannelScope.value
+    ? '/api/admin/channel-model-pricing/workspace'
+    : '/api/admin/global-model-pricing/workspace'
+  const baseParams: Record<string, string | number> = { page: p, page_size: chunk }
+  if (q) baseParams.q = q
+  if (isChannelScope.value) {
+    baseParams.channel_id = activeChannelId.value
+  }
   for (;;) {
     const { data } = await http.get<
       Envelope<{ items: WorkspaceRow[]; total: number; page: number; page_size: number }>
-    >('/api/admin/global-model-pricing/workspace', {
-      params: { page: p, page_size: chunk, q },
+    >(workspacePath, {
+      params: { ...baseParams, page: p },
     })
     if (data.code !== 0) throw new Error(data.message || 'load')
     totalCount = typeof data.data.total === 'number' ? data.data.total : 0
@@ -548,6 +595,10 @@ function sourceBadgeLabel(src: string): string {
       return t('adminGlobalPricing.sourceBuiltin')
     case 'channel':
       return t('adminGlobalPricing.sourceChannel')
+    case 'channel_declared':
+      return t('adminGlobalPricing.sourceChannelDeclared')
+    case 'channel_db':
+      return t('adminGlobalPricing.sourceChannelDb')
     case 'catalog':
       return t('adminGlobalPricing.sourceCatalog')
     case 'global_db':
@@ -557,24 +608,56 @@ function sourceBadgeLabel(src: string): string {
   }
 }
 
+async function loadChannelOptions() {
+  channelsLoading.value = true
+  try {
+    const { data } = await http.get<Envelope<{ items: ChannelListItem[] }>>('/api/admin/channels')
+    if (data.code !== 0 || !data.data) throw new Error(data.message || 'channels')
+    channelOptions.value = (data.data.items || []).filter((c) => c.enabled !== false)
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    channelsLoading.value = false
+  }
+}
+
+function onChannelScopeChange() {
+  clearFlash()
+  page.value = 1
+  customDrafts.value = []
+  void load()
+}
+
 function onModelFocus(idx: number) {
   if (rows.value[idx]?.locked) return
   focusModelSuggestRow(idx)
 }
 
 async function load() {
+  if (isChannelScope.value && activeChannelId.value <= 0) {
+    workspacePageDrafts.value = []
+    total.value = 0
+    rebuildRows()
+    return
+  }
   clearFlash()
   busy.value = true
   try {
+    const workspacePath = isChannelScope.value
+      ? '/api/admin/channel-model-pricing/workspace'
+      : '/api/admin/global-model-pricing/workspace'
+    const params: Record<string, string | number> = {
+      page: page.value,
+      page_size: pageSize.value,
+    }
+    const q = searchApplied.value.trim()
+    if (q) params.q = q
+    if (isChannelScope.value) {
+      params.channel_id = activeChannelId.value
+    }
     const { data } = await http.get<
       Envelope<{ items: WorkspaceRow[]; total: number; page: number; page_size: number }>
-    >('/api/admin/global-model-pricing/workspace', {
-      params: {
-        page: page.value,
-        page_size: pageSize.value,
-        q: searchApplied.value || undefined,
-      },
-    })
+    >(workspacePath, { params })
     if (data.code !== 0) throw new Error(data.message || 'load')
     total.value = typeof data.data.total === 'number' ? data.data.total : 0
     if (typeof data.data.page === 'number' && data.data.page >= 1) {
@@ -648,6 +731,13 @@ function planResetFromDrafts(drafts: DraftRow[]): { deleteNames: string[]; custo
 }
 
 async function deleteGlobalPricingByName(modelName: string): Promise<void> {
+  if (isChannelScope.value) {
+    const { data } = await http.delete<Envelope<unknown>>('/api/admin/channel-model-pricing', {
+      params: { channel_id: activeChannelId.value, model_name: modelName },
+    })
+    if (data.code !== 0) throw new Error(data.message || 'reset')
+    return
+  }
   const { data } = await http.delete<Envelope<unknown>>('/api/admin/global-model-pricing', {
     params: { model_name: modelName },
   })
@@ -1019,6 +1109,7 @@ const quotaOutPlaceholder = computed(() =>
 )
 
 onMounted(() => {
+  void loadChannelOptions()
   void load()
   void loadSitePricingMeta()
   document.addEventListener('click', onExportMenusDocClick)
@@ -1132,6 +1223,10 @@ function onExportMenusDocClick(ev: MouseEvent) {
 
 function triggerCsvImport() {
   clearFlash()
+  if (isChannelScope.value) {
+    flashWarn(t('adminGlobalPricing.importCsvChannelDisabled'))
+    return
+  }
   csvFileInput.value?.click()
 }
 
@@ -1175,6 +1270,12 @@ async function onCsvFileChange(ev: Event) {
         <p class="mt-2 text-sm text-slate-400">{{ t('adminGlobalPricing.intro') }}</p>
         <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminGlobalPricing.priorityHint') }}</p>
         <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminGlobalPricing.workspaceHint') }}</p>
+        <p
+          v-if="isChannelScope"
+          class="mt-1 text-xs leading-relaxed text-cyan-300/80"
+        >
+          {{ t('adminGlobalPricing.channelScopeHint', { channel: selectedChannelLabel }) }}
+        </p>
       </div>
 
       <div class="border-t border-slate-800/80 bg-slate-950/40 px-5 py-4">
@@ -1189,6 +1290,21 @@ async function onCsvFileChange(ev: Event) {
           <div
             class="th-admin-pricing-toolbar mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 text-xs"
           >
+            <label class="flex min-w-0 max-w-full items-center gap-2 sm:max-w-[min(100%,20rem)]">
+              <span class="th-admin-pricing-toolbar__label shrink-0">{{ t('adminGlobalPricing.channelFilter') }}</span>
+              <select
+                v-model="selectedChannelId"
+                class="th-select th-select--inline th-select--pricing-channel min-w-0 flex-1"
+                :disabled="busy || channelsLoading"
+                @change="onChannelScopeChange"
+              >
+                <option value="">{{ t('adminGlobalPricing.channelFilterAll') }}</option>
+                <option v-for="ch in channelOptions" :key="ch.id" :value="ch.id">
+                  {{ (ch.channel_name || '').trim() || ch.channel_type }} (#{{ ch.id }})
+                </option>
+              </select>
+            </label>
+            <span class="th-admin-pricing-toolbar__sep" aria-hidden="true" />
             <label class="flex items-center gap-2">
               <span class="th-admin-pricing-toolbar__label shrink-0">{{ t('adminGlobalPricing.deriveBarLabel') }}</span>
               <select
@@ -1253,9 +1369,9 @@ async function onCsvFileChange(ev: Event) {
             </RouterLink>
           </div>
 
-          <div class="mb-3 space-y-2 border-b border-slate-800/60 pb-3">
+          <div class="mb-3 space-y-3 border-b border-slate-800/60 pb-4">
             <div
-              class="flex flex-col gap-3 rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2 sm:py-2"
+              class="th-admin-pricing-filter-bar flex flex-col gap-3 overflow-visible rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 pb-3 pt-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2 sm:pb-2.5 sm:pt-2"
             >
               <!-- 筛选 -->
               <div class="flex min-w-0 flex-1 items-center gap-2 sm:max-w-md">
@@ -1342,7 +1458,8 @@ async function onCsvFileChange(ev: Event) {
                   <button
                     type="button"
                     class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                    :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                    :disabled="isChannelScope || exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                    :title="isChannelScope ? t('adminGlobalPricing.exportChannelDisabled') : undefined"
                     :aria-expanded="dataMenuOpen"
                     @click.stop="toggleDataMenu"
                   >
@@ -1386,7 +1503,8 @@ async function onCsvFileChange(ev: Event) {
                   <button
                     type="button"
                     class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                    :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                    :disabled="isChannelScope || exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
+                    :title="isChannelScope ? t('adminGlobalPricing.exportChannelDisabled') : undefined"
                     :aria-expanded="templateMenuOpen"
                     @click.stop="toggleTemplateMenu"
                   >
@@ -1431,7 +1549,8 @@ async function onCsvFileChange(ev: Event) {
                 <button
                   type="button"
                   class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
+                  :disabled="isChannelScope || exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
+                  :title="isChannelScope ? t('adminGlobalPricing.importCsvChannelDisabled') : undefined"
                   @click="triggerCsvImport"
                 >
                   {{ importing ? t('common.submitting') : t('adminGlobalPricing.importCsv') }}
@@ -1447,7 +1566,9 @@ async function onCsvFileChange(ev: Event) {
                 />
               </div>
             </div>
-            <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminGlobalPricing.customRowsHint') }}</p>
+            <p class="th-admin-pricing-workspace-hint px-0.5 text-[11px] leading-relaxed text-slate-500">
+              {{ t('adminGlobalPricing.customRowsHint') }}
+            </p>
           </div>
 
           <div class="th-admin-table-shell overflow-x-auto rounded-xl border border-slate-800">

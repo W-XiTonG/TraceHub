@@ -87,9 +87,11 @@ type ChannelEdges struct {
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// ModelCatalogSources holds the value of the model_catalog_sources edge.
 	ModelCatalogSources []*ModelCatalogSource `json:"model_catalog_sources,omitempty"`
+	// ChannelModelPricings holds the value of the channel_model_pricings edge.
+	ChannelModelPricings []*ChannelModelPricing `json:"channel_model_pricings,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -119,6 +121,15 @@ func (e ChannelEdges) ModelCatalogSourcesOrErr() ([]*ModelCatalogSource, error) 
 		return e.ModelCatalogSources, nil
 	}
 	return nil, &NotLoadedError{edge: "model_catalog_sources"}
+}
+
+// ChannelModelPricingsOrErr returns the ChannelModelPricings value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChannelEdges) ChannelModelPricingsOrErr() ([]*ChannelModelPricing, error) {
+	if e.loadedTypes[3] {
+		return e.ChannelModelPricings, nil
+	}
+	return nil, &NotLoadedError{edge: "channel_model_pricings"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -353,6 +364,11 @@ func (_m *Channel) QueryUsageLogs() *UsageLogQuery {
 // QueryModelCatalogSources queries the "model_catalog_sources" edge of the Channel entity.
 func (_m *Channel) QueryModelCatalogSources() *ModelCatalogSourceQuery {
 	return NewChannelClient(_m.config).QueryModelCatalogSources(_m)
+}
+
+// QueryChannelModelPricings queries the "channel_model_pricings" edge of the Channel entity.
+func (_m *Channel) QueryChannelModelPricings() *ChannelModelPricingQuery {
+	return NewChannelClient(_m.config).QueryChannelModelPricings(_m)
 }
 
 // Update returns a builder for updating this Channel.

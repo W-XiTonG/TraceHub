@@ -20,6 +20,8 @@ type Tx struct {
 	Announcement *AnnouncementClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// ChannelModelPricing is the client for interacting with the ChannelModelPricing builders.
+	ChannelModelPricing *ChannelModelPricingClient
 	// DashboardAggregation is the client for interacting with the DashboardAggregation builders.
 	DashboardAggregation *DashboardAggregationClient
 	// Feedback is the client for interacting with the Feedback builders.
@@ -189,6 +191,7 @@ func (tx *Tx) init() {
 	tx.AdminAuditLog = NewAdminAuditLogClient(tx.config)
 	tx.Announcement = NewAnnouncementClient(tx.config)
 	tx.Channel = NewChannelClient(tx.config)
+	tx.ChannelModelPricing = NewChannelModelPricingClient(tx.config)
 	tx.DashboardAggregation = NewDashboardAggregationClient(tx.config)
 	tx.Feedback = NewFeedbackClient(tx.config)
 	tx.GlobalModelPricing = NewGlobalModelPricingClient(tx.config)

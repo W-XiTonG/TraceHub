@@ -118,7 +118,7 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 	if preComp < 0 {
 		preComp = 0
 	}
-	br, billErr := d.Billing.ModelBillRates(c.Request.Context(), u, routingModel)
+	br, billErr := d.Billing.ModelBillRates(c.Request.Context(), u, routingModel, ch.ID)
 	if billErr != nil {
 		middleware.WriteOpenAIError(c, 500, "api_error", "计费状态异常")
 		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}

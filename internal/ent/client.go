@@ -15,6 +15,7 @@ import (
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/channelmodelpricing"
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/globalmodelpricing"
@@ -52,6 +53,8 @@ type Client struct {
 	Announcement *AnnouncementClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// ChannelModelPricing is the client for interacting with the ChannelModelPricing builders.
+	ChannelModelPricing *ChannelModelPricingClient
 	// DashboardAggregation is the client for interacting with the DashboardAggregation builders.
 	DashboardAggregation *DashboardAggregationClient
 	// Feedback is the client for interacting with the Feedback builders.
@@ -101,6 +104,7 @@ func (c *Client) init() {
 	c.AdminAuditLog = NewAdminAuditLogClient(c.config)
 	c.Announcement = NewAnnouncementClient(c.config)
 	c.Channel = NewChannelClient(c.config)
+	c.ChannelModelPricing = NewChannelModelPricingClient(c.config)
 	c.DashboardAggregation = NewDashboardAggregationClient(c.config)
 	c.Feedback = NewFeedbackClient(c.config)
 	c.GlobalModelPricing = NewGlobalModelPricingClient(c.config)
@@ -214,6 +218,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		AdminAuditLog:        NewAdminAuditLogClient(cfg),
 		Announcement:         NewAnnouncementClient(cfg),
 		Channel:              NewChannelClient(cfg),
+		ChannelModelPricing:  NewChannelModelPricingClient(cfg),
 		DashboardAggregation: NewDashboardAggregationClient(cfg),
 		Feedback:             NewFeedbackClient(cfg),
 		GlobalModelPricing:   NewGlobalModelPricingClient(cfg),
@@ -254,6 +259,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		AdminAuditLog:        NewAdminAuditLogClient(cfg),
 		Announcement:         NewAnnouncementClient(cfg),
 		Channel:              NewChannelClient(cfg),
+		ChannelModelPricing:  NewChannelModelPricingClient(cfg),
 		DashboardAggregation: NewDashboardAggregationClient(cfg),
 		Feedback:             NewFeedbackClient(cfg),
 		GlobalModelPricing:   NewGlobalModelPricingClient(cfg),
@@ -300,11 +306,11 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.DashboardAggregation,
-		c.Feedback, c.GlobalModelPricing, c.Group, c.GroupModelRate, c.InvoiceProfile,
-		c.ModelCatalogEntry, c.ModelCatalogSource, c.PaymentLedger, c.PaymentOrder,
-		c.PaymentRefund, c.RechargePackage, c.RedeemCode, c.RedeemLedger,
-		c.SystemConfig, c.UsageLog, c.User,
+		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.ChannelModelPricing,
+		c.DashboardAggregation, c.Feedback, c.GlobalModelPricing, c.Group,
+		c.GroupModelRate, c.InvoiceProfile, c.ModelCatalogEntry, c.ModelCatalogSource,
+		c.PaymentLedger, c.PaymentOrder, c.PaymentRefund, c.RechargePackage,
+		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -314,11 +320,11 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.DashboardAggregation,
-		c.Feedback, c.GlobalModelPricing, c.Group, c.GroupModelRate, c.InvoiceProfile,
-		c.ModelCatalogEntry, c.ModelCatalogSource, c.PaymentLedger, c.PaymentOrder,
-		c.PaymentRefund, c.RechargePackage, c.RedeemCode, c.RedeemLedger,
-		c.SystemConfig, c.UsageLog, c.User,
+		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.ChannelModelPricing,
+		c.DashboardAggregation, c.Feedback, c.GlobalModelPricing, c.Group,
+		c.GroupModelRate, c.InvoiceProfile, c.ModelCatalogEntry, c.ModelCatalogSource,
+		c.PaymentLedger, c.PaymentOrder, c.PaymentRefund, c.RechargePackage,
+		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -335,6 +341,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Announcement.mutate(ctx, m)
 	case *ChannelMutation:
 		return c.Channel.mutate(ctx, m)
+	case *ChannelModelPricingMutation:
+		return c.ChannelModelPricing.mutate(ctx, m)
 	case *DashboardAggregationMutation:
 		return c.DashboardAggregation.mutate(ctx, m)
 	case *FeedbackMutation:
@@ -1009,6 +1017,22 @@ func (c *ChannelClient) QueryModelCatalogSources(_m *Channel) *ModelCatalogSourc
 	return query
 }
 
+// QueryChannelModelPricings queries the channel_model_pricings edge of a Channel.
+func (c *ChannelClient) QueryChannelModelPricings(_m *Channel) *ChannelModelPricingQuery {
+	query := (&ChannelModelPricingClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(channelmodelpricing.Table, channelmodelpricing.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ChannelModelPricingsTable, channel.ChannelModelPricingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ChannelClient) Hooks() []Hook {
 	return c.hooks.Channel
@@ -1031,6 +1055,155 @@ func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, 
 		return (&ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Channel mutation op: %q", m.Op())
+	}
+}
+
+// ChannelModelPricingClient is a client for the ChannelModelPricing schema.
+type ChannelModelPricingClient struct {
+	config
+}
+
+// NewChannelModelPricingClient returns a client for the ChannelModelPricing from the given config.
+func NewChannelModelPricingClient(c config) *ChannelModelPricingClient {
+	return &ChannelModelPricingClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `channelmodelpricing.Hooks(f(g(h())))`.
+func (c *ChannelModelPricingClient) Use(hooks ...Hook) {
+	c.hooks.ChannelModelPricing = append(c.hooks.ChannelModelPricing, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `channelmodelpricing.Intercept(f(g(h())))`.
+func (c *ChannelModelPricingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChannelModelPricing = append(c.inters.ChannelModelPricing, interceptors...)
+}
+
+// Create returns a builder for creating a ChannelModelPricing entity.
+func (c *ChannelModelPricingClient) Create() *ChannelModelPricingCreate {
+	mutation := newChannelModelPricingMutation(c.config, OpCreate)
+	return &ChannelModelPricingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChannelModelPricing entities.
+func (c *ChannelModelPricingClient) CreateBulk(builders ...*ChannelModelPricingCreate) *ChannelModelPricingCreateBulk {
+	return &ChannelModelPricingCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChannelModelPricingClient) MapCreateBulk(slice any, setFunc func(*ChannelModelPricingCreate, int)) *ChannelModelPricingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChannelModelPricingCreateBulk{err: fmt.Errorf("calling to ChannelModelPricingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChannelModelPricingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChannelModelPricingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChannelModelPricing.
+func (c *ChannelModelPricingClient) Update() *ChannelModelPricingUpdate {
+	mutation := newChannelModelPricingMutation(c.config, OpUpdate)
+	return &ChannelModelPricingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChannelModelPricingClient) UpdateOne(_m *ChannelModelPricing) *ChannelModelPricingUpdateOne {
+	mutation := newChannelModelPricingMutation(c.config, OpUpdateOne, withChannelModelPricing(_m))
+	return &ChannelModelPricingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChannelModelPricingClient) UpdateOneID(id int) *ChannelModelPricingUpdateOne {
+	mutation := newChannelModelPricingMutation(c.config, OpUpdateOne, withChannelModelPricingID(id))
+	return &ChannelModelPricingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChannelModelPricing.
+func (c *ChannelModelPricingClient) Delete() *ChannelModelPricingDelete {
+	mutation := newChannelModelPricingMutation(c.config, OpDelete)
+	return &ChannelModelPricingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChannelModelPricingClient) DeleteOne(_m *ChannelModelPricing) *ChannelModelPricingDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChannelModelPricingClient) DeleteOneID(id int) *ChannelModelPricingDeleteOne {
+	builder := c.Delete().Where(channelmodelpricing.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChannelModelPricingDeleteOne{builder}
+}
+
+// Query returns a query builder for ChannelModelPricing.
+func (c *ChannelModelPricingClient) Query() *ChannelModelPricingQuery {
+	return &ChannelModelPricingQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChannelModelPricing},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChannelModelPricing entity by its id.
+func (c *ChannelModelPricingClient) Get(ctx context.Context, id int) (*ChannelModelPricing, error) {
+	return c.Query().Where(channelmodelpricing.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChannelModelPricingClient) GetX(ctx context.Context, id int) *ChannelModelPricing {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChannel queries the channel edge of a ChannelModelPricing.
+func (c *ChannelModelPricingClient) QueryChannel(_m *ChannelModelPricing) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channelmodelpricing.Table, channelmodelpricing.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, channelmodelpricing.ChannelTable, channelmodelpricing.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChannelModelPricingClient) Hooks() []Hook {
+	return c.hooks.ChannelModelPricing
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChannelModelPricingClient) Interceptors() []Interceptor {
+	return c.inters.ChannelModelPricing
+}
+
+func (c *ChannelModelPricingClient) mutate(ctx context.Context, m *ChannelModelPricingMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChannelModelPricingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChannelModelPricingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChannelModelPricingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChannelModelPricingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChannelModelPricing mutation op: %q", m.Op())
 	}
 }
 
@@ -3778,17 +3951,17 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Feedback,
-		GlobalModelPricing, Group, GroupModelRate, InvoiceProfile, ModelCatalogEntry,
-		ModelCatalogSource, PaymentLedger, PaymentOrder, PaymentRefund,
-		RechargePackage, RedeemCode, RedeemLedger, SystemConfig, UsageLog,
-		User []ent.Hook
+		APIKey, AdminAuditLog, Announcement, Channel, ChannelModelPricing,
+		DashboardAggregation, Feedback, GlobalModelPricing, Group, GroupModelRate,
+		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, PaymentLedger,
+		PaymentOrder, PaymentRefund, RechargePackage, RedeemCode, RedeemLedger,
+		SystemConfig, UsageLog, User []ent.Hook
 	}
 	inters struct {
-		APIKey, AdminAuditLog, Announcement, Channel, DashboardAggregation, Feedback,
-		GlobalModelPricing, Group, GroupModelRate, InvoiceProfile, ModelCatalogEntry,
-		ModelCatalogSource, PaymentLedger, PaymentOrder, PaymentRefund,
-		RechargePackage, RedeemCode, RedeemLedger, SystemConfig, UsageLog,
-		User []ent.Interceptor
+		APIKey, AdminAuditLog, Announcement, Channel, ChannelModelPricing,
+		DashboardAggregation, Feedback, GlobalModelPricing, Group, GroupModelRate,
+		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, PaymentLedger,
+		PaymentOrder, PaymentRefund, RechargePackage, RedeemCode, RedeemLedger,
+		SystemConfig, UsageLog, User []ent.Interceptor
 	}
 )

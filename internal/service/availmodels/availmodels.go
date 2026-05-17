@@ -8,6 +8,7 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/channelmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/pkg/modelkind"
@@ -479,4 +480,167 @@ func GlobalModelPricingWorkspacePage(ctx context.Context, client *ent.Client, q 
 // AllGlobalPricingWorkspaceItems 返回合并后的全量工作区行（无筛选分页），供 CSV 导出等使用。
 func AllGlobalPricingWorkspaceItems(ctx context.Context, client *ent.Client) ([]GlobalPricingWorkspaceItem, error) {
 	return buildGlobalPricingWorkspaceList(ctx, client)
+}
+
+// ChannelPricingWorkspaceItem 管理端「渠道模型计价」合并视图的一行。
+type ChannelPricingWorkspaceItem struct {
+	ModelName    string                      `json:"model_name"`
+	CodeInPer1k  int64                       `json:"code_in_per_1k"`
+	CodeOutPer1k int64                       `json:"code_out_per_1k"`
+	Sources      []string                    `json:"sources"`
+	Global       *ent.GlobalModelPricing     `json:"global,omitempty"`
+	Channel      *ent.ChannelModelPricing    `json:"channel,omitempty"`
+}
+
+func channelDeclaredModelKeys(ch *ent.Channel) map[string]struct{} {
+	out := make(map[string]struct{})
+	if ch == nil {
+		return out
+	}
+	for _, m := range ch.Models {
+		id := strings.TrimSpace(m)
+		if id != "" {
+			out[id] = struct{}{}
+		}
+	}
+	if ch.ModelAlias != nil {
+		for alias := range ch.ModelAlias {
+			a := strings.TrimSpace(alias)
+			if a != "" {
+				out[a] = struct{}{}
+			}
+		}
+	}
+	return out
+}
+
+func buildChannelPricingWorkspaceList(ctx context.Context, client *ent.Client, channelID int) ([]ChannelPricingWorkspaceItem, error) {
+	ch, err := client.Channel.Get(ctx, channelID)
+	if err != nil {
+		return nil, err
+	}
+	declared := channelDeclaredModelKeys(ch)
+	chRows, err := client.ChannelModelPricing.Query().
+		Where(channelmodelpricing.ChannelIDEQ(channelID)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	byName := make(map[string]*ent.ChannelModelPricing, len(chRows))
+	for _, row := range chRows {
+		n := strings.TrimSpace(row.ModelName)
+		if n != "" {
+			byName[n] = row
+		}
+	}
+	gRows, err := client.GlobalModelPricing.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	globalByName := make(map[string]*ent.GlobalModelPricing, len(gRows))
+	for _, row := range gRows {
+		n := strings.TrimSpace(row.ModelName)
+		if n != "" {
+			globalByName[n] = row
+		}
+	}
+	set := make(map[string]struct{})
+	for k := range declared {
+		set[k] = struct{}{}
+	}
+	for n := range byName {
+		set[n] = struct{}{}
+	}
+	ids := make([]string, 0, len(set))
+	for id := range set {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]ChannelPricingWorkspaceItem, 0, len(ids))
+	for _, name := range ids {
+		cin, cout := billing.LookupPricing(name)
+		src := make([]string, 0, 2)
+		if _, ok := declared[name]; ok {
+			src = append(src, "channel_declared")
+		}
+		if _, ok := byName[name]; ok {
+			src = append(src, "channel_db")
+		}
+		sort.Strings(src)
+		item := ChannelPricingWorkspaceItem{
+			ModelName:    name,
+			CodeInPer1k:  cin,
+			CodeOutPer1k: cout,
+			Sources:      src,
+		}
+		if g, ok := globalByName[name]; ok {
+			item.Global = g
+		}
+		if row, ok := byName[name]; ok {
+			item.Channel = row
+		}
+		out = append(out, item)
+	}
+	return out, nil
+}
+
+func filterChannelWorkspaceByModelQuery(all []ChannelPricingWorkspaceItem, q string) []ChannelPricingWorkspaceItem {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return all
+	}
+	ql := strings.ToLower(q)
+	out := make([]ChannelPricingWorkspaceItem, 0)
+	for _, it := range all {
+		if strings.Contains(strings.ToLower(it.ModelName), ql) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+func pageChannelPricingWorkspace(filtered []ChannelPricingWorkspaceItem, page, pageSize int) (items []ChannelPricingWorkspaceItem, total int, pageOut int) {
+	total = len(filtered)
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
+	pageOut = page
+	if pageOut < 1 {
+		pageOut = 1
+	}
+	maxPage := 1
+	if total > 0 {
+		maxPage = (total + pageSize - 1) / pageSize
+	}
+	if pageOut > maxPage {
+		pageOut = maxPage
+	}
+	offset := (pageOut - 1) * pageSize
+	if offset >= len(filtered) {
+		return []ChannelPricingWorkspaceItem{}, total, pageOut
+	}
+	end := offset + pageSize
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return append([]ChannelPricingWorkspaceItem(nil), filtered[offset:end]...), total, pageOut
+}
+
+// ChannelModelPricingWorkspacePage 渠道工作区列表：该渠道声明模型 ∪ 已有渠道计价行。
+func ChannelModelPricingWorkspacePage(ctx context.Context, client *ent.Client, channelID int, q string, page, pageSize int) ([]ChannelPricingWorkspaceItem, int, int, error) {
+	all, err := buildChannelPricingWorkspaceList(ctx, client, channelID)
+	if err != nil {
+		return nil, 0, page, err
+	}
+	filtered := filterChannelWorkspaceByModelQuery(all, q)
+	items, total, pageOut := pageChannelPricingWorkspace(filtered, page, pageSize)
+	return items, total, pageOut, nil
+}
+
+// AllChannelPricingWorkspaceItems 返回指定渠道的全量工作区行（无筛选分页）。
+func AllChannelPricingWorkspaceItems(ctx context.Context, client *ent.Client, channelID int) ([]ChannelPricingWorkspaceItem, error) {
+	return buildChannelPricingWorkspaceList(ctx, client, channelID)
 }

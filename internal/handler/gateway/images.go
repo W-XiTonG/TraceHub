@@ -139,7 +139,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 			promptToks = 1
 		}
 		maxOut := imageGenDefaultCompletionTokens
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(maxOut)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {
@@ -271,7 +271,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			promptToks = 1
 		}
 		maxOut := imageGenDefaultCompletionTokens
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(maxOut)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {

@@ -75,6 +75,8 @@ const (
 	EdgeUsageLogs = "usage_logs"
 	// EdgeModelCatalogSources holds the string denoting the model_catalog_sources edge name in mutations.
 	EdgeModelCatalogSources = "model_catalog_sources"
+	// EdgeChannelModelPricings holds the string denoting the channel_model_pricings edge name in mutations.
+	EdgeChannelModelPricings = "channel_model_pricings"
 	// Table holds the table name of the channel in the database.
 	Table = "channels"
 	// GroupTable is the table that holds the group relation/edge.
@@ -98,6 +100,13 @@ const (
 	ModelCatalogSourcesInverseTable = "model_catalog_sources"
 	// ModelCatalogSourcesColumn is the table column denoting the model_catalog_sources relation/edge.
 	ModelCatalogSourcesColumn = "channel_id"
+	// ChannelModelPricingsTable is the table that holds the channel_model_pricings relation/edge.
+	ChannelModelPricingsTable = "channel_model_pricings"
+	// ChannelModelPricingsInverseTable is the table name for the ChannelModelPricing entity.
+	// It exists in this package in order to avoid circular dependency with the "channelmodelpricing" package.
+	ChannelModelPricingsInverseTable = "channel_model_pricings"
+	// ChannelModelPricingsColumn is the table column denoting the channel_model_pricings relation/edge.
+	ChannelModelPricingsColumn = "channel_id"
 )
 
 // Columns holds all SQL columns for channel fields.
@@ -370,6 +379,20 @@ func ByModelCatalogSources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 		sqlgraph.OrderByNeighborTerms(s, newModelCatalogSourcesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByChannelModelPricingsCount orders the results by channel_model_pricings count.
+func ByChannelModelPricingsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChannelModelPricingsStep(), opts...)
+	}
+}
+
+// ByChannelModelPricings orders the results by channel_model_pricings terms.
+func ByChannelModelPricings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChannelModelPricingsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -389,5 +412,12 @@ func newModelCatalogSourcesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ModelCatalogSourcesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ModelCatalogSourcesTable, ModelCatalogSourcesColumn),
+	)
+}
+func newChannelModelPricingsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChannelModelPricingsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ChannelModelPricingsTable, ChannelModelPricingsColumn),
 	)
 }

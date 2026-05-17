@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/channelmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/modelcatalogsource"
 	"tracehub/internal/ent/predicate"
@@ -533,6 +534,21 @@ func (_u *ChannelUpdate) AddModelCatalogSources(v ...*ModelCatalogSource) *Chann
 	return _u.AddModelCatalogSourceIDs(ids...)
 }
 
+// AddChannelModelPricingIDs adds the "channel_model_pricings" edge to the ChannelModelPricing entity by IDs.
+func (_u *ChannelUpdate) AddChannelModelPricingIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.AddChannelModelPricingIDs(ids...)
+	return _u
+}
+
+// AddChannelModelPricings adds the "channel_model_pricings" edges to the ChannelModelPricing entity.
+func (_u *ChannelUpdate) AddChannelModelPricings(v ...*ChannelModelPricing) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChannelModelPricingIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdate) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -584,6 +600,27 @@ func (_u *ChannelUpdate) RemoveModelCatalogSources(v ...*ModelCatalogSource) *Ch
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveModelCatalogSourceIDs(ids...)
+}
+
+// ClearChannelModelPricings clears all "channel_model_pricings" edges to the ChannelModelPricing entity.
+func (_u *ChannelUpdate) ClearChannelModelPricings() *ChannelUpdate {
+	_u.mutation.ClearChannelModelPricings()
+	return _u
+}
+
+// RemoveChannelModelPricingIDs removes the "channel_model_pricings" edge to ChannelModelPricing entities by IDs.
+func (_u *ChannelUpdate) RemoveChannelModelPricingIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.RemoveChannelModelPricingIDs(ids...)
+	return _u
+}
+
+// RemoveChannelModelPricings removes "channel_model_pricings" edges to ChannelModelPricing entities.
+func (_u *ChannelUpdate) RemoveChannelModelPricings(v ...*ChannelModelPricing) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChannelModelPricingIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -908,6 +945,51 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChannelModelPricingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricingsTable,
+			Columns: []string{channel.ChannelModelPricingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmodelpricing.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChannelModelPricingsIDs(); len(nodes) > 0 && !_u.mutation.ChannelModelPricingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricingsTable,
+			Columns: []string{channel.ChannelModelPricingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmodelpricing.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelModelPricingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricingsTable,
+			Columns: []string{channel.ChannelModelPricingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmodelpricing.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1436,6 +1518,21 @@ func (_u *ChannelUpdateOne) AddModelCatalogSources(v ...*ModelCatalogSource) *Ch
 	return _u.AddModelCatalogSourceIDs(ids...)
 }
 
+// AddChannelModelPricingIDs adds the "channel_model_pricings" edge to the ChannelModelPricing entity by IDs.
+func (_u *ChannelUpdateOne) AddChannelModelPricingIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.AddChannelModelPricingIDs(ids...)
+	return _u
+}
+
+// AddChannelModelPricings adds the "channel_model_pricings" edges to the ChannelModelPricing entity.
+func (_u *ChannelUpdateOne) AddChannelModelPricings(v ...*ChannelModelPricing) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChannelModelPricingIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -1487,6 +1584,27 @@ func (_u *ChannelUpdateOne) RemoveModelCatalogSources(v ...*ModelCatalogSource) 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveModelCatalogSourceIDs(ids...)
+}
+
+// ClearChannelModelPricings clears all "channel_model_pricings" edges to the ChannelModelPricing entity.
+func (_u *ChannelUpdateOne) ClearChannelModelPricings() *ChannelUpdateOne {
+	_u.mutation.ClearChannelModelPricings()
+	return _u
+}
+
+// RemoveChannelModelPricingIDs removes the "channel_model_pricings" edge to ChannelModelPricing entities by IDs.
+func (_u *ChannelUpdateOne) RemoveChannelModelPricingIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.RemoveChannelModelPricingIDs(ids...)
+	return _u
+}
+
+// RemoveChannelModelPricings removes "channel_model_pricings" edges to ChannelModelPricing entities.
+func (_u *ChannelUpdateOne) RemoveChannelModelPricings(v ...*ChannelModelPricing) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChannelModelPricingIDs(ids...)
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -1841,6 +1959,51 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChannelModelPricingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricingsTable,
+			Columns: []string{channel.ChannelModelPricingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmodelpricing.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChannelModelPricingsIDs(); len(nodes) > 0 && !_u.mutation.ChannelModelPricingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricingsTable,
+			Columns: []string{channel.ChannelModelPricingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmodelpricing.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelModelPricingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ChannelModelPricingsTable,
+			Columns: []string{channel.ChannelModelPricingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelmodelpricing.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

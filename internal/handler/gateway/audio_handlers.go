@@ -129,7 +129,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			promptToksPre = 1
 		}
 		maxComp := 2048
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(maxComp)
 		costPre := br.Cost(promptToksPre, compAssumed, 0)
 		if u.Balance < costPre {
@@ -334,7 +334,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		if compEst < 512 {
 			compEst = 512
 		}
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(compEst)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {

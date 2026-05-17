@@ -56,6 +56,18 @@ func (f ChannelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelMutation", m)
 }
 
+// The ChannelModelPricingFunc type is an adapter to allow the use of ordinary
+// function as ChannelModelPricing mutator.
+type ChannelModelPricingFunc func(context.Context, *ent.ChannelModelPricingMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChannelModelPricingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChannelModelPricingMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelModelPricingMutation", m)
+}
+
 // The DashboardAggregationFunc type is an adapter to allow the use of ordinary
 // function as DashboardAggregation mutator.
 type DashboardAggregationFunc func(context.Context, *ent.DashboardAggregationMutation) (ent.Value, error)

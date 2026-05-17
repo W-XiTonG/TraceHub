@@ -228,7 +228,7 @@ export default {
     pricePerMillion: '/ 1M tokens',
     priceQuotaPer1k: 'quota / 1K tokens',
     priceQuotaUnit: 'quota / 1K tokens',
-    priceHint: 'Includes group rate, your multiplier and markup; actual charges follow each API call.',
+    priceHint: 'Includes group rate, your multiplier and markup; shown as site-wide reference—actual billing uses the routed channel.',
     priceCurrencyUsd: 'USD',
     priceCurrencyCny: 'CNY',
     priceCurrencyAria: 'Price currency',

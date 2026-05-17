@@ -2128,6 +2128,19 @@
 }
 
 /* 全局模型计价：顶部工具条（单位 / 汇率 / 高级毛利） */
+.th-admin-pricing-filter-bar .th-admin-pricing-filter-field > span {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 筛选条与下方说明文案：避免圆角/阴影与过紧行高裁切首行 */
+.th-admin-pricing-workspace-hint {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.125rem;
+  padding-top: 0.125rem;
+}
+
 .th-admin-pricing-toolbar {
   border-color: rgba(51, 65, 85, 0.72);
   background: rgba(15, 23, 42, 0.42);
@@ -2151,6 +2164,14 @@
 .th-select.th-select--pricing-unit {
   min-width: 9.25rem;
   max-width: 12rem;
+  padding-top: 0.4375rem;
+  padding-bottom: 0.4375rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+.th-select.th-select--pricing-channel {
+  min-width: 10rem;
+  max-width: 18rem;
   padding-top: 0.4375rem;
   padding-bottom: 0.4375rem;
   font-size: 0.75rem;

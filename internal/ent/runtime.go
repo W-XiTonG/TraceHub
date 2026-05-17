@@ -8,6 +8,7 @@ import (
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
+	"tracehub/internal/ent/channelmodelpricing"
 	"tracehub/internal/ent/dashboardaggregation"
 	"tracehub/internal/ent/feedback"
 	"tracehub/internal/ent/globalmodelpricing"
@@ -272,6 +273,48 @@ func init() {
 	channel.DefaultUpdatedAt = channelDescUpdatedAt.Default.(func() time.Time)
 	// channel.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	channel.UpdateDefaultUpdatedAt = channelDescUpdatedAt.UpdateDefault.(func() time.Time)
+	channelmodelpricingFields := schema.ChannelModelPricing{}.Fields()
+	_ = channelmodelpricingFields
+	// channelmodelpricingDescModelName is the schema descriptor for model_name field.
+	channelmodelpricingDescModelName := channelmodelpricingFields[1].Descriptor()
+	// channelmodelpricing.ModelNameValidator is a validator for the "model_name" field. It is called by the builders before save.
+	channelmodelpricing.ModelNameValidator = func() func(string) error {
+		validators := channelmodelpricingDescModelName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(model_name string) error {
+			for _, fn := range fns {
+				if err := fn(model_name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// channelmodelpricingDescEnabled is the schema descriptor for enabled field.
+	channelmodelpricingDescEnabled := channelmodelpricingFields[2].Descriptor()
+	// channelmodelpricing.DefaultEnabled holds the default value on creation for the enabled field.
+	channelmodelpricing.DefaultEnabled = channelmodelpricingDescEnabled.Default.(bool)
+	// channelmodelpricingDescInputRate is the schema descriptor for input_rate field.
+	channelmodelpricingDescInputRate := channelmodelpricingFields[5].Descriptor()
+	// channelmodelpricing.DefaultInputRate holds the default value on creation for the input_rate field.
+	channelmodelpricing.DefaultInputRate = channelmodelpricingDescInputRate.Default.(float64)
+	// channelmodelpricingDescOutputRate is the schema descriptor for output_rate field.
+	channelmodelpricingDescOutputRate := channelmodelpricingFields[6].Descriptor()
+	// channelmodelpricing.DefaultOutputRate holds the default value on creation for the output_rate field.
+	channelmodelpricing.DefaultOutputRate = channelmodelpricingDescOutputRate.Default.(float64)
+	// channelmodelpricingDescCreatedAt is the schema descriptor for created_at field.
+	channelmodelpricingDescCreatedAt := channelmodelpricingFields[8].Descriptor()
+	// channelmodelpricing.DefaultCreatedAt holds the default value on creation for the created_at field.
+	channelmodelpricing.DefaultCreatedAt = channelmodelpricingDescCreatedAt.Default.(func() time.Time)
+	// channelmodelpricingDescUpdatedAt is the schema descriptor for updated_at field.
+	channelmodelpricingDescUpdatedAt := channelmodelpricingFields[9].Descriptor()
+	// channelmodelpricing.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	channelmodelpricing.DefaultUpdatedAt = channelmodelpricingDescUpdatedAt.Default.(func() time.Time)
+	// channelmodelpricing.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	channelmodelpricing.UpdateDefaultUpdatedAt = channelmodelpricingDescUpdatedAt.UpdateDefault.(func() time.Time)
 	dashboardaggregationFields := schema.DashboardAggregation{}.Fields()
 	_ = dashboardaggregationFields
 	// dashboardaggregationDescAggType is the schema descriptor for agg_type field.

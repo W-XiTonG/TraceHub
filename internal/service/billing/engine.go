@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"tracehub/internal/ent"
+	"tracehub/internal/ent/channelmodelpricing"
 	"tracehub/internal/ent/globalmodelpricing"
 	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/user"
@@ -30,6 +31,10 @@ type Engine struct {
 	globalPricingMu      sync.Mutex
 	globalPricingByModel map[string]*ent.GlobalModelPricing
 	globalPricingExpires time.Time
+
+	channelPricingMu          sync.Mutex
+	channelPricingByChannel   map[int]map[string]*ent.ChannelModelPricing
+	channelPricingExpires     map[int]time.Time
 
 	defaultMarkupMu      sync.Mutex
 	defaultMarkup        float64
@@ -113,6 +118,104 @@ func (e *Engine) InvalidateGlobalModelPricingCache() {
 	e.globalPricingByModel = nil
 	e.globalPricingExpires = time.Time{}
 	e.globalPricingMu.Unlock()
+}
+
+func (e *Engine) cachedChannelPricingByName(ctx context.Context, channelID int) map[string]*ent.ChannelModelPricing {
+	if e.Client == nil || channelID <= 0 {
+		return nil
+	}
+	now := time.Now()
+	e.channelPricingMu.Lock()
+	if e.channelPricingByChannel != nil {
+		if exp, ok := e.channelPricingExpires[channelID]; ok && now.Before(exp) {
+			m := e.channelPricingByChannel[channelID]
+			e.channelPricingMu.Unlock()
+			return m
+		}
+	}
+	e.channelPricingMu.Unlock()
+
+	list, err := e.Client.ChannelModelPricing.Query().
+		Where(
+			channelmodelpricing.ChannelIDEQ(channelID),
+			channelmodelpricing.EnabledEQ(true),
+		).
+		All(ctx)
+	if err != nil {
+		e.channelPricingMu.Lock()
+		var prev map[string]*ent.ChannelModelPricing
+		if e.channelPricingByChannel != nil {
+			prev = e.channelPricingByChannel[channelID]
+		}
+		e.channelPricingMu.Unlock()
+		return prev
+	}
+	byName := make(map[string]*ent.ChannelModelPricing, len(list))
+	for _, row := range list {
+		byName[row.ModelName] = row
+	}
+	e.channelPricingMu.Lock()
+	if e.channelPricingByChannel == nil {
+		e.channelPricingByChannel = make(map[int]map[string]*ent.ChannelModelPricing)
+		e.channelPricingExpires = make(map[int]time.Time)
+	}
+	e.channelPricingByChannel[channelID] = byName
+	e.channelPricingExpires[channelID] = now.Add(globalModelPricingCacheTTL)
+	e.channelPricingMu.Unlock()
+	return byName
+}
+
+func (e *Engine) lookupChannelModelPricingRow(ctx context.Context, channelID int, model string) *ent.ChannelModelPricing {
+	if channelID <= 0 {
+		return nil
+	}
+	byName := e.cachedChannelPricingByName(ctx, channelID)
+	if len(byName) == 0 {
+		return nil
+	}
+	for _, name := range CandidateGroupModelRateNames(model) {
+		if row, ok := byName[name]; ok {
+			return row
+		}
+	}
+	return nil
+}
+
+// InvalidateChannelModelPricingCache 管理端更新渠道模型计价后调用；channelID<=0 清空全部渠道缓存。
+func (e *Engine) InvalidateChannelModelPricingCache(channelID int) {
+	e.channelPricingMu.Lock()
+	defer e.channelPricingMu.Unlock()
+	if channelID <= 0 {
+		e.channelPricingByChannel = nil
+		e.channelPricingExpires = nil
+		return
+	}
+	if e.channelPricingByChannel != nil {
+		delete(e.channelPricingByChannel, channelID)
+	}
+	if e.channelPricingExpires != nil {
+		delete(e.channelPricingExpires, channelID)
+	}
+}
+
+func applyQuotaFromPricingRows(in1k, out1k int64, glo *ent.GlobalModelPricing, ch *ent.ChannelModelPricing) (int64, int64) {
+	if glo != nil && glo.Enabled {
+		if glo.QuotaInPer1k != nil {
+			in1k = *glo.QuotaInPer1k
+		}
+		if glo.QuotaOutPer1k != nil {
+			out1k = *glo.QuotaOutPer1k
+		}
+	}
+	if ch != nil && ch.Enabled {
+		if ch.QuotaInPer1k != nil {
+			in1k = *ch.QuotaInPer1k
+		}
+		if ch.QuotaOutPer1k != nil {
+			out1k = *ch.QuotaOutPer1k
+		}
+	}
+	return in1k, out1k
 }
 
 func (e *Engine) cachedDefaultPricingMarkupPercent(ctx context.Context) float64 {
@@ -286,13 +389,13 @@ func (e *Engine) EstimateTokens(model string, promptText string) (int, error) {
 	return len(toks), nil
 }
 
-func (e *Engine) Charge(ctx context.Context, u *ent.User, model string, promptTokens, completionTokens int) (cost int64, err error) {
-	return e.chargeTokens(ctx, u, model, promptTokens, completionTokens, 0)
+func (e *Engine) Charge(ctx context.Context, u *ent.User, model string, channelID int, promptTokens, completionTokens int) (cost int64, err error) {
+	return e.chargeTokens(ctx, u, model, channelID, promptTokens, completionTokens, 0)
 }
 
 // ChargeWithPromptCache bills prompt_tokens with a reduced rate for cached_prompt subset (OpenAI-style prompt cache).
-func (e *Engine) ChargeWithPromptCache(ctx context.Context, u *ent.User, model string, promptTokens, completionTokens, cachedPromptTokens int) (cost int64, err error) {
-	return e.chargeTokens(ctx, u, model, promptTokens, completionTokens, cachedPromptTokens)
+func (e *Engine) ChargeWithPromptCache(ctx context.Context, u *ent.User, model string, channelID int, promptTokens, completionTokens, cachedPromptTokens int) (cost int64, err error) {
+	return e.chargeTokens(ctx, u, model, channelID, promptTokens, completionTokens, cachedPromptTokens)
 }
 
 // ModelBillRates 缓存一次 LookupPricing、全局/分组倍率与 billable 判定结果；
@@ -305,32 +408,30 @@ type ModelBillRates struct {
 }
 
 // ModelBillRates 拉取该用户在指定 logical model 下的计价因子（与 Charge 一致）。
-// 基准价：代码内建 LookupPricing，可被全局 GlobalModelPricing 的非空 quota 覆盖（分组暂无基准价字段）。
-// in/out 倍率：分组 GroupModelRate（enabled）优先；否则全局 GlobalModelPricing（enabled）；否则 1。
-func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string) (ModelBillRates, error) {
+// channelID<=0 时不查渠道表。基准价：内置 → 全站 → 渠道（非空 quota 逐层覆盖）。
+// in/out 倍率：分组 GroupModelRate（enabled）优先；否则渠道；否则全站；否则 1。
+func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string, channelID int) (ModelBillRates, error) {
 	in1k, out1k := LookupPricing(model)
 	glo := e.lookupGlobalModelPricingRow(ctx, model)
-	if glo != nil && glo.Enabled {
-		if glo.QuotaInPer1k != nil {
-			in1k = *glo.QuotaInPer1k
-		}
-		if glo.QuotaOutPer1k != nil {
-			out1k = *glo.QuotaOutPer1k
-		}
-	}
+	ch := e.lookupChannelModelPricingRow(ctx, channelID, model)
+	in1k, out1k = applyQuotaFromPricingRows(in1k, out1k, glo, ch)
 	gm, um := e.groupUserMultipliers(u)
 	ir, or := 1.0, 1.0
 	if u != nil && u.Edges.Group != nil {
 		if gmr := e.lookupGroupModelRateRow(ctx, u.Edges.Group.ID, model); gmr != nil && gmr.Enabled {
 			ir, or = gmr.InputRate, gmr.OutputRate
+		} else if ch != nil && ch.Enabled {
+			ir, or = ch.InputRate, ch.OutputRate
 		} else if glo != nil && glo.Enabled {
 			ir, or = glo.InputRate, glo.OutputRate
 		}
+	} else if ch != nil && ch.Enabled {
+		ir, or = ch.InputRate, ch.OutputRate
 	} else if glo != nil && glo.Enabled {
 		ir, or = glo.InputRate, glo.OutputRate
 	}
 	siteMarkup := e.cachedDefaultPricingMarkupPercent(ctx)
-	markup := ResolveMarkupPercent(siteMarkup, glo)
+	markup := ResolveMarkupPercent(siteMarkup, glo, ch)
 	return ModelBillRates{
 		groupMul: gm, userMul: um, inRate: ir, outRate: or,
 		in1k: in1k, out1k: out1k, markupPercent: markup,
@@ -367,8 +468,8 @@ func (b ModelBillRates) Cost(promptTokens, completionTokens, cachedPromptTokens 
 	return int64(raw + 0.999999)
 }
 
-func (e *Engine) chargeTokens(ctx context.Context, u *ent.User, model string, promptTokens, completionTokens, cachedPromptTokens int) (cost int64, err error) {
-	br, err := e.ModelBillRates(ctx, u, model)
+func (e *Engine) chargeTokens(ctx context.Context, u *ent.User, model string, channelID int, promptTokens, completionTokens, cachedPromptTokens int) (cost int64, err error) {
+	br, err := e.ModelBillRates(ctx, u, model, channelID)
 	if err != nil {
 		return 0, err
 	}

@@ -18,6 +18,9 @@ type Announcement func(*sql.Selector)
 // Channel is the predicate function for channel builders.
 type Channel func(*sql.Selector)
 
+// ChannelModelPricing is the predicate function for channelmodelpricing builders.
+type ChannelModelPricing func(*sql.Selector)
+
 // DashboardAggregation is the predicate function for dashboardaggregation builders.
 type DashboardAggregation func(*sql.Selector)
 

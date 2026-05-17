@@ -185,7 +185,7 @@ func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config
 				billUser = fu
 			}
 			for i := range items {
-				br, brErr := eng.ModelBillRates(ctx, billUser, items[i].ID)
+				br, brErr := eng.ModelBillRates(ctx, billUser, items[i].ID, 0)
 				if brErr != nil {
 					continue
 				}

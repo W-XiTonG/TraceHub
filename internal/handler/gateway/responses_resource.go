@@ -100,7 +100,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 
 	promptToks := 64
 	maxOut := 512
-	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, previewSel.Channel.ID)
 	compAssumed := completionTokensFallback(maxOut)
 	costPre := br.Cost(promptToks, compAssumed, 0)
 	if u.Balance < costPre {

@@ -6,9 +6,12 @@ import (
 	"tracehub/internal/ent"
 )
 
-// ResolveMarkupPercent 返回扣费有效成本加成 %：单模型行内非 nil 时优先，否则全站默认（由调用方传入已缓存的全站值）。
-func ResolveMarkupPercent(siteMarkupPercent float64, glo *ent.GlobalModelPricing) float64 {
-	if glo != nil && glo.MarkupPercent != nil {
+// ResolveMarkupPercent 返回扣费有效成本加成 %：渠道行 > 全站行 > 全站默认。
+func ResolveMarkupPercent(siteMarkupPercent float64, glo *ent.GlobalModelPricing, ch *ent.ChannelModelPricing) float64 {
+	if ch != nil && ch.Enabled && ch.MarkupPercent != nil {
+		return *ch.MarkupPercent
+	}
+	if glo != nil && glo.Enabled && glo.MarkupPercent != nil {
 		return *glo.MarkupPercent
 	}
 	return siteMarkupPercent

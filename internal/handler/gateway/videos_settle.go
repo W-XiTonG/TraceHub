@@ -22,10 +22,11 @@ const videoJobMetaKeyPrefix = "tracehub:video:meta:"
 const videoBillingRedisTTL = 7 * 24 * time.Hour
 
 type videoJobMeta struct {
-	Model   string `json:"model"`
-	Seconds int    `json:"seconds"`
-	Size    string `json:"size"`
-	Cost    int64  `json:"cost"`
+	Model     string `json:"model"`
+	Seconds   int    `json:"seconds"`
+	Size      string `json:"size"`
+	Cost      int64  `json:"cost"`
+	ChannelID int    `json:"channel_id,omitempty"`
 }
 
 // videoSettleOutcome 精调结果；Adjust>0 补扣，Adjust<0 退还。
@@ -115,7 +116,8 @@ func trySettleVideoOnComplete(ctx context.Context, eng *billing.Engine, rdb *red
 	}
 	out.Seconds = actualSec
 
-	br, err := eng.ModelBillRates(ctx, u, model)
+	channelID := meta.ChannelID
+	br, err := eng.ModelBillRates(ctx, u, model, channelID)
 	if err != nil {
 		_, _ = rdb.Del(ctx, jobKey).Result()
 		return out

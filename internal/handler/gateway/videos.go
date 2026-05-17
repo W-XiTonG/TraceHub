@@ -100,7 +100,7 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 	}
 
 	vParams := videoJobParamsFromParsed(parsed)
-	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, parsed.Model)
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, parsed.Model, ch.ID)
 	costPre := br.VideoJobCost(parsed.Model, vParams)
 	if u.Balance < costPre {
 		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, vParams.Seconds, 0)
@@ -182,7 +182,7 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 	vid := parseVideoIDFromJSON(raw)
 	if vid != "" {
 		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, videoJobMeta{
-			Model: parsed.Model, Seconds: vParams.Seconds, Size: vParams.Size, Cost: costPre,
+			Model: parsed.Model, Seconds: vParams.Seconds, Size: vParams.Size, Cost: costPre, ChannelID: ch.ID,
 		})
 	}
 	metrics.GatewayRequests.WithLabelValues(parsed.Model, ct, "200").Inc()
@@ -217,7 +217,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	}
 
 	vParams := videoJobParamsFromParsed(parsed)
-	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 	costPre := br.VideoJobCost(model, vParams)
 	if u.Balance < costPre {
 		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, vParams.Seconds, 0)
@@ -272,7 +272,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	vid := parseVideoIDFromJSON(outBody)
 	if vid != "" {
 		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, videoJobMeta{
-			Model: model, Seconds: vParams.Seconds, Size: vParams.Size, Cost: costPre,
+			Model: model, Seconds: vParams.Seconds, Size: vParams.Size, Cost: costPre, ChannelID: ch.ID,
 		})
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()

@@ -98,7 +98,7 @@ func RealtimeCallsWebRTC(d ChatDeps) gin.HandlerFunc {
 			promptToks = 1
 		}
 		maxComp := 4096
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(maxComp)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {

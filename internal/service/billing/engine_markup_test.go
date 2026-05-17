@@ -37,7 +37,7 @@ func TestModelBillRates_markupAtBilling(t *testing.T) {
 		Save(ctx)
 
 	eng := &Engine{Client: client, Config: &config.Config{}}
-	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini")
+	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestModelBillRates_markupAtBilling(t *testing.T) {
 	_, _ = client.GlobalModelPricing.UpdateOne(row).SetMarkupPercent(20).Save(ctx)
 	eng.InvalidateGlobalModelPricingCache()
 
-	br2, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini")
+	br2, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

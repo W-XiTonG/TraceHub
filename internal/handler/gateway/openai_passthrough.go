@@ -154,7 +154,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		if maxComp < 0 {
 			maxComp = 0
 		}
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(maxComp)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {

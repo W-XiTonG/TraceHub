@@ -103,7 +103,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		if promptToks < 1 {
 			promptToks = 1
 		}
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(maxOut)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {

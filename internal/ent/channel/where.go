@@ -1419,6 +1419,29 @@ func HasModelCatalogSourcesWith(preds ...predicate.ModelCatalogSource) predicate
 	})
 }
 
+// HasChannelModelPricings applies the HasEdge predicate on the "channel_model_pricings" edge.
+func HasChannelModelPricings() predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ChannelModelPricingsTable, ChannelModelPricingsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChannelModelPricingsWith applies the HasEdge predicate on the "channel_model_pricings" edge with a given conditions (other predicates).
+func HasChannelModelPricingsWith(preds ...predicate.ChannelModelPricing) predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := newChannelModelPricingsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Channel) predicate.Channel {
 	return predicate.Channel(sql.AndPredicates(predicates...))

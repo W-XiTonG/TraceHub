@@ -32,7 +32,7 @@ func TestModelBillRates_EffectiveQuotaPer1k_matchesCost(t *testing.T) {
 		Save(ctx)
 
 	eng := &Engine{Client: client}
-	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini")
+	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestModelBillRates_EffectiveQuotaPer1k_notBillable(t *testing.T) {
 	u, _ = client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(ctx)
 
 	eng := &Engine{Client: client}
-	br, err := eng.ModelBillRates(ctx, u, "free-model")
+	br, err := eng.ModelBillRates(ctx, u, "free-model", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

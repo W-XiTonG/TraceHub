@@ -24,7 +24,7 @@ func TestModelBillRates_globalNoBill(t *testing.T) {
 	cfg.Site.NoBillModels = []string{"gpt-4o-mini"}
 
 	eng := &Engine{Client: client, Config: cfg}
-	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini")
+	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestModelBillRates_groupBillableOverridesGlobalFree(t *testing.T) {
 	cfg.Site.NoBillModels = []string{"gpt-4o-mini"}
 
 	eng := &Engine{Client: client, Config: cfg}
-	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini")
+	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestModelBillRates_groupNotBillable(t *testing.T) {
 	u, _ = client.User.Query().WithGroup().Only(ctx)
 
 	eng := &Engine{Client: client, Config: &config.Config{}}
-	br, err := eng.ModelBillRates(ctx, u, "custom-model")
+	br, err := eng.ModelBillRates(ctx, u, "custom-model", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

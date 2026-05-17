@@ -89,7 +89,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		// Realtime 会话按固定占位计费（上游 usage 在 WS 帧内，不在此解析）。
 		const promptToks = 4096
 		const compToks = 4096
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		compAssumed := completionTokensFallback(compToks)
 		costPre := br.Cost(promptToks, compAssumed, 0)
 		if u.Balance < costPre {

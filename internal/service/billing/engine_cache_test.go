@@ -97,7 +97,7 @@ func TestModelBillRates_groupRateFromCache(t *testing.T) {
 	u, _ = client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(ctx)
 
 	eng := &Engine{Client: client, Config: &config.Config{}}
-	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini")
+	br, err := eng.ModelBillRates(ctx, u, "gpt-4o-mini", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
