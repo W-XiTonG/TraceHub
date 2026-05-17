@@ -20,7 +20,7 @@ security:
 
 site:
   # 对外展示的应用版本（首页页脚、/health、管理后台运维）；改此处后重启服务即可
-  app_version: "1.1.0"
+  app_version: "1.1.6"
   # 全局不计费模型（逻辑 model ID）；分组 model_rates.billable=false 可覆盖为计费
   # no_bill_models:
   #   - "gpt-4o-mini"

@@ -173,7 +173,7 @@ watch(
                 <td class="align-middle px-2 py-2 max-w-[min(100%,22rem)] overflow-hidden">
                   <div
                     class="th-model-combobox relative max-w-full min-w-0"
-                    :ref="(el) => setComboboxRef(idx, el)"
+                    :ref="(el) => setComboboxRef(idx, el, 'desktop')"
                   >
                     <div class="flex max-w-full min-w-0 gap-1">
                       <input
@@ -231,7 +231,7 @@ watch(
             class="rounded-xl border border-slate-800 bg-slate-950/50 p-3"
           >
             <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.thModelId') }}</p>
-            <div class="th-model-combobox relative max-w-full min-w-0" :ref="(el) => setComboboxRef(idx, el)">
+            <div class="th-model-combobox relative max-w-full min-w-0" :ref="(el) => setComboboxRef(idx, el, 'mobile')">
               <div class="flex max-w-full min-w-0 gap-1">
                 <input
                   v-model="r.model_name"

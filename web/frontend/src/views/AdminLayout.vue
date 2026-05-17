@@ -30,21 +30,23 @@ onMounted(() => void siteMeta.ensureLoaded())
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <header class="th-topbar flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-3.5">
         <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            class="th-console-top-icon-btn shrink-0 lg:hidden"
-            :aria-label="t('layout.openNav')"
-            :aria-expanded="navOpen"
-            @click="openDrawer"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5" aria-hidden="true">
-              <path
-                fill-rule="evenodd"
-                d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5.5A.75.75 0 012.75 10h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10.25zM2.75 15.5a.75.75 0 000 1.5h14.5a.75.75 0 000-1.5H2.75z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </button>
+          <div class="shrink-0 lg:hidden">
+            <button
+              type="button"
+              class="th-console-top-icon-btn"
+              :aria-label="t('layout.openNav')"
+              :aria-expanded="navOpen"
+              @click="openDrawer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5" aria-hidden="true">
+                <path
+                  fill-rule="evenodd"
+                  d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5.5A.75.75 0 012.75 10h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10.25zM2.75 15.5a.75.75 0 000 1.5h14.5a.75.75 0 000-1.5H2.75z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
           <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
             <div class="min-w-0">
               <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-500/55">{{ t('layout.adminTopSubtitle') }}</p>

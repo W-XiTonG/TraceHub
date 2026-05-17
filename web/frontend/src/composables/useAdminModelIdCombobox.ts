@@ -1,5 +1,10 @@
 import { computed, nextTick, onUnmounted, ref, watch, type Ref } from 'vue'
 import { http, type Envelope } from '../api/http'
+import {
+  comboboxAnchorKey,
+  resolveComboboxAnchor,
+  type ComboboxAnchorVariant,
+} from '../utils/comboboxAnchor'
 
 /** 行上至少含 model_name，供模型 ID 建议与下拉面板使用（与 AdminGroups 模型倍率一致） */
 export type ModelNameRow = { model_name: string }
@@ -36,12 +41,13 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
   const modelSuggestIds = ref<string[]>([])
   const modelSuggestLoading = ref(false)
   const openModelSuggestRow = ref<number | null>(null)
-  const comboboxAnchorEls = new Map<number, HTMLElement>()
+  const comboboxAnchorEls = new Map<string, HTMLElement>()
   const modelSuggestPanelStyle = ref<Record<string, string>>({})
 
-  function setComboboxRef(rowIdx: number, el: unknown) {
-    if (el instanceof HTMLElement) comboboxAnchorEls.set(rowIdx, el)
-    else comboboxAnchorEls.delete(rowIdx)
+  function setComboboxRef(rowIdx: number, el: unknown, variant: ComboboxAnchorVariant = 'desktop') {
+    const key = comboboxAnchorKey(rowIdx, variant)
+    if (el instanceof HTMLElement) comboboxAnchorEls.set(key, el)
+    else comboboxAnchorEls.delete(key)
   }
 
   function updateModelSuggestPanelLayout() {
@@ -50,7 +56,7 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
       modelSuggestPanelStyle.value = {}
       return
     }
-    const anchor = comboboxAnchorEls.get(i)
+    const anchor = resolveComboboxAnchor(comboboxAnchorEls, i)
     if (!anchor) return
     const r = anchor.getBoundingClientRect()
     const margin = 6
@@ -111,7 +117,7 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
     detachSuggestScrollReposition()
     const i = openModelSuggestRow.value
     if (i === null) return
-    const anchor = comboboxAnchorEls.get(i)
+    const anchor = resolveComboboxAnchor(comboboxAnchorEls, i)
     if (!anchor) return
     suggestScrollParents = scrollableAncestors(anchor)
     for (const p of suggestScrollParents) {

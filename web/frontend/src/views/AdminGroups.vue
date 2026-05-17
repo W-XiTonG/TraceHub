@@ -3,6 +3,11 @@ import axios from 'axios'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import {
+  comboboxAnchorKey,
+  resolveComboboxAnchor,
+  type ComboboxAnchorVariant,
+} from '../utils/comboboxAnchor'
 
 const { t } = useI18n()
 
@@ -100,11 +105,12 @@ let cachedCatalogModelIds: string[] | null = null
 /** 当前展开哪一行的模型 ID 建议列表（替代 datalist，避免系统原生浅色弹层） */
 const openModelSuggestRow = ref<number | null>(null)
 
-const comboboxAnchorEls = new Map<number, HTMLElement>()
+const comboboxAnchorEls = new Map<string, HTMLElement>()
 
-function setComboboxRef(rowIdx: number, el: unknown) {
-  if (el instanceof HTMLElement) comboboxAnchorEls.set(rowIdx, el)
-  else comboboxAnchorEls.delete(rowIdx)
+function setComboboxRef(rowIdx: number, el: unknown, variant: ComboboxAnchorVariant = 'desktop') {
+  const key = comboboxAnchorKey(rowIdx, variant)
+  if (el instanceof HTMLElement) comboboxAnchorEls.set(key, el)
+  else comboboxAnchorEls.delete(key)
 }
 
 const modelSuggestPanelStyle = ref<Record<string, string>>({})
@@ -115,7 +121,7 @@ function updateModelSuggestPanelLayout() {
     modelSuggestPanelStyle.value = {}
     return
   }
-  const anchor = comboboxAnchorEls.get(i)
+  const anchor = resolveComboboxAnchor(comboboxAnchorEls, i)
   if (!anchor) return
   const r = anchor.getBoundingClientRect()
   const margin = 6
@@ -177,7 +183,7 @@ function attachSuggestScrollReposition() {
   detachSuggestScrollReposition()
   const i = openModelSuggestRow.value
   if (i === null) return
-  const anchor = comboboxAnchorEls.get(i)
+  const anchor = resolveComboboxAnchor(comboboxAnchorEls, i)
   if (!anchor) return
   suggestScrollParents = scrollableAncestors(anchor)
   for (const p of suggestScrollParents) {
@@ -840,7 +846,7 @@ onMounted(load)
                       <td class="align-middle px-2 py-2 max-w-[min(100%,22rem)] overflow-hidden">
                         <div
                           class="th-model-combobox relative max-w-full min-w-0"
-                          :ref="(el) => setComboboxRef(idx, el)"
+                          :ref="(el) => setComboboxRef(idx, el, 'desktop')"
                         >
                           <div class="flex max-w-full min-w-0 gap-1">
                             <input
@@ -914,7 +920,7 @@ onMounted(load)
                   class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs"
                 >
                   <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.thModelId') }}</p>
-                  <div class="th-model-combobox relative max-w-full min-w-0" :ref="(el) => setComboboxRef(idx, el)">
+                  <div class="th-model-combobox relative max-w-full min-w-0" :ref="(el) => setComboboxRef(idx, el, 'mobile')">
                     <div class="flex max-w-full min-w-0 gap-1">
                       <input
                         v-model="r.model_name"
