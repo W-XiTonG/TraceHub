@@ -927,8 +927,6 @@ export default {
     channelFilterAll: 'Site default',
     channelScopeHint:
       'Editing overrides for channel “{channel}”. Empty quota/markup fields fall back to site-wide pricing. API billing uses the routed channel.',
-    exportChannelDisabled: 'CSV export is not available in per-channel mode. Switch to site default or save via the table.',
-    importCsvChannelDisabled: 'CSV import is not available in per-channel mode. Save via the table.',
     sourceCatalog: 'Catalog',
     sourceGlobalDb: 'Global DB',
     nothingToSave: 'Nothing to save.',
@@ -948,9 +946,18 @@ export default {
     exportedTemplate: 'Template download started',
     exported: 'Download started',
     importCsv: 'Import CSV',
+    importCsvMultiChannel: 'Import multi-channel CSV',
+    exportAllChannels: 'All channels ({unit})',
+    exportAllChannelsCurrent: 'All channels · current unit ({unit})',
+    exportAllChannelsTemplate: 'All channels template ({unit})',
+    exportAllChannelsTemplateCurrent: 'All channels template · current unit ({unit})',
     importPreviewTitle: 'Import preview',
     importPreviewIntro:
       'Review or edit the rows below. Confirming writes them to the global table by model name (same as Save). Cancel discards this import.',
+    importPreviewIntroMulti:
+      'Review rows below. Confirm batch-writes per channel_id + model name (same as Save).',
+    importPreviewChannelCol: 'Channel ID',
+    importPreviewChannelRequired: 'Each row must have a valid channel_id for multi-channel import.',
     importPreviewCount: '{n} row(s)',
     importPreviewConfirm: 'Confirm import',
     importPreviewCancel: 'Cancel',

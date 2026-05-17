@@ -690,6 +690,14 @@ POST /api/user/redeem
 | `/api/admin/channel-model-pricing/workspace` | GET | **渠道**合并视图：行集合 = 指定渠道的 `models` ∪ `model_alias` 键 ∪ 已有 `channel_model_pricings` 行。**Query**：`channel_id`（必填）、`q`、`page`、`page_size`（同全局 workspace）。每项含 `code_in_per_1k` / `code_out_per_1k`、`sources`（`channel_declared` / `channel_db`）、`channel`（库行）、`global`（同模型全站行，供对照）。 |
 | `/api/admin/channel-model-pricing` | PUT | 批量 upsert；每项须含 `channel_id`、`model_name` 及与全局相同的计价字段。 |
 | `/api/admin/channel-model-pricing` | DELETE | Query：`channel_id`、`model_name` |
+| `/api/admin/channel-model-pricing/export` | GET | 单渠道 CSV 导出。**Query**：`channel_id`（必填）；可选 `currency`+`denom`（语义同全局 export）。表头与全局一致（无 `channel_id` 列）。 |
+| `/api/admin/channel-model-pricing/export/template` | GET | 单渠道导入模板。**Query**：`channel_id`、`currency`、`denom`（后两者必填，同全局 template）。 |
+| `/api/admin/channel-model-pricing/import/preview` | POST | 单渠道 CSV 预览。**Query**：`channel_id`；`multipart` 字段 `file`。 |
+| `/api/admin/channel-model-pricing/import` | POST | 单渠道 CSV 直接落库（同 PUT 语义）。 |
+| `/api/admin/channel-model-pricing/export/batch` | GET | 全部渠道合并导出；表头含 `channel_id`、`channel_name` 及计价列（或含 `upstream_*`）。**总行数上限 5000**。 |
+| `/api/admin/channel-model-pricing/export/template/batch` | GET | 全部渠道导入模板；表头含 `channel_id` 与 `upstream_*`；`currency`、`denom` 必填。 |
+| `/api/admin/channel-model-pricing/import/preview/batch` | POST | 多渠道 CSV 预览；表头须含 `channel_id` 列。 |
+| `/api/admin/channel-model-pricing/import/batch` | POST | 多渠道 CSV 直接落库。 |
 
 **扣费优先级**（`billing.ModelBillRates`）：分组 `GroupModelRate`（含 `billable`）> 渠道 `channel_model_pricings`（非空字段覆盖）> 全站 `global_model_pricings` > 代码内建 `DefaultQuotaPer1K`。网关在 `SelectChannel` 之后传入 `channel_id` 取价。
 

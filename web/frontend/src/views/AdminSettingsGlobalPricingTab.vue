@@ -16,6 +16,8 @@ const { t } = useI18n()
 
 type DraftRow = {
   id?: number
+  /** 多渠道 CSV 导入预览：行所属渠道 */
+  channel_id?: number
   model_name: string
   /** 用户「添加一行」写入的模型，不参与服务端分页，渲染在表格底部 */
   isCustom?: boolean
@@ -259,6 +261,7 @@ function shouldPersistRow(r: DraftRow): boolean {
 }
 
 type ApiPricingItem = {
+  channel_id?: number
   model_name: string
   enabled: boolean
   quota_in_per_1k?: number | null
@@ -270,6 +273,7 @@ type ApiPricingItem = {
 
 /** 导入预览接口返回的单行（与 PUT 项字段一致） */
 type ApiImportPreviewRow = {
+  channel_id?: number
   model_name: string
   enabled: boolean
   quota_in_per_1k?: number | null
@@ -278,6 +282,10 @@ type ApiImportPreviewRow = {
   output_rate: number
   markup_percent?: number | null
 }
+
+type CsvImportMode = 'global' | 'channel' | 'multi'
+const importMode = ref<CsvImportMode>('global')
+const csvMultiFileInput = ref<HTMLInputElement | null>(null)
 
 function parseMarkup(raw: string): { ok: boolean; value?: number | null } {
   const s = raw.trim()
@@ -362,6 +370,7 @@ function draftsToPersistItems(drafts: DraftRow[]): ApiPricingItem[] | null {
 
 function apiImportItemToDraft(it: ApiImportPreviewRow): DraftRow {
   return {
+    channel_id: it.channel_id,
     model_name: it.model_name,
     isCustom: false,
     locked: false,
@@ -385,12 +394,23 @@ function importPreviewDraftsToItems(drafts: DraftRow[]): ApiPricingItem[] | null
   const items: ApiPricingItem[] = []
   for (const r of drafts) {
     if (!r.model_name.trim()) continue
+    if (importMode.value === 'multi') {
+      const cid = r.channel_id
+      if (cid == null || !Number.isFinite(cid) || cid <= 0) {
+        flashWarn(t('adminGlobalPricing.importPreviewChannelRequired'))
+        return null
+      }
+    }
     const v = validateRowToItem(r)
     if (!v.ok) {
       flashWarn(v.message)
       return null
     }
-    items.push(v.item)
+    const item: ApiPricingItem = { ...v.item }
+    if (importMode.value === 'multi' && r.channel_id != null) {
+      item.channel_id = r.channel_id
+    }
+    items.push(item)
   }
   if (items.length === 0) {
     flashWarn(t('adminGlobalPricing.importPreviewNoRows'))
@@ -402,7 +422,10 @@ function importPreviewDraftsToItems(drafts: DraftRow[]): ApiPricingItem[] | null
 function closeImportPreview() {
   importPreviewOpen.value = false
   importPreviewRows.value = []
+  importMode.value = 'global'
 }
+
+const importPreviewIsMulti = computed(() => importMode.value === 'multi')
 
 function removeImportPreviewRow(idx: number) {
   importPreviewRows.value.splice(idx, 1)
@@ -414,7 +437,11 @@ async function confirmImportPreview() {
   if (items === null) return
   importPreviewSubmitting.value = true
   try {
-    await putPricingItems(items)
+    if (importMode.value === 'multi') {
+      await putChannelPricingItems(items)
+    } else {
+      await putPricingItems(items)
+    }
     await load()
     closeImportPreview()
     flashSuccess(t('adminGlobalPricing.imported', { count: items.length }))
@@ -423,6 +450,19 @@ async function confirmImportPreview() {
   } finally {
     importPreviewSubmitting.value = false
   }
+}
+
+async function putChannelPricingItems(items: ApiPricingItem[]): Promise<void> {
+  const payload = items.map((it) => {
+    const cid = it.channel_id
+    if (cid == null || cid <= 0) throw new Error('channel_id')
+    const { channel_id: _c, ...rest } = it
+    return { ...rest, channel_id: cid }
+  })
+  const { data } = await http.put<Envelope<unknown>>('/api/admin/channel-model-pricing', {
+    items: payload,
+  })
+  if (data.code !== 0) throw new Error(data.message || 'save')
 }
 
 async function putPricingItems(items: ApiPricingItem[]): Promise<void> {
@@ -1155,15 +1195,60 @@ async function downloadCsvBlob(
   flashSuccess(t(`adminGlobalPricing.${successKey}`))
 }
 
+function csvExportDataUrl() {
+  if (isChannelScope.value) return '/api/admin/channel-model-pricing/export'
+  return '/api/admin/global-model-pricing/export'
+}
+
+function csvExportTemplateUrl() {
+  if (isChannelScope.value) return '/api/admin/channel-model-pricing/export/template'
+  return '/api/admin/global-model-pricing/export/template'
+}
+
+function csvExportParams(currency: 'cny' | 'usd', denom: number): Record<string, string | number> {
+  const p: Record<string, string | number> = { currency, denom }
+  if (isChannelScope.value) p.channel_id = activeChannelId.value
+  return p
+}
+
+function csvExportFallbackName(kind: 'data' | 'template', currency: 'cny' | 'usd') {
+  if (isChannelScope.value) {
+    return kind === 'data'
+      ? `channel-${activeChannelId.value}-model-pricing-data-${currency}.csv`
+      : `channel-${activeChannelId.value}-model-pricing-import-${currency}.csv`
+  }
+  return kind === 'data'
+    ? `global-model-pricing-data-${currency}.csv`
+    : `global-model-pricing-import-${currency}.csv`
+}
+
 async function exportDataCsv(currency: 'cny' | 'usd', denom: number) {
   clearFlash()
   exporting.value = true
   dataMenuOpen.value = false
   try {
     await downloadCsvBlob(
-      '/api/admin/global-model-pricing/export',
+      csvExportDataUrl(),
+      csvExportParams(currency, denom),
+      csvExportFallbackName('data', currency),
+      'exported',
+    )
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function exportDataCsvBatch(currency: 'cny' | 'usd', denom: number) {
+  clearFlash()
+  exporting.value = true
+  dataMenuOpen.value = false
+  try {
+    await downloadCsvBlob(
+      '/api/admin/channel-model-pricing/export/batch',
       { currency, denom },
-      `global-model-pricing-data-${currency}.csv`,
+      `channel-model-pricing-all-${currency}.csv`,
       'exported',
     )
   } catch (e: unknown) {
@@ -1183,9 +1268,9 @@ async function exportImportTemplate(currency: 'cny' | 'usd', denom: number) {
   templateMenuOpen.value = false
   try {
     await downloadCsvBlob(
-      '/api/admin/global-model-pricing/export/template',
-      { currency, denom },
-      `global-model-pricing-import-${currency}.csv`,
+      csvExportTemplateUrl(),
+      csvExportParams(currency, denom),
+      csvExportFallbackName('template', currency),
       'exportedTemplate',
     )
   } catch (e: unknown) {
@@ -1193,6 +1278,32 @@ async function exportImportTemplate(currency: 'cny' | 'usd', denom: number) {
   } finally {
     exportingTemplate.value = false
   }
+}
+
+async function exportImportTemplateBatch(currency: 'cny' | 'usd', denom: number) {
+  clearFlash()
+  exportingTemplate.value = true
+  templateMenuOpen.value = false
+  try {
+    await downloadCsvBlob(
+      '/api/admin/channel-model-pricing/export/template/batch',
+      { currency, denom },
+      `channel-model-pricing-import-all-${currency}.csv`,
+      'exportedTemplate',
+    )
+  } catch (e: unknown) {
+    flashError(e)
+  } finally {
+    exportingTemplate.value = false
+  }
+}
+
+function exportDataCsvBatchCurrentUnit() {
+  void exportDataCsvBatch(deriveCurrency.value, deriveDenom.value)
+}
+
+function exportImportTemplateBatchCurrentUnit() {
+  void exportImportTemplateBatch(deriveCurrency.value, deriveDenom.value)
 }
 
 function exportImportTemplateCurrentUnit() {
@@ -1221,27 +1332,42 @@ function onExportMenusDocClick(ev: MouseEvent) {
   }
 }
 
-function triggerCsvImport() {
+function triggerCsvImport(mode: CsvImportMode = 'global') {
   clearFlash()
-  if (isChannelScope.value) {
-    flashWarn(t('adminGlobalPricing.importCsvChannelDisabled'))
-    return
+  if (mode === 'global' && isChannelScope.value) {
+    mode = 'channel'
   }
-  csvFileInput.value?.click()
+  if (mode === 'multi' && isChannelScope.value) return
+  importMode.value = mode
+  if (mode === 'multi') {
+    csvMultiFileInput.value?.click()
+  } else {
+    csvFileInput.value?.click()
+  }
 }
 
-async function onCsvFileChange(ev: Event) {
+async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
   const input = ev.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
   importing.value = true
   clearFlash()
+  importMode.value = mode
   try {
     const fd = new FormData()
     fd.append('file', file)
+    let previewUrl = '/api/admin/global-model-pricing/import/preview'
+    const params: Record<string, number> = {}
+    if (mode === 'channel') {
+      previewUrl = '/api/admin/channel-model-pricing/import/preview'
+      params.channel_id = activeChannelId.value
+    } else if (mode === 'multi') {
+      previewUrl = '/api/admin/channel-model-pricing/import/preview/batch'
+    }
     const { data } = await http.post<Envelope<{ count: number; items: ApiImportPreviewRow[] }>>(
-      '/api/admin/global-model-pricing/import/preview',
+      previewUrl,
       fd,
+      Object.keys(params).length ? { params } : undefined,
     )
     if (data.code !== 0) throw new Error(data.message || 'preview')
     const raw = data.data?.items
@@ -1458,8 +1584,7 @@ async function onCsvFileChange(ev: Event) {
                   <button
                     type="button"
                     class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                    :disabled="isChannelScope || exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
-                    :title="isChannelScope ? t('adminGlobalPricing.exportChannelDisabled') : undefined"
+                    :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
                     :aria-expanded="dataMenuOpen"
                     @click.stop="toggleDataMenu"
                   >
@@ -1497,14 +1622,35 @@ async function onCsvFileChange(ev: Event) {
                     >
                       {{ t(`adminGlobalPricing.${p.labelKey}`) }}
                     </button>
+                    <template v-if="!isChannelScope">
+                      <div class="my-1 border-t border-slate-800" role="separator" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        class="block w-full px-3 py-2 text-left text-xs text-amber-200/90 hover:bg-slate-800"
+                        @click="exportDataCsvBatchCurrentUnit"
+                      >
+                        {{ t('adminGlobalPricing.exportAllChannelsCurrent', { unit: priceUnitLabel }) }}
+                      </button>
+                      <button
+                        v-for="(p, bi) in importTemplatePresets"
+                        :key="`data-batch-${p.currency}-${p.denom}`"
+                        type="button"
+                        role="menuitem"
+                        class="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+                        :class="bi > 0 && p.currency !== importTemplatePresets[bi - 1]?.currency ? 'border-t border-slate-800' : ''"
+                        @click="exportDataCsvBatch(p.currency, p.denom)"
+                      >
+                        {{ t('adminGlobalPricing.exportAllChannels', { unit: t(`adminGlobalPricing.${p.labelKey}`) }) }}
+                      </button>
+                    </template>
                   </div>
                 </div>
                 <div ref="templateMenuRef" class="relative shrink-0">
                   <button
                     type="button"
                     class="flex h-9 items-center gap-1 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                    :disabled="isChannelScope || exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
-                    :title="isChannelScope ? t('adminGlobalPricing.exportChannelDisabled') : undefined"
+                    :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || busy"
                     :aria-expanded="templateMenuOpen"
                     @click.stop="toggleTemplateMenu"
                   >
@@ -1544,16 +1690,46 @@ async function onCsvFileChange(ev: Event) {
                     >
                       {{ t(`adminGlobalPricing.${p.labelKey}`) }}
                     </button>
+                    <template v-if="!isChannelScope">
+                      <div class="my-1 border-t border-slate-800" role="separator" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        class="block w-full px-3 py-2 text-left text-xs text-amber-200/90 hover:bg-slate-800"
+                        @click="exportImportTemplateBatchCurrentUnit"
+                      >
+                        {{ t('adminGlobalPricing.exportAllChannelsTemplateCurrent', { unit: priceUnitLabel }) }}
+                      </button>
+                      <button
+                        v-for="(p, bti) in importTemplatePresets"
+                        :key="`tpl-batch-${p.currency}-${p.denom}`"
+                        type="button"
+                        role="menuitem"
+                        class="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"
+                        :class="bti > 0 && p.currency !== importTemplatePresets[bti - 1]?.currency ? 'border-t border-slate-800' : ''"
+                        @click="exportImportTemplateBatch(p.currency, p.denom)"
+                      >
+                        {{ t('adminGlobalPricing.exportAllChannelsTemplate', { unit: t(`adminGlobalPricing.${p.labelKey}`) }) }}
+                      </button>
+                    </template>
                   </div>
                 </div>
                 <button
                   type="button"
                   class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="isChannelScope || exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
-                  :title="isChannelScope ? t('adminGlobalPricing.importCsvChannelDisabled') : undefined"
-                  @click="triggerCsvImport"
+                  :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
+                  @click="triggerCsvImport(isChannelScope ? 'channel' : 'global')"
                 >
                   {{ importing ? t('common.submitting') : t('adminGlobalPricing.importCsv') }}
+                </button>
+                <button
+                  v-if="!isChannelScope"
+                  type="button"
+                  class="h-9 shrink-0 rounded-lg border border-slate-600 px-2.5 text-xs text-amber-200/90 hover:bg-slate-800 disabled:opacity-40"
+                  :disabled="exporting || exportingTemplate || importing || importPreviewSubmitting || importPreviewOpen || anyListSaving || busy"
+                  @click="triggerCsvImport('multi')"
+                >
+                  {{ importing ? t('common.submitting') : t('adminGlobalPricing.importCsvMultiChannel') }}
                 </button>
                 <input
                   ref="csvFileInput"
@@ -1562,7 +1738,16 @@ async function onCsvFileChange(ev: Event) {
                   class="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0"
                   tabindex="-1"
                   aria-hidden="true"
-                  @change="onCsvFileChange"
+                  @change="onCsvFileChange($event, isChannelScope ? 'channel' : 'global')"
+                />
+                <input
+                  ref="csvMultiFileInput"
+                  type="file"
+                  accept=".csv,text/csv"
+                  class="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0"
+                  tabindex="-1"
+                  aria-hidden="true"
+                  @change="onCsvFileChange($event, 'multi')"
                 />
               </div>
             </div>
@@ -1976,7 +2161,11 @@ async function onCsvFileChange(ev: Event) {
         >
           <div class="th-feedback-modal__head shrink-0 px-5 py-4">
             <h4 class="th-feedback-modal__title text-base font-semibold">{{ t('adminGlobalPricing.importPreviewTitle') }}</h4>
-            <p class="th-feedback-modal__intro mt-1.5 text-xs leading-relaxed">{{ t('adminGlobalPricing.importPreviewIntro') }}</p>
+            <p class="th-feedback-modal__intro mt-1.5 text-xs leading-relaxed">{{
+              importPreviewIsMulti
+                ? t('adminGlobalPricing.importPreviewIntroMulti')
+                : t('adminGlobalPricing.importPreviewIntro')
+            }}</p>
             <p class="th-feedback-modal__muted mt-1 text-[11px]">
               {{ t('adminGlobalPricing.importPreviewCount', { n: importPreviewRows.length }) }}
             </p>
@@ -1987,6 +2176,12 @@ async function onCsvFileChange(ev: Event) {
               <table class="w-full min-w-[640px] border-separate border-spacing-0 text-left text-xs">
                 <thead>
                   <tr>
+                    <th
+                      v-if="importPreviewIsMulti"
+                      class="th-import-preview-th w-16 px-2 py-2.5 text-left"
+                    >
+                      {{ t('adminGlobalPricing.importPreviewChannelCol') }}
+                    </th>
                     <th class="th-import-preview-th px-2 py-2.5 text-left">
                       {{ t('adminGlobalPricing.importPreviewModelCol') }}
                     </th>
@@ -2011,7 +2206,10 @@ async function onCsvFileChange(ev: Event) {
                   </tr>
                 </thead>
                 <tbody>
-                <tr v-for="(r, idx) in importPreviewRows" :key="`ipr-${idx}-${r.model_name}`">
+                <tr v-for="(r, idx) in importPreviewRows" :key="`ipr-${idx}-${r.channel_id ?? ''}-${r.model_name}`">
+                  <td v-if="importPreviewIsMulti" class="px-2 py-2 align-middle">
+                    <span class="font-mono text-xs text-slate-300">{{ r.channel_id ?? '—' }}</span>
+                  </td>
                   <td class="px-2 py-2 align-middle">
                     <input
                       v-model="r.model_name"
