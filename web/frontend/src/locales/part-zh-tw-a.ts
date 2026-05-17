@@ -50,6 +50,7 @@ export default {
     panelTitle: '公告',
     empty: '暫無公告',
     recent: '更多公告',
+    viewAllOnDashboard: '在概覽查看全部',
     loadFail: '載入公告失敗',
   },
   sitePromo: {
@@ -179,6 +180,9 @@ export default {
     adminHomeShort: '返回官网首頁',
     lowBalanceBanner: '目前餘額已不高於您設定的告警閾值；請儘快充值或兌換額度，以免 API 因餘額不足失敗。',
     lowBalanceSettings: '告警設定',
+    openNav: '開啟選單',
+    closeNav: '關閉選單',
+    mobileNavAria: '網站導覽',
   },
   userMenu: {
     accountFallback: '帳号',

@@ -3,6 +3,8 @@ import axios from 'axios'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -216,7 +218,7 @@ onMounted(() => void load())
         <h2 class="text-sm font-medium text-slate-200">{{ t('adminAnnounce.list') }}</h2>
         <span class="text-xs text-slate-500">{{ t('adminAnnounce.total', { n: total }) }}</span>
       </div>
-      <div class="overflow-x-auto">
+      <div class="hidden overflow-x-auto lg:block">
         <table class="w-full min-w-[640px] text-left text-sm">
           <thead>
             <tr class="border-b border-white/[0.06] text-xs uppercase tracking-wide text-slate-500">
@@ -254,6 +256,26 @@ onMounted(() => void load())
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="mt-3 space-y-3 lg:hidden">
+        <MobileLabelValueCard v-for="r in rows" :key="`ann-m-${r.id}`" :title="r.title">
+          <MobileLabelValueRow :label="t('adminAnnounce.thId')">{{ r.id }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminAnnounce.thAudience')">
+            <span v-if="r.audience_user_id != null && r.audience_user_id > 0">{{ t('adminAnnounce.audienceUser', { id: r.audience_user_id }) }}</span>
+            <span v-else>{{ t('adminAnnounce.audienceAll') }}</span>
+          </MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminAnnounce.thStatus')">
+            <span v-if="r.published" class="text-emerald-300/90">{{ t('adminAnnounce.statusOn') }}</span>
+            <span v-else class="text-slate-500">{{ t('adminAnnounce.statusDraft') }}</span>
+          </MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminAnnounce.thPublishedAt')">{{ r.published_at || '—' }}</MobileLabelValueRow>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" class="text-xs text-amber-200/90 hover:underline" @click="openEdit(r)">{{ t('common.edit') }}</button>
+            <button v-if="!r.published" type="button" class="text-xs text-emerald-300/90 hover:underline" @click="publish(r.id)">{{ t('adminAnnounce.publish') }}</button>
+            <button v-else type="button" class="text-xs text-slate-400 hover:underline" @click="unpublish(r.id)">{{ t('adminAnnounce.unpublish') }}</button>
+            <button type="button" class="text-xs text-rose-300/90 hover:underline" @click="remove(r.id)">{{ t('common.delete') }}</button>
+          </div>
+        </MobileLabelValueCard>
       </div>
       <div class="mt-4 flex items-center justify-end gap-2 text-xs">
         <button

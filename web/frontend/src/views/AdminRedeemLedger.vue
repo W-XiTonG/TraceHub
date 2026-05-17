@@ -5,6 +5,8 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ThPgStyleCombo from '../components/ThPgStyleCombo.vue'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -187,7 +189,7 @@ onMounted(() => {
     <p v-if="err" class="text-sm text-rose-400">{{ err }}</p>
     <p class="text-xs text-slate-500">{{ t('adminRedeemLedger.total', { n: total }) }}</p>
 
-    <div class="th-table-wrap overflow-x-auto rounded-lg border border-slate-800/80">
+    <div class="th-table-wrap hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
       <table class="min-w-full text-left text-sm">
         <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
           <tr>
@@ -212,6 +214,21 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="r in rows" :key="`rdl-m-${r.id}`">
+        <template #title>
+          <p class="font-mono text-xs text-slate-400">{{ r.created_at || '—' }}</p>
+          <p class="mt-0.5 text-sm text-slate-200">{{ r.user_email || `#${r.user_id}` }}</p>
+        </template>
+        <MobileLabelValueRow :label="t('adminRedeemLedger.thHint')">{{ r.code_hint || '—' }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminRedeemLedger.thAmount')">
+          <span class="font-mono font-semibold th-redeem-quota-fg">{{ r.amount }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminRedeemLedger.thBalanceAfter')">{{ r.balance_after }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminRedeemLedger.thCodeId')">{{ r.redeem_code_id }}</MobileLabelValueRow>
+      </MobileLabelValueCard>
     </div>
 
     <div v-if="total > pageSize" class="flex items-center justify-between text-xs text-slate-500">

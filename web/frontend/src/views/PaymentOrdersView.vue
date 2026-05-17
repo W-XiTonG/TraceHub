@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -53,35 +55,48 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="max-w-4xl">
-    <h1 class="mb-2 text-2xl font-bold">{{ t('paymentOrders.title') }}</h1>
+  <div class="max-w-4xl min-w-0">
+    <h1 class="mb-2 text-xl font-bold sm:text-2xl">{{ t('paymentOrders.title') }}</h1>
     <p class="mb-6 text-sm text-slate-500">{{ t('paymentOrders.desc') }}</p>
     <div v-if="loading" class="text-sm text-slate-500">{{ t('paymentOrders.loading') }}</div>
-    <div v-else class="overflow-x-auto rounded-xl border border-slate-800">
-      <table class="w-full text-left text-sm">
-        <thead class="border-b border-slate-800 bg-slate-900/80 text-slate-400">
-          <tr>
-            <th class="px-4 py-3">{{ t('paymentOrders.thOrder') }}</th>
-            <th class="px-4 py-3">{{ t('paymentOrders.thProvider') }}</th>
-            <th class="px-4 py-3">{{ t('paymentOrders.thAmount') }}</th>
-            <th class="px-4 py-3">{{ t('paymentOrders.thQuota') }}</th>
-            <th class="px-4 py-3">{{ t('paymentOrders.thStatus') }}</th>
-            <th class="px-4 py-3">{{ t('paymentOrders.thTime') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in items" :key="r.id" class="border-b border-slate-800/60">
-            <td class="px-4 py-3 font-mono text-xs">{{ r.order_no }}</td>
-            <td class="px-4 py-3">{{ r.provider }}</td>
-            <td class="px-4 py-3">¥{{ fmtYuan(r.amount_cents) }}</td>
-            <td class="px-4 py-3">{{ r.quota_amount }}</td>
-            <td class="px-4 py-3">{{ r.status }}</td>
-            <td class="px-4 py-3 text-slate-500">{{ fmtTime(r.paid_at || r.created_at) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-if="!items.length" class="p-6 text-center text-slate-500">{{ t('paymentOrders.empty') }}</p>
-    </div>
+    <template v-else>
+      <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-slate-800 bg-slate-900/80 text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ t('paymentOrders.thOrder') }}</th>
+              <th class="px-4 py-3">{{ t('paymentOrders.thProvider') }}</th>
+              <th class="px-4 py-3">{{ t('paymentOrders.thAmount') }}</th>
+              <th class="px-4 py-3">{{ t('paymentOrders.thQuota') }}</th>
+              <th class="px-4 py-3">{{ t('paymentOrders.thStatus') }}</th>
+              <th class="px-4 py-3">{{ t('paymentOrders.thTime') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in items" :key="r.id" class="border-b border-slate-800/60">
+              <td class="px-4 py-3 font-mono text-xs">{{ r.order_no }}</td>
+              <td class="px-4 py-3">{{ r.provider }}</td>
+              <td class="px-4 py-3">¥{{ fmtYuan(r.amount_cents) }}</td>
+              <td class="px-4 py-3">{{ r.quota_amount }}</td>
+              <td class="px-4 py-3">{{ r.status }}</td>
+              <td class="px-4 py-3 text-slate-500">{{ fmtTime(r.paid_at || r.created_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="!items.length" class="p-6 text-center text-slate-500">{{ t('paymentOrders.empty') }}</p>
+      </div>
+
+      <div class="space-y-3 lg:hidden">
+        <MobileLabelValueCard v-for="r in items" :key="`po-${r.id}`" :title="r.order_no">
+          <MobileLabelValueRow :label="t('paymentOrders.thProvider')">{{ r.provider }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('paymentOrders.thAmount')">¥{{ fmtYuan(r.amount_cents) }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('paymentOrders.thQuota')">{{ r.quota_amount }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('paymentOrders.thStatus')">{{ r.status }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('paymentOrders.thTime')">{{ fmtTime(r.paid_at || r.created_at) }}</MobileLabelValueRow>
+        </MobileLabelValueCard>
+        <p v-if="!items.length" class="p-6 text-center text-sm text-slate-500">{{ t('paymentOrders.empty') }}</p>
+      </div>
+    </template>
     <p class="mt-4 text-xs text-slate-600">{{ t('paymentOrders.total', { n: total }) }}</p>
   </div>
 </template>

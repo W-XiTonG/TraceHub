@@ -46,6 +46,7 @@ export default {
     panelTitle: 'Announcements',
     empty: 'No announcements yet',
     recent: 'More',
+    viewAllOnDashboard: 'View all on overview',
     loadFail: 'Failed to load announcements',
   },
   sitePromo: {
@@ -175,6 +176,9 @@ export default {
     adminHomeShort: 'Homepage',
     lowBalanceBanner: 'Your balance is at or below the alert threshold you set. Top up soon to avoid failed API calls.',
     lowBalanceSettings: 'Alert settings',
+    openNav: 'Open menu',
+    closeNav: 'Close menu',
+    mobileNavAria: 'Navigation',
   },
   userMenu: {
     accountFallback: 'Account',

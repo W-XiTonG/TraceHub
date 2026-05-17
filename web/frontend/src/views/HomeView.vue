@@ -9,6 +9,7 @@ import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 import RegisterPromoDropdown from '../components/RegisterPromoDropdown.vue'
+import SiteMobileNav from '../components/shell/SiteMobileNav.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -280,8 +281,8 @@ function featureLink(to: string) {
     </div>
 
     <header class="th-site-header th-home-header-enter">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <div class="flex items-center gap-3">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-5">
+        <div class="flex min-w-0 items-center gap-2 sm:gap-3">
           <div class="th-logo-mark th-logo-mark--sm th-logo-mark--image shrink-0">
             <img :src="siteMeta.displayIconUrl" :alt="siteMeta.displayName" width="36" height="36" decoding="async" />
           </div>
@@ -289,9 +290,9 @@ function featureLink(to: string) {
             <span class="th-sidebar-brand block text-lg font-semibold tracking-tight text-white">{{ siteMeta.displayName }}</span>
             <span class="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ t('home.brandSub') }}</span>
           </div>
-          <span class="ml-1 rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-500">v{{ siteMeta.displayVersion }}</span>
+          <span class="ml-1 hidden rounded border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-500 sm:inline">v{{ siteMeta.displayVersion }}</span>
         </div>
-        <nav class="flex flex-wrap items-center justify-end gap-0.5 sm:gap-1">
+        <nav class="hidden flex-wrap items-center justify-end gap-0.5 lg:flex sm:gap-1">
           <a href="#why" class="th-site-nav-link hidden md:inline">{{ t('nav.whyTraceHub') }}</a>
           <a href="#steps" class="th-site-nav-link hidden lg:inline">{{ t('nav.quickStart') }}</a>
           <a href="#routing" class="th-site-nav-link hidden lg:inline">{{ t('nav.routing') }}</a>
@@ -303,11 +304,12 @@ function featureLink(to: string) {
           <RouterLink to="/docs" class="th-site-nav-link">{{ t('nav.docs') }}</RouterLink>
           <RegisterPromoDropdown v-if="!auth.isLoggedIn" :text="siteMeta.registerPromoText" />
           <template v-if="!auth.isLoggedIn">
-            <RouterLink to="/login" class="th-site-nav-link text-slate-300">{{ t('nav.login') }}</RouterLink>
-            <RouterLink to="/register" class="th-btn-primary !px-4 !py-2 text-sm">{{ t('nav.register') }}</RouterLink>
+            <RouterLink to="/login" class="th-btn-secondary !px-4 !py-2 text-sm no-underline">{{ t('nav.login') }}</RouterLink>
+            <RouterLink to="/register" class="th-btn-primary !px-4 !py-2 text-sm no-underline">{{ t('nav.register') }}</RouterLink>
           </template>
           <UserAccountMenu v-else accent="cyan" />
         </nav>
+        <SiteMobileNav />
       </div>
     </header>
 
@@ -775,7 +777,27 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
 
         <div class="th-reveal-stagger mt-12">
           <h3 class="text-center text-sm font-semibold uppercase tracking-wider text-slate-500">{{ t('home.billTableTitle') }}</h3>
-          <div class="mt-4 overflow-x-auto rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/40 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.55)]">
+          <div class="mt-4 space-y-3 lg:hidden">
+            <article
+              v-for="row in homeBillingExampleRows.slice(0, 3)"
+              :key="`bill-m-${row.model}`"
+              class="th-glass rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/40 p-4"
+            >
+              <p class="font-mono text-sm text-cyan-100/90">{{ row.model }}</p>
+              <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wide text-slate-500">{{ t('home.billTableThIn') }}</dt>
+                  <dd class="mt-0.5 font-mono tabular-nums text-slate-400">{{ row.inPer1k }}</dd>
+                </div>
+                <div>
+                  <dt class="text-[10px] uppercase tracking-wide text-slate-500">{{ t('home.billTableThOut') }}</dt>
+                  <dd class="mt-0.5 font-mono tabular-nums text-slate-400">{{ row.outPer1k }}</dd>
+                </div>
+              </dl>
+            </article>
+            <p class="text-center text-[11px] text-slate-600">{{ t('home.billTableFoot') }}</p>
+          </div>
+          <div class="mt-4 hidden overflow-x-auto rounded-[var(--th-radius-xl)] border border-white/[0.08] bg-slate-950/40 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.55)] lg:block">
             <table class="w-full min-w-[28rem] text-left text-sm">
               <thead class="border-b border-white/[0.06] bg-white/[0.03] text-[11px] uppercase tracking-wide text-slate-500">
                 <tr>

@@ -47,6 +47,8 @@ export default {
     healthDesc: '表示閘道後端與相關服務是否可正常回應。',
     announceTitle: '系統公告',
     noAnnounce: '暫無公告',
+    announceExpand: '展開全文',
+    announceCollapse: '收起',
     faqTitle: '常見問題',
     faqItems: [
       {

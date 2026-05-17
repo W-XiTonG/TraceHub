@@ -663,7 +663,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-10 pb-10">
+  <div class="mx-auto max-w-6xl min-w-0 space-y-10 pb-10">
     <header class="border-b border-slate-800/80 pb-6">
       <h1 class="text-2xl font-bold tracking-tight text-white">{{ t('adminGroups.title') }}</h1>
       <p class="mt-1 text-sm text-slate-500">{{ t('adminGroups.intro') }}</p>
@@ -824,7 +824,7 @@ onMounted(load)
                 <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
                 <span v-else>{{ t('adminGroups.modelSuggestHint') }}</span>
               </p>
-              <div class="overflow-x-auto rounded-xl border border-slate-800">
+              <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
                 <table class="w-full border-collapse text-left text-xs">
                   <thead class="bg-slate-900 text-slate-500">
                     <tr>
@@ -907,6 +907,70 @@ onMounted(load)
                   </tbody>
                 </table>
               </div>
+              <div class="space-y-3 lg:hidden">
+                <article
+                  v-for="(r, idx) in ratesDraft"
+                  :key="`rate-m-${g.id}-${idx}`"
+                  class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs"
+                >
+                  <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.thModelId') }}</p>
+                  <div class="th-model-combobox relative max-w-full min-w-0" :ref="(el) => setComboboxRef(idx, el)">
+                    <div class="flex max-w-full min-w-0 gap-1">
+                      <input
+                        v-model="r.model_name"
+                        class="th-input h-9 min-w-0 w-0 flex-1 py-1 font-mono text-xs leading-normal"
+                        autocomplete="off"
+                        spellcheck="false"
+                        :placeholder="t('adminGroups.modelIdPh')"
+                        @focus="focusModelSuggestRow(idx)"
+                        @input="scheduleSuggestLayout"
+                      />
+                      <button
+                        type="button"
+                        class="th-input flex h-9 w-9 min-w-9 shrink-0 items-center justify-center !w-9 !max-w-9 !px-0"
+                        :title="t('adminGroups.modelSuggestToggle')"
+                        :aria-expanded="openModelSuggestRow === idx"
+                        @mousedown.prevent
+                        @click="toggleModelSuggestRow(idx)"
+                      >
+                        <svg class="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path
+                            fill-rule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mt-3 grid grid-cols-2 gap-3">
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[10px] text-slate-500">{{ t('adminGroups.thIn') }}</span>
+                      <input v-model.number="r.input_rate" type="number" step="0.01" class="th-input h-9 w-full py-1 font-mono text-xs" />
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[10px] text-slate-500">{{ t('adminGroups.thOut') }}</span>
+                      <input v-model.number="r.output_rate" type="number" step="0.01" class="th-input h-9 w-full py-1 font-mono text-xs" />
+                    </label>
+                  </div>
+                  <div class="mt-3 flex flex-wrap gap-4">
+                    <label class="flex items-center gap-2 text-slate-400">
+                      <input v-model="r.enabled" type="checkbox" class="h-4 w-4 accent-cyan-600" />
+                      {{ t('adminGroups.thEn') }}
+                    </label>
+                    <label class="flex items-center gap-2 text-slate-400">
+                      <input
+                        type="checkbox"
+                        class="h-4 w-4 accent-cyan-600"
+                        :checked="r.billable === false"
+                        :title="t('adminGroups.thNoBill')"
+                        @change="r.billable = !($event.target as HTMLInputElement).checked"
+                      />
+                      {{ t('adminGroups.thNoBill') }}
+                    </label>
+                  </div>
+                </article>
+              </div>
               <p
                 v-if="ratesFlashGid === g.id && ratesFlashMsg"
                 :id="`rates-flash-${g.id}`"
@@ -964,7 +1028,7 @@ onMounted(load)
               <span class="text-xs text-slate-400">{{ t('adminGroups.lblDefModel') }}</span>
               <input v-model="editForm.default_model" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs" />
             </label>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label class="flex flex-col gap-1">
                 <span class="text-xs text-slate-400">{{ t('adminGroups.lblRateMul') }}</span>
                 <input v-model.number="editForm.rate_multiplier" type="number" step="0.01" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono" />
@@ -1012,7 +1076,8 @@ onMounted(load)
                 <p class="text-xs text-slate-500">{{ t('adminGroups.modelPinHint') }}</p>
                 <p v-if="overlapsLoading" class="text-xs text-slate-600">{{ t('adminGroups.loadingOverlaps') }}</p>
                 <p v-else-if="overlaps.length === 0" class="text-xs text-slate-600">{{ t('adminGroups.noOverlaps') }}</p>
-                <div v-else class="overflow-x-auto rounded-lg border border-slate-800">
+                <template v-else>
+                <div class="hidden overflow-x-auto rounded-lg border border-slate-800 lg:block">
                   <table class="w-full text-left text-xs">
                     <thead class="bg-slate-950 text-slate-500">
                       <tr>
@@ -1045,6 +1110,35 @@ onMounted(load)
                     </tbody>
                   </table>
                 </div>
+                <ul class="space-y-2 lg:hidden">
+                  <li
+                    v-for="it in overlaps"
+                    :key="`ov-m-${it.model}`"
+                    class="rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-xs"
+                  >
+                    <p class="font-mono text-slate-300">{{ it.model }}</p>
+                    <p class="mt-2 text-[10px] uppercase tracking-wide text-slate-500">{{ t('adminGroups.thOverlapChannels') }}</p>
+                    <p class="mt-0.5 text-slate-400">
+                      <span v-for="(ch, ci) in it.channels" :key="ch.id">
+                        <span v-if="ci > 0"> · </span>
+                        <span :class="ch.healthy ? '' : 'text-amber-500/90'">{{ overlapChannelLabel(ch) }}</span>
+                      </span>
+                    </p>
+                    <label class="mt-2 block">
+                      <span class="text-[10px] uppercase tracking-wide text-slate-500">{{ t('adminGroups.thOverlapPin') }}</span>
+                      <select
+                        v-model="overlapPins[it.model]"
+                        class="th-input mt-1 w-full text-xs"
+                      >
+                        <option value="">{{ t('adminGroups.pinInherit') }}</option>
+                        <option v-for="ch in it.channels" :key="ch.id" :value="ch.id">
+                          {{ overlapChannelLabel(ch) }}
+                        </option>
+                      </select>
+                    </label>
+                  </li>
+                </ul>
+                </template>
               </div>
               <div class="mt-3 space-y-2">
                 <button

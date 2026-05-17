@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
+import { globalFabHidden } from '../composables/shellNavState'
 import { useThemeStore } from '../stores/theme'
 import type { ThemeId } from '../theme-sync'
 
 const { t } = useI18n()
+const route = useRoute()
 
 const theme = useThemeStore()
+const inShell = computed(() => route.path.startsWith('/console') || route.path.startsWith('/admin'))
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
@@ -50,7 +54,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="th-theme-picker pointer-events-none fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-2 md:bottom-6 md:right-6">
+  <div
+    ref="root"
+    class="th-theme-picker pointer-events-none fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-2 transition-opacity duration-200 max-lg:bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:bottom-6 md:right-6"
+    :class="{
+      'opacity-0': globalFabHidden,
+      'max-lg:scale-90': inShell,
+    }"
+  >
     <Transition
       enter-active-class="transition duration-220 ease-[cubic-bezier(0.22,1,0.36,1)]"
       leave-active-class="transition duration-160 ease-in"

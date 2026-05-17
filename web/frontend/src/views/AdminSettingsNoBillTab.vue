@@ -160,7 +160,7 @@ watch(
           <span v-else>{{ t('adminNoBill.modelSuggestHint') }}</span>
         </p>
 
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
           <table class="w-full min-w-[28rem] border-collapse text-left text-xs">
             <thead class="bg-slate-900 text-slate-500">
               <tr>
@@ -219,6 +219,55 @@ watch(
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div class="space-y-3 lg:hidden">
+          <p v-if="!draftRows.length" class="rounded-xl border border-dashed border-slate-700 py-8 text-center text-sm text-slate-500">
+            {{ t('adminNoBill.empty') }}
+          </p>
+          <article
+            v-for="(r, idx) in draftRows"
+            :key="`nb-m-${idx}`"
+            class="rounded-xl border border-slate-800 bg-slate-950/50 p-3"
+          >
+            <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.thModelId') }}</p>
+            <div class="th-model-combobox relative max-w-full min-w-0" :ref="(el) => setComboboxRef(idx, el)">
+              <div class="flex max-w-full min-w-0 gap-1">
+                <input
+                  v-model="r.model_name"
+                  class="th-input h-9 min-w-0 w-0 flex-1 py-1 font-mono text-xs leading-normal"
+                  autocomplete="off"
+                  spellcheck="false"
+                  :placeholder="t('adminGroups.modelIdPh')"
+                  @focus="focusModelSuggestRow(idx)"
+                  @input="scheduleSuggestLayout"
+                />
+                <button
+                  type="button"
+                  class="th-input flex h-9 w-9 min-w-9 shrink-0 items-center justify-center !w-9 !max-w-9 !px-0"
+                  :title="t('adminGroups.modelSuggestToggle')"
+                  :aria-expanded="openModelSuggestRow === idx"
+                  @mousedown.prevent
+                  @click="toggleModelSuggestRow(idx)"
+                >
+                  <svg class="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                      fill-rule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="th-link-danger-plain mt-3 rounded-lg px-2 py-1 text-xs hover:bg-red-500/10"
+              @click="removeRow(idx)"
+            >
+              {{ t('adminCommon.delete') }}
+            </button>
+          </article>
         </div>
 
         <p

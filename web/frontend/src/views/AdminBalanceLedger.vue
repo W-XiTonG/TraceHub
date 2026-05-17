@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -188,7 +190,7 @@ onMounted(() => void load())
 
     <p v-if="err" class="text-sm text-rose-400">{{ err }}</p>
 
-    <div class="overflow-x-auto rounded-lg border border-white/[0.06]">
+    <div class="hidden overflow-x-auto rounded-lg border border-white/[0.06] lg:block">
       <table class="w-full min-w-[56rem] text-left text-xs text-slate-300">
         <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
           <tr>
@@ -225,6 +227,22 @@ onMounted(() => void load())
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="(row, idx) in items" :key="`aled-m-${page}-${idx}`">
+        <template #title>
+          <p class="font-mono text-[11px] text-slate-400">{{ fmtTime(row.event_time) }}</p>
+          <p class="mt-1 text-sm text-slate-200">{{ entryTypeLabel(row.entry_type) }}</p>
+        </template>
+        <MobileLabelValueRow :label="t('adminLedgerPage.thUser')">{{ userCell(row) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLedgerPage.thDelta')">
+          <span class="font-mono" :class="row.delta >= 0 ? 'text-emerald-400/95' : 'text-rose-400/95'">{{ formatDelta(row) }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLedgerPage.thBalanceAfter')">{{ row.balance_after == null ? t('adminLedgerPage.dashLong') : row.balance_after }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLedgerPage.thDetail')"><span class="text-xs">{{ formatDetail(row) }}</span></MobileLabelValueRow>
+      </MobileLabelValueCard>
+      <p v-if="!items.length && !err" class="py-10 text-center text-slate-500">{{ t('adminLedgerPage.empty') }}</p>
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">

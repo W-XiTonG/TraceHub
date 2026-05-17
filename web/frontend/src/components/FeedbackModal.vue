@@ -198,14 +198,15 @@ watch(
   <Teleport to="body">
     <div
       v-if="modelValue"
-      class="th-feedback-backdrop fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+      class="th-feedback-backdrop fixed inset-0 z-[90] flex items-end justify-center p-0 sm:items-center sm:p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       :aria-label="t('feedbackPage.title')"
       @click.self="close"
     >
       <div
-        class="th-feedback-modal thin-scrollbar flex max-h-[min(92vh,900px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl"
+        class="th-feedback-modal flex max-h-[min(100dvh,900px)] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl sm:max-h-[min(92vh,900px)] sm:rounded-xl"
+        @click.stop
       >
         <header class="th-feedback-modal__head flex shrink-0 items-start justify-between gap-4 px-5 py-4 sm:px-6">
           <div class="min-w-0 pr-2">
@@ -243,15 +244,7 @@ watch(
 
           <label class="th-feedback-modal__label mb-1.5 block text-xs font-medium">{{ t('feedbackPage.detailLabel') }}</label>
           <p class="th-feedback-modal__muted mb-2 text-[11px] leading-relaxed">{{ t('feedbackPage.detailHint') }}</p>
-          <textarea v-model="detail" rows="9" class="th-input mb-4 w-full font-mono text-sm leading-relaxed" />
-
-          <div class="flex flex-wrap items-center gap-3">
-            <button type="button" class="th-btn-primary-flat text-sm" :disabled="submitting" @click="submit">
-              {{ submitting ? t('feedbackPage.submitting') : t('feedbackPage.submit') }}
-            </button>
-          </div>
-          <p v-if="err" class="mt-3 text-sm text-rose-500">{{ err }}</p>
-          <p v-if="msg" class="mt-3 text-sm text-emerald-600">{{ msg }}</p>
+          <textarea v-model="detail" rows="5" class="th-input w-full font-mono text-sm leading-relaxed sm:min-h-[9rem]" />
 
           <details class="mt-6 border-t pt-4" style="border-color: var(--th-modal-divider)">
             <summary class="th-feedback-modal__summary cursor-pointer text-sm font-medium outline-none">
@@ -309,6 +302,19 @@ watch(
             </div>
           </details>
         </div>
+
+        <footer
+          class="th-feedback-modal__footer shrink-0 border-t px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6"
+          style="border-color: var(--th-modal-divider); background: var(--th-modal-footer-bg); box-shadow: var(--th-modal-footer-shadow)"
+        >
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" class="th-btn-primary-flat text-sm" :disabled="submitting" @click="submit">
+              {{ submitting ? t('feedbackPage.submitting') : t('feedbackPage.submit') }}
+            </button>
+          </div>
+          <p v-if="err" class="mt-3 text-sm text-rose-500">{{ err }}</p>
+          <p v-if="msg" class="mt-3 text-sm text-emerald-600">{{ msg }}</p>
+        </footer>
       </div>
     </div>
   </Teleport>

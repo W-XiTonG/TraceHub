@@ -3,6 +3,8 @@ import axios from 'axios'
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -194,7 +196,7 @@ onMounted(() => void load())
 
     <p v-if="err" class="text-sm text-rose-400">{{ err }}</p>
 
-    <div class="overflow-x-auto rounded-lg border border-white/[0.06]">
+    <div class="hidden overflow-x-auto rounded-lg border border-white/[0.06] lg:block">
       <table class="w-full min-w-[88rem] text-left text-xs text-slate-300">
         <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
           <tr>
@@ -241,6 +243,23 @@ onMounted(() => void load())
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="(l, idx) in items" :key="`alog-m-${page}-${idx}`">
+        <template #title>
+          <p class="font-mono text-[11px] text-slate-400">{{ fmtTime(l.request_time) }}</p>
+          <p class="mt-0.5 break-all font-mono text-sm text-slate-200">{{ l.model }}</p>
+        </template>
+        <MobileLabelValueRow :label="t('adminLogs.thUser')">{{ userCell(l) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thToken')">{{ l.prompt_tokens }} / {{ l.completion_tokens }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thCost')">{{ l.total_cost }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thStatus')">{{ l.status_code ?? '—' }}</MobileLabelValueRow>
+        <MobileLabelValueRow v-if="l.error_message?.trim()" :label="t('adminLogs.thError')">
+          <span class="text-amber-200/80">{{ l.error_message }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thIp')">{{ (l.ip_address ?? '').trim() || t('adminCommon.dash') }}</MobileLabelValueRow>
+      </MobileLabelValueCard>
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">

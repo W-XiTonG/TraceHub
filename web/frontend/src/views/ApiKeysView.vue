@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { copyTextToClipboard } from '../utils/clipboard'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -511,7 +513,7 @@ onMounted(() => {
       <code class="th-dash-code-inline mt-2 block break-all px-2 py-1.5 text-xs">{{ createdKey }}</code>
     </div>
 
-    <div class="th-user-keys-table-wrap overflow-x-auto">
+    <div class="th-user-keys-table-wrap hidden overflow-x-auto lg:block">
       <table class="w-full min-w-[56rem] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>
@@ -630,6 +632,45 @@ onMounted(() => {
       <p v-if="!filteredItems.length" class="px-4 py-8 text-center text-sm text-slate-500">
         {{ items.length ? t('apiKeys.noMatch') : t('apiKeys.emptyList') }}
       </p>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="k in filteredItems" :key="`key-m-${k.id}`">
+        <template #title>
+          <div class="flex items-start gap-2">
+            <input
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-950 text-cyan-500"
+              :checked="selectedIds.includes(k.id)"
+              @change="toggleRow(k.id)"
+            />
+            <span class="min-w-0 font-medium text-slate-200">{{ k.name || t('apiKeys.dash') }}</span>
+          </div>
+        </template>
+        <MobileLabelValueRow :label="t('apiKeys.thStatus')">
+          <span :class="statusBadgeClass(k.status)">{{ k.status === 'enabled' ? t('apiKeys.statusEnabled') : t('apiKeys.statusDisabled') }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('apiKeys.thQuota')">
+          <span class="font-mono text-xs">{{ quotaCell(k) }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow v-if="!compact" :label="t('apiKeys.thGroup')">{{ k.group_name || t('apiKeys.dash') }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('apiKeys.thPrefix')">
+          <code class="break-all font-mono text-[11px] text-cyan-200/90">{{ displayKeyCell(k) }}</code>
+        </MobileLabelValueRow>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button type="button" class="text-[10px] text-slate-500 underline-offset-2 hover:text-cyan-400 hover:underline" :disabled="revealBusyId === k.id" @click="toggleShowFullKey(k)">
+            {{ revealBusyId === k.id ? t('apiKeys.revealLoading') : showFullKeyForId[k.id] ? t('apiKeys.revealHide') : t('apiKeys.revealShow') }}
+          </button>
+          <button type="button" class="text-[10px] text-cyan-400 hover:underline" :disabled="revealBusyId === k.id" @click="copyFullSecret(k)">{{ t('apiKeys.copyFullKey') }}</button>
+        </div>
+        <div class="flex flex-wrap gap-2 border-t border-white/[0.06] pt-2">
+          <button v-if="k.status === 'enabled'" type="button" class="th-btn-danger-soft !text-[11px] !px-2 !py-0.5" @click="quickSetEnabled(k, false)">{{ t('apiKeys.disableBtn') }}</button>
+          <button v-else type="button" class="rounded border border-emerald-500/35 px-2 py-0.5 text-[11px] font-medium text-emerald-300" @click="quickSetEnabled(k, true)">{{ t('apiKeys.enableBtn') }}</button>
+          <button type="button" class="text-[11px] text-cyan-400 hover:underline" @click="openEdit(k)">{{ t('apiKeys.editBtn') }}</button>
+          <button type="button" class="th-link-danger-plain text-[11px]" @click="remove(k.id)">{{ t('apiKeys.deleteBtn') }}</button>
+        </div>
+      </MobileLabelValueCard>
+      <p v-if="!filteredItems.length" class="py-8 text-center text-sm text-slate-500">{{ items.length ? t('apiKeys.noMatch') : t('apiKeys.emptyList') }}</p>
     </div>
 
     <Teleport to="body">

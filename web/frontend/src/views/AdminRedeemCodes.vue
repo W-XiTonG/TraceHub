@@ -3,6 +3,8 @@ import axios from 'axios'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 import { copyTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
@@ -256,7 +258,7 @@ onMounted(() => {
       <p v-if="err" class="mb-3 text-sm text-rose-400">{{ err }}</p>
       <p v-if="msg" class="mb-3 text-sm text-emerald-400/90">{{ msg }}</p>
       <p class="mb-3 text-xs text-slate-500">{{ t('adminRedeem.total', { n: total }) }}</p>
-      <div class="overflow-x-auto rounded-lg border border-slate-800/80">
+      <div class="hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
         <table class="min-w-full text-left text-sm">
           <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
             <tr>
@@ -293,6 +295,19 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="mt-3 space-y-3 lg:hidden">
+        <MobileLabelValueCard v-for="r in rows" :key="`rc-m-${r.id}`" :title="r.code_hint">
+          <MobileLabelValueRow :label="t('adminRedeem.thId')">{{ r.id }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminRedeem.thAmount')">{{ r.amount }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminRedeem.thUses')">{{ r.used_count }} / {{ r.max_uses }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminRedeem.thStatus')">{{ statusLabel(r.status) }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminRedeem.thValidUntil')">{{ r.valid_until || '—' }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminRedeem.thCreated')">{{ r.created_at || '—' }}</MobileLabelValueRow>
+          <div v-if="r.status === 1" class="pt-1">
+            <button type="button" class="text-xs text-rose-400/90 hover:underline" @click="revoke(r.id)">{{ t('adminRedeem.revoke') }}</button>
+          </div>
+        </MobileLabelValueCard>
       </div>
       <div v-if="total > pageSize" class="mt-4 flex items-center justify-between text-xs text-slate-500">
         <span>{{ t('adminRedeem.pageOf', { page: page, pages: totalPages }) }}</span>

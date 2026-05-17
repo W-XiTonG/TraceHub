@@ -3,6 +3,8 @@ import axios from 'axios'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -215,7 +217,7 @@ onBeforeUnmount(() => {
 
     <p class="text-xs text-slate-500">{{ t('adminFeedbacks.total', { n: total }) }}</p>
 
-    <div class="overflow-x-auto rounded-lg border border-white/[0.06]">
+    <div class="hidden overflow-x-auto rounded-lg border border-white/[0.06] lg:block">
       <table class="w-full min-w-[960px] text-left text-xs text-slate-300">
         <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
           <tr>
@@ -260,6 +262,21 @@ onBeforeUnmount(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="r in rows" :key="`fb-m-${r.id}`" :title="r.title">
+        <MobileLabelValueRow :label="t('adminFeedbacks.thId')">{{ r.id }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminFeedbacks.thUser')">#{{ r.user_id }} · {{ r.user_email }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminFeedbacks.thState')">{{ stateLabel(r.review_state) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminFeedbacks.thReward')">{{ r.review_state === 3 ? r.reward_points : '—' }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminFeedbacks.thCreated')">{{ r.created_at?.slice(0, 19)?.replace('T', ' ') }}</MobileLabelValueRow>
+        <p class="text-xs leading-relaxed text-slate-500">{{ r.detail }}</p>
+        <div class="pt-1">
+          <button v-if="r.review_state === 0" type="button" class="text-sky-400 hover:underline" @click="openReview(r)">{{ t('adminFeedbacks.review') }}</button>
+          <span v-else class="text-slate-500">{{ closedActionLabel(r.review_state) }}</span>
+        </div>
+      </MobileLabelValueCard>
     </div>
 
     <div class="flex items-center gap-2 text-xs text-slate-500">

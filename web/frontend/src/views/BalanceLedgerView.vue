@@ -5,6 +5,8 @@ import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -221,7 +223,7 @@ onMounted(() => void load())
 
     <p v-if="err" class="mt-4 text-sm text-red-400">{{ err }}</p>
 
-    <div class="mt-6 overflow-x-auto rounded-xl border border-white/[0.08] bg-slate-950/40">
+    <div class="mt-6 hidden overflow-x-auto rounded-xl border border-white/[0.08] bg-slate-950/40 lg:block">
       <table class="w-full min-w-[52rem] border-collapse text-left text-sm">
         <thead>
           <tr class="border-b border-white/[0.08] text-xs uppercase tracking-wide text-slate-500">
@@ -263,6 +265,25 @@ onMounted(() => void load())
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="mt-4 space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="(row, idx) in items" :key="`led-m-${page}-${idx}`">
+        <template #title>
+          <p class="font-mono text-xs text-slate-400">{{ fmtTime(row.event_time) }}</p>
+          <p class="mt-1 text-sm text-slate-200">{{ entryTypeLabel(row.entry_type) }} · {{ directionLabel(row.direction) }}</p>
+        </template>
+        <MobileLabelValueRow :label="t('ledgerPage.thDelta')">
+          <span class="font-mono" :class="row.delta >= 0 ? 'text-emerald-400/95' : 'text-rose-400/95'">{{ formatDelta(row) }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('ledgerPage.thBalanceAfter')">
+          {{ row.balance_after == null ? t('ledgerPage.dashLong') : row.balance_after }}
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('ledgerPage.thDetail')">
+          <span class="text-xs leading-relaxed">{{ formatDetail(row) }}</span>
+        </MobileLabelValueRow>
+      </MobileLabelValueCard>
+      <p v-if="!items.length && !err" class="py-10 text-center text-sm text-slate-500">{{ t('ledgerPage.empty') }}</p>
     </div>
 
     <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">

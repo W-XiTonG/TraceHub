@@ -264,7 +264,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="max-w-3xl space-y-10">
+  <div class="max-w-3xl min-w-0 space-y-8 px-0 sm:space-y-10">
     <div>
       <h1 class="mb-2 text-2xl font-bold">{{ t('settingsPage.title') }}</h1>
       <p class="text-sm text-slate-500">{{ t('settingsPage.desc') }}</p>
@@ -282,7 +282,7 @@ onMounted(load)
       <p class="mb-3 text-xs text-slate-500">{{ t('settingsPage.bindHint') }}</p>
       <label class="mb-3 block text-sm">
         <span class="text-slate-500">{{ t('settingsPage.displayName') }}</span>
-        <input v-model="bind.username" class="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2" />
+        <input v-model="bind.username" class="th-input mt-1 w-full" />
       </label>
       <label class="mb-3 block text-sm">
         <span class="text-slate-500">{{ t('settingsPage.webhook') }}</span>

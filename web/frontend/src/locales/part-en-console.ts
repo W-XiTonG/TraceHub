@@ -47,6 +47,8 @@ export default {
     healthDesc: 'Shows whether the gateway backend and related services are responding.',
     announceTitle: 'Announcements',
     noAnnounce: 'No announcements',
+    announceExpand: 'Show full text',
+    announceCollapse: 'Show less',
     faqTitle: 'FAQ',
     faqItems: [
       {

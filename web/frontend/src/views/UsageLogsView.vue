@@ -5,6 +5,8 @@ import { http, type Envelope } from '../api/http'
 import { copyTextToClipboard } from '../utils/clipboard'
 import { apiErrorMessage } from '../stores/auth'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 
 const { t } = useI18n()
@@ -284,7 +286,7 @@ onMounted(() => {
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
     <p class="mb-4 text-[11px] text-slate-600">{{ t('logsPage.copyNote') }}</p>
 
-    <div class="th-user-keys-table-wrap overflow-x-auto">
+    <div class="th-user-keys-table-wrap hidden overflow-x-auto lg:block">
       <table class="w-full min-w-[960px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>
@@ -370,6 +372,43 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="row in displayItems" :key="`log-m-${row.id}`">
+        <template #title>
+          <div class="flex items-start gap-2">
+            <input
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-950 text-cyan-500"
+              :checked="selectedIds.includes(row.id)"
+              @change="toggleRow(row.id)"
+            />
+            <div class="min-w-0">
+              <p class="text-xs text-slate-500">{{ row.request_time }}</p>
+              <p class="break-all font-mono text-sm text-slate-200">{{ row.model }}</p>
+            </div>
+          </div>
+        </template>
+        <MobileLabelValueRow :label="t('logsPage.thTokCol')">{{ row.total_tokens }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('logsPage.thCost')">{{ row.total_cost }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('logsPage.thStatus')">
+          <span :class="statusBadgeClass(row.status_code)">{{ row.status_code ?? t('modelsPage.dash') }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow v-if="!compact && row.request_id" :label="t('logsPage.thReqId')">
+          <span class="break-all font-mono text-[11px]">{{ row.request_id }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow v-if="!compact && row.error_message?.trim()" :label="t('logsPage.thError')">
+          <span class="text-amber-200/80">{{ row.error_message }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('logsPage.thIp')">{{ row.ip_address?.trim() || t('modelsPage.dash') }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('logsPage.thLatency')">{{ row.response_time_ms ?? t('modelsPage.dash') }}</MobileLabelValueRow>
+        <div class="pt-1">
+          <button type="button" class="text-[11px] text-cyan-400 hover:underline" @click="copyOneRow(row)">{{ t('logsPage.copyRow') }}</button>
+        </div>
+      </MobileLabelValueCard>
+      <p v-if="items.length && !displayItems.length" class="py-8 text-center text-sm text-slate-500">{{ t('logsPage.noClientMatch') }}</p>
+      <p v-if="!items.length" class="py-8 text-center text-sm text-slate-500">{{ t('logsPage.empty') }}</p>
     </div>
 
     <div v-if="total > pageSize" class="mt-4 flex items-center gap-3 text-sm text-slate-400">

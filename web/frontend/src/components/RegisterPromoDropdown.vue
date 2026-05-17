@@ -52,7 +52,7 @@ function onGotIt() {
 }
 
 function onDocMouseDown(ev: MouseEvent) {
-  if (!open.value) return
+  if (!open.value || isCompact.value) return
   const el = rootRef.value
   if (el && !el.contains(ev.target as Node)) open.value = false
 }
@@ -61,12 +61,22 @@ function onStorage(ev: StorageEvent) {
   if (ev.key?.startsWith('tracehub_register_promo_dismiss:v2:')) revision.value++
 }
 
+const isCompact = ref(false)
+
+function syncCompact() {
+  if (typeof window === 'undefined') return
+  isCompact.value = window.matchMedia('(max-width: 1023px)').matches
+}
+
 onMounted(() => {
+  syncCompact()
+  window.addEventListener('resize', syncCompact)
   document.addEventListener('mousedown', onDocMouseDown)
   window.addEventListener('storage', onStorage)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncCompact)
   document.removeEventListener('mousedown', onDocMouseDown)
   window.removeEventListener('storage', onStorage)
 })
@@ -102,14 +112,14 @@ onBeforeUnmount(() => {
     </button>
 
     <div
-      v-if="open"
-      class="th-site-promo-panel absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] origin-top-right rounded-xl border border-white/[0.1] bg-slate-950/95 p-4 shadow-xl backdrop-blur-md"
+      v-if="open && !isCompact"
+      class="th-site-promo-panel absolute right-0 z-50 mt-2 flex w-[min(100vw-2rem,22rem)] max-h-[min(70vh,28rem)] flex-col overflow-hidden rounded-xl border border-white/[0.1] bg-slate-950/95 p-4 shadow-xl backdrop-blur-md"
       :class="variant === 'header' ? 'th-site-promo-panel--header' : 'th-site-promo-panel--card'"
       role="dialog"
       :aria-label="t('sitePromo.panelTitle')"
       @click.stop
     >
-      <div class="mb-3 flex items-start justify-between gap-2">
+      <div class="mb-3 flex shrink-0 items-start justify-between gap-2">
         <p class="th-site-promo-panel__title text-sm font-semibold text-slate-100">{{ t('sitePromo.panelTitle') }}</p>
         <button
           type="button"
@@ -119,10 +129,10 @@ onBeforeUnmount(() => {
           {{ t('common.close') }}
         </button>
       </div>
-      <p class="th-site-promo-panel__body max-h-48 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-300">
+      <p class="th-site-promo-panel__body thin-scrollbar min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">
         {{ text.trim() }}
       </p>
-      <div class="mt-4 flex justify-end">
+      <div class="mt-4 flex shrink-0 justify-end">
         <button
           type="button"
           class="th-site-promo-panel__cta rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/25"
@@ -132,5 +142,40 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="open && isCompact" class="fixed inset-0 z-[200] flex flex-col justify-end" role="presentation">
+        <button type="button" class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" :aria-label="t('common.close')" @click="open = false" />
+        <div
+          class="th-site-promo-panel relative flex max-h-[min(85dvh,32rem)] w-full flex-col overflow-hidden rounded-t-2xl border border-white/[0.1] bg-slate-950/98 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md"
+          role="dialog"
+          :aria-label="t('sitePromo.panelTitle')"
+          @click.stop
+        >
+          <div class="mb-3 flex shrink-0 items-start justify-between gap-2">
+            <p class="th-site-promo-panel__title text-sm font-semibold text-slate-100">{{ t('sitePromo.panelTitle') }}</p>
+            <button
+              type="button"
+              class="th-site-promo-panel__close rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white/10 hover:text-slate-300"
+              @click="open = false"
+            >
+              {{ t('common.close') }}
+            </button>
+          </div>
+          <p class="th-site-promo-panel__body thin-scrollbar min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">
+            {{ text.trim() }}
+          </p>
+          <div class="mt-4 flex shrink-0 justify-end">
+            <button
+              type="button"
+              class="th-site-promo-panel__cta rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/25"
+              @click="onGotIt"
+            >
+              {{ t('sitePromo.gotIt') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

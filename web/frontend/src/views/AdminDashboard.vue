@@ -1288,7 +1288,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p3RecentLogs') }}</h3>
                 <RouterLink to="/admin/logs" class="text-xs text-amber-400/90 no-underline hover:underline">{{ t('layout.adminNavLogs') }} →</RouterLink>
               </div>
-              <div class="th-admin-table-shell mt-3">
+              <div class="th-admin-table-shell mt-3 hidden overflow-x-auto lg:block">
                 <table class="w-full min-w-[520px] text-left text-xs">
                   <thead class="th-admin-table-head">
                     <tr>
@@ -1313,6 +1313,18 @@ const showSkeleton = computed(() => !s.value && busy.value)
                   </tbody>
                 </table>
               </div>
+              <ul class="mt-3 space-y-2 lg:hidden">
+                <li
+                  v-for="row in snapshot.recent_logs ?? []"
+                  :key="'log-m-' + row.id"
+                  class="th-admin-compare-tile--row rounded-lg border border-white/[0.06] px-3 py-2 text-xs"
+                >
+                  <p class="font-mono text-slate-400">{{ fmtLogTime(row.request_time) }}</p>
+                  <p class="mt-1 truncate font-mono text-slate-200" :title="row.model">{{ row.model }}</p>
+                  <p class="mt-1 text-slate-500">{{ t('adminDash.p3ThUser') }} {{ fmtInt(row.user_id) }} · {{ t('adminDash.p3ThStatus') }} {{ fmtInt(row.status_code) }} · {{ fmtInt(row.total_tokens) }} tok</p>
+                </li>
+                <li v-if="!(snapshot.recent_logs ?? []).length" class="text-xs text-slate-500">{{ t('adminCommon.dash') }}</li>
+              </ul>
             </div>
             <div>
               <div class="flex items-center justify-between gap-2">
@@ -1345,7 +1357,7 @@ const showSkeleton = computed(() => !s.value && busy.value)
           <div class="mt-6 grid gap-6 lg:grid-cols-3">
             <div class="th-admin-compare-tile lg:col-span-2">
               <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ t('adminDash.p4AuditTitle') }}</h3>
-              <div class="th-admin-table-shell mt-3">
+              <div class="th-admin-table-shell mt-3 hidden overflow-x-auto lg:block">
                 <table class="w-full min-w-[640px] text-left text-xs">
                   <thead class="th-admin-table-head">
                     <tr>
@@ -1375,6 +1387,25 @@ const showSkeleton = computed(() => !s.value && busy.value)
                   </tbody>
                 </table>
               </div>
+              <ul class="mt-3 space-y-2 lg:hidden">
+                <li
+                  v-for="row in ops.recent_audit ?? []"
+                  :key="'aud-m-' + row.id"
+                  class="th-admin-compare-tile--row rounded-lg border border-white/[0.06] px-3 py-2 text-xs"
+                >
+                  <p class="font-mono text-slate-400">{{ fmtLogTime(row.created_at) }}</p>
+                  <p class="mt-1 text-slate-300">
+                    <span class="font-mono text-slate-400">#{{ row.admin_id }}</span>
+                    <span v-if="row.admin_email" class="ml-1">{{ row.admin_email }}</span>
+                  </p>
+                  <p class="mt-1 truncate font-mono text-slate-400" :title="row.action">{{ row.action }}</p>
+                  <p class="mt-0.5 truncate font-mono text-slate-500" :title="(row.resource || '') + (row.resource_id ? ' / ' + row.resource_id : '')">
+                    {{ row.resource || t('adminCommon.dash') }}<span v-if="row.resource_id"> / {{ row.resource_id }}</span>
+                  </p>
+                  <p class="mt-0.5 text-slate-500">{{ row.ip_address || t('adminCommon.dash') }}</p>
+                </li>
+                <li v-if="!(ops.recent_audit ?? []).length" class="text-xs text-slate-500">{{ t('adminCommon.dash') }}</li>
+              </ul>
             </div>
             <div class="space-y-4">
               <div class="th-admin-compare-tile">

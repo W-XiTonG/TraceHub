@@ -6,6 +6,8 @@ import { apiErrorMessage } from '../stores/auth'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -220,29 +222,43 @@ onMounted(() => {
       <p class="mb-2 text-[11px] leading-relaxed text-slate-500">{{ t('redeemPage.ledgerFilterTimeHint') }}</p>
       <p v-if="ledgerErr" class="mb-2 text-sm text-rose-400">{{ ledgerErr }}</p>
       <p v-else-if="!ledgerLoading && ledgerRows.length === 0" class="text-sm text-slate-500">{{ t('redeemPage.ledgerEmpty') }}</p>
-      <div v-else class="overflow-x-auto rounded-lg border border-slate-800/80">
-        <table class="min-w-full text-left text-sm">
-          <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
-            <tr>
-              <th class="px-3 py-2">{{ t('redeemPage.thTime') }}</th>
-              <th class="px-3 py-2">{{ t('redeemPage.thHint') }}</th>
-              <th class="px-3 py-2">{{ t('redeemPage.thAmount') }}</th>
-              <th class="px-3 py-2">{{ t('redeemPage.thBalanceAfter') }}</th>
-              <th class="px-3 py-2">{{ t('redeemPage.thCodeId') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in ledgerRows" :key="r.id" class="border-b border-slate-800/60 hover:bg-white/[0.02]">
-              <td class="px-3 py-2 font-mono text-xs text-slate-400">{{ fmtLedgerTime(r.created_at) }}</td>
-              <td class="px-3 py-2 font-mono text-xs text-slate-300">{{ r.code_hint || '—' }}</td>
-              <td class="px-3 py-2 font-mono text-base font-semibold tabular-nums th-redeem-quota-fg">{{ r.amount }}</td>
-              <td class="px-3 py-2 font-mono text-slate-300">{{ r.balance_after }}</td>
-              <td class="px-3 py-2 font-mono text-xs text-slate-500">{{ r.redeem_code_id }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="ledgerTotal > ledgerPageSize" class="mt-3 flex items-center justify-between text-xs text-slate-500">
+      <template v-else>
+        <div class="hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+          <table class="min-w-full text-left text-sm">
+            <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
+              <tr>
+                <th class="px-3 py-2">{{ t('redeemPage.thTime') }}</th>
+                <th class="px-3 py-2">{{ t('redeemPage.thHint') }}</th>
+                <th class="px-3 py-2">{{ t('redeemPage.thAmount') }}</th>
+                <th class="px-3 py-2">{{ t('redeemPage.thBalanceAfter') }}</th>
+                <th class="px-3 py-2">{{ t('redeemPage.thCodeId') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in ledgerRows" :key="r.id" class="border-b border-slate-800/60 hover:bg-white/[0.02]">
+                <td class="px-3 py-2 font-mono text-xs text-slate-400">{{ fmtLedgerTime(r.created_at) }}</td>
+                <td class="px-3 py-2 font-mono text-xs text-slate-300">{{ r.code_hint || '—' }}</td>
+                <td class="px-3 py-2 font-mono text-base font-semibold tabular-nums th-redeem-quota-fg">{{ r.amount }}</td>
+                <td class="px-3 py-2 font-mono text-slate-300">{{ r.balance_after }}</td>
+                <td class="px-3 py-2 font-mono text-xs text-slate-500">{{ r.redeem_code_id }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="space-y-3 lg:hidden">
+          <MobileLabelValueCard v-for="r in ledgerRows" :key="`rd-m-${r.id}`">
+            <template #title>
+              <p class="font-mono text-xs text-slate-400">{{ fmtLedgerTime(r.created_at) }}</p>
+              <p class="mt-0.5 font-mono text-sm text-slate-300">{{ r.code_hint || '—' }}</p>
+            </template>
+            <MobileLabelValueRow :label="t('redeemPage.thAmount')">
+              <span class="font-mono text-base font-semibold tabular-nums th-redeem-quota-fg">{{ r.amount }}</span>
+            </MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('redeemPage.thBalanceAfter')">{{ r.balance_after }}</MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('redeemPage.thCodeId')">{{ r.redeem_code_id }}</MobileLabelValueRow>
+          </MobileLabelValueCard>
+        </div>
+        <div v-if="ledgerTotal > ledgerPageSize" class="mt-3 flex items-center justify-between text-xs text-slate-500">
         <span>{{ ledgerPage }} / {{ ledgerTotalPages() }}</span>
         <div class="flex gap-2">
           <button
@@ -262,7 +278,8 @@ onMounted(() => {
             {{ t('adminCommon.nextPage') }}
           </button>
         </div>
-      </div>
+        </div>
+      </template>
     </section>
 
     <div class="border-t border-white/[0.06] pt-6">

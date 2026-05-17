@@ -10,6 +10,8 @@ import {
   type PriceCurrency,
   type SiteCurrencyFactors,
 } from '../utils/modelPricingDisplay'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -269,7 +271,8 @@ onMounted(load)
       </div>
 
       <div class="th-glass mt-6 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div class="th-table-wrap th-table-wrap--scrollable thin-scrollbar">
+        <div class="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
+        <div class="th-table-wrap th-table-wrap--scrollable thin-scrollbar min-h-0 flex-1">
           <table class="w-full text-left text-sm">
             <thead class="sticky top-0 z-10">
               <tr class="border-b border-white/[0.06] bg-slate-900/95 text-xs uppercase tracking-wider text-slate-500 shadow-[0_1px_0_rgba(0,0,0,0.35)] backdrop-blur-sm">
@@ -350,6 +353,58 @@ onMounted(load)
             </tbody>
           </table>
         </div>
+        </div>
+
+        <div class="thin-scrollbar space-y-3 overflow-y-auto p-3 lg:hidden">
+          <MobileLabelValueCard v-for="m in filtered" :key="`card-${m.id}`">
+            <template #title>
+              <p class="font-medium text-slate-200">{{ modelTitle(m.display_name, m.id) }}</p>
+              <p v-if="modelHasDisplayAlias(m.display_name)" class="mt-0.5 font-mono text-xs text-slate-500">{{ m.id }}</p>
+            </template>
+            <MobileLabelValueRow :label="t('modelsPage.thPrice')">
+              <template v-for="price in [modelPricingCell(m)]" :key="`${m.id}-mprice`">
+                <span
+                  v-if="price.free"
+                  class="inline-flex rounded-full border border-emerald-500/25 bg-emerald-950/40 px-2 py-0.5 text-xs font-medium text-emerald-300/95"
+                >
+                  {{ price.fiatPrimary }}
+                </span>
+                <template v-else-if="price.fiatPrimary">
+                  <p class="text-sm tabular-nums text-amber-100/90">{{ price.fiatPrimary }}</p>
+                  <p v-if="price.quotaSecondary" class="mt-0.5 text-xs tabular-nums text-slate-500">{{ price.quotaSecondary }}</p>
+                </template>
+                <span v-else class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
+              </template>
+            </MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('modelsPage.thLabels')">
+              <div class="flex flex-wrap gap-1">
+                <span v-for="lab in m.labels ?? []" :key="`${m.id}-mkind-${lab}`" class="th-model-kind-pill">{{ modelKindDisplayLabel(lab) }}</span>
+                <span v-if="!(m.labels && m.labels.length)" class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
+              </div>
+            </MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('modelsPage.thSource')">
+              <span v-if="m.in_gateway && m.in_catalog" class="text-xs text-emerald-400/90">{{ t('modelsPage.srcBoth') }}</span>
+              <span v-else-if="m.in_gateway" class="text-xs text-cyan-400/90">{{ t('modelsPage.srcGw') }}</span>
+              <span v-else class="text-xs text-slate-500">{{ t('modelsPage.srcCat') }}</span>
+            </MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('modelsPage.thUpstreamList')">
+              <span
+                v-for="cell in [upstreamListCell(m)]"
+                :key="`${m.id}-mupstream`"
+                class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide tabular-nums backdrop-blur-[2px]"
+                :class="cell.pillClass"
+                :title="cell.title"
+              >
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
+                <span class="min-w-0 truncate">{{ cell.text }}</span>
+              </span>
+            </MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('modelsPage.thOwner')">
+              {{ m.owned_by ?? t('modelsPage.dash') }}
+            </MobileLabelValueRow>
+          </MobileLabelValueCard>
+        </div>
+
         <p v-if="payload.total === 0" class="px-4 py-12 text-center text-sm text-slate-500">
           {{ t('modelsPage.emptyData') }}
         </p>

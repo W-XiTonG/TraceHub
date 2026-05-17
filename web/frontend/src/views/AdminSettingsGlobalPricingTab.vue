@@ -1450,7 +1450,7 @@ async function onCsvFileChange(ev: Event) {
             <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminGlobalPricing.customRowsHint') }}</p>
           </div>
 
-          <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <div class="th-admin-table-shell overflow-x-auto rounded-xl border border-slate-800">
             <table class="w-full min-w-[1080px] border-collapse text-left text-xs">
               <thead class="bg-slate-900 text-slate-500">
                 <tr>

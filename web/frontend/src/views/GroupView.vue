@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -40,25 +42,25 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <h1 class="mb-2 text-2xl font-bold">{{ t('groupPage.title') }}</h1>
+  <div class="min-w-0">
+    <h1 class="mb-2 text-xl font-bold sm:text-2xl">{{ t('groupPage.title') }}</h1>
     <p class="mb-6 text-sm text-slate-500">{{ t('groupPage.desc') }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
 
-    <div v-if="group" class="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-6">
+    <div v-if="group" class="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6">
       <h2 class="text-lg font-semibold text-cyan-400">{{ group.name }}</h2>
       <p v-if="group.description" class="mt-2 text-sm text-slate-400">{{ group.description }}</p>
       <dl class="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         <div><span class="text-slate-500">{{ t('groupPage.rateMul') }}</span> <span class="ml-2 font-mono">{{ group.rate_multiplier }}×</span></div>
         <div><span class="text-slate-500">{{ t('groupPage.rpm') }}</span> <span class="ml-2 font-mono">{{ group.rpm_limit || t('modelsPage.dash') }}</span></div>
-        <div v-if="group.default_model"><span class="text-slate-500">{{ t('groupPage.defModel') }}</span> <span class="ml-2 font-mono text-xs">{{ group.default_model }}</span></div>
+        <div v-if="group.default_model"><span class="text-slate-500">{{ t('groupPage.defModel') }}</span> <span class="ml-2 break-all font-mono text-xs">{{ group.default_model }}</span></div>
         <div><span class="text-slate-500">{{ t('groupPage.billType') }}</span> <span class="ml-2">{{ group.subscription_type || t('modelsPage.dash') }}</span></div>
       </dl>
     </div>
     <div v-else-if="!err" class="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-slate-500">{{ t('groupPage.noGroup') }}</div>
 
     <h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">{{ t('groupPage.ratesTitle') }}</h3>
-    <div class="overflow-x-auto rounded-xl border border-slate-800">
+    <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
       <table class="w-full text-left text-sm">
         <thead class="bg-slate-900 text-slate-500">
           <tr>
@@ -80,6 +82,15 @@ onMounted(async () => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="mt-3 space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="r in rates" :key="`gr-m-${r.id}`" :title="r.model_name">
+        <MobileLabelValueRow :label="t('groupPage.thIn')">{{ r.input_rate }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('groupPage.thOut')">{{ r.output_rate }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('groupPage.thEn')">{{ r.enabled ? t('groupPage.yes') : t('groupPage.no') }}</MobileLabelValueRow>
+      </MobileLabelValueCard>
+      <p v-if="!rates.length" class="py-6 text-center text-sm text-slate-500">{{ t('groupPage.noRates') }}</p>
     </div>
   </div>
 </template>

@@ -6,6 +6,8 @@ import { storeToRefs } from 'pinia'
 import { http, type Envelope } from '../api/http'
 import { copyTextToClipboard } from '../utils/clipboard'
 import { useAuthStore } from '../stores/auth'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -372,7 +374,7 @@ onMounted(() => {
     <p v-if="flash" class="mb-3 text-sm text-emerald-400">{{ flash }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
 
-    <div class="th-user-keys-table-wrap overflow-x-auto">
+    <div class="th-user-keys-table-wrap hidden overflow-x-auto lg:block">
       <table class="w-full min-w-[640px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>
@@ -452,6 +454,58 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="space-y-3 lg:hidden">
+      <MobileLabelValueCard v-for="u in filteredItems" :key="`au-m-${u.id}`" :title="u.email">
+        <template #title>
+          <div class="flex items-start gap-2">
+            <input
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-950 text-cyan-500"
+              :checked="selectedIds.includes(u.id)"
+              @change="toggleRow(u.id)"
+            />
+            <span class="min-w-0 break-all font-medium text-slate-200">{{ u.email }}</span>
+          </div>
+        </template>
+        <MobileLabelValueRow :label="t('adminUsers.thId')">{{ u.id }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminUsers.thStatus')">
+          <span :class="statusBadge(u)">{{ statusLabel(u) }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminUsers.thGroup')">{{ u.group_name || t('adminCommon.dash') }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminUsers.thBalance')">
+          <span class="font-mono">{{ u.balance }}</span>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminUsers.thDelta')">
+          <div class="flex flex-wrap items-center gap-2">
+            <input v-model="deltaByUser[u.id]" type="number" :placeholder="t('adminUsers.deltaPh')" class="th-input !w-24 shrink-0 py-1.5 text-xs" />
+            <button type="button" class="text-[11px] th-link-accent hover:underline" @click="adjust(u.id)">{{ t('adminUsers.apply') }}</button>
+          </div>
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminUsers.thActions')">
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="text-[11px] th-link-accent hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="rowIsElevated(u) && !canManageAdmins"
+              @click="openEdit(u)"
+            >
+              {{ t('adminUsers.edit') }}
+            </button>
+            <button
+              type="button"
+              class="th-link-danger-plain text-[11px] font-medium disabled:cursor-not-allowed"
+              :disabled="auth.user?.id === u.id"
+              @click="removeUser(u)"
+            >
+              {{ t('adminCommon.delete') }}
+            </button>
+          </div>
+        </MobileLabelValueRow>
+      </MobileLabelValueCard>
+      <p v-if="items.length && !filteredItems.length" class="py-8 text-center text-sm text-slate-500">{{ t('adminUsers.noMatch') }}</p>
+      <p v-if="!items.length" class="py-8 text-center text-sm text-slate-500">{{ t('adminCommon.dash') }}</p>
     </div>
 
     <Teleport to="body">
@@ -570,7 +624,8 @@ onMounted(() => {
               <p class="mb-2 text-xs text-slate-500">{{ t('adminUsers.redeemLedgerHint') }}</p>
               <p v-if="userLedgerErr" class="text-xs text-rose-400">{{ userLedgerErr }}</p>
               <p v-else-if="!userLedgerRows.length" class="text-xs text-slate-500">{{ t('adminUsers.redeemLedgerEmpty') }}</p>
-              <div v-else class="overflow-x-auto rounded-lg border border-slate-800">
+              <template v-else>
+              <div class="hidden overflow-x-auto rounded-lg border border-slate-800 lg:block">
                 <table class="w-full text-left text-xs">
                   <thead class="text-slate-500">
                     <tr>
@@ -592,6 +647,26 @@ onMounted(() => {
                   </tbody>
                 </table>
               </div>
+              <div class="space-y-2 lg:hidden">
+                <MobileLabelValueCard v-for="lr in userLedgerRows" :key="`ul-m-${lr.id}`">
+                  <template #title>
+                    <p class="font-mono text-xs text-slate-500">{{ lr.created_at || '—' }}</p>
+                  </template>
+                  <MobileLabelValueRow :label="t('adminUsers.redeemThHint')">
+                    <span class="font-mono">{{ lr.code_hint || '—' }}</span>
+                  </MobileLabelValueRow>
+                  <MobileLabelValueRow :label="t('adminUsers.redeemThAmount')">
+                    <span class="font-mono font-semibold th-redeem-quota-fg">{{ lr.amount }}</span>
+                  </MobileLabelValueRow>
+                  <MobileLabelValueRow :label="t('adminUsers.redeemThBalAfter')">
+                    <span class="font-mono">{{ lr.balance_after }}</span>
+                  </MobileLabelValueRow>
+                  <MobileLabelValueRow :label="t('adminUsers.redeemThCodeId')">
+                    <span class="font-mono text-slate-500">{{ lr.redeem_code_id }}</span>
+                  </MobileLabelValueRow>
+                </MobileLabelValueCard>
+              </div>
+              </template>
             </div>
             <div class="mt-6 flex justify-end gap-2">
               <button type="button" class="rounded-lg px-4 py-2 text-sm text-slate-400 hover:bg-slate-800" :disabled="editSaving" @click="closeEdit">

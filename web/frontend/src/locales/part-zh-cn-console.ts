@@ -47,6 +47,8 @@ export default {
     healthDesc: '表示网关后端与相关服务是否可正常响应。',
     announceTitle: '系统公告',
     noAnnounce: '暂无公告',
+    announceExpand: '展开全文',
+    announceCollapse: '收起',
     faqTitle: '常见问题',
     faqItems: [
       {

@@ -160,7 +160,7 @@ onUnmounted(() => stopPoll())
 </script>
 
 <template>
-  <div class="max-w-2xl">
+  <div class="max-w-2xl min-w-0">
     <h1 class="mb-2 text-2xl font-bold">{{ t('billingPage.title') }}</h1>
     <p class="mb-6 text-sm text-slate-500">
       {{ onlinePay ? t('billingPage.descOnline') : t('billingPage.desc') }}

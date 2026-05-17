@@ -2,6 +2,8 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
+import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
 const { t } = useI18n()
 
@@ -244,7 +246,7 @@ onMounted(async () => {
       </div>
 
       <h3 class="mb-2 mt-8 font-medium text-slate-300">{{ t('adminMarket.sourcesConfigured') }}</h3>
-      <div class="overflow-x-auto">
+      <div class="hidden overflow-x-auto lg:block">
         <table class="w-full text-left">
           <thead class="text-slate-500">
             <tr>
@@ -274,6 +276,25 @@ onMounted(async () => {
           </tbody>
         </table>
       </div>
+      <div class="space-y-3 lg:hidden">
+        <MobileLabelValueCard v-for="s in sources" :key="`src-m-${s.id}`" :title="s.name">
+          <MobileLabelValueRow :label="t('adminUsers.thId')">{{ s.id }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminMarket.thBase')">
+            <span class="break-all text-xs">{{ s.base_url }}{{ s.models_path }}</span>
+          </MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminMarket.thCred')">
+            {{ s.credential_mode }}{{ s.channel_id ? ' #' + s.channel_id : '' }}
+          </MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminMarket.thLastSync')">
+            <span v-if="s.last_sync_at">{{ s.last_sync_ok ? '✓' : '✗' }} {{ s.last_sync_message }}</span>
+            <span v-else class="text-slate-600">{{ t('adminMarket.neverSynced') }}</span>
+          </MobileLabelValueRow>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" class="th-link-accent text-sm hover:underline" @click="syncSource(s.id)">{{ t('adminMarket.pullModels') }}</button>
+            <button type="button" class="th-link-danger-plain text-sm hover:underline" @click="removeSource(s.id)">{{ t('adminCommon.delete') }}</button>
+          </div>
+        </MobileLabelValueCard>
+      </div>
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
@@ -295,6 +316,7 @@ onMounted(async () => {
         </button>
         <span class="text-slate-500">{{ t('adminMarket.totalCount', { n: entryTotal }) }}</span>
       </div>
+      <div class="hidden lg:block">
       <table class="w-full text-left">
         <thead class="text-slate-500">
           <tr>
@@ -332,6 +354,28 @@ onMounted(async () => {
           </tr>
         </tbody>
       </table>
+      </div>
+      <div class="space-y-3 lg:hidden">
+        <MobileLabelValueCard v-for="e in entries" :key="`ent-m-${e.id}`">
+          <template #title>
+            <p class="font-mono text-xs text-cyan-100/90">{{ e.model_id }}</p>
+            <p v-if="e.display_name" class="mt-0.5 text-sm text-slate-300">{{ e.display_name }}</p>
+          </template>
+          <MobileLabelValueRow :label="t('adminMarket.thLabels')">
+            <span v-if="e.admin_labels?.length" class="flex flex-wrap gap-1">
+              <span v-for="lab in e.admin_labels" :key="lab" class="th-model-kind-pill">{{ lab }}</span>
+            </span>
+            <span v-else class="text-slate-600">—</span>
+          </MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminMarket.thProvider')">{{ e.provider_slug }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminMarket.thVisible')">{{ e.visible ? t('adminCommon.yes') : t('adminCommon.no') }}</MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminMarket.thEnabled')">{{ e.enabled ? t('adminCommon.yes') : t('adminCommon.no') }}</MobileLabelValueRow>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" class="th-link-accent text-sm hover:underline" @click="openEdit(e)">{{ t('adminMarket.editEntry') }}</button>
+            <button type="button" class="th-link-danger-plain text-sm hover:underline" @click="removeEntry(e.id)">{{ t('adminCommon.delete') }}</button>
+          </div>
+        </MobileLabelValueCard>
+      </div>
       <div v-if="entryTotal > pageSize" class="mt-4 flex gap-2">
         <button
           type="button"

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
+import { globalFabHidden } from '../composables/shellNavState'
 import { persistLocale, type AppLocale, SUPPORTED_LOCALES } from '../i18n'
 
 const { locale, t } = useI18n()
+const route = useRoute()
+const inShell = computed(() => route.path.startsWith('/console') || route.path.startsWith('/admin'))
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
@@ -39,7 +43,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="th-lang-picker pointer-events-none fixed bottom-5 right-[4.75rem] z-[100] flex flex-col items-end gap-2 md:bottom-6 md:right-[5.75rem]">
+  <div
+    ref="root"
+    class="th-lang-picker pointer-events-none fixed bottom-5 right-[4.75rem] z-[100] flex flex-col items-end gap-2 transition-opacity duration-200 max-lg:bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] md:bottom-6 md:right-[5.75rem]"
+    :class="{
+      'opacity-0': globalFabHidden,
+      'max-lg:scale-90': inShell,
+    }"
+  >
     <Transition
       enter-active-class="transition duration-220 ease-[cubic-bezier(0.22,1,0.36,1)]"
       leave-active-class="transition duration-160 ease-in"

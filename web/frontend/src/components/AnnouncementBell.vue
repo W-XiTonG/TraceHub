@@ -2,12 +2,18 @@
 import axios from 'axios'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { http, type Envelope } from '../api/http'
 
-const props = defineProps<{
-  accent: 'cyan' | 'amber'
-}>()
+const props = withDefaults(
+  defineProps<{
+    accent: 'cyan' | 'amber'
+    /** 查看全部公告（控制台概览锚点） */
+    viewAllTo?: string
+  }>(),
+  { viewAllTo: '/console#dashboard-announcements' },
+)
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -27,8 +33,10 @@ const loading = ref(false)
 const err = ref('')
 const latest = ref<Ann | null>(null)
 const list = ref<Ann[]>([])
+const viewingId = ref<number | null>(null)
 /** localStorage 非响应式：写入已读后递增，让 hasUnread 重新计算 */
 const seenRevision = ref(0)
+const isCompact = ref(false)
 
 const seenStorageKey = computed(() => {
   const id = auth.user?.id
@@ -37,6 +45,26 @@ const seenStorageKey = computed(() => {
   if (p > 0) return `${LS_PREFIX}${p}`
   return `${LS_PREFIX}0`
 })
+
+const displayAnn = computed(() => {
+  if (viewingId.value != null) {
+    const picked = list.value.find((a) => a.id === viewingId.value)
+    if (picked) return picked
+  }
+  return latest.value
+})
+
+const otherAnnouncements = computed(() => {
+  const cur = displayAnn.value
+  if (!cur) return list.value
+  return list.value.filter((a) => a.id !== cur.id)
+})
+
+const listItemActiveClass = computed(() =>
+  props.accent === 'amber'
+    ? 'bg-amber-500/10 ring-1 ring-amber-500/30'
+    : 'bg-cyan-500/10 ring-1 ring-cyan-500/30',
+)
 
 function parseJwtUid(access: string): number {
   try {
@@ -80,6 +108,11 @@ const iconBtnClass = computed(() =>
   props.accent === 'amber' ? 'th-console-top-icon-btn th-console-top-icon-btn--amber' : 'th-console-top-icon-btn',
 )
 
+function syncCompact() {
+  if (typeof window === 'undefined') return
+  isCompact.value = window.matchMedia('(max-width: 1023px)').matches
+}
+
 async function refresh() {
   if (!auth.isLoggedIn) return
   loading.value = true
@@ -92,7 +125,6 @@ async function refresh() {
       params: { limit: 15 },
     })
     if (listData.code === 0) list.value = listData.data.items || []
-    // 轮询拉取后重新读 localStorage（例如其它标签页已标记已读）
     seenRevision.value++
     if (open.value && latest.value) {
       writeSeenId(latest.value.id)
@@ -107,11 +139,29 @@ async function refresh() {
 
 function toggle() {
   open.value = !open.value
-  if (open.value && latest.value) writeSeenId(latest.value.id)
+}
+
+function closePanel() {
+  open.value = false
+}
+
+function selectAnnouncement(id: number) {
+  viewingId.value = id
+}
+
+function fmtTime(iso?: string) {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    return d.toLocaleString()
+  } catch {
+    return iso
+  }
 }
 
 function onDocMouseDown(ev: MouseEvent) {
-  if (!open.value) return
+  if (!open.value || isCompact.value) return
   const el = rootRef.value
   if (el && !el.contains(ev.target as Node)) open.value = false
 }
@@ -119,12 +169,15 @@ function onDocMouseDown(ev: MouseEvent) {
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
+  syncCompact()
+  window.addEventListener('resize', syncCompact)
   document.addEventListener('mousedown', onDocMouseDown)
   void refresh()
   pollTimer = setInterval(() => void refresh(), 120_000)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncCompact)
   document.removeEventListener('mousedown', onDocMouseDown)
   if (pollTimer) clearInterval(pollTimer)
 })
@@ -138,16 +191,12 @@ watch(seenStorageKey, () => {
   seenRevision.value++
 })
 
-function fmtTime(iso?: string) {
-  if (!iso) return ''
-  try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString()
-  } catch {
-    return iso
+watch(open, (isOpen) => {
+  if (isOpen) {
+    viewingId.value = null
+    if (latest.value) writeSeenId(latest.value.id)
   }
-}
+})
 </script>
 
 <template>
@@ -157,6 +206,7 @@ function fmtTime(iso?: string) {
       :class="iconBtnClass"
       :aria-label="t('announcement.aria')"
       :title="t('announcement.aria')"
+      :aria-expanded="open"
       @click="toggle"
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5" aria-hidden="true">
@@ -171,36 +221,111 @@ function fmtTime(iso?: string) {
       />
     </button>
 
+    <!-- 桌面：下拉 -->
     <div
-      v-if="open"
-      class="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] rounded-xl border border-white/[0.1] bg-slate-950/95 p-4 shadow-xl backdrop-blur-md"
+      v-if="open && !isCompact"
+      class="absolute right-0 z-50 mt-2 flex w-[min(100vw-2rem,22rem)] max-h-[min(70vh,28rem)] flex-col overflow-hidden rounded-xl border border-white/[0.1] bg-slate-950/95 p-4 shadow-xl backdrop-blur-md"
       role="dialog"
       :aria-label="t('announcement.panelTitle')"
     >
-      <div class="mb-3 flex items-start justify-between gap-2">
+      <div class="mb-3 flex shrink-0 items-start justify-between gap-2">
         <p class="text-sm font-semibold text-slate-100">{{ t('announcement.panelTitle') }}</p>
-        <button type="button" class="rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white/10" @click="open = false">
+        <button type="button" class="rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white/10" @click="closePanel">
           {{ t('common.close') }}
         </button>
       </div>
-      <p v-if="loading" class="text-xs text-slate-500">{{ t('common.loading') }}</p>
-      <p v-else-if="err" class="text-xs text-rose-300/90">{{ err }}</p>
-      <template v-else-if="latest">
-        <p class="text-xs text-slate-500">{{ fmtTime(latest.published_at) }}</p>
-        <p class="mt-1 text-sm font-medium text-slate-100">{{ latest.title }}</p>
-        <p class="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-300">{{ latest.content }}</p>
-      </template>
-      <p v-else class="text-xs text-slate-500">{{ t('announcement.empty') }}</p>
+      <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <p v-if="loading" class="text-xs text-slate-500">{{ t('common.loading') }}</p>
+        <p v-else-if="err" class="text-xs text-rose-300/90">{{ err }}</p>
+        <template v-else-if="displayAnn">
+          <p class="text-xs text-slate-500">{{ fmtTime(displayAnn.published_at) }}</p>
+          <p class="mt-1 text-sm font-medium text-slate-100">{{ displayAnn.title }}</p>
+          <p class="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">{{ displayAnn.content }}</p>
+        </template>
+        <p v-else class="text-xs text-slate-500">{{ t('announcement.empty') }}</p>
 
-      <div v-if="list.length > 1" class="mt-4 border-t border-white/[0.06] pt-3">
-        <p class="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('announcement.recent') }}</p>
-        <ul class="max-h-36 space-y-2 overflow-y-auto text-xs">
-          <li v-for="it in list.slice(1)" :key="it.id" class="text-slate-400">
-            <span class="font-medium text-slate-300">{{ it.title }}</span>
-            <span class="ml-1 text-slate-600">· {{ fmtTime(it.published_at) }}</span>
-          </li>
-        </ul>
+        <div v-if="otherAnnouncements.length" class="mt-4 border-t border-white/[0.06] pt-3">
+          <p class="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('announcement.recent') }}</p>
+          <ul class="space-y-1 text-xs">
+            <li v-for="it in otherAnnouncements" :key="it.id">
+              <button
+                type="button"
+                class="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-white/[0.06]"
+                :class="displayAnn?.id === it.id ? listItemActiveClass : ''"
+                @click="selectAnnouncement(it.id)"
+              >
+                <span class="font-medium text-slate-300">{{ it.title }}</span>
+                <span class="ml-1 text-slate-600">· {{ fmtTime(it.published_at) }}</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div v-if="list.length" class="mt-3 shrink-0 border-t border-white/[0.06] pt-3">
+        <RouterLink
+          :to="viewAllTo"
+          class="th-link-accent block text-center text-[11px] font-medium no-underline hover:underline"
+          @click="closePanel"
+        >
+          {{ t('announcement.viewAllOnDashboard') }}
+        </RouterLink>
       </div>
     </div>
+
+    <!-- 小屏：底部抽屉 -->
+    <Teleport to="body">
+      <div v-if="open && isCompact" class="fixed inset-0 z-[200] flex flex-col justify-end" role="presentation">
+        <button type="button" class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" :aria-label="t('common.close')" @click="closePanel" />
+        <div
+          class="relative flex max-h-[min(85dvh,32rem)] w-full flex-col overflow-hidden rounded-t-2xl border border-white/[0.1] bg-slate-950/98 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur-md"
+          role="dialog"
+          :aria-label="t('announcement.panelTitle')"
+          @click.stop
+        >
+          <div class="mb-3 flex shrink-0 items-start justify-between gap-2">
+            <p class="text-sm font-semibold text-slate-100">{{ t('announcement.panelTitle') }}</p>
+            <button type="button" class="rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white/10" @click="closePanel">
+              {{ t('common.close') }}
+            </button>
+          </div>
+          <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <p v-if="loading" class="text-xs text-slate-500">{{ t('common.loading') }}</p>
+            <p v-else-if="err" class="text-xs text-rose-300/90">{{ err }}</p>
+            <template v-else-if="displayAnn">
+              <p class="text-xs text-slate-500">{{ fmtTime(displayAnn.published_at) }}</p>
+              <p class="mt-1 text-sm font-medium text-slate-100">{{ displayAnn.title }}</p>
+              <p class="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">{{ displayAnn.content }}</p>
+            </template>
+            <p v-else class="text-xs text-slate-500">{{ t('announcement.empty') }}</p>
+
+            <div v-if="otherAnnouncements.length" class="mt-4 border-t border-white/[0.06] pt-3">
+              <p class="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('announcement.recent') }}</p>
+              <ul class="space-y-1 text-xs">
+                <li v-for="it in otherAnnouncements" :key="it.id">
+                  <button
+                    type="button"
+                    class="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-white/[0.06]"
+                    :class="displayAnn?.id === it.id ? listItemActiveClass : ''"
+                    @click="selectAnnouncement(it.id)"
+                  >
+                    <span class="font-medium text-slate-300">{{ it.title }}</span>
+                    <span class="ml-1 break-words text-slate-600">· {{ fmtTime(it.published_at) }}</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div v-if="list.length" class="mt-3 shrink-0 border-t border-white/[0.06] pt-3">
+            <RouterLink
+              :to="viewAllTo"
+              class="th-link-accent block text-center text-[11px] font-medium no-underline hover:underline"
+              @click="closePanel"
+            >
+              {{ t('announcement.viewAllOnDashboard') }}
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

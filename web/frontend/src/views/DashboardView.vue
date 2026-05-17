@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { http, type Envelope } from '../api/http'
 import { copyTextToClipboard } from '../utils/clipboard'
 import { useAuthStore } from '../stores/auth'
@@ -9,6 +9,7 @@ import { useSiteMetaStore } from '../stores/siteMeta'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 
 const { t, tm } = useI18n()
+const route = useRoute()
 
 type Balance = {
   balance?: number
@@ -53,6 +54,25 @@ const healthProbeMsg = ref<'ok' | 'fail' | null>(null)
 let healthProbeMsgTimer: ReturnType<typeof setTimeout> | null = null
 const chartTab = ref<'cost_trend' | 'cost_dist' | 'req_dist' | 'req_rank'>('cost_trend')
 const openFaq = ref<number | null>(0)
+/** 概览公告：宽屏默认两行，点击展开全文 */
+const expandedAnnounceIds = ref<Set<number>>(new Set())
+
+function toggleAnnounceExpand(id: number) {
+  const next = new Set(expandedAnnounceIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expandedAnnounceIds.value = next
+}
+
+function isAnnounceExpanded(id: number) {
+  return expandedAnnounceIds.value.has(id)
+}
+
+/** 宽屏折叠：仅对可能超过两行的正文显示展开入口 */
+function announceNeedsExpand(content?: string) {
+  if (!content) return false
+  return content.length > 72 || /\r?\n/.test(content)
+}
 
 /** 消耗趋势图：悬停点索引与屏幕坐标（用于浮层提示） */
 const trendHover = ref<number | null>(null)
@@ -467,7 +487,23 @@ watch(period, () => {
   loadUsage().catch(() => {})
 })
 
-onMounted(loadAll)
+function scrollToAnnouncementsIfHash() {
+  if (route.hash !== '#dashboard-announcements') return
+  void nextTick(() => {
+    document.getElementById('dashboard-announcements')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+async function loadAllAndScroll() {
+  await loadAll()
+  scrollToAnnouncementsIfHash()
+}
+
+onMounted(() => {
+  void loadAllAndScroll()
+})
+
+watch(() => route.hash, scrollToAnnouncementsIfHash)
 
 onUnmounted(() => {
   if (healthProbeMsgTimer != null) {
@@ -478,7 +514,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="pb-8">
+  <div class="min-w-0 pb-8">
     <div class="flex flex-col gap-1 border-b border-white/[0.06] pb-6 md:flex-row md:items-end md:justify-between">
       <div>
         <p class="text-lg font-medium text-slate-200">{{ greeting }}，{{ auth.accountDisplay }}</p>
@@ -790,7 +826,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 每日消费柱状（保留原有能力，布局优化） -->
-    <div class="mt-6 grid gap-5 lg:grid-cols-2">
+    <div class="mt-6 grid min-w-0 gap-5 lg:grid-cols-2">
       <div class="th-glass p-5 md:p-6">
         <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.dailyTitle') }}</h3>
         <div v-if="sortedDaily.length > 0" class="relative mt-6 flex h-44 items-end gap-1 border-b border-white/[0.08] pb-2" @mouseleave="onDailyBarLeave">
@@ -810,18 +846,18 @@ onUnmounted(() => {
         </div>
         <p v-else class="py-12 text-center text-sm text-slate-600">{{ t('dashboard.noDaily') }}</p>
       </div>
-      <div class="th-glass p-5 md:p-6">
+      <div class="th-glass min-w-0 p-5 md:p-6">
         <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.modelTop') }}</h3>
         <div class="thin-scrollbar mt-4 max-h-52 space-y-2 overflow-y-auto text-sm">
           <div
             v-for="(m, i) in (usage?.model_breakdown || [])"
             :key="m.model"
-            class="flex items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-slate-950/50 px-3 py-2 transition hover:border-cyan-500/15"
+            class="grid min-w-0 grid-cols-1 gap-1 rounded-lg border border-white/[0.05] bg-slate-950/50 px-3 py-2 transition hover:border-cyan-500/15 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-2 sm:gap-y-0"
             :title="t('dashboard.rankRowTip', { model: m.model, req: String(m.requests ?? 0), cost: fmtNum(m.cost, 2) })"
           >
-            <span class="truncate font-mono text-xs text-cyan-200/90">{{ i + 1 }}. {{ m.model }}</span>
-            <span class="shrink-0 text-xs text-slate-500">{{ m.requests }} {{ t('dashboard.times') }}</span>
-            <span class="shrink-0 text-sm font-medium text-amber-300/90">¥{{ typeof m.cost === 'number' ? m.cost.toFixed(2) : m.cost }}</span>
+            <span class="min-w-0 truncate font-mono text-xs text-cyan-200/90">{{ i + 1 }}. {{ m.model }}</span>
+            <span class="shrink-0 text-xs text-slate-500 sm:text-right">{{ m.requests }} {{ t('dashboard.times') }}</span>
+            <span class="shrink-0 text-sm font-medium text-amber-300/90 sm:text-right">¥{{ typeof m.cost === 'number' ? m.cost.toFixed(2) : m.cost }}</span>
           </div>
           <p v-if="!(usage?.model_breakdown?.length)" class="py-10 text-center text-sm text-slate-600">{{ t('dashboard.noModel') }}</p>
         </div>
@@ -830,13 +866,27 @@ onUnmounted(() => {
 
     <!-- 公告 + FAQ + 快捷/API（末段同栅格收束，避免与底色融在一起「像没了」） -->
     <div class="mt-8 grid gap-5 lg:grid-cols-2">
-      <div class="th-glass p-5 md:p-6">
+      <div id="dashboard-announcements" class="th-glass min-w-0 scroll-mt-24 p-5 md:p-6">
         <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">{{ t('dashboard.announceTitle') }}</h3>
-        <ul v-if="announcements.length" class="mt-4 space-y-3">
+        <ul v-if="announcements.length" class="thin-scrollbar mt-4 max-h-64 space-y-3 overflow-y-auto lg:max-h-72">
           <li v-for="a in announcements" :key="a.id" class="border-b border-white/[0.06] pb-3 last:border-0 last:pb-0">
             <p class="text-sm font-medium text-slate-100">{{ a.title }}</p>
             <p class="mt-0.5 text-[11px] text-slate-600">{{ shortDate(a.published_at) }}</p>
-            <p v-if="a.content" class="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{{ a.content }}</p>
+            <p
+              v-if="a.content"
+              class="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-500"
+              :class="isAnnounceExpanded(a.id) ? '' : 'lg:line-clamp-2'"
+            >
+              {{ a.content }}
+            </p>
+            <button
+              v-if="announceNeedsExpand(a.content)"
+              type="button"
+              class="th-link-accent mt-1.5 hidden text-[11px] font-medium hover:underline lg:inline"
+              @click="toggleAnnounceExpand(a.id)"
+            >
+              {{ isAnnounceExpanded(a.id) ? t('dashboard.announceCollapse') : t('dashboard.announceExpand') }}
+            </button>
           </li>
         </ul>
         <p v-else class="mt-6 text-center text-sm text-slate-600">{{ t('dashboard.noAnnounce') }}</p>
