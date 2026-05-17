@@ -2,6 +2,7 @@
 import { inject, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import AdminModelChannelPickModal from '../components/admin/AdminModelChannelPickModal.vue'
 import { useAdminModelIdCombobox } from '../composables/useAdminModelIdCombobox'
 import { adminSiteSettingsKey } from '../composables/useAdminSiteSettings'
 
@@ -12,6 +13,7 @@ const s = inject(adminSiteSettingsKey)!
 type DraftRow = { model_name: string }
 
 const draftRows = ref<DraftRow[]>([])
+const noBillWorkspaceScope = ref<'global' | number>('global')
 
 const flashMsg = ref('')
 const flashIsError = ref(false)
@@ -105,16 +107,28 @@ watch(
 
 const {
   modelSuggestLoading,
+  modelSuggestTotal,
   openModelSuggestRow,
   modelSuggestPanelStyle,
   setComboboxRef,
   filteredOpenModelSuggestIds,
+  suggestListTruncated,
+  channelCountForModel,
   scheduleSuggestLayout,
   toggleModelSuggestRow,
   focusModelSuggestRow,
   pickOpenModelSuggestId,
   loadModelSuggestions,
-} = useAdminModelIdCombobox(draftRows)
+  channelPickOpen,
+  channelPickModelId,
+  channelPickChannels,
+  channelPickSelectedId,
+  confirmChannelPick,
+  cancelChannelPick,
+} = useAdminModelIdCombobox(draftRows, {
+  workspaceScope: noBillWorkspaceScope,
+  enableChannelPick: true,
+})
 
 function addRow() {
   clearFlash()
@@ -157,7 +171,7 @@ watch(
         <p class="mb-1 text-xs text-slate-500">{{ t('adminNoBill.tableHint') }}</p>
         <p class="mb-3 text-[11px] leading-relaxed text-slate-500">
           <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
-          <span v-else>{{ t('adminNoBill.modelSuggestHint') }}</span>
+          <span v-else>{{ t('adminNoBill.modelSuggestHint', { total: modelSuggestTotal }) }}</span>
         </p>
 
         <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
@@ -314,11 +328,21 @@ watch(
           <li
             v-for="opt in filteredOpenModelSuggestIds"
             :key="opt"
-            class="th-model-combobox-item"
+            class="th-model-combobox-item flex items-center justify-between gap-2"
             role="option"
             @mousedown.prevent="pickOpenModelSuggestId(opt)"
           >
-            {{ opt }}
+            <span class="min-w-0 truncate font-mono">{{ opt }}</span>
+            <span
+              v-if="channelCountForModel(opt) > 1"
+              class="shrink-0 text-[10px] text-amber-300/90"
+            >{{ t('adminModelChannelPick.multiBadge', { n: channelCountForModel(opt) }) }}</span>
+          </li>
+          <li
+            v-if="suggestListTruncated"
+            class="th-model-combobox-item th-model-combobox-item--muted cursor-default"
+          >
+            {{ t('adminModelChannelPick.suggestTruncate', { total: modelSuggestTotal }) }}
           </li>
         </template>
         <li v-else class="th-model-combobox-item th-model-combobox-item--muted cursor-default">
@@ -326,5 +350,15 @@ watch(
         </li>
       </ul>
     </Teleport>
+
+    <AdminModelChannelPickModal
+      :open="channelPickOpen"
+      :model-id="channelPickModelId"
+      :channels="channelPickChannels"
+      :selected-channel-id="channelPickSelectedId"
+      @update:selected-channel-id="channelPickSelectedId = $event"
+      @confirm="confirmChannelPick"
+      @cancel="cancelChannelPick"
+    />
   </div>
 </template>

@@ -1,48 +1,50 @@
-import { computed, nextTick, onUnmounted, ref, watch, type Ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { http, type Envelope } from '../api/http'
+import {
+  buildModelChannelMap,
+  type AdminModelChannelRef,
+} from '../utils/adminModelChannelMap'
+import { fetchAllWorkspaceModelIds } from '../utils/adminWorkspaceModels'
 import {
   comboboxAnchorKey,
   resolveComboboxAnchor,
   type ComboboxAnchorVariant,
 } from '../utils/comboboxAnchor'
 
-/** 行上至少含 model_name，供模型 ID 建议与下拉面板使用（与 AdminGroups 模型倍率一致） */
+/** 行上至少含 model_name，供模型 ID 建议与下拉面板使用 */
 export type ModelNameRow = { model_name: string }
 
-let cachedCatalogModelIds: string[] | null = null
-
-async function fetchCatalogModelIds(): Promise<string[]> {
-  if (cachedCatalogModelIds !== null) return cachedCatalogModelIds
-  const set = new Set<string>()
-  try {
-    for (let page = 1; page <= 25; page++) {
-      const { data } = await http.get<Envelope<{ items?: Array<{ model_id?: string }> }>>('/api/admin/model-catalog/entries', {
-        params: { page, page_size: 200 },
-      })
-      if (data.code !== 0) break
-      const items = data.data.items || []
-      for (const it of items) {
-        const id = typeof it.model_id === 'string' ? it.model_id.trim() : ''
-        if (id) set.add(id)
-      }
-      if (items.length < 200) break
-    }
-  } catch {
-    /* 目录不可用时仍允许手输 */
-  }
-  cachedCatalogModelIds = Array.from(set).sort((a, b) => a.localeCompare(b))
-  return cachedCatalogModelIds
+export type AdminModelIdComboboxOptions = {
+  /** 工作区范围：'global' 与全局计价一致；正整数为单渠道计价工作区 */
+  workspaceScope?: Ref<'global' | number> | ComputedRef<'global' | number>
+  /** 选中出现在多个渠道上的模型时弹出渠道选择 */
+  enableChannelPick?: boolean
 }
 
+const SUGGEST_EMPTY_LIMIT = 200
+const SUGGEST_FILTER_LIMIT = 250
+
 /**
- * 与 AdminGroups 内「模型 ID」下拉相同的定位与滚动行为；建议来源：模型目录 + 全渠道类型预设 + 当前表内 ID。
+ * 模型 ID 下拉：默认从全局/渠道计价工作区加载（与全局模型计价数量一致）；
+ * 可选在多渠道重复时弹出渠道选择后再写入 model_name。
  */
-export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
+export function useAdminModelIdCombobox(
+  rowsRef: Ref<ModelNameRow[]>,
+  options: AdminModelIdComboboxOptions = {},
+) {
   const modelSuggestIds = ref<string[]>([])
+  const modelSuggestTotal = ref(0)
   const modelSuggestLoading = ref(false)
+  const modelChannelMap = ref<Map<string, AdminModelChannelRef[]>>(new Map())
   const openModelSuggestRow = ref<number | null>(null)
   const comboboxAnchorEls = new Map<string, HTMLElement>()
   const modelSuggestPanelStyle = ref<Record<string, string>>({})
+
+  const channelPickOpen = ref(false)
+  const channelPickRowIdx = ref<number | null>(null)
+  const channelPickModelId = ref('')
+  const channelPickChannels = ref<AdminModelChannelRef[]>([])
+  const channelPickSelectedId = ref<number | ''>('')
 
   function setComboboxRef(rowIdx: number, el: unknown, variant: ComboboxAnchorVariant = 'desktop') {
     const key = comboboxAnchorKey(rowIdx, variant)
@@ -135,15 +137,23 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
   function filterModelSuggestIds(query: string): string[] {
     const all = modelSuggestIds.value
     const s = query.trim().toLowerCase()
-    if (!s) return all.slice(0, 120)
+    if (!s) return all.slice(0, SUGGEST_EMPTY_LIMIT)
     const out: string[] = []
     for (const id of all) {
       if (id.toLowerCase().includes(s)) {
         out.push(id)
-        if (out.length >= 200) break
+        if (out.length >= SUGGEST_FILTER_LIMIT) break
       }
     }
     return out
+  }
+
+  function channelsForModel(modelId: string): AdminModelChannelRef[] {
+    return modelChannelMap.value.get(modelId.trim()) || []
+  }
+
+  function channelCountForModel(modelId: string): number {
+    return channelsForModel(modelId).length
   }
 
   const activeModelSuggestQuery = computed(() => {
@@ -153,6 +163,14 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
   })
 
   const filteredOpenModelSuggestIds = computed(() => filterModelSuggestIds(activeModelSuggestQuery.value))
+
+  const suggestListTruncated = computed(() => {
+    const q = activeModelSuggestQuery.value.trim()
+    const total = modelSuggestTotal.value
+    const shown = filteredOpenModelSuggestIds.value.length
+    if (!q) return total > SUGGEST_EMPTY_LIMIT && shown >= SUGGEST_EMPTY_LIMIT
+    return shown >= SUGGEST_FILTER_LIMIT
+  })
 
   let suggestLayoutTimer: ReturnType<typeof setTimeout> | null = null
   function scheduleSuggestLayout() {
@@ -196,10 +214,49 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
     detachSuggestScrollReposition()
   })
 
-  function pickModelRateId(rowIdx: number, id: string) {
+  function applyModelPick(rowIdx: number, id: string) {
     const row = rowsRef.value[rowIdx]
     if (row) row.model_name = id
     openModelSuggestRow.value = null
+  }
+
+  function openChannelPick(rowIdx: number, modelId: string, channels: AdminModelChannelRef[]) {
+    channelPickRowIdx.value = rowIdx
+    channelPickModelId.value = modelId
+    channelPickChannels.value = channels
+    channelPickSelectedId.value = channels[0]?.id ?? ''
+    channelPickOpen.value = true
+    openModelSuggestRow.value = null
+  }
+
+  function cancelChannelPick() {
+    channelPickOpen.value = false
+    channelPickRowIdx.value = null
+    channelPickModelId.value = ''
+    channelPickChannels.value = []
+    channelPickSelectedId.value = ''
+  }
+
+  function confirmChannelPick() {
+    const rowIdx = channelPickRowIdx.value
+    const modelId = channelPickModelId.value.trim()
+    const chId = channelPickSelectedId.value
+    if (rowIdx === null || !modelId || typeof chId !== 'number' || chId <= 0) return
+    applyModelPick(rowIdx, modelId)
+    cancelChannelPick()
+  }
+
+  function pickModelRateId(rowIdx: number, id: string) {
+    const trimmed = id.trim()
+    if (!trimmed) return
+    if (options.enableChannelPick) {
+      const channels = channelsForModel(trimmed)
+      if (channels.length > 1) {
+        openChannelPick(rowIdx, trimmed, channels)
+        return
+      }
+    }
+    applyModelPick(rowIdx, trimmed)
   }
 
   function pickOpenModelSuggestId(id: string) {
@@ -222,6 +279,28 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
     void nextTick(() => updateModelSuggestPanelLayout())
   }
 
+  async function loadChannelsForMap() {
+    try {
+      const { data } = await http.get<
+        Envelope<{
+          items: Array<{
+            id: number
+            channel_name?: string
+            channel_type?: string
+            enabled?: boolean
+            health_status?: number
+            models?: string[]
+            model_alias?: Record<string, string>
+          }>
+        }>
+      >('/api/admin/channels')
+      if (data.code !== 0) return
+      modelChannelMap.value = buildModelChannelMap(data.data.items || [])
+    } catch {
+      modelChannelMap.value = new Map()
+    }
+  }
+
   async function loadModelSuggestions() {
     modelSuggestLoading.value = true
     try {
@@ -230,56 +309,53 @@ export function useAdminModelIdCombobox(rowsRef: Ref<ModelNameRow[]>) {
         const m = r.model_name.trim()
         if (m) set.add(m)
       }
-      const catalog = await fetchCatalogModelIds()
-      for (const id of catalog) set.add(id)
 
-      const types = new Set<string>()
-      try {
-        const { data } = await http.get<Envelope<{ items: Array<{ channel_type?: string }> }>>('/api/admin/channels')
-        if (data.code === 0) {
-          for (const ch of data.data.items || []) {
-            const ct = (ch.channel_type || '').trim().toLowerCase()
-            if (ct) types.add(ct)
-          }
-        }
-      } catch {
-        /* ignore */
+      const scope = options.workspaceScope?.value ?? 'global'
+      const channelId = typeof scope === 'number' && scope > 0 ? scope : undefined
+      const workspaceIds = await fetchAllWorkspaceModelIds(
+        channelId ? { channelId } : undefined,
+      )
+      for (const id of workspaceIds) set.add(id)
+
+      if (options.enableChannelPick) {
+        await loadChannelsForMap()
       }
 
-      await Promise.all(
-        [...types].map(async (channelType) => {
-          try {
-            const { data } = await http.get<Envelope<{ merged?: string[] }>>('/api/admin/channel-model-presets', {
-              params: { channel_type: channelType },
-            })
-            if (data.code !== 0) return
-            for (const id of data.data.merged || []) {
-              const m = typeof id === 'string' ? id.trim() : ''
-              if (m) set.add(m)
-            }
-          } catch {
-            /* ignore */
-          }
-        }),
-      )
-      modelSuggestIds.value = Array.from(set).sort((a, b) => a.localeCompare(b))
+      const ids = Array.from(set).sort((a, b) => a.localeCompare(b))
+      modelSuggestIds.value = ids
+      modelSuggestTotal.value = ids.length
     } finally {
       modelSuggestLoading.value = false
     }
   }
 
+  if (options.workspaceScope) {
+    watch(options.workspaceScope, () => {
+      void loadModelSuggestions()
+    })
+  }
+
   return {
     modelSuggestIds,
+    modelSuggestTotal,
     modelSuggestLoading,
     openModelSuggestRow,
     modelSuggestPanelStyle,
     setComboboxRef,
     filteredOpenModelSuggestIds,
+    suggestListTruncated,
+    channelCountForModel,
     scheduleSuggestLayout,
     toggleModelSuggestRow,
     focusModelSuggestRow,
     pickOpenModelSuggestId,
     updateModelSuggestPanelLayout,
     loadModelSuggestions,
+    channelPickOpen,
+    channelPickModelId,
+    channelPickChannels,
+    channelPickSelectedId,
+    confirmChannelPick,
+    cancelChannelPick,
   }
 }

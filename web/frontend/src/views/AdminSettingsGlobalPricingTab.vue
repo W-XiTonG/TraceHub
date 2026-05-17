@@ -3,6 +3,7 @@ import axios from 'axios'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import AdminModelChannelPickModal from '../components/admin/AdminModelChannelPickModal.vue'
 import { useAdminModelIdCombobox } from '../composables/useAdminModelIdCombobox'
 import { useQuotaPer1kUpstreamField } from '../composables/useQuotaPer1kUpstreamField'
 import { http, type Envelope } from '../api/http'
@@ -76,6 +77,10 @@ const activeChannelId = computed(() => {
 
 const isChannelScope = computed(() => activeChannelId.value > 0)
 
+const pricingWorkspaceScope = computed<'global' | number>(() =>
+  isChannelScope.value ? activeChannelId.value : 'global',
+)
+
 const selectedChannelLabel = computed(() => {
   if (!isChannelScope.value) return ''
   const id = activeChannelId.value
@@ -146,16 +151,28 @@ const busyResetFull = ref(false)
 
 const {
   modelSuggestLoading,
+  modelSuggestTotal,
   openModelSuggestRow,
   modelSuggestPanelStyle,
   setComboboxRef,
   filteredOpenModelSuggestIds,
+  suggestListTruncated,
+  channelCountForModel,
   scheduleSuggestLayout,
   toggleModelSuggestRow,
   focusModelSuggestRow,
   pickOpenModelSuggestId,
   loadModelSuggestions,
-} = useAdminModelIdCombobox(rows)
+  channelPickOpen,
+  channelPickModelId,
+  channelPickChannels,
+  channelPickSelectedId,
+  confirmChannelPick,
+  cancelChannelPick,
+} = useAdminModelIdCombobox(rows, {
+  workspaceScope: pricingWorkspaceScope,
+  enableChannelPick: true,
+})
 
 const totalPages = computed(() => {
   if (total.value <= 0) return 1
@@ -1410,7 +1427,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
           <p class="mb-1 text-xs text-slate-500">{{ t('adminGlobalPricing.ratesTableHint') }}</p>
           <p class="mb-3 text-[11px] leading-relaxed text-slate-500">
             <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
-            <span v-else>{{ t('adminGlobalPricing.modelSuggestHint') }}</span>
+            <span v-else>{{ t('adminGlobalPricing.modelSuggestHint', { total: modelSuggestTotal }) }}</span>
           </p>
 
           <div
@@ -2337,11 +2354,21 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
           <li
             v-for="opt in filteredOpenModelSuggestIds"
             :key="opt"
-            class="th-model-combobox-item"
+            class="th-model-combobox-item flex items-center justify-between gap-2"
             role="option"
             @mousedown.prevent="pickOpenModelSuggestId(opt)"
           >
-            {{ opt }}
+            <span class="min-w-0 truncate font-mono">{{ opt }}</span>
+            <span
+              v-if="channelCountForModel(opt) > 1"
+              class="shrink-0 text-[10px] text-amber-300/90"
+            >{{ t('adminModelChannelPick.multiBadge', { n: channelCountForModel(opt) }) }}</span>
+          </li>
+          <li
+            v-if="suggestListTruncated"
+            class="th-model-combobox-item th-model-combobox-item--muted cursor-default"
+          >
+            {{ t('adminModelChannelPick.suggestTruncate', { total: modelSuggestTotal }) }}
           </li>
         </template>
         <li v-else class="th-model-combobox-item th-model-combobox-item--muted cursor-default">
@@ -2349,5 +2376,15 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
         </li>
       </ul>
     </Teleport>
+
+    <AdminModelChannelPickModal
+      :open="channelPickOpen"
+      :model-id="channelPickModelId"
+      :channels="channelPickChannels"
+      :selected-channel-id="channelPickSelectedId"
+      @update:selected-channel-id="channelPickSelectedId = $event"
+      @confirm="confirmChannelPick"
+      @cancel="cancelChannelPick"
+    />
   </div>
 </template>

@@ -334,7 +334,7 @@ export default {
       'Override per-model input/output multipliers. Check “No bill” for zero cost in this group (overrides the global free list).',
     modelSuggestLoading: 'Loading model ID suggestions…',
     modelSuggestHint:
-      'Model ID: focus the field or use the arrow to open the themed suggestion list (model catalog + presets for this group’s channel types). Custom IDs still work.',
+      'Model ID suggestions match the global pricing workspace ({total} ids); multi-channel duplicates open a channel picker. Custom IDs still work.',
     modelSuggestEmpty: 'No matches—type the full model ID',
     modelSuggestToggle: 'Show or hide model suggestions',
     modelIdPh: 'Pick or type a model ID',
@@ -913,7 +913,7 @@ export default {
     ratesTableHint:
       'Override built-in per-1k quota hints per model (leave blank to keep code defaults) and set default input/output multipliers; group model rates still win. Code ref in/out is read-only; billing uses quota/1k saved from the upstream cost columns.',
     modelSuggestHint:
-      'Model ID column: focus the field or click the chevron for suggestions (model catalog + channel-type presets across all channels). You can still type any id.',
+      'Model ID suggestions match the current pricing workspace ({total} ids); in site-wide view, multi-channel duplicates open a channel picker. You can still type any id.',
     workspaceHint:
       'Rows merge the built-in pricing table, enabled channels, visible catalog entries, and existing global DB rows. Save or reset the current page, the full filtered list, or selected rows; only changed or custom rows are submitted; reset removes DB overrides and clears bottom custom drafts.',
     thSources: 'Sources',
@@ -1052,8 +1052,18 @@ export default {
   },
   adminNoBill: {
     tableHint: 'One logical model ID per row; edits sync to the form payload — click Save at the bottom of the page to persist site.no_bill_models.',
-    modelSuggestHint: 'Same suggestions as Global model pricing: catalog + channel-type presets across all channels.',
+    modelSuggestHint:
+      'Suggestions match the Global model pricing workspace ({total} logical models). If a model is declared on multiple channels, a channel picker appears after selection (still saved as a global no-bill id). You can type any id.',
     empty: 'No rows yet; click “Add row”.',
     warnDuplicate: 'Model ID “{id}” appears more than once; it will still be saved as a JSON array — remove duplicates to avoid confusion.',
+  },
+  adminModelChannelPick: {
+    title: 'Select channel',
+    intro: 'Model “{model}” is available on multiple enabled channels. Pick one to confirm.',
+    hint: 'Global no-bill applies to the logical model id site-wide; the channel choice only confirms where it is declared.',
+    confirm: 'Confirm',
+    unhealthy: 'Unhealthy',
+    multiBadge: '{n} ch.',
+    suggestTruncate: '{total} models total — type to filter for more',
   },
 } as const
