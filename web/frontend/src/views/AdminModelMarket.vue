@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -174,8 +177,12 @@ async function removeEntry(id: number) {
   await loadEntries()
 }
 
+const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
+
 onMounted(async () => {
-  await Promise.all([loadSources(), loadChannels(), loadEntries()])
+  await runPageLoad(async () => {
+    await Promise.all([loadSources(), loadChannels(), loadEntries()])
+  })
 })
 </script>
 
@@ -189,7 +196,9 @@ onMounted(async () => {
     <p v-if="msg" class="rounded border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-emerald-300">{{ msg }}</p>
     <p v-if="err" class="rounded border border-red-900 bg-red-950/30 px-3 py-2 text-red-300">{{ err }}</p>
 
-    <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+    <ThLoadingState v-if="pageLoadingUi" class="py-12" />
+
+    <section v-else class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
       <h2 class="mb-4 text-lg font-semibold text-slate-200">{{ t('adminMarket.apiSectionTitle') }}</h2>
       <p class="mb-4 text-xs text-slate-500">
         {{ t('adminMarket.apiSectionDesc') }}
@@ -297,7 +306,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+    <section v-if="!pageLoadingUi" class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
       <h2 class="mb-4 text-lg font-semibold text-slate-200">{{ t('adminMarket.catalogTitle') }}</h2>
       <div class="mb-4 flex flex-wrap items-end gap-3">
         <label class="flex flex-col gap-1">

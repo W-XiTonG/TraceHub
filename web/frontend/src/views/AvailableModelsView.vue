@@ -12,6 +12,9 @@ import {
 } from '../utils/modelPricingDisplay'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -51,6 +54,7 @@ type FilterUpstream = '' | 'listed' | 'not_listed' | 'mixed' | 'unknown'
 type FilterPrice = '' | 'free' | 'paid'
 
 const payload = ref<ModelsPayload | null>(null)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const err = ref('')
 const q = ref('')
 const filterSource = ref<FilterSource>('')
@@ -424,13 +428,13 @@ function downloadExport(fmt: 'csv' | 'json') {
 
 async function load() {
   err.value = ''
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<ModelsPayload>>('/api/user/available-models')
     if (data.code !== 0) throw new Error(data.message || t('modelsPage.loadFail'))
     payload.value = data.data
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = e instanceof Error ? e.message : t('modelsPage.loadFail')
-  }
+  })
 }
 
 onMounted(load)
@@ -447,6 +451,10 @@ onMounted(load)
     </p>
 
     <p v-if="err" class="mt-4 shrink-0 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2 text-sm text-red-300">{{ err }}</p>
+
+    <div v-if="loadingUi && !payload" class="mt-6 min-h-0 flex-1">
+      <ThTableSkeleton :rows="10" :columns="6" toolbar />
+    </div>
 
     <div v-if="payload?.hint" class="mt-6 shrink-0 rounded-xl border border-amber-500/20 bg-amber-950/25 px-4 py-3 text-sm text-amber-100/95">
       {{ payload.hint }}
@@ -579,7 +587,8 @@ onMounted(load)
         </div>
       </div>
 
-      <div class="th-glass mt-6 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div class="th-glass relative mt-6 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <ThLoadingState v-if="loadingUi" variant="overlay" :label="t('modelsPage.loading')" />
         <div class="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
         <div class="th-table-wrap th-table-wrap--scrollable thin-scrollbar min-h-0 flex-1">
           <table class="w-full text-left text-sm">

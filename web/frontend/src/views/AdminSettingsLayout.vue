@@ -3,6 +3,7 @@ import { onMounted, provide } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { adminSiteSettingsKey, createAdminSiteSettings } from '../composables/useAdminSiteSettings'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
 
 const ctx = createAdminSiteSettings()
 provide(adminSiteSettingsKey, ctx)
@@ -46,7 +47,7 @@ onMounted(() => {
     <p v-if="ctx.err" class="th-admin-flash--error mt-4 rounded-lg border px-3 py-2 text-sm">{{ ctx.err }}</p>
     <p v-if="ctx.msg" class="th-admin-flash--success mt-4 rounded-lg border px-3 py-2 text-sm">{{ ctx.msg }}</p>
 
-    <div v-if="ctx.busy" class="mt-8 text-sm text-slate-500">{{ t('common.loading') }}</div>
+    <ThLoadingState v-if="ctx.busyUi" class="mt-8" />
 
     <div v-else class="mt-6">
       <RouterView />

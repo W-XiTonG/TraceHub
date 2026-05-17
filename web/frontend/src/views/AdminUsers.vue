@@ -8,6 +8,9 @@ import { copyTextToClipboard } from '../utils/clipboard'
 import { useAuthStore } from '../stores/auth'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -54,6 +57,7 @@ type LedgerAdminRow = {
 }
 
 const items = ref<Row[]>([])
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const deltaByUser = ref<Record<number, string>>({})
 const filterText = ref('')
 const compact = ref(false)
@@ -63,7 +67,10 @@ const err = ref('')
 
 const groups = ref<GroupOpt[]>([])
 const editOpen = ref(false)
-const editLoading = ref(false)
+const { busy: editLoading, visible: editLoadingUi, run: runEditLoad } = useSmoothLoading({
+  showDelay: 200,
+  minVisible: 280,
+})
 const editSaving = ref(false)
 const editForm = reactive({
   id: 0,
@@ -131,15 +138,15 @@ function toggleRow(id: number) {
 
 async function load() {
   err.value = ''
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<{ items: Row[] }>>('/api/admin/users')
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     items.value = data.data.items
     const idSet = new Set(items.value.map((x) => x.id))
     selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = e instanceof Error ? e.message : t('adminCommon.loadFail')
-  }
+  })
 }
 
 function resetFilter() {
@@ -203,10 +210,9 @@ async function loadUserLedger(uid: number) {
 async function openEdit(u: Row) {
   err.value = ''
   editOpen.value = true
-  editLoading.value = true
   editForm.newPassword = ''
   editForm.clearTotp = false
-  try {
+  await runEditLoad(async () => {
     if (!groups.value.length) {
       const { data: gd } = await http.get<Envelope<{ items: GroupOpt[] }>>('/api/admin/groups')
       if (gd.code !== 0) throw new Error(gd.message || t('adminCommon.loadFail'))
@@ -230,12 +236,10 @@ async function openEdit(u: Row) {
     editForm.ipBlacklistText = joinLines(d.ip_blacklist)
     editForm.totpEnabled = !!d.totp_enabled
     void loadUserLedger(d.id)
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = e instanceof Error ? e.message : t('adminCommon.loadFail')
     editOpen.value = false
-  } finally {
-    editLoading.value = false
-  }
+  })
 }
 
 function closeEdit() {
@@ -374,7 +378,13 @@ onMounted(() => {
     <p v-if="flash" class="mb-3 text-sm text-emerald-400">{{ flash }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
 
-    <div class="th-user-keys-table-wrap hidden overflow-x-auto lg:block">
+    <ThTableSkeleton v-if="loadingUi && items.length === 0" :rows="8" :columns="6" toolbar class="mb-4" />
+    <div v-if="loadingUi && items.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+
+    <div class="th-user-keys-table-wrap relative hidden overflow-x-auto lg:block">
+      <ThLoadingState v-if="loadingUi && items.length > 0" variant="overlay" />
       <table class="w-full min-w-[640px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>
@@ -521,7 +531,7 @@ onMounted(() => {
         >
           <h3 class="mb-1 text-lg font-semibold text-white">{{ t('adminUsers.editModalTitle') }}</h3>
           <p class="mb-4 text-xs text-slate-500">{{ t('adminUsers.editModalHint') }}</p>
-          <p v-if="editLoading" class="py-8 text-center text-sm text-slate-400">{{ t('adminUsers.editLoading') }}</p>
+          <ThLoadingState v-if="editLoadingUi" />
           <template v-else>
             <div class="grid gap-4 text-sm sm:grid-cols-2">
               <label class="flex flex-col gap-1 sm:col-span-2">

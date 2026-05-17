@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { InjectionKey } from 'vue'
 import { computed, reactive, ref } from 'vue'
+import { useSmoothLoading } from './useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { useSiteMetaStore, type PublicContactPayload } from '../stores/siteMeta'
@@ -86,7 +87,7 @@ export function createAdminSiteSettings() {
   const contactQRs = ref<Array<{ label: string; image_url: string }>>([])
   const contactPickQrIndex = ref<number | null>(null)
   const uploadingContactRow = ref<number | null>(null)
-  const busy = ref(true)
+  const { busy, visible: busyUi, run: runLoad } = useSmoothLoading()
   const saving = ref(false)
   const uploadingIcon = ref(false)
   const msg = ref('')
@@ -223,20 +224,17 @@ export function createAdminSiteSettings() {
   }
 
   async function load() {
-    busy.value = true
     err.value = ''
     msg.value = ''
-    try {
+    await runLoad(async () => {
       const { data } = await http.get<Envelope<SiteSettingsPayload>>('/api/admin/site-settings', {
         params: { _: Date.now() },
       })
       if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminCommon.loadFail'))
       applyPayload(data.data ?? {})
-    } catch (e: unknown) {
+    }).catch((e: unknown) => {
       err.value = httpErr(e)
-    } finally {
-      busy.value = false
-    }
+    })
   }
 
   async function loadBrandIcons() {
@@ -550,6 +548,7 @@ export function createAdminSiteSettings() {
     contactPickQrIndex,
     uploadingContactRow,
     busy,
+    busyUi,
     saving,
     uploadingIcon,
     msg,

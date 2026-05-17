@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import axios from 'axios'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import {
@@ -96,10 +98,15 @@ function flashError(e: unknown) {
 const expandedId = ref<number | null>(null)
 const ratesByGroup = ref<Record<number, RateRow[]>>({})
 const ratesDraft = ref<RateRow[]>([])
-const ratesLoading = ref(false)
+const { busy: ratesLoading, visible: ratesLoadingUi, run: runRatesLoad } = useSmoothLoading()
 /** 模型倍率表「模型 ID」建议（目录 + 分组渠道预设 + 当前表内已有 ID）；下拉用自定义列表以适配深浅色主题 */
 const modelSuggestIds = ref<string[]>([])
-const modelSuggestLoading = ref(false)
+const {
+  busy: modelSuggestLoading,
+  visible: modelSuggestLoadingUi,
+  run: runModelSuggestLoad,
+} = useSmoothLoading({ showDelay: 280, minVisible: 300 })
+const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 let cachedCatalogModelIds: string[] | null = null
 
 /** 当前展开哪一行的模型 ID 建议列表（替代 datalist，避免系统原生浅色弹层） */
@@ -312,8 +319,7 @@ async function fetchCatalogModelIds(): Promise<string[]> {
 }
 
 async function loadModelRateSuggestions(gid: number) {
-  modelSuggestLoading.value = true
-  try {
+  await runModelSuggestLoad(async () => {
     const set = new Set<string>()
     for (const r of ratesDraft.value) {
       const m = r.model_name.trim()
@@ -348,9 +354,7 @@ async function loadModelRateSuggestions(gid: number) {
       }),
     )
     modelSuggestIds.value = Array.from(set).sort((a, b) => a.localeCompare(b))
-  } finally {
-    modelSuggestLoading.value = false
-  }
+  })
 }
 
 const createForm = reactive({
@@ -380,7 +384,7 @@ const editForm = reactive({
 })
 
 const overlaps = ref<ModelOverlapItem[]>([])
-const overlapsLoading = ref(false)
+const { busy: overlapsLoading, visible: overlapsLoadingUi, run: runOverlapsLoad } = useSmoothLoading()
 const overlapPins = reactive<Record<string, number | ''>>({})
 const showAdvancedModelRouting = ref(false)
 
@@ -394,7 +398,7 @@ function httpErr(e: unknown): string {
 
 async function load() {
   clearFlash()
-  try {
+  await runPageLoad(async () => {
     const [gRes, cRes] = await Promise.all([
       http.get<Envelope<{ items: GroupRow[] }>>('/api/admin/groups'),
       http.get<Envelope<{ items: ChBrief[] }>>('/api/admin/channels'),
@@ -402,9 +406,9 @@ async function load() {
     if (gRes.data.code !== 0) throw new Error(gRes.data.message || t('adminCommon.loadFail'))
     groups.value = gRes.data.data.items || []
     if (cRes.data.code === 0) allChannels.value = cRes.data.data.items || []
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     flashError(e)
-  }
+  })
 }
 
 function channelsForGroup(gid: number): ChBrief[] {
@@ -440,11 +444,11 @@ function overlapModelSet(items: ModelOverlapItem[]): Set<string> {
 }
 
 async function loadOverlaps(groupId: number, mr?: Record<string, number[]>) {
-  overlapsLoading.value = true
   overlaps.value = []
   for (const k of Object.keys(overlapPins)) {
     delete overlapPins[k]
   }
+  await runOverlapsLoad(async () => {
   try {
     const { data } = await http.get<Envelope<{ items: ModelOverlapItem[] }>>(
       `/api/admin/groups/${groupId}/model-overlaps`,
@@ -461,9 +465,8 @@ async function loadOverlaps(groupId: number, mr?: Record<string, number[]>) {
     overlaps.value = []
     editForm.modelRoutingRows = modelRoutingToRows(mr)
     flashError(e)
-  } finally {
-    overlapsLoading.value = false
   }
+  })
 }
 
 function buildModelRoutingForSave(): Record<string, number[]> {
@@ -615,19 +618,18 @@ async function toggleExpand(id: number) {
   }
   clearRatesFlash()
   expandedId.value = id
-  ratesLoading.value = true
   ratesDraft.value = []
   modelSuggestIds.value = []
   openModelSuggestRow.value = null
-  try {
-    await reloadRatesDraft(id)
-    void loadModelRateSuggestions(id)
-  } catch (e: unknown) {
-    flashError(e)
-    expandedId.value = null
-  } finally {
-    ratesLoading.value = false
-  }
+  await runRatesLoad(async () => {
+    try {
+      await reloadRatesDraft(id)
+      void loadModelRateSuggestions(id)
+    } catch (e: unknown) {
+      flashError(e)
+      expandedId.value = null
+    }
+  })
 }
 
 function addRateDraft() {
@@ -823,11 +825,11 @@ onMounted(load)
           </div>
 
           <div v-if="expandedId === g.id" class="border-t border-slate-800/80 bg-slate-950/40 px-5 py-4">
-            <p v-if="ratesLoading" class="text-sm text-slate-500">{{ t('adminGroups.loading') }}</p>
+            <ThLoadingState v-if="ratesLoadingUi" variant="inline" />
             <template v-else>
               <p class="mb-1 text-xs text-slate-500">{{ t('adminGroups.ratesHint') }}</p>
               <p class="mb-3 text-[11px] leading-relaxed text-slate-500">
-                <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
+                <span v-if="modelSuggestLoadingUi">{{ t('adminGroups.modelSuggestLoading') }}</span>
                 <span v-else>{{ t('adminGroups.modelSuggestHint') }}</span>
               </p>
               <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
@@ -1080,7 +1082,7 @@ onMounted(load)
               <div class="mt-4 space-y-2 border-t border-slate-800 pt-4">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.secModelPin') }}</p>
                 <p class="text-xs text-slate-500">{{ t('adminGroups.modelPinHint') }}</p>
-                <p v-if="overlapsLoading" class="text-xs text-slate-600">{{ t('adminGroups.loadingOverlaps') }}</p>
+                <ThLoadingState v-if="overlapsLoadingUi" variant="inline" size="sm" :label="t('adminGroups.loadingOverlaps')" />
                 <p v-else-if="overlaps.length === 0" class="text-xs text-slate-600">{{ t('adminGroups.noOverlaps') }}</p>
                 <template v-else>
                 <div class="hidden overflow-x-auto rounded-lg border border-slate-800 lg:block">

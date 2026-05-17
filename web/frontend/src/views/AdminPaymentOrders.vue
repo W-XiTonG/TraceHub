@@ -4,6 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -18,16 +21,13 @@ type Row = {
 }
 
 const items = ref<Row[]>([])
-const loading = ref(false)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 
 async function load() {
-  loading.value = true
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<{ items: Row[] }>>('/api/admin/payment/orders', { params: { page_size: 50 } })
     if (data.code === 0 && data.data) items.value = data.data.items || []
-  } finally {
-    loading.value = false
-  }
+  })
 }
 
 async function refund(id: number) {
@@ -42,9 +42,13 @@ onMounted(() => void load())
 <template>
   <div class="max-w-5xl min-w-0">
     <h1 class="mb-4 text-xl font-bold sm:text-2xl">{{ t('adminPayment.ordersTitle') }}</h1>
-    <div v-if="loading" class="text-sm text-slate-500">{{ t('common.loading') }}</div>
-    <template v-else>
-      <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
+    <ThTableSkeleton v-if="loadingUi && items.length === 0" :rows="6" :columns="7" />
+    <div v-if="loadingUi && items.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+    <template v-if="!loadingUi || items.length > 0">
+      <div class="relative hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
+        <ThLoadingState v-if="loadingUi" variant="overlay" />
         <table class="w-full text-left text-sm">
           <thead class="border-b border-slate-800 text-slate-400">
             <tr>

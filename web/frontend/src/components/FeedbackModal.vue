@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import ThLoadingState from './ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const props = defineProps<{
   modelValue: boolean
@@ -45,7 +47,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 8
 const listErr = ref('')
-const listLoading = ref(false)
+const { busy: listLoading, visible: listLoadingUi, run: runListLoad } = useSmoothLoading()
 
 function close() {
   emit('update:modelValue', false)
@@ -119,21 +121,18 @@ async function loadMeta() {
 
 async function loadList() {
   listErr.value = ''
-  listLoading.value = true
-  try {
+  await runListLoad(async () => {
     const { data } = await http.get<Envelope<{ items: ListRow[]; total: number }>>('/api/user/feedbacks', {
       params: { page: page.value, page_size: pageSize },
     })
     if (data.code !== 0) throw new Error(data.message || t('feedbackPage.fail'))
     rows.value = data.data?.items ?? []
     total.value = data.data?.total ?? 0
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     listErr.value = e instanceof Error ? e.message : t('feedbackPage.fail')
     rows.value = []
     total.value = 0
-  } finally {
-    listLoading.value = false
-  }
+  })
 }
 
 function prevListPage() {
@@ -257,8 +256,10 @@ watch(
                 </button>
               </div>
               <p v-if="listErr" class="mb-2 text-xs text-rose-500">{{ listErr }}</p>
-              <p v-if="!listLoading && rows.length === 0" class="th-feedback-modal__muted text-xs">{{ t('feedbackPage.listEmpty') }}</p>
-              <div v-else class="th-feedback-table-wrap overflow-x-auto">
+              <ThLoadingState v-if="listLoadingUi && rows.length === 0" variant="inline" size="sm" class="py-4" />
+              <p v-else-if="!listLoading && rows.length === 0" class="th-feedback-modal__muted text-xs">{{ t('feedbackPage.listEmpty') }}</p>
+              <div v-else class="th-feedback-table-wrap relative overflow-x-auto">
+                <ThLoadingState v-if="listLoadingUi" variant="overlay" />
                 <table class="w-full min-w-[520px] text-left text-[11px]">
                   <thead>
                     <tr>

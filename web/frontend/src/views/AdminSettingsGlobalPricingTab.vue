@@ -4,7 +4,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AdminModelChannelPickModal from '../components/admin/AdminModelChannelPickModal.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useAdminModelIdCombobox } from '../composables/useAdminModelIdCombobox'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useQuotaPer1kUpstreamField } from '../composables/useQuotaPer1kUpstreamField'
 import { http, type Envelope } from '../api/http'
 import {
@@ -98,7 +101,7 @@ const pageSize = ref(50)
 const total = ref(0)
 const searchDraft = ref('')
 const searchApplied = ref('')
-const busy = ref(true)
+const { busy, visible: listUi, run: runListLoad } = useSmoothLoading()
 const pageSaving = ref(false)
 const batchSaving = ref(false)
 const exporting = ref(false)
@@ -151,6 +154,7 @@ const busyResetFull = ref(false)
 
 const {
   modelSuggestLoading,
+  modelSuggestLoadingUi,
   modelSuggestTotal,
   openModelSuggestRow,
   modelSuggestPanelStyle,
@@ -698,8 +702,7 @@ async function load() {
     return
   }
   clearFlash()
-  busy.value = true
-  try {
+  await runListLoad(async () => {
     const workspacePath = isChannelScope.value
       ? '/api/admin/channel-model-pricing/workspace'
       : '/api/admin/global-model-pricing/workspace'
@@ -724,11 +727,9 @@ async function load() {
     rebuildRows()
     selectedRows.value = []
     void loadModelSuggestions()
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     flashError(e)
-  } finally {
-    busy.value = false
-  }
+  })
 }
 
 function applySearch() {
@@ -1422,11 +1423,11 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
       </div>
 
       <div class="border-t border-slate-800/80 bg-slate-950/40 px-5 py-4">
-        <p v-if="busy" class="text-sm text-slate-500">{{ t('adminGroups.loading') }}</p>
+        <ThTableSkeleton v-if="listUi && !rows.length" :rows="10" :columns="7" toolbar />
         <template v-else>
           <p class="mb-1 text-xs text-slate-500">{{ t('adminGlobalPricing.ratesTableHint') }}</p>
           <p class="mb-3 text-[11px] leading-relaxed text-slate-500">
-            <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
+            <span v-if="modelSuggestLoadingUi">{{ t('adminGroups.modelSuggestLoading') }}</span>
             <span v-else>{{ t('adminGlobalPricing.modelSuggestHint', { total: modelSuggestTotal }) }}</span>
           </p>
 
@@ -1773,7 +1774,8 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
             </p>
           </div>
 
-          <div class="th-admin-table-shell overflow-x-auto rounded-xl border border-slate-800">
+          <div class="th-admin-table-shell relative overflow-x-auto rounded-xl border border-slate-800">
+            <ThLoadingState v-if="listUi && rows.length > 0" variant="overlay" />
             <table class="w-full min-w-[1080px] border-collapse text-left text-xs">
               <thead class="bg-slate-900 text-slate-500">
                 <tr>

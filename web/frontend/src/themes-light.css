@@ -1074,6 +1074,17 @@ html[data-th-theme="paper"] .th-home-step-mock-skeleton {
   background: rgba(148, 163, 184, 0.55);
 }
 
+html[data-th-theme="dawn"] .th-skeleton-bar,
+html[data-th-theme="paper"] .th-skeleton-bar {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.95) 0%,
+    rgba(241, 245, 249, 1) 45%,
+    rgba(226, 232, 240, 0.95) 100%
+  );
+  background-size: 200% 100%;
+}
+
 html[data-th-theme="dawn"] .th-home-step-mock-track,
 html[data-th-theme="paper"] .th-home-step-mock-track {
   background: rgba(226, 232, 240, 0.95);

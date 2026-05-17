@@ -5,6 +5,8 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { quotaPer1KFromUpstreamPrice } from '../utils/upstreamQuotaDerive'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 type SitePayload = {
   currency_quota_per_yuan?: number
@@ -22,7 +24,7 @@ type SitePayload = {
 }
 
 const { t } = useI18n()
-const busy = ref(true)
+const { busy, visible: busyUi, run: runLoad } = useSmoothLoading()
 const saving = ref(false)
 const resetting = ref(false)
 const draftYuan = ref('')
@@ -112,16 +114,13 @@ function applyPayload(d: SitePayload) {
 }
 
 async function load() {
-  busy.value = true
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<SitePayload>>('/api/admin/site-settings')
     if (data.code !== 0 || !data.data) throw new Error(data.message || 'load')
     applyPayload(data.data)
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     flashError(e)
-  } finally {
-    busy.value = false
-  }
+  })
 }
 
 const parsedYuan = computed(() => {
@@ -256,7 +255,7 @@ onUnmounted(() => {
       </div>
 
       <div class="border-t border-slate-800/80 px-5 py-5">
-        <p v-if="busy" class="text-sm text-slate-500">{{ t('adminGroups.loading') }}</p>
+        <ThLoadingState v-if="busyUi" />
         <template v-else>
           <p class="mb-4 text-xs leading-relaxed text-slate-500">{{ t('adminPricingConversion.formHint') }}</p>
 

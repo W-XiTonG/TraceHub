@@ -1032,9 +1032,14 @@ export default {
     bottomBarAria: '底部操作與分頁',
   },
   adminNoBill: {
-    tableHint: '一列一個邏輯模型 ID；編輯會同步到表單欄位，請點頁面底部「儲存」後寫入 site.no_bill_models。',
+    tableHint:
+      '一列一個邏輯模型 ID；「所屬渠道」為管理備註（儲存時仍只寫入模型 ID）。多渠道可在本欄下拉選擇；編輯後請點頁面底部「儲存」寫入 site.no_bill_models。',
     modelSuggestHint:
-      '建議清單與「全域模型計價」工作區一致（共 {total} 個邏輯模型）；若該模型在多個渠道宣告，選中後會彈出渠道選擇（仍按邏輯模型 ID 全域不計費）。可直接手動輸入任意 ID。',
+      '建議清單與「全域模型計價」工作區一致（共 {total} 個邏輯模型）；若該模型在多個渠道宣告，選中後會彈出渠道選擇。可直接手動輸入任意 ID。',
+    thChannel: '所屬渠道',
+    channelNone: '未在已啟用渠道宣告',
+    channelSelectPh: '請選擇渠道…',
+    channelMultiPending: '共 {n} 個渠道，請選擇',
     empty: '目前無列；請點「新增一列」。',
     warnDuplicate: '模型 ID「{id}」出現多列，儲存後仍會寫入陣列；建議刪除重複列以免混淆。',
   },

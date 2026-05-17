@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import ThLoadingSpinner from '../ui/ThLoadingSpinner.vue'
 
 defineProps<{
   message?: string
@@ -22,7 +23,7 @@ const { t } = useI18n()
       aria-live="polite"
     >
       <span v-if="loading" class="inline-flex items-center gap-2">
-        <span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-500 border-t-amber-400" aria-hidden="true" />
+        <ThLoadingSpinner size="sm" tone="muted" />
         {{ t('adminCommon.saving') }}
       </span>
       <span v-else>{{ message }}</span>

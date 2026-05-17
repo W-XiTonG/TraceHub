@@ -6,6 +6,9 @@ import { copyTextToClipboard } from '../utils/clipboard'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -31,6 +34,7 @@ type ExpiryPreset = 'never' | '1h' | '1d' | '30d' | 'custom'
 const items = ref<KeyRow[]>([])
 const err = ref('')
 const createdKey = ref('')
+const { busy: listLoading, visible: listLoadingUi, run: runListLoad } = useSmoothLoading()
 const loading = ref(false)
 
 const createOpen = ref(false)
@@ -95,18 +99,20 @@ const minDatetimeLocal = computed(() => {
 })
 
 async function load() {
-  const { data } = await http.get<Envelope<{ items: KeyRow[] }>>('/api/user/apikeys')
-  if (data.code === 0) {
-    items.value = data.data.items
-    const idSet = new Set(items.value.map((x) => x.id))
-    selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
-    fullKeyById.value = Object.fromEntries(
-      Object.entries(fullKeyById.value).filter(([id]) => idSet.has(Number(id))),
-    ) as Record<number, string>
-    showFullKeyForId.value = Object.fromEntries(
-      Object.entries(showFullKeyForId.value).filter(([id]) => idSet.has(Number(id))),
-    ) as Record<number, boolean>
-  }
+  await runListLoad(async () => {
+    const { data } = await http.get<Envelope<{ items: KeyRow[] }>>('/api/user/apikeys')
+    if (data.code === 0) {
+      items.value = data.data.items
+      const idSet = new Set(items.value.map((x) => x.id))
+      selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
+      fullKeyById.value = Object.fromEntries(
+        Object.entries(fullKeyById.value).filter(([id]) => idSet.has(Number(id))),
+      ) as Record<number, string>
+      showFullKeyForId.value = Object.fromEntries(
+        Object.entries(showFullKeyForId.value).filter(([id]) => idSet.has(Number(id))),
+      ) as Record<number, boolean>
+    }
+  })
 }
 
 async function fetchRevealFullKey(id: number): Promise<string> {
@@ -508,12 +514,19 @@ onMounted(() => {
     <p v-if="flash" class="mb-3 text-sm text-emerald-400">{{ flash }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
     <p class="mb-4 text-[11px] text-slate-600">{{ t('apiKeys.copyPrefixNote') }}</p>
+
+    <ThTableSkeleton v-if="listLoadingUi && items.length === 0" :rows="8" :columns="6" toolbar class="mb-4" />
+    <div v-if="listLoadingUi && items.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+
     <div v-if="createdKey" class="mb-6 rounded-xl border border-amber-600/50 bg-amber-950/40 p-4 text-sm">
       <p class="font-medium text-amber-400">{{ t('apiKeys.saveOnce') }}</p>
       <code class="th-dash-code-inline mt-2 block break-all px-2 py-1.5 text-xs">{{ createdKey }}</code>
     </div>
 
-    <div class="th-user-keys-table-wrap hidden overflow-x-auto lg:block">
+    <div class="th-user-keys-table-wrap relative hidden overflow-x-auto lg:block">
+      <ThLoadingState v-if="listLoadingUi && items.length > 0" variant="overlay" />
       <table class="w-full min-w-[56rem] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>

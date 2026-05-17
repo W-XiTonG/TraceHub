@@ -5,6 +5,9 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { copyTextToClipboard } from '../utils/clipboard'
 
 const { t } = useI18n()
@@ -23,6 +26,7 @@ type Row = {
 
 const rows = ref<Row[]>([])
 const total = ref(0)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const page = ref(1)
 const pageSize = 20
 const statusFilter = ref('')
@@ -57,16 +61,16 @@ function statusLabel(st: number): string {
 
 async function load() {
   err.value = ''
-  try {
+  await runLoad(async () => {
     const params: Record<string, string | number> = { page: page.value, page_size: pageSize }
     if (statusFilter.value !== '') params.status = statusFilter.value
     const { data } = await http.get<Envelope<{ items: Row[]; total: number }>>('/api/admin/redeem-codes', { params })
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     rows.value = data.data.items || []
     total.value = data.data.total ?? 0
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = httpErr(e)
-  }
+  })
 }
 
 async function revoke(id: number) {
@@ -258,7 +262,12 @@ onMounted(() => {
       <p v-if="err" class="mb-3 text-sm text-rose-400">{{ err }}</p>
       <p v-if="msg" class="mb-3 text-sm text-emerald-400/90">{{ msg }}</p>
       <p class="mb-3 text-xs text-slate-500">{{ t('adminRedeem.total', { n: total }) }}</p>
-      <div class="hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+      <ThTableSkeleton v-if="loadingUi && rows.length === 0" :rows="8" :columns="8" class="mb-4" />
+      <div v-if="loadingUi && rows.length === 0" class="py-8 lg:hidden">
+        <ThLoadingState />
+      </div>
+      <div class="relative hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+        <ThLoadingState v-if="loadingUi && rows.length > 0" variant="overlay" />
         <table class="min-w-full text-left text-sm">
           <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
             <tr>

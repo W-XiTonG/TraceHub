@@ -3,7 +3,10 @@ import axios from 'axios'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminActionBanner from '../components/admin/AdminActionBanner.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { adminHttpErrMessage, useAdminActionFeedback } from '../composables/useAdminActionFeedback'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { http, type Envelope } from '../api/http'
 
 const { t } = useI18n()
@@ -34,6 +37,7 @@ type Ch = {
 type G = { id: number; name: string }
 
 const channels = ref<Ch[]>([])
+const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 const groups = ref<G[]>([])
 const form = reactive({
   group_id: 0,
@@ -275,26 +279,28 @@ function clearModels() {
 }
 
 async function load() {
-  const [cRes, gRes] = await Promise.allSettled([
-    http.get<Envelope<{ items: Ch[] }>>('/api/admin/channels'),
-    http.get<Envelope<{ items: unknown[] }>>('/api/admin/groups'),
-  ])
+  await runPageLoad(async () => {
+    const [cRes, gRes] = await Promise.allSettled([
+      http.get<Envelope<{ items: Ch[] }>>('/api/admin/channels'),
+      http.get<Envelope<{ items: unknown[] }>>('/api/admin/groups'),
+    ])
 
-  if (cRes.status === 'fulfilled') {
-    const body = cRes.value.data
-    if (envelopeOk(body)) {
-      const items = pickListItems(body) as Ch[]
-      channels.value = Array.isArray(items) ? items : []
+    if (cRes.status === 'fulfilled') {
+      const body = cRes.value.data
+      if (envelopeOk(body)) {
+        const items = pickListItems(body) as Ch[]
+        channels.value = Array.isArray(items) ? items : []
+      }
     }
-  }
 
-  if (gRes.status === 'fulfilled') {
-    const body = gRes.value.data
-    if (envelopeOk(body)) {
-      groups.value = normalizeGroupRows(pickListItems(body))
-      syncGroupPickToForm()
+    if (gRes.status === 'fulfilled') {
+      const body = gRes.value.data
+      if (envelopeOk(body)) {
+        groups.value = normalizeGroupRows(pickListItems(body))
+        syncGroupPickToForm()
+      }
     }
-  }
+  })
 }
 
 async function createCh() {
@@ -686,8 +692,10 @@ async function probeChannelNow(ch: Ch) {
         </button>
       </div>
 
+      <ThTableSkeleton v-if="pageLoadingUi && channels.length === 0" :rows="4" :columns="3" class="mb-4" />
+
       <div
-        v-if="channels.length === 0"
+        v-else-if="channels.length === 0"
         class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 px-8 py-16 text-center"
       >
         <div class="mb-3 rounded-full bg-slate-800 p-3 ring-1 ring-slate-700">
@@ -699,7 +707,8 @@ async function probeChannelNow(ch: Ch) {
         <p class="mt-1 max-w-sm text-xs text-slate-600">{{ t('adminChannels.emptyDesc') }}</p>
       </div>
 
-      <div v-else class="grid gap-4 lg:grid-cols-2">
+      <div v-else class="relative grid gap-4 lg:grid-cols-2">
+        <ThLoadingState v-if="pageLoadingUi" variant="overlay" class="!rounded-2xl" />
         <article
           v-for="ch in channels"
           :key="ch.id"

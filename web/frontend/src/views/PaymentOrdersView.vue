@@ -2,6 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 
@@ -21,7 +24,7 @@ type Row = {
 const items = ref<Row[]>([])
 const total = ref(0)
 const page = ref(1)
-const loading = ref(false)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 
 function fmtYuan(c: number) {
   return (c / 100).toFixed(2)
@@ -37,8 +40,7 @@ function fmtTime(iso?: string) {
 }
 
 async function load() {
-  loading.value = true
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<{ items: Row[]; total: number }>>('/api/user/payment/orders', {
       params: { page: page.value, page_size: 20 },
     })
@@ -46,9 +48,7 @@ async function load() {
       items.value = data.data.items || []
       total.value = data.data.total || 0
     }
-  } finally {
-    loading.value = false
-  }
+  })
 }
 
 onMounted(() => void load())
@@ -58,9 +58,13 @@ onMounted(() => void load())
   <div class="max-w-4xl min-w-0">
     <h1 class="mb-2 text-xl font-bold sm:text-2xl">{{ t('paymentOrders.title') }}</h1>
     <p class="mb-6 text-sm text-slate-500">{{ t('paymentOrders.desc') }}</p>
-    <div v-if="loading" class="text-sm text-slate-500">{{ t('paymentOrders.loading') }}</div>
-    <template v-else>
-      <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
+    <ThTableSkeleton v-if="loadingUi && items.length === 0" :rows="6" :columns="6" />
+    <div v-if="loadingUi && items.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+    <template v-if="!loadingUi || items.length > 0">
+      <div class="relative hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
+        <ThLoadingState v-if="loadingUi" variant="overlay" />
         <table class="w-full text-left text-sm">
           <thead class="border-b border-slate-800 bg-slate-900/80 text-slate-400">
             <tr>

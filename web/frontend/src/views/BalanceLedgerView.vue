@@ -7,6 +7,9 @@ import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -24,6 +27,7 @@ type LedgerRow = {
 
 const items = ref<LedgerRow[]>([])
 const total = ref(0)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const page = ref(1)
 const pageSize = 20
 const err = ref('')
@@ -108,7 +112,7 @@ function fmtTime(iso: string) {
 
 async function load() {
   err.value = ''
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<{ items: LedgerRow[]; total: number }>>('/api/user/balance-ledger', {
       params: {
         page: page.value,
@@ -122,9 +126,9 @@ async function load() {
     if (data.code !== 0) throw new Error(data.message || t('ledgerPage.loadFail'))
     items.value = data.data.items
     total.value = data.data.total
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = apiErrorMessage(e, t('ledgerPage.loadFail'))
-  }
+  })
 }
 
 function applyFilters() {
@@ -223,7 +227,14 @@ onMounted(() => void load())
 
     <p v-if="err" class="mt-4 text-sm text-red-400">{{ err }}</p>
 
-    <div class="mt-6 hidden overflow-x-auto rounded-xl border border-white/[0.08] bg-slate-950/40 lg:block">
+    <ThTableSkeleton v-if="loadingUi && items.length === 0" :rows="8" :columns="5" class="mt-6" />
+
+    <div v-if="loadingUi && items.length === 0" class="mt-6 py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+
+    <div class="relative mt-6 hidden overflow-x-auto rounded-xl border border-white/[0.08] bg-slate-950/40 lg:block">
+      <ThLoadingState v-if="loadingUi && items.length > 0" variant="overlay" />
       <table class="w-full min-w-[52rem] border-collapse text-left text-sm">
         <thead>
           <tr class="border-b border-white/[0.08] text-xs uppercase tracking-wide text-slate-500">

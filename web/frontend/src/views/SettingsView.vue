@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { apiErrorMessage, useAuthStore } from '../stores/auth'
@@ -32,6 +34,7 @@ type Me = {
 
 const auth = useAuthStore()
 const me = ref<Me | null>(null)
+const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 const loadErr = ref('')
 const bindOk = ref('')
 const bindErr = ref('')
@@ -111,7 +114,7 @@ function syncAuthFromMe() {
 
 async function load() {
   loadErr.value = ''
-  try {
+  await runPageLoad(async () => {
     const { data } = await http.get<Envelope<Me>>('/api/user/me')
     if (data.code !== 0) throw new Error(data.message || t('settingsPage.loadFail'))
     me.value = data.data
@@ -121,9 +124,9 @@ async function load() {
     balanceAlertThreshold.value = String(Math.trunc(Number(data.data.balance_alert_threshold ?? 0)))
     applyCustomFromMe(data.data)
     syncAuthFromMe()
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     loadErr.value = apiErrorMessage(e, t('settingsPage.loadFail'))
-  }
+  })
 }
 
 async function saveBind() {
@@ -271,12 +274,15 @@ onMounted(load)
     </div>
     <p v-if="loadErr" class="text-sm text-red-400">{{ loadErr }}</p>
 
+    <ThLoadingState v-if="pageLoadingUi && !me" class="py-12" />
+
     <section v-if="me" class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
       <h2 class="mb-3 text-sm font-semibold text-slate-300">{{ t('settingsPage.secInfo') }}</h2>
       <p class="text-sm"><span class="text-slate-500">{{ t('settingsPage.email') }}</span> {{ me.email }}</p>
       <p class="mt-1 text-sm"><span class="text-slate-500">{{ t('settingsPage.group') }}</span> {{ me.group_name || t('settingsPage.dash') }}</p>
     </section>
 
+    <template v-if="me">
     <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
       <h2 class="mb-3 text-sm font-semibold text-slate-300">{{ t('settingsPage.secBind') }}</h2>
       <p class="mb-3 text-xs text-slate-500">{{ t('settingsPage.bindHint') }}</p>
@@ -428,5 +434,6 @@ onMounted(load)
       <p v-if="pwdErr" class="mt-2 text-sm text-red-400">{{ pwdErr }}</p>
       <p v-if="pwdOk" class="mt-2 text-sm text-emerald-400">{{ pwdOk }}</p>
     </section>
+    </template>
   </div>
 </template>

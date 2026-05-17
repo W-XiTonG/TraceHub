@@ -1029,9 +1029,14 @@ export default {
     bottomBarAria: '底部操作与分页',
   },
   adminNoBill: {
-    tableHint: '一行一条逻辑模型 ID；编辑会同步到下方表单字段，点击页面底部「保存」后写入 site.no_bill_models。',
+    tableHint:
+      '一行一条逻辑模型 ID；「所属渠道」为管理备注（保存时仍只写入模型 ID）。多渠道可在本列下拉选择；编辑后点击页面底部「保存」写入 site.no_bill_models。',
     modelSuggestHint:
-      '建议列表与「全局模型计价」工作区一致（共 {total} 个逻辑模型）；若该模型在多个渠道声明，选中后会弹出渠道选择（仍按逻辑模型 ID 全局不计费）。可直接手输任意 ID。',
+      '建议列表与「全局模型计价」工作区一致（共 {total} 个逻辑模型）；若该模型在多个渠道声明，选中后会弹出渠道选择。可直接手输任意 ID。',
+    thChannel: '所属渠道',
+    channelNone: '未在已启用渠道声明',
+    channelSelectPh: '请选择渠道…',
+    channelMultiPending: '共 {n} 个渠道，请选择',
     empty: '当前无条目，请点击「添加一行」。',
     warnDuplicate: '模型 ID「{id}」出现多行，保存后仍会写入数组；建议删除重复行以免混淆。',
   },

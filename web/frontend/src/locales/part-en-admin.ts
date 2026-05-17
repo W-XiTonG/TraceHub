@@ -1051,9 +1051,14 @@ export default {
     bottomBarAria: 'Save actions and pagination',
   },
   adminNoBill: {
-    tableHint: 'One logical model ID per row; edits sync to the form payload — click Save at the bottom of the page to persist site.no_bill_models.',
+    tableHint:
+      'One logical model ID per row. “Channel” is an admin note only (Save still writes model ids). Use the dropdown when a model is on multiple channels.',
     modelSuggestHint:
-      'Suggestions match the Global model pricing workspace ({total} logical models). If a model is declared on multiple channels, a channel picker appears after selection (still saved as a global no-bill id). You can type any id.',
+      'Suggestions match the Global model pricing workspace ({total} logical models). Multi-channel models open a channel picker after selection. You can type any id.',
+    thChannel: 'Channel',
+    channelNone: 'Not declared on enabled channels',
+    channelSelectPh: 'Select channel…',
+    channelMultiPending: '{n} channels — select one',
     empty: 'No rows yet; click “Add row”.',
     warnDuplicate: 'Model ID “{id}” appears more than once; it will still be saved as a JSON array — remove duplicates to avoid confusion.',
   },

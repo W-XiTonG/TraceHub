@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import axios from 'axios'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { http, type Envelope } from '../api/http'
@@ -124,7 +125,7 @@ const ops = ref<OpsPayload | null>(null)
 const opsErr = ref('')
 const chartDays = ref<1 | 7 | 30>(7)
 const chartMetric = ref<'requests' | 'tokens' | 'cost_yuan'>('requests')
-const busy = ref(true)
+const { busy, visible: busyUi, run: runPageLoad } = useSmoothLoading()
 const err = ref('')
 const autoRefresh = ref(false)
 const updatedAt = ref<number | null>(null)
@@ -189,7 +190,7 @@ async function load() {
   insightErr.value = ''
   snapshotErr.value = ''
   opsErr.value = ''
-  busy.value = true
+  await runPageLoad(async () => {
   try {
     const [sumR, insR, snapR, opsR] = await Promise.allSettled([
       http.get<Envelope<Summary>>('/api/admin/dashboard/summary'),
@@ -266,9 +267,8 @@ async function load() {
     } else {
       err.value = e instanceof Error ? e.message : t('adminCommon.requestFail')
     }
-  } finally {
-    busy.value = false
   }
+  })
 }
 
 watch(chartDays, () => {
@@ -568,7 +568,7 @@ function fmtLogTime(iso?: string) {
   }
 }
 
-const showSkeleton = computed(() => !s.value && busy.value)
+const showSkeleton = computed(() => !s.value && busyUi.value)
 </script>
 
 <template>

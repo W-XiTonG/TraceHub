@@ -8,6 +8,9 @@ import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -30,7 +33,7 @@ const ledgerTotal = ref(0)
 const ledgerPage = ref(1)
 const ledgerPageSize = 20
 const ledgerErr = ref('')
-const ledgerLoading = ref(false)
+const { busy: ledgerLoading, visible: ledgerLoadingUi, run: runLedgerLoad } = useSmoothLoading()
 
 const ledgerStartLocal = ref('')
 const ledgerEndLocal = ref('')
@@ -52,8 +55,7 @@ function fmtLedgerTime(iso: string | undefined | null) {
 
 async function loadLedger() {
   ledgerErr.value = ''
-  ledgerLoading.value = true
-  try {
+  await runLedgerLoad(async () => {
     const codeQ = ledgerCodeFilter.value.trim()
     const { data } = await http.get<Envelope<{ items: LedgerRow[]; total: number }>>('/api/user/redeem-ledger', {
       params: {
@@ -67,13 +69,11 @@ async function loadLedger() {
     if (data.code !== 0) throw new Error(data.message || t('redeemPage.fail'))
     ledgerRows.value = data.data?.items ?? []
     ledgerTotal.value = data.data?.total ?? 0
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     ledgerErr.value = apiErrorMessage(e, t('redeemPage.fail'))
     ledgerRows.value = []
     ledgerTotal.value = 0
-  } finally {
-    ledgerLoading.value = false
-  }
+  })
 }
 
 function ledgerPrev() {
@@ -221,9 +221,14 @@ onMounted(() => {
       </div>
       <p class="mb-2 text-[11px] leading-relaxed text-slate-500">{{ t('redeemPage.ledgerFilterTimeHint') }}</p>
       <p v-if="ledgerErr" class="mb-2 text-sm text-rose-400">{{ ledgerErr }}</p>
+      <ThTableSkeleton v-if="ledgerLoadingUi && ledgerRows.length === 0" :rows="6" :columns="5" class="mb-4" />
+      <div v-if="ledgerLoadingUi && ledgerRows.length === 0" class="py-8 lg:hidden">
+        <ThLoadingState />
+      </div>
       <p v-else-if="!ledgerLoading && ledgerRows.length === 0" class="text-sm text-slate-500">{{ t('redeemPage.ledgerEmpty') }}</p>
-      <template v-else>
-        <div class="hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+      <template v-else-if="ledgerRows.length > 0 || ledgerLoading">
+        <div class="relative hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+          <ThLoadingState v-if="ledgerLoadingUi" variant="overlay" />
           <table class="min-w-full text-left text-sm">
             <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
               <tr>

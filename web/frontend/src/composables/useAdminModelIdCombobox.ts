@@ -10,9 +10,10 @@ import {
   resolveComboboxAnchor,
   type ComboboxAnchorVariant,
 } from '../utils/comboboxAnchor'
+import { useSmoothLoading } from './useSmoothLoading'
 
-/** 行上至少含 model_name，供模型 ID 建议与下拉面板使用 */
-export type ModelNameRow = { model_name: string }
+/** 行上至少含 model_name，供模型 ID 建议与下拉面板使用；channel_id 为管理端备注（可选） */
+export type ModelNameRow = { model_name: string; channel_id?: number }
 
 export type AdminModelIdComboboxOptions = {
   /** 工作区范围：'global' 与全局计价一致；正整数为单渠道计价工作区 */
@@ -34,7 +35,11 @@ export function useAdminModelIdCombobox(
 ) {
   const modelSuggestIds = ref<string[]>([])
   const modelSuggestTotal = ref(0)
-  const modelSuggestLoading = ref(false)
+  const {
+    busy: modelSuggestLoading,
+    visible: modelSuggestLoadingUi,
+    run: runModelSuggestLoad,
+  } = useSmoothLoading({ showDelay: 280, minVisible: 300 })
   const modelChannelMap = ref<Map<string, AdminModelChannelRef[]>>(new Map())
   const openModelSuggestRow = ref<number | null>(null)
   const comboboxAnchorEls = new Map<string, HTMLElement>()
@@ -214,9 +219,42 @@ export function useAdminModelIdCombobox(
     detachSuggestScrollReposition()
   })
 
-  function applyModelPick(rowIdx: number, id: string) {
+  function setRowChannelId(row: ModelNameRow | undefined, channelId: number | undefined) {
+    if (!row) return
+    row.channel_id = channelId
+  }
+
+  function resolveRowChannel(row: ModelNameRow) {
+    const m = row.model_name.trim()
+    if (!m) {
+      row.channel_id = undefined
+      return
+    }
+    const chs = channelsForModel(m)
+    if (chs.length === 1) {
+      row.channel_id = chs[0].id
+      return
+    }
+    if (row.channel_id != null && !chs.some((c) => c.id === row.channel_id)) {
+      row.channel_id = undefined
+    }
+  }
+
+  function resolveAllRowChannels() {
+    for (const row of rowsRef.value) {
+      resolveRowChannel(row)
+    }
+  }
+
+  function applyModelPick(rowIdx: number, id: string, channelId?: number) {
     const row = rowsRef.value[rowIdx]
-    if (row) row.model_name = id
+    if (!row) return
+    row.model_name = id
+    if (channelId != null && channelId > 0) {
+      setRowChannelId(row, channelId)
+    } else {
+      resolveRowChannel(row)
+    }
     openModelSuggestRow.value = null
   }
 
@@ -242,7 +280,7 @@ export function useAdminModelIdCombobox(
     const modelId = channelPickModelId.value.trim()
     const chId = channelPickSelectedId.value
     if (rowIdx === null || !modelId || typeof chId !== 'number' || chId <= 0) return
-    applyModelPick(rowIdx, modelId)
+    applyModelPick(rowIdx, modelId, chId)
     cancelChannelPick()
   }
 
@@ -253,6 +291,10 @@ export function useAdminModelIdCombobox(
       const channels = channelsForModel(trimmed)
       if (channels.length > 1) {
         openChannelPick(rowIdx, trimmed, channels)
+        return
+      }
+      if (channels.length === 1) {
+        applyModelPick(rowIdx, trimmed, channels[0].id)
         return
       }
     }
@@ -302,8 +344,7 @@ export function useAdminModelIdCombobox(
   }
 
   async function loadModelSuggestions() {
-    modelSuggestLoading.value = true
-    try {
+    await runModelSuggestLoad(async () => {
       const set = new Set<string>()
       for (const r of rowsRef.value) {
         const m = r.model_name.trim()
@@ -324,9 +365,10 @@ export function useAdminModelIdCombobox(
       const ids = Array.from(set).sort((a, b) => a.localeCompare(b))
       modelSuggestIds.value = ids
       modelSuggestTotal.value = ids.length
-    } finally {
-      modelSuggestLoading.value = false
-    }
+      if (options.enableChannelPick) {
+        resolveAllRowChannels()
+      }
+    })
   }
 
   if (options.workspaceScope) {
@@ -339,12 +381,16 @@ export function useAdminModelIdCombobox(
     modelSuggestIds,
     modelSuggestTotal,
     modelSuggestLoading,
+    modelSuggestLoadingUi,
     openModelSuggestRow,
     modelSuggestPanelStyle,
     setComboboxRef,
     filteredOpenModelSuggestIds,
     suggestListTruncated,
     channelCountForModel,
+    channelsForModel,
+    resolveRowChannel,
+    resolveAllRowChannels,
     scheduleSuggestLayout,
     toggleModelSuggestRow,
     focusModelSuggestRow,

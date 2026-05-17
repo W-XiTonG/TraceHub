@@ -210,6 +210,7 @@ export default {
   modelsPage: {
     kicker: 'Models',
     title: 'Available models',
+    loading: 'Loading models…',
     descBefore: 'The list merges two sources: ',
     gw: 'Gateway',
     mid: ' (models from healthy enabled channels in your group, same as ',

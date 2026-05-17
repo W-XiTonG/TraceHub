@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { useRouter, RouterLink } from 'vue-router'
 import axios from 'axios'
@@ -28,7 +30,11 @@ const captchaMeta = ref<LoginCaptchaResponse | null>(null)
 const sendCaptchaModalOpen = ref(false)
 const modalCaptchaMeta = ref<LoginCaptchaResponse | null>(null)
 const modalCaptchaAnswer = ref('')
-const modalCaptchaLoading = ref(false)
+const {
+  busy: modalCaptchaLoading,
+  visible: modalCaptchaLoadingUi,
+  run: runModalCaptchaLoad,
+} = useSmoothLoading({ showDelay: 200, minVisible: 250 })
 const modalErr = ref('')
 
 const router = useRouter()
@@ -77,16 +83,13 @@ function startCooldown(sec: number) {
 }
 
 async function loadModalCaptcha() {
-  modalCaptchaLoading.value = true
-  try {
+  await runModalCaptchaLoad(async () => {
     modalCaptchaMeta.value = await auth.fetchLoginCaptcha()
     modalCaptchaAnswer.value = ''
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     modalCaptchaMeta.value = null
     modalErr.value = e instanceof Error ? e.message : t('login.captchaLoadFail')
-  } finally {
-    modalCaptchaLoading.value = false
-  }
+  })
 }
 
 async function refreshModalCaptcha() {
@@ -331,7 +334,7 @@ async function submit() {
           <p v-if="modalErr" class="mb-3 rounded-lg border border-red-500/20 bg-red-950/35 px-3 py-2 text-xs text-red-300">
             {{ modalErr }}
           </p>
-          <div v-if="modalCaptchaLoading" class="mb-4 py-6 text-center text-xs text-slate-500">{{ t('common.loading') }}</div>
+          <ThLoadingState v-if="modalCaptchaLoadingUi" class="mb-4 py-6" size="sm" />
           <template v-else-if="modalCaptchaMeta?.enabled">
             <div class="mb-4 flex justify-center">
               <button

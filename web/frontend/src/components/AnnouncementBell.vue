@@ -2,6 +2,8 @@
 import axios from 'axios'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ThLoadingState from './ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { http, type Envelope } from '../api/http'
@@ -29,7 +31,7 @@ const LS_PREFIX = 'tracehub_announcement_seen_id:'
 
 const rootRef = ref<HTMLElement | null>(null)
 const open = ref(false)
-const loading = ref(false)
+const { busy: loading, visible: loadingUi, run: runRefresh } = useSmoothLoading()
 const err = ref('')
 const latest = ref<Ann | null>(null)
 const list = ref<Ann[]>([])
@@ -115,9 +117,8 @@ function syncCompact() {
 
 async function refresh() {
   if (!auth.isLoggedIn) return
-  loading.value = true
   err.value = ''
-  try {
+  await runRefresh(async () => {
     const { data } = await http.get<Envelope<{ announcement: Ann | null }>>('/api/user/announcements/latest')
     if (data.code !== 0) throw new Error(data.message || t('announcement.loadFail'))
     latest.value = data.data.announcement
@@ -129,12 +130,10 @@ async function refresh() {
     if (open.value && latest.value) {
       writeSeenId(latest.value.id)
     }
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     if (axios.isAxiosError(e) && e.response?.status === 401) return
     err.value = e instanceof Error ? e.message : t('announcement.loadFail')
-  } finally {
-    loading.value = false
-  }
+  })
 }
 
 function toggle() {
@@ -235,7 +234,7 @@ watch(open, (isOpen) => {
         </button>
       </div>
       <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
-        <p v-if="loading" class="text-xs text-slate-500">{{ t('common.loading') }}</p>
+        <ThLoadingState v-if="loadingUi" variant="inline" size="sm" />
         <p v-else-if="err" class="text-xs text-rose-300/90">{{ err }}</p>
         <template v-else-if="displayAnn">
           <p class="text-xs text-slate-500">{{ fmtTime(displayAnn.published_at) }}</p>
@@ -289,7 +288,7 @@ watch(open, (isOpen) => {
             </button>
           </div>
           <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
-            <p v-if="loading" class="text-xs text-slate-500">{{ t('common.loading') }}</p>
+            <ThLoadingState v-if="loadingUi" variant="inline" size="sm" />
             <p v-else-if="err" class="text-xs text-rose-300/90">{{ err }}</p>
             <template v-else-if="displayAnn">
               <p class="text-xs text-slate-500">{{ fmtTime(displayAnn.published_at) }}</p>

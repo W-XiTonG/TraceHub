@@ -5,12 +5,13 @@ import { useRoute } from 'vue-router'
 import AdminModelChannelPickModal from '../components/admin/AdminModelChannelPickModal.vue'
 import { useAdminModelIdCombobox } from '../composables/useAdminModelIdCombobox'
 import { adminSiteSettingsKey } from '../composables/useAdminSiteSettings'
+import { channelRefLabel, type AdminModelChannelRef } from '../utils/adminModelChannelMap'
 
 const { t } = useI18n()
 const route = useRoute()
 const s = inject(adminSiteSettingsKey)!
 
-type DraftRow = { model_name: string }
+type DraftRow = { model_name: string; channel_id?: number }
 
 const draftRows = ref<DraftRow[]>([])
 const noBillWorkspaceScope = ref<'global' | number>('global')
@@ -44,7 +45,7 @@ function rowsFromText(text: string): DraftRow[] {
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean)
-    .map((model_name) => ({ model_name }))
+    .map((model_name) => ({ model_name, channel_id: undefined }))
 }
 
 function textFromRows(rows: DraftRow[]): string {
@@ -107,6 +108,7 @@ watch(
 
 const {
   modelSuggestLoading,
+  modelSuggestLoadingUi,
   modelSuggestTotal,
   openModelSuggestRow,
   modelSuggestPanelStyle,
@@ -114,6 +116,8 @@ const {
   filteredOpenModelSuggestIds,
   suggestListTruncated,
   channelCountForModel,
+  channelsForModel,
+  resolveRowChannel,
   scheduleSuggestLayout,
   toggleModelSuggestRow,
   focusModelSuggestRow,
@@ -130,9 +134,40 @@ const {
   enableChannelPick: true,
 })
 
+function rowChannels(r: DraftRow): AdminModelChannelRef[] {
+  return channelsForModel(r.model_name.trim())
+}
+
+function rowChannelLabel(r: DraftRow): string {
+  const m = r.model_name.trim()
+  if (!m) return ''
+  const chs = rowChannels(r)
+  if (chs.length === 0) return t('adminNoBill.channelNone')
+  if (r.channel_id != null) {
+    const picked = chs.find((c) => c.id === r.channel_id)
+    if (picked) return channelRefLabel(picked)
+  }
+  if (chs.length === 1) return channelRefLabel(chs[0])
+  return t('adminNoBill.channelMultiPending', { n: chs.length })
+}
+
+function onModelIdInput(idx: number) {
+  const r = draftRows.value[idx]
+  if (!r) return
+  resolveRowChannel(r)
+  scheduleSuggestLayout()
+}
+
+function onRowChannelSelect(idx: number, raw: string) {
+  const r = draftRows.value[idx]
+  if (!r) return
+  const n = Number(raw)
+  r.channel_id = Number.isFinite(n) && n > 0 ? Math.trunc(n) : undefined
+}
+
 function addRow() {
   clearFlash()
-  draftRows.value.push({ model_name: '' })
+  draftRows.value.push({ model_name: '', channel_id: undefined })
 }
 
 function removeRow(idx: number) {
@@ -170,7 +205,7 @@ watch(
       <div class="border-t border-slate-800/80 bg-slate-950/40 px-5 py-4">
         <p class="mb-1 text-xs text-slate-500">{{ t('adminNoBill.tableHint') }}</p>
         <p class="mb-3 text-[11px] leading-relaxed text-slate-500">
-          <span v-if="modelSuggestLoading">{{ t('adminGroups.modelSuggestLoading') }}</span>
+          <span v-if="modelSuggestLoadingUi">{{ t('adminGroups.modelSuggestLoading') }}</span>
           <span v-else>{{ t('adminNoBill.modelSuggestHint', { total: modelSuggestTotal }) }}</span>
         </p>
 
@@ -179,6 +214,7 @@ watch(
             <thead class="bg-slate-900 text-slate-500">
               <tr>
                 <th class="align-middle px-3 py-2">{{ t('adminGroups.thModelId') }}</th>
+                <th class="align-middle px-3 py-2">{{ t('adminNoBill.thChannel') }}</th>
                 <th class="align-middle px-3 py-2 text-right">{{ t('adminCommon.delete') }}</th>
               </tr>
             </thead>
@@ -197,7 +233,7 @@ watch(
                         spellcheck="false"
                         :placeholder="t('adminGroups.modelIdPh')"
                         @focus="focusModelSuggestRow(idx)"
-                        @input="scheduleSuggestLayout"
+                        @input="onModelIdInput(idx)"
                       />
                       <button
                         type="button"
@@ -218,6 +254,28 @@ watch(
                     </div>
                   </div>
                 </td>
+                <td class="align-middle px-2 py-2 min-w-[10rem] max-w-[18rem]">
+                  <template v-if="!r.model_name.trim()">
+                    <span class="text-slate-600">{{ t('adminCommon.dash') }}</span>
+                  </template>
+                  <select
+                    v-else-if="rowChannels(r).length > 1"
+                    class="th-select th-select--table-cell w-full max-w-full"
+                    :value="r.channel_id ?? ''"
+                    @change="onRowChannelSelect(idx, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="">{{ t('adminNoBill.channelSelectPh') }}</option>
+                    <option v-for="ch in rowChannels(r)" :key="ch.id" :value="ch.id">
+                      {{ channelRefLabel(ch) }}{{ ch.healthy ? '' : ` (${t('adminModelChannelPick.unhealthy')})` }}
+                    </option>
+                  </select>
+                  <span
+                    v-else
+                    class="th-no-bill-channel-label block truncate text-xs leading-9 text-slate-400"
+                    :class="rowChannels(r).length === 0 ? 'text-slate-600' : ''"
+                    :title="rowChannelLabel(r)"
+                  >{{ rowChannelLabel(r) }}</span>
+                </td>
                 <td class="align-middle px-2 py-2 text-right">
                   <button
                     type="button"
@@ -229,7 +287,7 @@ watch(
                 </td>
               </tr>
               <tr v-if="!draftRows.length">
-                <td colspan="2" class="px-3 py-8 text-center text-slate-500">{{ t('adminNoBill.empty') }}</td>
+                <td colspan="3" class="px-3 py-8 text-center text-slate-500">{{ t('adminNoBill.empty') }}</td>
               </tr>
             </tbody>
           </table>
@@ -254,7 +312,7 @@ watch(
                   spellcheck="false"
                   :placeholder="t('adminGroups.modelIdPh')"
                   @focus="focusModelSuggestRow(idx)"
-                  @input="scheduleSuggestLayout"
+                  @input="onModelIdInput(idx)"
                 />
                 <button
                   type="button"
@@ -274,6 +332,24 @@ watch(
                 </button>
               </div>
             </div>
+            <p class="mb-1 mt-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ t('adminNoBill.thChannel') }}</p>
+            <template v-if="!r.model_name.trim()">
+              <p class="text-sm text-slate-600">{{ t('adminCommon.dash') }}</p>
+            </template>
+            <select
+              v-else-if="rowChannels(r).length > 1"
+              class="th-select th-select--table-cell w-full"
+              :value="r.channel_id ?? ''"
+              @change="onRowChannelSelect(idx, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">{{ t('adminNoBill.channelSelectPh') }}</option>
+              <option v-for="ch in rowChannels(r)" :key="ch.id" :value="ch.id">
+                {{ channelRefLabel(ch) }}{{ ch.healthy ? '' : ` (${t('adminModelChannelPick.unhealthy')})` }}
+              </option>
+            </select>
+            <p v-else class="th-no-bill-channel-label truncate text-xs leading-9 text-slate-400" :title="rowChannelLabel(r)">
+              {{ rowChannelLabel(r) }}
+            </p>
             <button
               type="button"
               class="th-link-danger-plain mt-3 rounded-lg px-2 py-1 text-xs hover:bg-red-500/10"

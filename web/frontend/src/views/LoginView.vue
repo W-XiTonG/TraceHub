@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import axios from 'axios'
@@ -26,14 +28,21 @@ let cdTimer: ReturnType<typeof setInterval> | null = null
 /** 密码登录表单内图形验证码 */
 const captchaMeta = ref<LoginCaptchaResponse | null>(null)
 const captchaAnswer = ref('')
-const captchaLoading = ref(false)
+const { busy: captchaLoading, visible: captchaLoadingUi, run: runCaptchaLoad } = useSmoothLoading({
+  showDelay: 200,
+  minVisible: 250,
+})
 const captchaErr = ref('')
 
 /** 邮箱验证码「发送」前弹窗内图形验证码 */
 const sendCaptchaModalOpen = ref(false)
 const modalCaptchaMeta = ref<LoginCaptchaResponse | null>(null)
 const modalCaptchaAnswer = ref('')
-const modalCaptchaLoading = ref(false)
+const {
+  busy: modalCaptchaLoading,
+  visible: modalCaptchaLoadingUi,
+  run: runModalCaptchaLoad,
+} = useSmoothLoading({ showDelay: 200, minVisible: 250 })
 const modalErr = ref('')
 
 const router = useRouter()
@@ -49,16 +58,13 @@ const showFormCaptcha = computed(
 
 async function loadCaptcha() {
   captchaErr.value = ''
-  captchaLoading.value = true
-  try {
+  await runCaptchaLoad(async () => {
     captchaMeta.value = await auth.fetchLoginCaptcha()
     captchaAnswer.value = ''
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     captchaMeta.value = null
     captchaErr.value = e instanceof Error ? e.message : t('login.captchaLoadFail')
-  } finally {
-    captchaLoading.value = false
-  }
+  })
 }
 
 function captchaPayload():
@@ -72,16 +78,13 @@ function captchaPayload():
 }
 
 async function loadModalCaptcha() {
-  modalCaptchaLoading.value = true
-  try {
+  await runModalCaptchaLoad(async () => {
     modalCaptchaMeta.value = await auth.fetchLoginCaptcha()
     modalCaptchaAnswer.value = ''
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     modalCaptchaMeta.value = null
     modalErr.value = e instanceof Error ? e.message : t('login.captchaLoadFail')
-  } finally {
-    modalCaptchaLoading.value = false
-  }
+  })
 }
 
 /** 用户主动换图时清空错误提示 */
@@ -358,7 +361,7 @@ async function submit() {
             class="th-login-captcha-panel px-4 py-3.5 sm:px-4 sm:py-4"
           >
             <p v-if="captchaErr" class="text-center text-xs leading-relaxed text-amber-300/95">{{ captchaErr }}</p>
-            <div v-else-if="captchaLoading" class="py-3 text-center text-xs text-slate-500">{{ t('common.loading') }}</div>
+            <ThLoadingState v-else-if="captchaLoadingUi" variant="inline" size="sm" class="py-3" />
             <template v-else-if="captchaRequired && captchaMeta?.enabled">
               <p class="mb-3 text-center text-[10px] leading-relaxed text-slate-500 sm:text-left sm:text-[11px]">
                 {{ t('login.captchaHint') }}
@@ -441,7 +444,7 @@ async function submit() {
           <p v-if="modalErr" class="mb-3 rounded-lg border border-red-500/20 bg-red-950/35 px-3 py-2 text-xs text-red-300">
             {{ modalErr }}
           </p>
-          <div v-if="modalCaptchaLoading" class="mb-4 py-6 text-center text-xs text-slate-500">{{ t('common.loading') }}</div>
+          <ThLoadingState v-if="modalCaptchaLoadingUi" class="mb-4 py-6" size="sm" />
           <template v-else-if="modalCaptchaMeta?.enabled">
             <div class="mb-4 flex justify-center">
               <button

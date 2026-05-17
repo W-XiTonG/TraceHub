@@ -7,6 +7,9 @@ import ThPgStyleCombo from '../components/ThPgStyleCombo.vue'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -26,6 +29,7 @@ type RedeemCodeMatchMode = 'exact' | 'prefix' | 'contains'
 
 const rows = ref<Row[]>([])
 const total = ref(0)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const page = ref(1)
 const pageSize = 50
 const userIdFilter = ref('')
@@ -54,7 +58,7 @@ function httpErr(e: unknown): string {
 async function load() {
   err.value = ''
   msg.value = ''
-  try {
+  await runLoad(async () => {
     const params: Record<string, string | number> = { page: page.value, page_size: pageSize }
     const uid = userIdFilter.value.trim()
     if (uid !== '') params.user_id = uid
@@ -69,9 +73,9 @@ async function load() {
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     rows.value = data.data.items || []
     total.value = data.data.total ?? 0
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = httpErr(e)
-  }
+  })
 }
 
 function applyFilter() {
@@ -189,7 +193,12 @@ onMounted(() => {
     <p v-if="err" class="text-sm text-rose-400">{{ err }}</p>
     <p class="text-xs text-slate-500">{{ t('adminRedeemLedger.total', { n: total }) }}</p>
 
-    <div class="th-table-wrap hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+    <ThTableSkeleton v-if="loadingUi && rows.length === 0" :rows="8" :columns="6" toolbar class="mb-4" />
+    <div v-if="loadingUi && rows.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+    <div class="th-table-wrap relative hidden overflow-x-auto rounded-lg border border-slate-800/80 lg:block">
+      <ThLoadingState v-if="loadingUi && rows.length > 0" variant="overlay" />
       <table class="min-w-full text-left text-sm">
         <thead class="border-b border-slate-800 bg-slate-950/80 text-xs uppercase text-slate-500">
           <tr>

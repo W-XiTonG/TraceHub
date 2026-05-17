@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import AdminActionBanner from '../components/admin/AdminActionBanner.vue'
 import { useAdminActionFeedback } from '../composables/useAdminActionFeedback'
 import { http, type Envelope } from '../api/http'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 const { flashMsg, flashIsError, busy, runAction, flashScrollId } = useAdminActionFeedback()
@@ -20,11 +22,14 @@ type Pkg = {
 }
 
 const items = ref<Pkg[]>([])
+const { busy: listLoading, visible: listLoadingUi, run: runListLoad } = useSmoothLoading()
 const form = ref({ name: '', amount_cents: 1000, quota_amount: 100000, bonus_quota: 0, currency: 'CNY', enabled: true, sort: 0 })
 
 async function load() {
-  const { data } = await http.get<Envelope<{ items: Pkg[] }>>('/api/admin/payment/packages')
-  if (data.code === 0 && data.data) items.value = data.data.items || []
+  await runListLoad(async () => {
+    const { data } = await http.get<Envelope<{ items: Pkg[] }>>('/api/admin/payment/packages')
+    if (data.code === 0 && data.data) items.value = data.data.items || []
+  })
 }
 
 async function create() {
@@ -79,7 +84,8 @@ onMounted(() => void load())
         {{ busy ? t('adminCommon.saving') : t('adminPayment.addPkg') }}
       </button>
     </div>
-    <ul class="space-y-2">
+    <ThLoadingState v-if="listLoadingUi && !items.length" class="py-8" />
+    <ul v-else class="space-y-2">
       <li v-for="p in items" :key="p.id" class="flex items-center justify-between rounded-lg border border-slate-800 px-4 py-3 text-sm">
         <span>{{ p.name }} · ¥{{ (p.amount_cents / 100).toFixed(2) }} → {{ p.quota_amount }}</span>
         <button type="button" class="text-red-400 text-xs disabled:opacity-40" :disabled="busy" @click="remove(p.id)">{{ t('adminPayment.delete') }}</button>

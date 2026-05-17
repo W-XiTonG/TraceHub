@@ -4,6 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -28,16 +31,17 @@ type RateRow = {
 const group = ref<GroupInfo | null>(null)
 const rates = ref<RateRow[]>([])
 const err = ref('')
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 
 onMounted(async () => {
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<{ group: GroupInfo | null; model_rates: RateRow[] }>>('/api/user/group')
     if (data.code !== 0) throw new Error(data.message || t('modelsPage.loadFail'))
     group.value = data.data.group
     rates.value = data.data.model_rates || []
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = e instanceof Error ? e.message : t('modelsPage.loadFail')
-  }
+  })
 })
 </script>
 
@@ -47,7 +51,9 @@ onMounted(async () => {
     <p class="mb-6 text-sm text-slate-500">{{ t('groupPage.desc') }}</p>
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
 
-    <div v-if="group" class="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6">
+    <ThLoadingState v-if="loadingUi" class="py-12" />
+
+    <div v-else-if="group" class="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6">
       <h2 class="text-lg font-semibold text-cyan-400">{{ group.name }}</h2>
       <p v-if="group.description" class="mt-2 text-sm text-slate-400">{{ group.description }}</p>
       <dl class="mt-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -59,6 +65,7 @@ onMounted(async () => {
     </div>
     <div v-else-if="!err" class="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-slate-500">{{ t('groupPage.noGroup') }}</div>
 
+    <template v-if="!loadingUi">
     <h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">{{ t('groupPage.ratesTitle') }}</h3>
     <div class="hidden overflow-x-auto rounded-xl border border-slate-800 lg:block">
       <table class="w-full text-left text-sm">
@@ -92,5 +99,6 @@ onMounted(async () => {
       </MobileLabelValueCard>
       <p v-if="!rates.length" class="py-6 text-center text-sm text-slate-500">{{ t('groupPage.noRates') }}</p>
     </div>
+    </template>
   </div>
 </template>

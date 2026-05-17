@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
 import { http, type Envelope } from '../api/http'
@@ -7,6 +8,7 @@ import { copyTextToClipboard } from '../utils/clipboard'
 import { useAuthStore } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t, tm } = useI18n()
 const route = useRoute()
@@ -44,6 +46,7 @@ const period = ref<'today' | '7d' | '30d' | 'all'>('7d')
 const usage = ref<UsagePayload | null>(null)
 const err = ref('')
 const exportBusy = ref(false)
+const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 const auth = useAuthStore()
 const siteMeta = useSiteMetaStore()
 const announcements = ref<AnnouncementItem[]>([])
@@ -460,11 +463,11 @@ async function probeReady() {
 
 async function loadAll() {
   err.value = ''
-  try {
+  await runPageLoad(async () => {
     await Promise.all([loadBalance(), loadUsage(), loadAnnouncements(), loadReady()])
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = e instanceof Error ? e.message : t('common.loadFailed')
-  }
+  })
 }
 
 async function downloadExport(fmt: 'csv' | 'json') {
@@ -538,6 +541,9 @@ onUnmounted(() => {
     </div>
     <p v-if="err" class="mt-4 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2 text-sm text-red-300">{{ err }}</p>
 
+    <ThLoadingState v-if="pageLoadingUi" class="mt-10 py-16" />
+
+    <template v-else>
     <!-- 摘要指标卡 -->
     <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div class="th-glass relative overflow-hidden rounded-[var(--th-radius-lg)] p-5">
@@ -942,6 +948,7 @@ onUnmounted(() => {
         <RouterLink to="/" class="text-slate-500 no-underline transition hover:text-cyan-300/90">{{ t('nav.siteHome') }}</RouterLink>
       </nav>
     </footer>
+    </template>
 
     <Teleport to="body">
       <div

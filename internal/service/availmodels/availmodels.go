@@ -23,20 +23,6 @@ type Item struct {
 	OwnedBy string `json:"owned_by"`
 }
 
-func inferOwnedBy(id string) string {
-	owner := "tracehub"
-	if strings.HasPrefix(id, "gpt") || strings.Contains(id, "gpt") {
-		owner = "openai"
-	} else if strings.HasPrefix(id, "claude") {
-		owner = "anthropic"
-	} else if strings.HasPrefix(id, "gemini") {
-		owner = "google"
-	} else if strings.HasPrefix(id, "deepseek") {
-		owner = "deepseek"
-	}
-	return owner
-}
-
 // collectChannelModelKeys 从已筛选的渠道列表中汇总「声明的模型/别名」及其中健康渠道（health_status==1）覆盖的子集。
 func collectChannelModelKeys(channels []*ent.Channel) (all map[string]struct{}, healthy map[string]struct{}) {
 	all = make(map[string]struct{})

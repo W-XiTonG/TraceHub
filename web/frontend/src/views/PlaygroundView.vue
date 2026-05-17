@@ -2,6 +2,8 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import ThLoadingSpinner from '../components/ui/ThLoadingSpinner.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import * as pgw from '../api/playgroundGateway'
@@ -43,7 +45,7 @@ const stickySession = ref('')
 const models = ref<PlaygroundModelRow[]>([])
 const model = ref('')
 const modelsErr = ref('')
-const modelsLoading = ref(false)
+const { busy: modelsLoading, visible: modelsLoadingUi, run: runModelsLoad } = useSmoothLoading()
 /** 已成功拉取控制台「可用模型」元数据并与列表合并（含空表），用于展示登记说明 */
 const playgroundRegistryMerged = ref(false)
 /** 控制台返回过元数据的模型 id；仅对这些行展示登记角标 */
@@ -616,8 +618,7 @@ async function refreshModels() {
     return
   }
   modelsErr.value = ''
-  modelsLoading.value = true
-  try {
+  await runModelsLoad(async () => {
     const [rows, reg] = await Promise.all([
       pgw.fetchPlaygroundModels(k, stickySession.value),
       pgw.fetchPlaygroundRegistryMap(),
@@ -628,11 +629,9 @@ async function refreshModels() {
     const ids = models.value.map((r) => r.id)
     if (!model.value && ids.length) model.value = ids[0]
     if (model.value && !ids.includes(model.value) && ids.length) model.value = ids[0]
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     modelsErr.value = e instanceof Error ? e.message : t('playground.modelsFail')
-  } finally {
-    modelsLoading.value = false
-  }
+  })
 }
 
 async function pasteKey() {
@@ -1838,7 +1837,10 @@ function fmtNum(n: number) {
             :disabled="modelsLoading"
             @click="refreshModels"
           >
-            {{ modelsLoading ? t('common.loading') : t('playground.refreshModels') }}
+            <span class="inline-flex items-center gap-2">
+              <ThLoadingSpinner v-if="modelsLoadingUi" size="sm" />
+              {{ modelsLoadingUi ? t('common.loading') : t('playground.refreshModels') }}
+            </span>
           </button>
           <label v-if="playMode === 'chat'" class="flex cursor-pointer items-center gap-2 text-xs th-pg-muted">
             <input v-model="useStream" type="checkbox" class="h-3.5 w-3.5 rounded border-slate-600 text-cyan-500" />

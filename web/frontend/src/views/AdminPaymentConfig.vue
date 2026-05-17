@@ -4,17 +4,22 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 const siteMeta = useSiteMetaStore()
 
 const cfg = ref<Record<string, unknown>>({})
+const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 const saving = ref(false)
 const msg = ref('')
 
 async function load() {
-  const { data } = await http.get<Envelope<Record<string, unknown>>>('/api/admin/payment/config')
-  if (data.code === 0 && data.data) cfg.value = { ...data.data }
+  await runPageLoad(async () => {
+    const { data } = await http.get<Envelope<Record<string, unknown>>>('/api/admin/payment/config')
+    if (data.code === 0 && data.data) cfg.value = { ...data.data }
+  })
 }
 
 async function save() {
@@ -43,6 +48,9 @@ onMounted(() => void load())
   <div class="max-w-2xl space-y-6">
     <h1 class="text-2xl font-bold">{{ t('adminPayment.configTitle') }}</h1>
     <p class="text-sm text-slate-500">{{ t('adminPayment.configHint') }}</p>
+    <ThLoadingState v-if="pageLoadingUi" class="py-10" />
+
+    <template v-else>
     <div class="space-y-2 rounded-xl border border-amber-500/30 bg-amber-950/20 p-6">
       <label class="flex items-center gap-3 text-sm font-medium text-amber-100">
         <input v-model="cfg.online_enabled" type="checkbox" class="rounded" />
@@ -82,5 +90,6 @@ onMounted(() => void load())
       </button>
       <p v-if="msg" class="text-sm text-emerald-400">{{ msg }}</p>
     </div>
+    </template>
   </div>
 </template>

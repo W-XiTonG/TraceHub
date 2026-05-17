@@ -5,6 +5,9 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
 
@@ -26,6 +29,7 @@ type Row = {
 
 const rows = ref<Row[]>([])
 const total = ref(0)
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const page = ref(1)
 const pageSize = 30
 const emailFilter = ref('')
@@ -73,7 +77,7 @@ const totalPages = () => Math.max(1, Math.ceil(total.value / pageSize))
 
 async function load() {
   err.value = ''
-  try {
+  await runLoad(async () => {
     const params: Record<string, string | number> = { page: page.value, page_size: pageSize }
     const em = emailFilter.value.trim()
     if (em !== '') params.email = em
@@ -83,9 +87,9 @@ async function load() {
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
     rows.value = data.data?.items ?? []
     total.value = data.data?.total ?? 0
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = httpErr(e)
-  }
+  })
 }
 
 function applyFilter() {
@@ -217,7 +221,13 @@ onBeforeUnmount(() => {
 
     <p class="text-xs text-slate-500">{{ t('adminFeedbacks.total', { n: total }) }}</p>
 
-    <div class="hidden overflow-x-auto rounded-lg border border-white/[0.06] lg:block">
+    <ThTableSkeleton v-if="loadingUi && rows.length === 0" :rows="8" :columns="6" class="mb-4" />
+    <div v-if="loadingUi && rows.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
+    </div>
+
+    <div class="relative hidden overflow-x-auto rounded-lg border border-white/[0.06] lg:block">
+      <ThLoadingState v-if="loadingUi && rows.length > 0" variant="overlay" />
       <table class="w-full min-w-[960px] text-left text-xs text-slate-300">
         <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
           <tr>

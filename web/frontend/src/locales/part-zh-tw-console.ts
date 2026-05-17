@@ -210,6 +210,7 @@ export default {
   modelsPage: {
     kicker: 'Models',
     title: '可用模型',
+    loading: '正在載入模型列表…',
     descBefore: '列表合并两类来源：',
     gw: '网关',
     mid: '（分組下啟用且健康的渠道所配置的模型，与',

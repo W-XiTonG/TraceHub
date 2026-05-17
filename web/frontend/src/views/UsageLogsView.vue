@@ -7,6 +7,9 @@ import { apiErrorMessage } from '../stores/auth'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
+import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
+import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 
 const { t } = useI18n()
@@ -28,6 +31,7 @@ type LogRow = {
 }
 
 const items = ref<LogRow[]>([])
+const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const total = ref(0)
 const page = ref(1)
 const pageSize = 20
@@ -95,7 +99,7 @@ function toggleRow(id: number) {
 
 async function load() {
   err.value = ''
-  try {
+  await runLoad(async () => {
     const { data } = await http.get<Envelope<{ items: LogRow[]; total: number }>>('/api/user/usage-logs', {
       params: {
         page: page.value,
@@ -111,9 +115,9 @@ async function load() {
     items.value = data.data.items
     total.value = data.data.total
     pruneSelection()
-  } catch (e: unknown) {
+  }).catch((e: unknown) => {
     err.value = apiErrorMessage(e, t('modelsPage.loadFail'))
-  }
+  })
 }
 
 function applyFilters() {
@@ -286,7 +290,10 @@ onMounted(() => {
     <p v-if="err" class="mb-4 text-sm text-red-400">{{ err }}</p>
     <p class="mb-4 text-[11px] text-slate-600">{{ t('logsPage.copyNote') }}</p>
 
-    <div class="th-user-keys-table-wrap hidden overflow-x-auto lg:block">
+    <ThTableSkeleton v-if="loadingUi && items.length === 0" :rows="8" :columns="5" class="mb-4" />
+
+    <div class="th-user-keys-table-wrap relative hidden overflow-x-auto lg:block">
+      <ThLoadingState v-if="loadingUi && items.length > 0" variant="overlay" :label="t('common.loading')" />
       <table class="w-full min-w-[960px] text-left" :class="compact ? 'text-xs' : 'text-sm'">
         <thead class="text-slate-500">
           <tr>
@@ -372,6 +379,10 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="loadingUi && items.length === 0" class="py-8 lg:hidden">
+      <ThLoadingState />
     </div>
 
     <div class="space-y-3 lg:hidden">
