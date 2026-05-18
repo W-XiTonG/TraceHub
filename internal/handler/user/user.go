@@ -500,7 +500,7 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 		for _, l := range logs24 {
 			tok24h[l.APIKeyID] += l.TotalTokens
 		}
-		var items []gin.H
+		items := make([]gin.H, 0, len(keys))
 		for _, k := range keys {
 			st := "enabled"
 			if !k.Enabled {
@@ -509,6 +509,10 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 			gn := ""
 			if k.Edges.Group != nil {
 				gn = k.Edges.Group.Name
+			}
+			ipList := k.IPWhitelist
+			if ipList == nil {
+				ipList = []string{}
 			}
 			row := gin.H{
 				"id":                  k.ID,
@@ -521,7 +525,7 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 				"created_at":          k.CreatedAt,
 				"usage_24h":           tok24h[k.ID],
 				"daily_quota":         k.DailyQuota,
-				"ip_whitelist":        k.IPWhitelist,
+				"ip_whitelist":        ipList,
 				"log_full_request":    k.LogFullRequest,
 			}
 			if !k.ExpiresAt.IsZero() {

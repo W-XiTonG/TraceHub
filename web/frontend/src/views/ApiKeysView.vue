@@ -102,7 +102,7 @@ async function load() {
   await runListLoad(async () => {
     const { data } = await http.get<Envelope<{ items: KeyRow[] }>>('/api/user/apikeys')
     if (data.code === 0) {
-      items.value = data.data.items
+      items.value = data.data?.items ?? []
       const idSet = new Set(items.value.map((x) => x.id))
       selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
       fullKeyById.value = Object.fromEntries(
