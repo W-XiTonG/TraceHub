@@ -1,0 +1,13 @@
+# TraceHub 对外运营 URL 示例（循迹未来公有实例）
+# 用途：营销稿、视频脚本、PDF 生成时统一替换占位符，避免多处硬编码 IP/域名。
+# 占位符：{SITE_URL} {API_BASE} {DOCS_URL} {FUTURE_SITE_URL} {FUTURE_API_BASE} {BUSINESS_PHONE}
+
+site_url: "http://182.92.159.29/"
+api_base: "http://182.92.159.29"
+docs_url: "http://182.92.159.29/docs"
+future_site_url: "https://www.tracefuture.cn"
+future_api_base: "https://api.tracefuture.cn"
+future_site_host: "www.tracefuture.cn"
+future_api_host: "api.tracefuture.cn"
+business_phone: "15550151751"
+brand_note: "迹径 · TraceHub — 循迹未来"

@@ -2,8 +2,8 @@
 
 **项目名称**：TraceHub — AI API 中转站  
 **文档版本**：V1.0  
-**更新时间**：2026-05-09  
-**技术栈**：后端 Go 1.23+ / Gin / Ent ORM / PostgreSQL / Redis，前端 Vue 3 / Vite / TailwindCSS
+**更新时间**：2026-05-18  
+**技术栈**：后端 Go 1.25+ / Gin / Ent ORM / PostgreSQL / Redis，前端 Vue 3 / Vite / TailwindCSS
 
 ---
 

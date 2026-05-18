@@ -61,7 +61,7 @@ export default {
       },
       {
         q: 'What are RPM and TPM?',
-        a: 'Requests per minute and tokens per minute averaged over the time span of this period; they describe load, not upstream rate limits.',
+        a: 'Requests per minute and tokens per minute averaged over the time span of this period; they describe load, not external rate limits.',
       },
     ],
     period: 'Period',
@@ -563,7 +563,7 @@ export default {
     inputPhAudioStt: 'Optional prompt… (Enter to send)',
     inputPhAudioTranslate: 'Optional prompt… (Enter to send)',
     audioVoice: 'Voice',
-    audioVoicePh: 'e.g. alloy, echo (depends on upstream)',
+    audioVoicePh: 'e.g. alloy, echo (see model guide)',
     audioSpeed: 'Speed',
     audioSpeedHint: 'Typical range 0.25–4; default 1. Used for speech only.',
     audioLanguage: 'Language',
@@ -707,8 +707,8 @@ export default {
       },
       {
         key: 'model_routing',
-        title: 'Model routing / upstream unavailable',
-        template: 'Model expected:\nError or upstream message:\nReproducible?\n',
+        title: 'Model routing / service unavailable',
+        template: 'Model expected:\nError or response message:\nReproducible?\n',
       },
       {
         key: 'latency_timeout',

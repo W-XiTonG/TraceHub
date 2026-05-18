@@ -5,17 +5,19 @@
 **产品**：迹径 · TraceHub  
 **文档版本**：与当前运营信息一致；产品能力以仓库 README 与实际上线配置为准。
 
+> **运营 URL**：正文与脚本中的 `{SITE_URL}`、`{API_BASE}` 等占位符，示例值见 [_site-urls.yaml](_site-urls.yaml)。定稿前请替换为当期公告地址。
+
 ---
 
 ## 一、对外信息（定稿）
 
 | 项目 | 内容 |
 |------|------|
-| **当前官网 / 试用入口** | http://182.92.159.29/ |
-| **当前 API Base URL** | http://182.92.159.29（客户端将原 OpenAI Base URL 换为此地址） |
-| **后续官网（备案通过后）** | https://www.tracefuture.cn |
-| **后续 API 域名（以公告为准）** | https://api.tracefuture.cn |
-| **商务联系** | **15550151751**（**电话、微信同号**；添加微信请备注「TraceHub」） |
+| **当前官网 / 试用入口** | {SITE_URL} |
+| **当前 API Base URL** | {API_BASE}（客户端将原 OpenAI Base URL 换为此地址） |
+| **后续官网（备案通过后）** | {FUTURE_SITE_URL} |
+| **后续 API 域名（以公告为准）** | {FUTURE_API_BASE} |
+| **商务联系** | **{BUSINESS_PHONE}**（**电话、微信同号**；添加微信请备注「TraceHub」） |
 | **备案说明** | 域名备案审核中；正式域名与 HTTPS 启用后以运营方站内公告为准 |
 
 ---
@@ -36,7 +38,7 @@
 
 ### 主推（通用）
 
-1. **《一套 API，调用 GPT / Claude / Gemini / DeepSeek —— TraceHub 多模型网关》**  
+1. **《一套 API，调用 多种主流大模型 —— TraceHub 多模型网关》**  
    副标题：*换 Base URL 即可接入 · 新用户送试用额度 · 支持企业私有化定制*
 
 2. **《别再为每家大模型写一套 SDK —— 迹径 TraceHub 统一接入》**  
@@ -57,7 +59,7 @@
 
 ### SEO 关键词
 
-`AI API 网关` `OpenAI 兼容` `多模型聚合` `Claude Gemini` `私有化部署` `API 中转` `TraceHub` `循迹未来`
+`AI API 网关` `OpenAI 兼容` `多模型聚合` `多模型` `私有化部署` `API 中转` `TraceHub` `循迹未来`
 
 ---
 
@@ -99,7 +101,7 @@
 还在为多款大模型，分别对接不同的接口和账号吗？
 
 **TraceHub**，是循迹未来推出的 **AI API 统一网关**——  
-下游只用 **一套 OpenAI 兼容接口**，就能调用 GPT、Claude、Gemini、DeepSeek 等主流模型。
+下游只用 **一套 OpenAI 兼容接口**，即可调用平台已开放的多种主流大模型。
 
 **【0:08–0:20 痛点】**
 
@@ -120,7 +122,7 @@ TraceHub 把这件事，收敛成 **一次接入、统一治理**。
 **【0:45–1:05 亮点】**
 
 不只是转发。  
-**智能路由**：多上游按权重分流，异常时可自动切换备用渠道；  
+**智能路由**：多线路按权重分流，异常时可自动切换备用渠道；  
 **透明计费**：按 Token 计量，用量与日志可查，成本可预期；  
 **安全可控**：密钥加密存储，管理端可审计；  
 **可观测**：健康检查与 Prometheus 指标，方便接入现有监控。
@@ -136,12 +138,12 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 
 **【1:20–1:30 收尾 CTA】**
 
-个人和团队，现在就可以打开 **182.92.159.29** 注册试用：  
+个人和团队，现在就可以打开 **{API_BASE}** 注册试用：  
 创建 API Key，改一下 Base URL，就能调通主流大模型。
 
-官网域名 **www.tracefuture.cn** 正在备案，通过后将在站内公告，并切换到 **HTTPS** 正式访问。
+官网域名 **{FUTURE_SITE_HOST}** 正在备案，通过后将在站内公告，并切换到 **HTTPS** 正式访问。
 
-要做 **私有化部署** 或 **企业定制** 的朋友，欢迎拨打 **15550151751**，**微信同号**，添加时请备注「TraceHub」。
+要做 **私有化部署** 或 **企业定制** 的朋友，欢迎拨打 **{BUSINESS_PHONE}**，**微信同号**，添加时请备注「TraceHub」。
 
 **迹径 TraceHub**——多模型，一条链路。  
 **循迹未来**，让 AI 接入更简单。
@@ -152,15 +154,15 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 
 ### 15 秒
 
-多款大模型，一套 OpenAI 接口。现在访问 **182.92.159.29** 注册试用；域名 **tracefuture.cn** 备案中即将上线。企业定制 **15550151751**，微信同号。迹径 TraceHub，循迹未来。
+多款大模型，一套 OpenAI 接口。现在访问 **{API_BASE}** 注册试用；域名 **{FUTURE_SITE_HOST}** 备案中即将上线。企业定制 **{BUSINESS_PHONE}**，微信同号。迹径 TraceHub，循迹未来。
 
 ### 30 秒
 
-还在为每个 AI 厂商单独写集成？TraceHub 用一套 `/v1` 接口聚合多上游，流式对话、智能路由、透明计费、日志可对账。三步接入，SDK 不用换习惯。打开 **182.92.159.29** 立即开始；**www.tracefuture.cn** 备案通过后切换。私有化与定制联系 **15550151751**（电话、微信同号）。迹径 TraceHub。
+还在为每个 AI 厂商单独写集成？TraceHub 用一套 `/v1` 接口聚合多线路，流式对话、智能路由、透明计费、日志可对账。三步接入，SDK 不用换习惯。打开 **{API_BASE}** 立即开始；**{FUTURE_SITE_HOST}** 备案通过后切换。私有化与定制联系 **{BUSINESS_PHONE}**（电话、微信同号）。迹径 TraceHub。
 
 ### 60 秒
 
-使用完整口播，删除 Docker 细节一句，保留「开源可私有化、企业可定制、15550151751 微信同号」。
+使用完整口播，删除 Docker 细节一句，保留「开源可私有化、企业可定制、{BUSINESS_PHONE} 微信同号」。
 
 ---
 
@@ -181,9 +183,9 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 01:08  开源 · Docker 私有化
 01:12  企业定制：白标 / SSO / SLA
 01:20  立即体验
-01:22  http://182.92.159.29/
-01:24  备案中 → www.tracefuture.cn
-01:26  企业定制  15550151751
+01:22  {SITE_URL}
+01:24  备案中 → {FUTURE_SITE_HOST}
+01:26  企业定制  {BUSINESS_PHONE}
 01:28  电话 · 微信同号
 ```
 
@@ -195,9 +197,9 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 
 | 元素 | 内容 |
 |------|------|
-| **主按钮** | 立即体验 → http://182.92.159.29/ |
-| **副文案** | 域名备案中 · 上线后：www.tracefuture.cn |
-| **企业定制** | 15550151751 |
+| **主按钮** | 立即体验 → {SITE_URL} |
+| **副文案** | 域名备案中 · 上线后：{FUTURE_SITE_HOST} |
+| **企业定制** | {BUSINESS_PHONE} |
 | **辅助小字** | 电话 · 微信同号 · 添加请备注 TraceHub |
 | **合规小字（约 3 秒）** | 新用户额度、模型与路由策略以平台公示为准；备案通过后 Base URL 将切换至官方域名，请关注站内公告。商标归各权利人所有。 |
 
@@ -205,10 +207,10 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 
 **剪辑备注**
 
-1. 画面「当前 IP」用大号；`www.tracefuture.cn` 用次要字号 +「即将上线」。  
-2. 电话至少 **2 秒** 全屏可读；竖版底部可常驻 `商务 15550151751｜微信同号`。  
+1. 画面「当前 IP」用大号；`{FUTURE_SITE_HOST}` 用次要字号 +「即将上线」。  
+2. 电话至少 **2 秒** 全屏可读；竖版底部可常驻 `商务 {BUSINESS_PHONE}｜微信同号`。  
 3. 备案通过后：仅替换 URL、二维码、简介与口播「备案中」一句，无需重拍全片。  
-4. 录屏中 Base URL 与口播统一为 `http://182.92.159.29`。
+4. 录屏中 Base URL 与口播统一为 `{API_BASE}`。
 
 ---
 
@@ -225,7 +227,7 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 | 7 | 12s | 四宫格能力 | 路由/计费/安全/监控 | 弹出 |
 | 8 | 8s | 用量+日志 | 成本可预期 | 淡入 |
 | 9 | 7s | Docker/架构图 | 私有化·企业定制 | — |
-| 10 | 5s | 定版 CTA | IP + 域名 + 15550151751 | Fade out |
+| 10 | 5s | 定版 CTA | IP + 域名 + {BUSINESS_PHONE} | Fade out |
 
 ---
 
@@ -247,7 +249,7 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 ### B. 图形 / 动画
 
 - 多厂商 Logo 墙（注明商标归权利人）
-- 架构图：客户端 → TraceHub → 上游渠道池
+- 架构图：客户端 → TraceHub → 服务渠道池
 - 四图标：统一接口 / 智能路由 / 透明计费 / 安全审计
 - 三步流程动画
 - 片尾：Logo + 二维码 + URL + 电话
@@ -257,7 +259,7 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 - Logo：迹径 / TraceHub / 循迹未来（PNG 透明）
 - 主色：与官网 Tailwind 主题一致
 - 字体：思源黑体 / 阿里巴巴普惠体
-- 二维码：官网 IP、微信（15550151751）
+- 二维码：官网 IP、微信（{BUSINESS_PHONE}）
 
 ### D. 音效与音乐
 
@@ -271,15 +273,15 @@ TraceHub **开源可私有化**：Docker Compose 一键拉起，适合自建中�
 
 ### B 站 / 官网
 
-**标题**：一套 API 调用 GPT/Claude/Gemini｜TraceHub 多模型网关接入指南
+**标题**：一套 API 调用多种大模型｜TraceHub 多模型网关接入指南
 
 **简介**：
 
 TraceHub 是循迹未来开源的 AI API 网关，OpenAI 兼容，支持智能路由、透明计费、私有化部署。
 
-- 体验入口（当前）：http://182.92.159.29/
-- 官网域名备案中，上线后：https://www.tracefuture.cn
-- 企业定制 / 演示预约：**15550151751**（电话、微信同号，添加请备注 TraceHub）
+- 体验入口（当前）：{SITE_URL}
+- 官网域名备案中，上线后：https://{FUTURE_SITE_HOST}
+- 企业定制 / 演示预约：**{BUSINESS_PHONE}**（电话、微信同号，添加请备注 TraceHub）
 
 时间轴：00:22 三步接入｜00:45 核心能力｜01:08 私有化
 
@@ -293,15 +295,15 @@ TraceHub 是循迹未来开源的 AI API 网关，OpenAI 兼容，支持智能�
 
 TraceHub 一套接口调主流大模型，三步接入，新用户送试用额度（以站内为准）。
 
-- 当前：http://182.92.159.29/
-- 备案后：www.tracefuture.cn
-- 企业私有化定制：**15550151751**（微信同号）
+- 当前：{SITE_URL}
+- 备案后：{FUTURE_SITE_HOST}
+- 企业私有化定制：**{BUSINESS_PHONE}**（微信同号）
 
 ### 朋友圈 / 社群
 
-> 我们在做 **迹径 TraceHub**：一套 OpenAI 兼容 API，聚合 GPT / Claude / Gemini / DeepSeek 等，带控制台、计费、路由。  
-> 个人：http://182.92.159.29/（www.tracefuture.cn 备案中）  
-> 企业：私有化 + 定制 → **15550151751**（电话·微信同号，备注 TraceHub）
+> 我们在做 **迹径 TraceHub**：一套 OpenAI 兼容 API，聚合 多种主流大模型 等，带控制台、计费、路由。  
+> 个人：{SITE_URL}（{FUTURE_SITE_HOST} 备案中）  
+> 企业：私有化 + 定制 → **{BUSINESS_PHONE}**（电话·微信同号，备注 TraceHub）
 
 ---
 
@@ -313,13 +315,13 @@ TraceHub 一套接口调主流大模型，三步接入，新用户送试用额�
 
 **联系标准表述**：
 
-咨询电话 / 微信同号：**15550151751**（添加微信请备注「TraceHub」）
+咨询电话 / 微信同号：**{BUSINESS_PHONE}**（添加微信请备注「TraceHub」）
 
 ---
 
 ## 十三、英文口播摘要（60s · 可选）
 
-> Still integrating each AI vendor separately? **TraceHub** is an open-source **AI API gateway** from Trace Future: one **OpenAI-compatible** endpoint for GPT, Claude, Gemini, DeepSeek, and more. Sign up at our current gateway URL, create an API key, point your Base URL—your SDK stays the same. Smart routing, transparent token billing, encrypted secrets, audit logs, and Prometheus metrics. Self-host with Docker, or contact us for **enterprise customization**. Official site **www.tracefuture.cn** is pending ICP filing. Business: **+86 15550151751** (phone & WeChat).
+> Still wiring many model endpoints yourself? **TraceHub** is an open-source **AI API gateway** from Trace Future: one **OpenAI-compatible** endpoint for the models your operator enables. Sign up at our current gateway URL, create an API key, point your base URL—your SDK stays the same. Smart routing, transparent token billing, encrypted credentials, audit logs, and observability hooks. Self-host with Docker, or contact us for **enterprise customization**. Official site **{FUTURE_SITE_HOST}** is pending ICP filing. Business: **+86 {BUSINESS_PHONE}** (phone & WeChat).
 
 ---
 
@@ -328,7 +330,7 @@ TraceHub 一套接口调主流大模型，三步接入，新用户送试用额�
 - [ ] 口播 WAV/MP3（或 AI 配音，需甲方确认音色）
 - [ ] 录屏原片 R1–R8（无敏感密钥）
 - [ ] Logo 矢量 / 透明 PNG
-- [ ] 官网 URL、微信二维码、15550151751
+- [ ] 官网 URL、微信二维码、{BUSINESS_PHONE}
 - [ ] 音乐授权说明
 - [ ] 字幕 SRT（可由第七节生成）
 - [ ] 定版 MP4：1920×1080 横版、1080×1920 竖版

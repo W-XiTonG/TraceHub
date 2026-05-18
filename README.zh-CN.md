@@ -2,14 +2,36 @@
 
 **简体中文** · [English README](README.md)
 
-**TraceHub** 是一套开源的 **AI API 网关 / 中转站**：将多种上游（OpenAI、Claude、Gemini、DeepSeek 等）以 **OpenAI 兼容接口** 对外统一暴露，并提供用户体系、API Key、分组与模型倍率、用量与计费、管理后台与官网前端。
+**TraceHub** 是一套开源的 **AI API 网关 / 中转站**：将多种大模型服务以 **OpenAI 兼容接口** 对外统一暴露，并提供用户体系、API Key、分组与模型倍率、用量与计费、管理后台与官网前端。
 
 > GitHub 仓库首页默认展示英文说明：[README.md](README.md)。
 
-详细需求与路线图见仓库内文档：
+**文档（核对日期 2026-05-18）**
 
-- [产品需求文档](docs/产品文档.md)
+- **[文档索引](docs/README.md)** — 按角色选择入口（接入 / 自托管 / 售前 / 开发）
+- [客户接入宣传](docs/TraceHub-客户接入宣传.md) · [Customer onboarding (EN)](docs/TraceHub-Customer-Onboarding.en.md)
+- [产品需求文档 + 实现状态](docs/产品文档.md)
 - [开发文档索引](docs/development-docs/README.md)
+- [CHANGELOG](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md) · [安全策略](SECURITY.md)
+
+---
+
+## 架构概览
+
+```mermaid
+flowchart LR
+  Client[客户端 SDK / 应用]
+  TH[TraceHub 网关]
+  CH1[服务渠道]
+  CH2[...]
+  PG[(PostgreSQL)]
+  RD[(Redis 可选)]
+  Client -->|OpenAI 兼容 /v1| TH
+  TH --> CH1
+  TH --> CH2
+  TH --> PG
+  TH --> RD
+```
 
 ---
 
@@ -25,14 +47,46 @@
 
 ## 已实现能力（概要）
 
-- 网关：`POST /v1/chat/completions`（OpenAI 兼容上游含 SSE；原生 **Claude** / **Gemini** 渠道将上游流式转为 OpenAI 风格 `chat.completion.chunk`）、`GET /v1/models`；可选按白名单透传更多 `/v1/*`（`site.openai_passthrough`，默认关闭）；默认拦截 `/v1` 下组织/账单等控制台类路径（`site.block_openai_account_admin_paths`）
+- 网关：`POST /v1/chat/completions`（OpenAI 兼容、含 SSE；多线路流式统一为 OpenAI 风格 `chat.completion.chunk`）、`GET /v1/models`；可选按白名单透传更多 `/v1/*`（`site.openai_passthrough`，默认关闭）；默认拦截 `/v1` 下组织/账单等控制台类路径（`site.block_openai_account_admin_paths`）
 - 路由：按分组与模型筛选渠道，加权随机；Redis 可选粘性会话
 - 计费：Token 估算与额度扣减；分组 / 用户 / 模型倍率参与计价
 - 用户：注册登录 JWT、API Key（哈希存储）、余额与用量、兑换码、修改密码
-- 管理端：用户与渠道、分组与模型倍率、调用日志、兑换码批量生成、审计日志写入；渠道密钥 AES-GCM 加密存储
+- 管理端：用户与渠道、分组与模型倍率、调用日志、兑换码批量生成、审计日志写入；渠道凭据 AES-GCM 加密存储
 - 前端：官网（Hero / 模型 / 价格 / FAQ）、用户控制台、管理后台；构建产物可由后端托管 SPA
 
-更多规划能力（支付、OAuth、多层限流、RBAC 细粒度等）见 [里程碑与路线图](docs/development-docs/milestones-roadmap.md)。
+### 规划能力（默认开源包未交付）
+
+在线支付（支付宝/微信/Stripe）、OAuth 登录、完整多层限流、细粒度 RBAC、内容安全过滤、Webhook、语义缓存、托管 Swagger/OpenAPI — 见 [里程碑与路线图](docs/development-docs/milestones-roadmap.md) 与 [产品文档](docs/产品文档.md) 第九章「未完成项」。
+
+---
+
+## API 能力矩阵
+
+| 类别 | 端点（摘要） | 说明 |
+|------|-------------|------|
+| 对话 | `POST /v1/chat/completions`（SSE）、`POST /v1/completions` | [api-design §2.1–2.2](docs/development-docs/api-design.md) · 站内 `/docs` |
+| 模型列表 | `GET /v1/models` | [api-design §2.3](docs/development-docs/api-design.md) |
+| 向量 | `POST /v1/embeddings` | [api-design §2.4](docs/development-docs/api-design.md) |
+| 图像 | `POST /v1/images/generations` | [api-design §2.5](docs/development-docs/api-design.md) |
+| 视频 | `POST/GET/DELETE /v1/videos*` | [api-design §2.6](docs/development-docs/api-design.md) · 扩展模型 [§2.8](docs/development-docs/api-design.md)（管理/自建文档） |
+| 音频 | `POST /v1/audio/speech`、转写、翻译 | [api-design §2.7](docs/development-docs/api-design.md) |
+| Realtime | `POST /v1/realtime/calls`（及可选通话控制） | [P3 Realtime 设计](docs/P3-Realtime通话子资源产品设计.md) |
+| 透传 | `site.openai_passthrough` 白名单扩展 `/v1/*`（默认关） | 配置示例 `configs/config.example.yaml` |
+| 选路头 | `X-TraceHub-Session`、`X-Sticky-Session`、`X-TraceHub-Model` | 站内 `/docs` · [api-design §8](docs/development-docs/api-design.md) |
+
+**从 OpenAI 兼容客户端迁移：** 仅需替换 `baseURL` 与 `apiKey`；余额不足可能返回 HTTP `402`；流式输出统一为 OpenAI 风格 `chat.completion.chunk`。
+
+### 最小 cURL 示例
+
+```bash
+export TRACEHUB_BASE="http://127.0.0.1:8080"
+export TRACEHUB_KEY="sk-th-your-key"
+
+curl -sS "$TRACEHUB_BASE/v1/chat/completions" \
+  -H "Authorization: Bearer $TRACEHUB_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"你好"}]}'
+```
 
 ---
 
@@ -144,4 +198,4 @@ deploy/              # Compose 等部署描述
 
 ## 贡献
 
-欢迎提交 Issue / Pull Request。合并请求可使用 [.github/pull_request_template.md](.github/pull_request_template.md) 中的自检项。
+详见 [CONTRIBUTING.md](CONTRIBUTING.md)。PR 请使用 [.github/pull_request_template.md](.github/pull_request_template.md) 自检项。

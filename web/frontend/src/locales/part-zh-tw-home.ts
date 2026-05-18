@@ -2,10 +2,10 @@ export default {
   home: {
     brandSub: 'AI Gateway',
     heroKickerTail: '企業級 AI 統一接入',
-    heroLine1: '一套 OpenAI 相容介面，聚合多廠商模型',
+    heroLine1: '一套 OpenAI 相容介面，聚合多種大模型',
     heroLine2: '',
     heroDesc:
-      '一套 OpenAI 兼容接口：聚合多上游、統一鉴权与路由，用量与日誌可查；支持私有化部署与 SLA 扩展。',
+      '一套 OpenAI 兼容接口：聚合多服務線路、統一鉴权与路由，用量与日誌可查；支持私有化部署与 SLA 扩展。',
     ctaConsole: '进入控制台',
     ctaStart: '立即开始',
     ctaDocs: '使用文件',
@@ -15,13 +15,13 @@ export default {
     whySectionSubtitle: '面向团队與企业场景的 OpenAI 兼容网关：統一接入、可观测、可私有化部署。',
     why1Title: '統一兼容接口',
     why1Desc:
-      '一套 /v1 介面對接多上游與自建端點；控制台签發 API Key 即可呼叫，减少多平台帳號與接入碎片化。',
+      '一套 /v1 介面對接多服務線路與自建端點；控制台签發 API Key 即可呼叫，减少多平台帳號與接入碎片化。',
     why2Title: '路由與观测一体化',
     why2Desc:
       '支援加權分流、優先級與固定順序等多渠道路由策略，可選故障轉移與健康聯動；呼叫日誌與用量匯總便於排障與內部分析。',
     why3Title: '安全與合规取向',
     why3Desc:
-      '上游金鑰加密存储，用戶 API Key 仅存哈希；支持 HTTPS、金鑰轮换與私有化部署，便于纳入现有安全体系。',
+      '服務線路金鑰加密存储，用戶 API Key 仅存哈希；支持 HTTPS、金鑰轮换與私有化部署，便于纳入现有安全体系。',
     why4Title: '可扩展交付形态',
     why4Desc:
       '支援私有化與自建部署；管理後台涵蓋渠道、分組與模型目錄，適合 PoC、生產與對內交付。',
@@ -40,18 +40,18 @@ export default {
     featuresDesc:
       '從個人開發者到團隊交付，TraceHub 在用戶端與管理端覆蓋金鑰、用量、智能路由與運維配置；以下為與倉庫實現一致的核心能力展示。',
     routingKicker: '智能路由',
-    routingTitle: '多上游，一條鏈路：穩定、可配置、可觀測',
+    routingTitle: '多服務線路，一條鏈路：穩定、可配置、可觀測',
     routingDesc:
-      '同一模型可對接多條上游渠道。TraceHub 在網關層按策略自動選路，並在上游異常時可選切換備用渠道——您無需改 SDK，只需使用統一的 OpenAI 相容介面。',
+      '同一模型可對接多條服務線路渠道。TraceHub 在網關層按策略自動選路，並在服務線路異常時可選切換備用渠道——您無需改 SDK，只需使用統一的 OpenAI 相容介面。',
     routingCap1Title: '三種選路策略',
     routingCap1Desc:
       '加權隨機分擔流量、按優先級主備切換、或為每個模型指定固定渠道順序；分組可繼承全域策略，也可單獨覆蓋。',
     routingCap2Title: '故障轉移與黏性會話',
     routingCap2Desc:
-      '上游 5xx 或逾時時可自動換渠道重試（可配置）；多輪對話可開啟黏性會話，連續請求盡量落在同一上游，體驗更連貫。',
+      '服務線路 5xx 或逾時時可自動換渠道重試（可配置）；多輪對話可開啟黏性會話，連續請求盡量落在同一服務線路，體驗更連貫。',
     routingCap3Title: '健康感知與錯誤回饋',
     routingCap3Desc:
-      '結合渠道健康狀態與錯誤計數，優先選擇更穩定的線路；可選將上游探測結果聯動為健康標記，減少「列表有模型卻調不通」。',
+      '結合渠道健康狀態與錯誤計數，優先選擇更穩定的線路；可選將服務線路探測結果聯動為健康標記，減少「列表有模型卻調不通」。',
     routingCap4Title: '分組級治理',
     routingCap4Desc:
       '用戶按分組隔離模型池與路由策略，管理員在後台統一配置渠道、權重與優先級，適合團隊交付與企業內控。',
@@ -82,23 +82,23 @@ export default {
     modelsLinkDocs: '文件：網關與模型',
     modelsLinkConsole: '控制台查看可用模型',
     vendorsCaption:
-      '下列為部分常見提供方標識，便於辨識與對照。',
-    vendorsAria: '常見提供方標識示例',
+      '下列圖標僅為常見大模型生態示意，不代表對外披露的後台供應商列表。',
+    vendorsAria: '模型生態示意圖標',
     vendorsMark:
-      '商標與標識歸各權利人所有。實際可呼叫的模型與上游以管理員設定的渠道及 OpenAI 相容的 GET /v1/models 返回為準。',
-    vendorsAndMore: '及其他提供方',
-    vendorOpenAI: 'OpenAI',
-    vendorClaude: 'Claude',
-    vendorGoogle: 'Google · Gemini',
-    vendorDeepSeek: 'DeepSeek',
-    vendorQwen: '通義千問',
-    vendorMistral: 'Mistral AI',
-    vendorMeta: 'Meta · Llama',
-    vendorMoonshot: '月之暗面 · Kimi',
-    vendorHuggingFace: 'Hugging Face',
-    vendorOpenRouter: 'OpenRouter',
-    vendorPerplexity: 'Perplexity',
-    vendorOllama: 'Ollama',
+      '商標與標識歸各權利人所有。實際可呼叫的模型以管理員配置及 OpenAI 相容的 GET /v1/models 返回為準。',
+    vendorsAndMore: '等更多型號',
+    vendorOpenAI: '對話大模型',
+    vendorClaude: '助手模型',
+    vendorGoogle: '多模態模型',
+    vendorDeepSeek: '代碼與推理',
+    vendorQwen: '中文優化',
+    vendorMistral: '歐洲開源',
+    vendorMeta: '開源生態',
+    vendorMoonshot: '長上下文',
+    vendorHuggingFace: '模型社區',
+    vendorOpenRouter: '聚合路由',
+    vendorPerplexity: '搜索增強',
+    vendorOllama: '本地部署',
     usageKicker: '透明計費',
     pricingMainTitle: '按量計費 · 公式公開，輕量模型更省',
     pricingMainSub:
@@ -107,7 +107,7 @@ export default {
     billingFormulaMath:
       '提示側 = (提示 Token ÷ 1000) × 輸入參考單價\n輸出側 = (輸出 Token ÷ 1000) × 輸出參考單價\n參考合計 = 提示側 + 輸出側\n入帳額度 = 依站內計費規則折算後，向上取整為整數',
     billingFormulaExplain:
-      '上方公式為基準示意：參考單價由模型解析得到（未命中價表時走站內通用參考檔）。實扣還會在基準上疊加分組倍率、使用者倍率，以及管理員可為分組設定的按模型輸入／輸出倍率；若上游回報提示快取命中，提示側中對「已快取」子集依折價計入。送出前餘額預檢與成功後的扣費使用同一套因子，但預檢通常按「無快取命中」估算，強快取情境下實扣可能低於預檢。對話、繪圖、語音等使用同一套計量思路；Token 數以估算或實際回報為準。若與本頁不一致，請以登入後控制台中的用量明細為準。',
+      '上方公式為基準示意：參考單價由模型解析得到（未命中價表時走站內通用參考檔）。實扣還會在基準上疊加分組倍率、使用者倍率，以及管理員可為分組設定的按模型輸入／輸出倍率；若服務線路回報提示快取命中，提示側中對「已快取」子集依折價計入。送出前餘額預檢與成功後的扣費使用同一套因子，但預檢通常按「無快取命中」估算，強快取情境下實扣可能低於預檢。對話、繪圖、語音等使用同一套計量思路；Token 數以估算或實際回報為準。若與本頁不一致，請以登入後控制台中的用量明細為準。',
     billingBadge1: '無月租 · 按次按量',
     billingBadge2: '送出前檢查餘額 · 減少無效重試',
     billingBadge3: '流水 + 呼叫日誌 · 可對帳',
@@ -168,19 +168,19 @@ export default {
     faq0a: '登入用戶控制台可查看呼叫汇总、日誌与帳户信息；费率与额度规则由部署方配置，以控制台展示为准。',
     faq1q: '支持流式输出吗？',
     faq1a:
-      'OpenAI 兼容渠道支持 SSE 流式；Claude / Gemini 等渠道可输出 OpenAI 风格的 chat.completion.chunk 流（以部署版本为准）。',
+      '支援 SSE 流式；流式分片統一為 OpenAI 風格的 chat.completion.chunk（以部署版本為準）。',
     faq2q: '数据安全如何保障？',
-    faq2a: '上游金鑰 AES-GCM 加密存储，API Key 仅儲存哈希；支持私有化部署与审計日誌扩展。',
+    faq2a: '服務線路金鑰 AES-GCM 加密存储，API Key 仅儲存哈希；支持私有化部署与审計日誌扩展。',
     faq3q: '控制台能做什么？',
     faq3a:
       '可用模型查詢、建立/輪換 API Key、按週期查看呼叫日誌、分組與路由策略（加權/優先級/固定順序、可選故障轉移）、帳戶與兌換碼、用量匯出（CSV/JSON），管理員另有渠道與模型市場等後台能力。',
-    faq4q: '和直接呼叫上游有什么区別？',
+    faq4q: '和直連單一模型服務有什麼區別？',
     faq4a:
       '統一域名與鑑權、按帳號聚合用量、多渠道路由與可選故障轉移、可選 Redis 會話黏性；便於團隊治理、可靠性與後續審計擴展。',
     f0tag: 'Gateway',
     f0title: 'OpenAI 兼容接入',
     f0desc:
-      '同一套 /v1/chat/completions 与 /v1/models，后端对接多上游；支持 SSE 流式与可选路径透传（按站点配置）。',
+      '同一套 /v1/chat/completions 与 /v1/models，后端对接多服務線路；支持 SSE 流式与可选路径透传（按站点配置）。',
     f0cta: '查看可用模型',
     f1tag: '安全',
     f1title: 'API Key 与鉴权',

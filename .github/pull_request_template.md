@@ -15,6 +15,9 @@
 - [ ] 本地 `go build ./...` 通过
 - [ ] 如涉及前端：`web/frontend` 下 `npm run build` 通过
 - [ ] 已阅读相关文档并与行为一致
+- [ ] 若改网关路由或 API 形态：已更新 `docs/development-docs/api-design.md` 及 `part-*-docs.ts`（简中/繁中/英文，如影响用户文档）
+- [ ] 若改 `configs/config.example.yaml`：已更新注释与相关文档
+- [ ] 若改官网/控制台/对外文档文案：符合 [公网展示与运维文案分离说明](docs/公网展示与运维文案分离说明.md)（含不披露上游厂商与渠道类型）
 
 ## 备注
 

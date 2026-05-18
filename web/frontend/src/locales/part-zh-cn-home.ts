@@ -2,10 +2,10 @@ export default {
   home: {
     brandSub: 'AI Gateway',
     heroKickerTail: '企业级 AI 统一接入',
-    heroLine1: '一套 OpenAI 兼容接口，聚合多厂商模型',
+    heroLine1: '一套 OpenAI 兼容接口，聚合多种大模型',
     heroLine2: '',
     heroDesc:
-      '一套 OpenAI 兼容接口：聚合多上游、统一鉴权与路由，用量与日志可查；支持私有化部署与 SLA 扩展。',
+      '一套 OpenAI 兼容接口：聚合多模型线路、统一鉴权与路由，用量与日志可查；支持私有化部署与 SLA 扩展。',
     ctaConsole: '进入控制台',
     ctaStart: '立即开始',
     ctaDocs: '使用文档',
@@ -15,13 +15,13 @@ export default {
     whySectionSubtitle: '面向团队与企业场景的 OpenAI 兼容网关：统一接入、可观测、可私有化部署。',
     why1Title: '统一兼容接口',
     why1Desc:
-      '一套 /v1 接口对接多上游与自建端点；控制台签发 API Key 即可调用，减少多平台账号与接入碎片化。',
+      '一套 /v1 接口对接平台已开放的模型；控制台签发 API Key 即可调用，减少多平台账号与接入碎片化。',
     why2Title: '路由与观测一体化',
     why2Desc:
       '支持加权分流、优先级与固定顺序等多渠道路由策略，可选故障转移与健康联动；调用日志与用量汇总便于排障与内部分析。',
     why3Title: '安全与合规取向',
     why3Desc:
-      '上游密钥加密存储，用户 API Key 仅存哈希；支持 HTTPS、密钥轮换与私有化部署，便于纳入现有安全体系。',
+      '服务侧凭据加密存储，用户 API Key 仅存哈希；支持 HTTPS、密钥轮换与私有化部署，便于纳入现有安全体系。',
     why4Title: '可扩展交付形态',
     why4Desc:
       '支持私有化与自建部署；管理后台涵盖渠道、分组与模型目录，适合 PoC、生产与对内交付，而非仅限公有 SaaS 一种形态。',
@@ -40,18 +40,18 @@ export default {
     featuresDesc:
       '从个人开发者到团队交付，TraceHub 在用户端与管理端覆盖密钥、用量、智能路由与运维配置；以下为与仓库实现一致的核心能力展示。',
     routingKicker: '智能路由',
-    routingTitle: '多上游，一条链路：稳定、可配置、可观测',
+    routingTitle: '多线路，一条链路：稳定、可配置、可观测',
     routingDesc:
-      '同一模型可对接多条上游渠道。TraceHub 在网关层按策略自动选路，并在上游异常时可选切换备用渠道——您无需改 SDK，只需使用统一的 OpenAI 兼容接口。',
+      '同一模型可对接多条服务渠道。TraceHub 在网关层按策略自动选路，并在线路异常时可选切换备用——您无需改 SDK，只需使用统一的 OpenAI 兼容接口。',
     routingCap1Title: '三种选路策略',
     routingCap1Desc:
       '加权随机分担流量、按优先级主备切换、或为每个模型指定固定渠道顺序；分组可继承全局策略，也可单独覆盖。',
     routingCap2Title: '故障转移与粘性会话',
     routingCap2Desc:
-      '上游 5xx 或超时时可自动换渠道重试（可配置）；多轮对话可开启粘性会话，连续请求尽量落在同一上游，体验更连贯。',
+      '远端 5xx 或超时时可自动换渠道重试（可配置）；多轮对话可开启粘性会话，连续请求尽量落在同一线路，体验更连贯。',
     routingCap3Title: '健康感知与错误反馈',
     routingCap3Desc:
-      '结合渠道健康状态与错误计数，优先选择更稳定的线路；可选将上游探测结果联动为健康标记，减少「列表有模型却调不通」。',
+      '结合渠道健康状态与错误计数，优先选择更稳定的线路；可选将健康探测结果联动为标记，减少「列表有模型却调不通」。',
     routingCap4Title: '分组级治理',
     routingCap4Desc:
       '用户按分组隔离模型池与路由策略，管理员在后台统一配置渠道、权重与优先级，适合团队交付与企业内控。',
@@ -70,35 +70,35 @@ export default {
       '请通过 HTTPS 访问网关，并建议在控制台定期轮换 API Key；稳定性与容量由部署方保障。',
     codeWinTitle: 'curl · chat.completions',
     codeComment: '# 将 BASE 与 KEY 替换为你的网关地址与控制台 API Key',
-    modelsTitle: '多厂商模型接入',
+    modelsTitle: '多模型接入',
     modelsCountAria:
       '统计的是各渠道配置里列出的模型（models 列表与别名键），全站汇总约 {badge} 个；代表平台可覆盖的型号广度，实际能否调用以控制台与 GET /v1/models 为准。',
     modelsCountChip: '全站渠道已声明 {badge} 个模型',
     modelsDesc:
-      'TraceHub 通过渠道对接各家大模型与自建端点。下方仅为常见的 model id 示意，不代表平台「仅支持」这些型号；您环境里可调用的模型以管理员配置的渠道及 OpenAI 兼容的 GET /v1/models 为准。',
+      'TraceHub 通过渠道对接平台已配置的大模型。下方仅为常见的 model id 示意；您环境里可调用的模型以管理员配置及 OpenAI 兼容的 GET /v1/models 为准。',
     modelsNote: '需要完整清单请登录控制台「可用模型」查看，或阅读文档中的网关与选路说明。',
     modelsBadge: '示例 ID',
     modelsMore: '…以及渠道中的更多模型',
     modelsLinkDocs: '文档：网关与模型',
     modelsLinkConsole: '控制台查看可用模型',
     vendorsCaption:
-      '下列为部分常见提供方标识，便于识别与对照。',
-    vendorsAria: '常见提供方标识示例',
+      '下列图标仅为常见大模型生态的示意，不代表对外披露的后台供应商列表。',
+    vendorsAria: '模型生态示意图标',
     vendorsMark:
-      '商标与标识归各权利人所有。实际可调用的模型与上游以管理员配置的渠道及 OpenAI 兼容的 GET /v1/models 返回为准。',
-    vendorsAndMore: '及其他提供方',
-    vendorOpenAI: 'OpenAI',
-    vendorClaude: 'Claude',
-    vendorGoogle: 'Google · Gemini',
-    vendorDeepSeek: 'DeepSeek',
-    vendorQwen: '通义千问',
-    vendorMistral: 'Mistral AI',
-    vendorMeta: 'Meta · Llama',
-    vendorMoonshot: '月之暗面 · Kimi',
-    vendorHuggingFace: 'Hugging Face',
-    vendorOpenRouter: 'OpenRouter',
-    vendorPerplexity: 'Perplexity',
-    vendorOllama: 'Ollama',
+      '商标与标识归各权利人所有。实际可调用的模型以管理员配置及 OpenAI 兼容的 GET /v1/models 返回为准。',
+    vendorsAndMore: '等更多型号',
+    vendorOpenAI: '对话大模型',
+    vendorClaude: '助手模型',
+    vendorGoogle: '多模态模型',
+    vendorDeepSeek: '代码与推理',
+    vendorQwen: '中文优化',
+    vendorMistral: '欧洲开源',
+    vendorMeta: '开源生态',
+    vendorMoonshot: '长上下文',
+    vendorHuggingFace: '模型社区',
+    vendorOpenRouter: '聚合路由',
+    vendorPerplexity: '搜索增强',
+    vendorOllama: '本地部署',
     usageKicker: '透明计费',
     pricingMainTitle: '按量计费 · 公式公开，轻量模型更省',
     pricingMainSub:
@@ -107,7 +107,7 @@ export default {
     billingFormulaMath:
       '提示侧 = (提示 Token ÷ 1000) × 输入参考单价\n输出侧 = (输出 Token ÷ 1000) × 输出参考单价\n参考合计 = 提示侧 + 输出侧\n入账额度 = 按站内计费规则折算后，向上取整为整数',
     billingFormulaExplain:
-      '上方公式为基准示意：参考单价由模型解析得到（未命中价表时走站内通用参考档）。实扣还会在基准上叠加分组倍率、用户倍率，以及管理员可为分组配置的按模型输入/输出倍率；若上游回报提示缓存命中，提示侧中对「已缓存」子集按折价计入。发起前余额预检与成功后的扣费使用同一套因子，但预检通常按「无缓存命中」估算，强缓存场景下实扣可能低于预检。对话、绘图、语音等使用同一套计量思路；Token 数以估算或实际上报为准。若与本页不一致，请以登录后控制台中的用量明细为准。',
+      '上方公式为基准示意：参考单价由模型解析得到（未命中价表时走站内通用参考档）。实扣还会在基准上叠加分组倍率、用户倍率，以及管理员可为分组配置的按模型输入/输出倍率；若响应提示缓存命中，提示侧中对「已缓存」子集按折价计入。发起前余额预检与成功后的扣费使用同一套因子，但预检通常按「无缓存命中」估算，强缓存场景下实扣可能低于预检。对话、绘图、语音等使用同一套计量思路；Token 数以估算或实际上报为准。若与本页不一致，请以登录后控制台中的用量明细为准。',
     billingBadge1: '无月租 · 按次按量',
     billingBadge2: '发起前检查余额 · 减少无效重试',
     billingBadge3: '流水 + 调用日志 · 可对账',
@@ -168,19 +168,19 @@ export default {
     faq0a: '登录用户控制台可查看调用汇总、日志与账户信息；费率与额度规则由部署方配置，以控制台展示为准。',
     faq1q: '支持流式输出吗？',
     faq1a:
-      'OpenAI 兼容渠道支持 SSE 流式；Claude / Gemini 等渠道可输出 OpenAI 风格的 chat.completion.chunk 流（以部署版本为准）。',
+      '支持 SSE 流式；流式分片统一为 OpenAI 风格的 chat.completion.chunk（以部署版本为准）。',
     faq2q: '数据安全如何保障？',
-    faq2a: '上游密钥 AES-GCM 加密存储，API Key 仅保存哈希；支持私有化部署与审计日志扩展。',
+    faq2a: '服务侧凭据 AES-GCM 加密存储，API Key 仅保存哈希；支持私有化部署与审计日志扩展。',
     faq3q: '控制台能做什么？',
     faq3a:
       '可用模型查询、创建/轮换 API Key、按周期查看调用日志、分组与可配置路由策略（加权/优先级/固定顺序、故障转移）、账户与兑换码、用量导出（CSV/JSON），管理员另有渠道与模型市场等后台能力。',
-    faq4q: '和直接调用上游有什么区别？',
+    faq4q: '和直连单一模型服务有什么区别？',
     faq4a:
       '统一域名与鉴权、按账号聚合用量、多渠道路由（加权/优先级/固定顺序）与可选故障转移、粘性会话；便于团队治理、稳定交付与后续配额、审计扩展。',
     f0tag: 'Gateway',
     f0title: 'OpenAI 兼容接入',
     f0desc:
-      '同一套 /v1/chat/completions 与 /v1/models，后端对接多上游；支持 SSE 流式与可选路径透传（按站点配置）。',
+      '同一套 /v1/chat/completions 与 /v1/models，后端多线路调度；支持 SSE 流式与可选路径透传（按站点配置）。',
     f0cta: '查看可用模型',
     f1tag: '安全',
     f1title: 'API Key 与鉴权',
@@ -192,7 +192,7 @@ export default {
     f2cta: '查看调用日志',
     f3tag: '治理',
     f3title: '分组与智能路由',
-    f3desc: '用户归属分组；支持加权分流、优先级、固定顺序与可选故障转移，模型可见性与上游路由在管理端可配。',
+    f3desc: '用户归属分组；支持加权分流、优先级、固定顺序与可选故障转移，模型可见性与路由策略在管理端可配。',
     f3cta: '我的分组',
     f4tag: '账户',
     f4title: '账户与额度',

@@ -2,10 +2,10 @@ export default {
   home: {
     brandSub: 'AI Gateway',
     heroKickerTail: 'Enterprise AI integration',
-    heroLine1: 'One OpenAI-compatible API surface, aggregating models across vendors',
+    heroLine1: 'One OpenAI-compatible API surface for the models your operator enables',
     heroLine2: '',
     heroDesc:
-      'OpenAI-compatible APIs with unified auth and routing across providers—usage and logs in one place; optional self-hosted deployment and SLA extensions.',
+      'OpenAI-compatible APIs with unified auth and routing—usage and logs in one place; optional self-hosted deployment and SLA extensions.',
     ctaConsole: 'Open console',
     ctaStart: 'Get started',
     ctaDocs: 'Documentation',
@@ -16,13 +16,13 @@ export default {
       'An OpenAI-compatible gateway for teams and operators: one surface, observable traffic, self-hostable.',
     why1Title: 'One compatible surface',
     why1Desc:
-      'A single /v1-style API across vendors and custom endpoints; console-issued API keys reduce fragmented integrations.',
+      'A single /v1-style API for models enabled on your deployment; console-issued API keys reduce fragmented integrations.',
     why2Title: 'Routing plus observability',
     why2Desc:
       'Weighted, priority and fixed-order routing across channels, optional failover and health linkage; logs and usage rollups help debug and review traffic.',
     why3Title: 'Security-minded defaults',
     why3Desc:
-      'Upstream secrets encrypted at rest; user keys stored as hashes. HTTPS, rotation and private deployment supported.',
+      'Service credentials encrypted at rest; user keys stored as hashes. HTTPS, rotation and private deployment supported.',
     why4Title: 'Flexible delivery',
     why4Desc:
       'Self-hostable with full admin tooling for channels, groups and catalog—fits PoC, production and internal rollouts.',
@@ -42,18 +42,18 @@ export default {
     featuresDesc:
       'From solo developers to teams, TraceHub covers keys, usage, smart routing and ops on both user and admin sides; reflects the capabilities shipped in this product.',
     routingKicker: 'Smart routing',
-    routingTitle: 'Many upstreams, one path: stable, configurable, observable',
+    routingTitle: 'Many channels, one path: stable, configurable, observable',
     routingDesc:
-      'The same model ID can be served by multiple upstream channels. TraceHub picks a route at the gateway and can optionally fail over when an upstream errors—you keep the same OpenAI-compatible SDK.',
+      'The same model ID can be served by multiple channels. TraceHub picks a route at the gateway and can optionally fail over when a line errors—you keep the same OpenAI-compatible SDK.',
     routingCap1Title: 'Three routing strategies',
     routingCap1Desc:
       'Weighted random for load share, priority for active/standby, or a fixed channel order per model. Groups inherit global defaults or override locally.',
     routingCap2Title: 'Failover & sticky sessions',
     routingCap2Desc:
-      'Retry on another channel after upstream 5xx or timeouts (configurable). Optional sticky sessions keep multi-turn traffic on the same upstream when needed.',
+      'Retry on another channel after remote 5xx or timeouts (configurable). Optional sticky sessions keep multi-turn traffic on the same line when needed.',
     routingCap3Title: 'Health-aware selection',
     routingCap3Desc:
-      'Channel health and error counts bias traffic toward stable lines. Optional upstream probes can mark unhealthy channels before users hit them.',
+      'Channel health and error counts bias traffic toward stable lines. Optional health probes can mark unhealthy channels before users hit them.',
     routingCap4Title: 'Group-level governance',
     routingCap4Desc:
       'Users are isolated by group with its own model pool and routing policy; operators configure channels, weights and priorities in admin.',
@@ -76,30 +76,30 @@ export default {
       'Counts models listed on enabled channel configs (models list + alias keys), about {badge} site-wide—shows breadth of coverage; what you can call follows admin setup and GET /v1/models.',
     modelsCountChip: '{badge} models listed on enabled channels',
     modelsDesc:
-      'TraceHub reaches many providers and custom endpoints through configurable channels. The IDs below are common examples only—not a fixed or exhaustive catalog. Models you can call follow admin channel setup and your account’s OpenAI-compatible GET /v1/models response.',
+      'TraceHub exposes models configured by your operator. The IDs below are examples only—not a fixed catalog. Models you can call follow admin setup and your account’s OpenAI-compatible GET /v1/models response.',
     modelsNote: 'For your live list, open Available models in the console (after sign-in) or read the gateway section in the docs.',
     modelsBadge: 'Sample IDs',
     modelsMore: '…plus any model your channels expose',
     modelsLinkDocs: 'Docs: gateway & models',
     modelsLinkConsole: 'Available models in console',
     vendorsCaption:
-      'Some familiar provider marks below—for quick visual context.',
-    vendorsAria: 'Example provider logos',
+      'Icons below are illustrative only—they do not disclose backend vendors.',
+    vendorsAria: 'Illustrative model ecosystem icons',
     vendorsMark:
-      'Trademarks belong to their owners. Vendors not shown—including aggregators, regional APIs, and private endpoints—can be used when wired through your channels; your live catalog is defined by configuration and your OpenAI-compatible GET /v1/models response.',
-    vendorsAndMore: 'More providers',
-    vendorOpenAI: 'OpenAI',
-    vendorClaude: 'Claude',
-    vendorGoogle: 'Google · Gemini',
-    vendorDeepSeek: 'DeepSeek',
-    vendorQwen: 'Qwen',
-    vendorMistral: 'Mistral AI',
-    vendorMeta: 'Meta · Llama',
-    vendorMoonshot: 'Moonshot · Kimi',
-    vendorHuggingFace: 'Hugging Face',
-    vendorOpenRouter: 'OpenRouter',
-    vendorPerplexity: 'Perplexity',
-    vendorOllama: 'Ollama',
+      'Trademarks belong to their owners. Your live catalog is defined by operator configuration and your OpenAI-compatible GET /v1/models response.',
+    vendorsAndMore: 'More model IDs',
+    vendorOpenAI: 'Chat models',
+    vendorClaude: 'Assistant',
+    vendorGoogle: 'Multimodal',
+    vendorDeepSeek: 'Code & reasoning',
+    vendorQwen: 'CN-optimized',
+    vendorMistral: 'EU open models',
+    vendorMeta: 'Open ecosystem',
+    vendorMoonshot: 'Long context',
+    vendorHuggingFace: 'Model hub',
+    vendorOpenRouter: 'Aggregation',
+    vendorPerplexity: 'Search-augmented',
+    vendorOllama: 'Local run',
     usageKicker: 'Transparent billing',
     pricingMainTitle: 'Pay per token · clear formula, friendly mini-model rates',
     pricingMainSub:
@@ -169,18 +169,18 @@ export default {
     faq0a: 'After sign-in, the user console shows summaries and logs; rates and quota follow your operator’s configuration.',
     faq1q: 'Do you support streaming?',
     faq1a:
-      'OpenAI-compatible channels support SSE; other channels may emit OpenAI-style chat.completion.chunk streams (depends on deployment version).',
+      'SSE streaming is supported; chunks are normalized to OpenAI-style chat.completion.chunk (depends on deployment version).',
     faq2q: 'How is data secured?',
-    faq2a: 'Upstream secrets are stored with AES-GCM; API keys are hashed only; self-hosting and audit extensions are supported.',
+    faq2a: 'Service credentials are stored with AES-GCM; API keys are hashed only; self-hosting and audit extensions are supported.',
     faq3q: 'What can I do in the console?',
     faq3a:
       'List models, create/rotate API keys, browse request logs by period, group policies and routing (weighted/priority/fixed order, optional failover), account and redeem codes, export usage (CSV/JSON); admins also get channels and model market.',
-    faq4q: 'Why not call the vendor API directly?',
+    faq4q: 'Why not call a single model API directly?',
     faq4a:
       'One domain and credential model, aggregated usage per account, multi-channel routing with optional failover and sticky sessions—better for teams, reliability and audits.',
     f0tag: 'Gateway',
     f0title: 'OpenAI-compatible access',
-    f0desc: '/v1/chat/completions and /v1/models across upstreams; SSE streaming and optional passthrough (site config).',
+    f0desc: '/v1/chat/completions and /v1/models with multi-channel routing; SSE streaming and optional passthrough (site config).',
     f0cta: 'Browse models',
     f1tag: 'Security',
     f1title: 'API keys & auth',
