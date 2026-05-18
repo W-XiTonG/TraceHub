@@ -17,10 +17,11 @@ import (
 
 // Item 与 OpenAI /v1/models 单项字段对齐（控制台展示用）。
 type Item struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	Created int64  `json:"created"`
-	OwnedBy string `json:"owned_by"`
+	ID            string `json:"id"`
+	Object        string `json:"object"`
+	Created       int64  `json:"created"`
+	OwnedBy       string `json:"owned_by"`
+	ServiceStatus string `json:"service_status,omitempty"`
 }
 
 // collectChannelModelKeys 从已筛选的渠道列表中汇总「声明的模型/别名」及其中健康渠道（health_status==1）覆盖的子集。
@@ -97,20 +98,23 @@ func listGroupModelSet(ctx context.Context, client *ent.Client, groupID int) (
 	set map[string]struct{},
 	channelAll map[string]struct{},
 	channelHealthy map[string]struct{},
+	channels []*ent.Channel,
 	err error,
 ) {
 	if groupID <= 0 {
-		return map[string]struct{}{}, nil, nil, nil
+		return map[string]struct{}{}, nil, nil, nil, nil
 	}
-	channels, err := client.Channel.Query().
+	var chErr error
+	channels, chErr = client.Channel.Query().
 		Where(
 			channel.Enabled(true),
 			channel.Schedulable(true),
 			channel.HasGroupWith(group.IDEQ(groupID)),
 		).
 		All(ctx)
+	err = chErr
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	channelAll, channelHealthy = collectChannelModelKeys(channels)
 	set = make(map[string]struct{})
@@ -125,7 +129,7 @@ func listGroupModelSet(ctx context.Context, client *ent.Client, groupID int) (
 			).
 			All(ctx)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		for _, row := range rows {
 			id := strings.TrimSpace(row.ModelID)
@@ -139,27 +143,48 @@ func listGroupModelSet(ctx context.Context, client *ent.Client, groupID int) (
 			set[id] = struct{}{}
 		}
 	}
-	return set, channelAll, channelHealthy, nil
+	return set, channelAll, channelHealthy, channels, nil
 }
 
 // ListForGroup 汇总分组下可用渠道中的模型 ID（含别名），与网关 GET /v1/models 一致。
 // 列表用于发现模型：不要求渠道 health=健康（路由时仍会过滤异常渠道）。
 // 若渠道未配置任何模型，则合并「模型市场」可见条目，再回退到内置默认定价表模型 ID，避免 /v1/models 返回空数组导致下游工具无法拉模。
 func ListForGroup(ctx context.Context, client *ent.Client, groupID int) ([]Item, error) {
-	set, _, _, err := listGroupModelSet(ctx, client, groupID)
-	if err != nil {
-		return nil, err
-	}
-	return itemsFromModelIDSet(set), nil
+	items, _, _, err := ListForGroupWithChannelHealthKeys(ctx, client, groupID, defaultListOpts(ctx, client))
+	return items, err
+}
+
+// ListForGroupWithOpts 带 service_status 聚合与默认过滤（omit unavailable）。
+func ListForGroupWithOpts(ctx context.Context, client *ent.Client, groupID int, opts ListOpts) ([]Item, error) {
+	items, _, _, err := ListForGroupWithChannelHealthKeys(ctx, client, groupID, opts)
+	return items, err
 }
 
 // ListForGroupWithChannelHealthKeys 返回与 ListForGroup 相同的列表，以及用于 RouterHealthLabel 的渠道模型键（全部 / 健康子集）。
-func ListForGroupWithChannelHealthKeys(ctx context.Context, client *ent.Client, groupID int) ([]Item, map[string]struct{}, map[string]struct{}, error) {
-	set, channelAll, channelHealthy, err := listGroupModelSet(ctx, client, groupID)
+func ListForGroupWithChannelHealthKeys(ctx context.Context, client *ent.Client, groupID int, opts ListOpts) ([]Item, map[string]struct{}, map[string]struct{}, error) {
+	set, channelAll, channelHealthy, channels, err := listGroupModelSet(ctx, client, groupID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return itemsFromModelIDSet(set), channelAll, channelHealthy, nil
+	items := itemsFromModelIDSet(set)
+	if groupID <= 0 || len(channels) == 0 {
+		return items, channelAll, channelHealthy, nil
+	}
+	labelsByID := make(map[string][]string, len(set))
+	for id := range set {
+		labelsByID[id] = modelkind.LabelsForModel(id, nil, nil)
+	}
+	statusMap := buildServiceStatusMap(ctx, channels, itemsToIDs(items), labelsByID, opts.FailStaleHours)
+	items = filterItemsByServiceStatus(items, statusMap, opts)
+	return items, channelAll, channelHealthy, nil
+}
+
+func itemsToIDs(items []Item) []string {
+	ids := make([]string, len(items))
+	for i, it := range items {
+		ids[i] = it.ID
+	}
+	return ids
 }
 
 // DeclaredModelDistinctCount 汇总多路渠道上「已声明」的模型键去重数量：
@@ -200,11 +225,12 @@ type ConsoleModel struct {
 	UpstreamListStatus    string        `json:"upstream_list_status,omitempty"`     // listed|not_listed|mixed
 	UpstreamListCheckedAt string        `json:"upstream_list_checked_at,omitempty"` // RFC3339，多渠道路径取最晚探测时间
 	Labels                []string      `json:"labels,omitempty"`                   // 类型标签（启发式 + 可选目录 metadata）
+	ServiceStatus         string        `json:"service_status,omitempty"`           // operational|unavailable|stale|degraded|catalog_only
 	Pricing               *ModelPricing `json:"pricing,omitempty"`
 }
 
 // ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关侧仍以 ListForGroup 为准。
-func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]ConsoleModel, error) {
+func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int, opts ListOpts) ([]ConsoleModel, error) {
 	gatewayItems, err := ListForGroup(ctx, client, groupID)
 	if err != nil {
 		return nil, err
@@ -266,6 +292,7 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]
 			return nil, err
 		}
 		attachUpstreamListProbeFromChannels(channels, byID)
+		attachServiceStatusFromChannels(ctx, channels, byID, opts)
 	}
 	catalogMetaByID := make(map[string]map[string]any, len(catalogRows))
 	adminLabelsByID := make(map[string][]string, len(catalogRows))
@@ -283,6 +310,9 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]
 	}
 	for id, m := range byID {
 		m.Labels = modelkind.LabelsForModel(id, catalogMetaByID[id], adminLabelsByID[id])
+		if !m.InGateway && m.ServiceStatus == "" {
+			m.ServiceStatus = ServiceStatusCatalogOnly
+		}
 	}
 	ids := make([]string, 0, len(byID))
 	for id := range byID {
@@ -293,7 +323,7 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int) ([]
 	for _, id := range ids {
 		out = append(out, *byID[id])
 	}
-	return out, nil
+	return filterConsoleModels(out, opts), nil
 }
 
 // GlobalPricingWorkspaceItem 管理端「全局计价」合并视图的一行：含代码基准、来源标签与可选的全局库记录。

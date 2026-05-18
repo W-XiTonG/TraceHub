@@ -305,6 +305,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.PUT("/channels/:id", adminhandler.UpdateChannel(chAdmin))
 	a.DELETE("/channels/:id", adminhandler.DeleteChannel(opt.Client))
 	a.POST("/channels/:id/probe-upstream-models", adminhandler.ProbeChannelUpstream(chAdmin))
+	a.POST("/channels/:id/probe-capabilities", adminhandler.ProbeChannelCapabilitiesHandler(chAdmin))
 	a.GET("/channel-model-presets", adminhandler.ChannelModelPresets(opt.Client))
 	a.POST("/channel-models/fetch-upstream", adminhandler.FetchUpstreamModelList())
 	a.GET("/groups", adminhandler.ListGroups(opt.Client))
@@ -380,6 +381,16 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	aPay.DELETE("/packages/:id", adminhandler.DeleteRechargePackage(opt.Client))
 
 	upstreamprobe.StartWorker(context.Background(), opt.Log, opt.Client, aesKey)
+	upstreamprobe.StartCapabilityRuntime(context.Background(), upstreamprobe.CapabilityRuntimeOpts{
+		Client:               opt.Client,
+		RDB:                  opt.Redis,
+		AESKey:               aesKey,
+		RuntimeEnabled:       sitecfg.DefaultUpstreamCapabilityRuntimeEnabled(),
+		PersistEnabled:       sitecfg.DefaultUpstreamCapabilityPersistEnabled(),
+		RedisOverlay:         sitecfg.DefaultUpstreamCapabilityRedisOverlay(),
+		FailThrottleSec:      sitecfg.DefaultUpstreamCapabilityFailThrottleSec(),
+		FlusherIntervalSec:   sitecfg.DefaultUpstreamCapabilityFlusherIntervalSec(),
+	})
 
 	registerSPA(r, opt)
 	return r, nil

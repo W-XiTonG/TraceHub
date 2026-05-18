@@ -13,6 +13,7 @@ import (
 	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/service/channelhealth"
 	"tracehub/internal/service/channelsecret"
+	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -28,12 +29,25 @@ func (d RoutingExecDeps) selectDeps() router.SelectDeps {
 	return router.SelectDeps{RDB: d.RDB, Client: d.Client}
 }
 
-// RecordUpstreamOutcome 根据上游结果更新渠道 error_count。
-func RecordUpstreamOutcome(ctx context.Context, client *ent.Client, channelID int, statusCode int, transportErr error) {
+// RecordUpstreamOutcome 根据上游结果更新渠道 error_count；4xx/5xx 时 body 可解析为截断摘要。
+func RecordUpstreamOutcome(ctx context.Context, client *ent.Client, channelID int, statusCode int, transportErr error, body []byte) {
 	if transportErr != nil || statusCode >= 400 {
 		msg := ""
 		if transportErr != nil {
 			msg = transportErr.Error()
+		} else if len(body) > 0 {
+			code, summary := upstreamprobe.ParseUpstreamErrorBody(body)
+			switch {
+			case code != "" && summary != "":
+				msg = code + ": " + summary
+			case summary != "":
+				msg = summary
+			case code != "":
+				msg = code
+			}
+		}
+		if len(msg) > 200 {
+			msg = msg[:200]
 		}
 		_ = channelhealth.RecordUpstreamFailure(ctx, client, channelID, msg)
 		return
@@ -91,9 +105,13 @@ func (d RoutingExecDeps) executeWithFailoverRecorded(
 		func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 			res, err := attempt(ctx, sel)
 			if res != nil {
-				RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, res.StatusCode, res.TransportErr)
+				var body []byte
+				if res != nil {
+					body = res.Body
+				}
+				RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, res.StatusCode, res.TransportErr, body)
 			} else if err != nil {
-				RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, 0, err)
+				RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, 0, err, nil)
 			}
 			return res, err
 		})

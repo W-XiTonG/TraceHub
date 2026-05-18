@@ -7,7 +7,7 @@ import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import * as pgw from '../api/playgroundGateway'
-import type { PlaygroundModelRow, PlaygroundRouterHealth } from '../api/playgroundGateway'
+import type { PlaygroundModelRow, PlaygroundRouterHealth, PlaygroundServiceStatus } from '../api/playgroundGateway'
 import { copyTextToClipboard } from '../utils/clipboard'
 import { randomUUID } from '../utils/randomId'
 
@@ -30,6 +30,8 @@ type ChatMsg = {
   imageUrl?: string
   /** 文生图：展示用 URL 或 data URL，避免把超长 base64 塞进 Markdown */
   imageOutputs?: string[]
+  /** 文生图：对应 imageOutputs 下标加载失败（URL 防盗链/CORS 等） */
+  imageLoadFailed?: number[]
   /** 语音合成：浏览器 blob URL，仅本会话有效 */
   audioUrl?: string
   /** 文生视频：浏览器 blob URL，仅本会话有效 */
@@ -194,6 +196,45 @@ function pgRegistryCell(m: PlaygroundModelRow): {
         variant: 'unknown',
         pillClass: PG_PILL_UNKNOWN,
         dotClass: PG_DOT_UNKNOWN,
+      }
+  }
+}
+
+function pgServiceStatusCell(st: PlaygroundServiceStatus): {
+  text: string
+  title: string
+  pillClass: string
+  dotClass: string
+} {
+  const title = t('playground.serviceStatusHint')
+  switch (st) {
+    case 'operational':
+      return {
+        text: t('playground.serviceStatus.operational'),
+        title,
+        pillClass: PG_PILL_AVAILABLE,
+        dotClass: PG_DOT_AVAILABLE,
+      }
+    case 'stale':
+      return {
+        text: t('playground.serviceStatus.stale'),
+        title,
+        pillClass: PG_PILL_UNKNOWN,
+        dotClass: PG_DOT_UNKNOWN,
+      }
+    case 'degraded':
+      return {
+        text: t('playground.serviceStatus.degraded'),
+        title,
+        pillClass: PG_PILL_PARTIAL,
+        dotClass: PG_DOT_PARTIAL,
+      }
+    case 'catalog_only':
+      return {
+        text: t('playground.serviceStatus.catalog_only'),
+        title,
+        pillClass: PG_PILL_UNKNOWN,
+        dotClass: PG_DOT_UNKNOWN_DIM,
       }
   }
 }
@@ -1355,8 +1396,23 @@ function patchAssistant(id: string, content: string) {
 
 function patchAssistantImages(id: string, content: string, imageOutputs: string[]) {
   messages.value = messages.value.map((m) =>
-    m.id === id ? { ...m, content, imageOutputs: imageOutputs.length ? imageOutputs : undefined } : m,
+    m.id === id
+      ? { ...m, content, imageOutputs: imageOutputs.length ? imageOutputs : undefined, imageLoadFailed: undefined }
+      : m,
   )
+}
+
+function markImageLoadFailed(msgId: string, index: number) {
+  messages.value = messages.value.map((m) => {
+    if (m.id !== msgId) return m
+    const prev = m.imageLoadFailed ?? []
+    if (prev.includes(index)) return m
+    return { ...m, imageLoadFailed: [...prev, index] }
+  })
+}
+
+function imageOutputFailed(m: ChatMsg, index: number): boolean {
+  return (m.imageLoadFailed ?? []).includes(index)
 }
 
 /** 气泡内展示：去掉前导换行/BOM，避免 whitespace-pre-wrap 在框顶出现大块空白（模型常带 \n 开头） */
@@ -1876,6 +1932,16 @@ function fmtNum(n: number) {
                   {{ pgModelKindLabel(lab) }}
                 </span>
                 <span
+                  v-for="cell in selectedModelRow?.serviceStatus ? [pgServiceStatusCell(selectedModelRow.serviceStatus)] : []"
+                  :key="'pg-sel-ss'"
+                  class="th-pg-model-picker__meta-pill"
+                  :class="cell.pillClass"
+                  :title="cell.title"
+                >
+                  <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
+                  <span class="min-w-0 truncate">{{ cell.text }}</span>
+                </span>
+                <span
                   v-for="cell in selectedModelRow?.routerHealth ? [pgRouterHealthCell(selectedModelRow.routerHealth)] : []"
                   :key="'pg-sel-rh'"
                   class="th-pg-model-picker__meta-pill"
@@ -1969,6 +2035,16 @@ function fmtNum(n: number) {
                         :title="t('modelsPage.labelsHint')"
                       >
                         {{ pgModelKindLabel(lab) }}
+                      </span>
+                      <span
+                        v-for="cell in m.serviceStatus ? [pgServiceStatusCell(m.serviceStatus)] : []"
+                        :key="'pg-ss-' + m.id"
+                        class="th-pg-model-picker__meta-pill"
+                        :class="cell.pillClass"
+                        :title="cell.title"
+                      >
+                        <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
+                        <span class="min-w-0 truncate">{{ cell.text }}</span>
                       </span>
                       <span
                         v-for="cell in m.routerHealth ? [pgRouterHealthCell(m.routerHealth)] : []"
@@ -2403,14 +2479,22 @@ function fmtNum(n: number) {
                 <audio :src="m.audioUrl" controls class="w-full rounded-lg border border-white/10 bg-slate-950/80" />
               </div>
               <div v-if="m.role === 'assistant' && m.imageOutputs?.length" class="mb-2 flex flex-col gap-2">
-                <img
-                  v-for="(src, ix) in m.imageOutputs"
-                  :key="ix"
-                  :src="src"
-                  alt=""
-                  class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
-                  @error="(($event.target as HTMLImageElement).style.display = 'none')"
-                />
+                <template v-for="(src, ix) in m.imageOutputs" :key="`${m.id}-img-${ix}`">
+                  <img
+                    v-if="!imageOutputFailed(m, ix)"
+                    :src="src"
+                    alt=""
+                    class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
+                    referrerpolicy="no-referrer"
+                    @error="markImageLoadFailed(m.id, ix)"
+                  />
+                  <p
+                    v-else
+                    class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-2.5 py-2 text-xs leading-relaxed text-amber-100/90"
+                  >
+                    {{ t('playground.imageLoadFailed') }}
+                  </p>
+                </template>
               </div>
               <div v-if="m.imageUrl || m.videoRefUrl" class="mb-2 shrink-0">
                 <img

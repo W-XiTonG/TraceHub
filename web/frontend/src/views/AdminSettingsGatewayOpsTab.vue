@@ -76,6 +76,26 @@ const s = inject(adminSiteSettingsKey)!
         >
           {{ t('adminSystem.hintUpstreamProbeDb') }}
         </p>
+        <div>
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+            t('adminSystem.lblUpstreamCapabilityFailStaleHours')
+          }}</label>
+          <input
+            v-model.number="s.form.upstreamCapabilityFailStaleHours"
+            type="number"
+            min="0"
+            max="168"
+            step="1"
+            class="th-input max-w-xs font-mono text-sm"
+            autocomplete="off"
+          />
+          <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamCapabilityFailStaleHours') }}</p>
+        </div>
+        <label class="flex cursor-pointer items-start gap-3">
+          <input v-model="s.form.upstreamCapabilityProbeEnabled" type="checkbox" class="mt-1" />
+          <span class="block text-xs font-medium text-slate-300">{{ t('adminSystem.lblUpstreamCapabilityProbeEnabled') }}</span>
+        </label>
+        <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamCapabilityProbeEnabled') }}</p>
       </div>
     </section>
 

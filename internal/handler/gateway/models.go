@@ -23,19 +23,22 @@ func ModelsList(client *ent.Client) gin.HandlerFunc {
 		}
 		includeRH := strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_router_health")), "1") ||
 			strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_router_health")), "true")
+		includeUnavail := strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_unavailable")), "1") ||
+			strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_unavailable")), "true")
+		opts := availmodels.ListOptsFromQuery(c.Request.Context(), client, includeUnavail)
 
 		var items []availmodels.Item
 		var channelAll map[string]struct{}
 		var channelHealthy map[string]struct{}
 		var err error
 		if includeRH {
-			items, channelAll, channelHealthy, err = availmodels.ListForGroupWithChannelHealthKeys(c.Request.Context(), client, gid)
+			items, channelAll, channelHealthy, err = availmodels.ListForGroupWithChannelHealthKeys(c.Request.Context(), client, gid, opts)
 			if err != nil {
 				middleware.WriteOpenAIError(c, 500, "api_error", "读取模型列表失败")
 				return
 			}
 		} else {
-			items, err = availmodels.ListForGroup(c.Request.Context(), client, gid)
+			items, err = availmodels.ListForGroupWithOpts(c.Request.Context(), client, gid, opts)
 			if err != nil {
 				middleware.WriteOpenAIError(c, 500, "api_error", "读取模型列表失败")
 				return
@@ -51,10 +54,14 @@ func ModelsList(client *ent.Client) gin.HandlerFunc {
 				"owned_by":  it.OwnedBy,
 			}
 			if includeRH {
-				row["tracehub"] = gin.H{
+				th := gin.H{
 					"router_health": availmodels.RouterHealthLabel(channelAll, channelHealthy, it.ID),
-					"labels":          modelkind.LabelsForModel(it.ID, nil, nil),
+					"labels":        modelkind.LabelsForModel(it.ID, nil, nil),
 				}
+				if st := strings.TrimSpace(it.ServiceStatus); st != "" {
+					th["service_status"] = st
+				}
+				row["tracehub"] = th
 			}
 			data = append(data, row)
 		}

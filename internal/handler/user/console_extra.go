@@ -173,7 +173,10 @@ func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		gid := u.GroupID
 		ctx := c.Request.Context()
-		items, err := availmodels.ListConsoleMerged(ctx, client, gid)
+		includeUnavail := strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_unavailable")), "1") ||
+			strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_unavailable")), "true")
+		opts := availmodels.ListOptsFromQuery(ctx, client, includeUnavail)
+		items, err := availmodels.ListConsoleMerged(ctx, client, gid, opts)
 		if err != nil {
 			httpx.ServerError(c, "读取模型列表失败")
 			return

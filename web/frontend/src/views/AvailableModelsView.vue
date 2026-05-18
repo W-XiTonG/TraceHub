@@ -28,6 +28,7 @@ type ModelItem = {
   in_catalog?: boolean
   upstream_list_status?: string
   upstream_list_checked_at?: string
+  service_status?: string
   labels?: string[]
   pricing?: ModelPricing
 }
@@ -51,6 +52,7 @@ const OWNER_EMPTY = '__empty__'
 
 type FilterSource = '' | 'gw' | 'cat' | 'both'
 type FilterUpstream = '' | 'listed' | 'not_listed' | 'mixed' | 'unknown'
+type FilterServiceStatus = '' | 'operational' | 'stale' | 'catalog_only' | 'degraded'
 type FilterPrice = '' | 'free' | 'paid'
 
 const payload = ref<ModelsPayload | null>(null)
@@ -60,6 +62,7 @@ const q = ref('')
 const filterSource = ref<FilterSource>('')
 const filterKinds = ref<string[]>([])
 const filterUpstream = ref<FilterUpstream>('')
+const filterServiceStatus = ref<FilterServiceStatus>('')
 const filterPrice = ref<FilterPrice>('')
 const filterOwner = ref('')
 const exportBusy = ref(false)
@@ -116,6 +119,17 @@ function upstreamStatusKey(m: ModelItem): FilterUpstream {
   return 'unknown'
 }
 
+function serviceStatusKey(m: ModelItem): Exclude<FilterServiceStatus, ''> {
+  const st = (m.service_status ?? '').trim()
+  if (st === 'operational' || st === 'stale' || st === 'degraded' || st === 'catalog_only') return st
+  return 'catalog_only'
+}
+
+function matchesServiceStatus(m: ModelItem, svc: FilterServiceStatus): boolean {
+  if (!svc) return true
+  return serviceStatusKey(m) === svc
+}
+
 function matchesSource(m: ModelItem, src: FilterSource): boolean {
   if (!src) return true
   if (src === 'gw') return !!m.in_gateway && !m.in_catalog
@@ -146,14 +160,16 @@ function applyStructFilters(items: ModelItem[]): ModelItem[] {
   const src = filterSource.value
   const kinds = filterKinds.value
   const upstream = filterUpstream.value
+  const svc = filterServiceStatus.value
   const price = filterPrice.value
   const owner = filterOwner.value
-  if (!src && !kinds.length && !upstream && !price && !owner) return items
+  if (!src && !kinds.length && !upstream && !svc && !price && !owner) return items
   return items.filter(
     (m) =>
       matchesSource(m, src) &&
       matchesKinds(m, kinds) &&
       (!upstream || upstreamStatusKey(m) === upstream) &&
+      matchesServiceStatus(m, svc) &&
       matchesPrice(m, price) &&
       matchesOwner(m, owner),
   )
@@ -172,6 +188,7 @@ function applyTextSearch(items: ModelItem[], s: string): ModelItem[] {
     }
     if (modelPricingCell(m).searchBlob.toLowerCase().includes(needle)) return true
     if (upstreamListCell(m).text.toLowerCase().includes(needle)) return true
+    if (serviceStatusCell(m).text.toLowerCase().includes(needle)) return true
     return modelLabelsSearchBlob(m).includes(needle)
   })
 }
@@ -213,6 +230,7 @@ function resetFilters() {
   filterSource.value = ''
   filterKinds.value = []
   filterUpstream.value = ''
+  filterServiceStatus.value = ''
   filterPrice.value = ''
   filterOwner.value = ''
 }
@@ -240,6 +258,52 @@ function modelKindDisplayLabel(key: string): string {
 
 function modelLabelsSearchBlob(m: ModelItem): string {
   return (m.labels ?? []).map((k) => modelKindDisplayLabel(k).toLowerCase()).join(' ')
+}
+
+function serviceStatusCell(m: ModelItem): {
+  text: string
+  title: string
+  pillClass: string
+  dotClass: string
+} {
+  const hint = t('modelsPage.thServiceStatusHint')
+  const st = (m.service_status ?? '').trim()
+  const baseAvail =
+    'th-models-upstream-pill th-models-upstream-pill--available border border-emerald-400/25 bg-gradient-to-br from-emerald-500/[0.22] via-teal-500/10 to-slate-900/40 text-emerald-50'
+  const baseStale =
+    'th-models-upstream-pill th-models-upstream-pill--unknown border border-dashed border-slate-600/55 bg-slate-950/70 text-slate-400'
+  const basePartial =
+    'th-models-upstream-pill th-models-upstream-pill--partial border border-amber-400/30 bg-gradient-to-br from-amber-500/[0.2] via-violet-600/10 to-slate-900/40 text-amber-50'
+  switch (st) {
+    case 'operational':
+      return {
+        text: t('modelsPage.serviceStatusOperational'),
+        title: hint,
+        pillClass: baseAvail,
+        dotClass: 'th-models-upstream-pill-dot bg-emerald-400',
+      }
+    case 'stale':
+      return {
+        text: t('modelsPage.serviceStatusStale'),
+        title: hint,
+        pillClass: baseStale,
+        dotClass: 'th-models-upstream-pill-dot bg-slate-500',
+      }
+    case 'degraded':
+      return {
+        text: t('modelsPage.serviceStatusDegraded'),
+        title: hint,
+        pillClass: basePartial,
+        dotClass: 'th-models-upstream-pill-dot bg-amber-400',
+      }
+    default:
+      return {
+        text: t('modelsPage.serviceStatusCatalogOnly'),
+        title: hint,
+        pillClass: baseStale,
+        dotClass: 'th-models-upstream-pill-dot bg-slate-600',
+      }
+  }
 }
 
 function upstreamListCell(m: ModelItem): {
@@ -323,6 +387,7 @@ type ExportRow = {
   labels: string
   source: string
   upstreamStatus: string
+  serviceStatus: string
   ownedBy: string
 }
 
@@ -336,6 +401,7 @@ function buildExportRow(m: ModelItem): ExportRow {
     labels,
     source: modelSourceLabel(m),
     upstreamStatus: upstreamListCell(m).text,
+    serviceStatus: serviceStatusCell(m).text,
     ownedBy: owned || t('modelsPage.dash'),
   }
 }
@@ -373,6 +439,8 @@ function buildExportJsonItems(items: ModelItem[]) {
       upstream_list_status: m.upstream_list_status ?? '',
       upstream_list_checked_at: m.upstream_list_checked_at ?? '',
       upstream_display: upstreamListCell(m).text,
+      service_status: m.service_status ?? '',
+      service_status_display: serviceStatusCell(m).text,
       owned_by: m.owned_by ?? '',
       pricing: m.pricing ?? null,
     }
@@ -393,11 +461,12 @@ function downloadExport(fmt: 'csv' | 'json') {
         t('modelsPage.thLabels'),
         t('modelsPage.thSource'),
         t('modelsPage.thUpstreamList'),
+        t('modelsPage.thServiceStatus'),
         t('modelsPage.thOwner'),
       ]
       const rows = items.map((m) => {
         const r = buildExportRow(m)
-        return [r.modelId, r.displayName, r.price, r.labels, r.source, r.upstreamStatus, r.ownedBy]
+        return [r.modelId, r.displayName, r.price, r.labels, r.source, r.upstreamStatus, r.serviceStatus, r.ownedBy]
           .map(escapeCsvCell)
           .join(',')
       })
@@ -525,7 +594,7 @@ onMounted(load)
       </div>
 
       <div class="th-console-muted-bar mt-4 flex flex-col gap-3 px-4 py-3">
-        <div class="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,11rem))_auto] lg:items-end">
+        <div class="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,10rem))_auto] lg:items-end">
           <label class="flex flex-col gap-1 text-xs">
             <span class="text-slate-500">{{ t('modelsPage.filterSource') }}</span>
             <select v-model="filterSource" class="th-input h-10 w-full text-sm">
@@ -543,6 +612,16 @@ onMounted(load)
               <option value="not_listed">{{ t('modelsPage.upstreamUnavailable') }}</option>
               <option value="mixed">{{ t('modelsPage.upstreamPartial') }}</option>
               <option value="unknown">{{ t('modelsPage.upstreamUnknown') }}</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1 text-xs">
+            <span class="text-slate-500">{{ t('modelsPage.filterServiceStatus') }}</span>
+            <select v-model="filterServiceStatus" class="th-input h-10 w-full text-sm">
+              <option value="">{{ t('modelsPage.filterAll') }}</option>
+              <option value="operational">{{ t('modelsPage.serviceStatusOperational') }}</option>
+              <option value="degraded">{{ t('modelsPage.serviceStatusDegraded') }}</option>
+              <option value="stale">{{ t('modelsPage.serviceStatusStale') }}</option>
+              <option value="catalog_only">{{ t('modelsPage.serviceStatusCatalogOnly') }}</option>
             </select>
           </label>
           <label class="flex flex-col gap-1 text-xs">
@@ -598,6 +677,7 @@ onMounted(load)
                 <th class="px-4 py-3 font-medium" :title="t('modelsPage.priceHint')">{{ t('modelsPage.thPrice') }}</th>
                 <th class="px-4 py-3 font-medium" :title="t('modelsPage.labelsHint')">{{ t('modelsPage.thLabels') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thSource') }}</th>
+                <th class="px-4 py-3 font-medium" :title="t('modelsPage.thServiceStatusHint')">{{ t('modelsPage.thServiceStatus') }}</th>
                 <th class="px-4 py-3 font-medium" :title="t('modelsPage.thUpstreamListHint')">{{ t('modelsPage.thUpstreamList') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thOwner') }}</th>
               </tr>
@@ -648,6 +728,18 @@ onMounted(load)
                   <span v-if="m.in_gateway && m.in_catalog" class="text-xs text-emerald-400/90">{{ t('modelsPage.srcBoth') }}</span>
                   <span v-else-if="m.in_gateway" class="text-xs text-cyan-400/90">{{ t('modelsPage.srcGw') }}</span>
                   <span v-else class="text-xs text-slate-500">{{ t('modelsPage.srcCat') }}</span>
+                </td>
+                <td class="px-4 py-3">
+                  <span
+                    v-for="cell in [serviceStatusCell(m)]"
+                    :key="`${m.id}-svc`"
+                    class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none"
+                    :class="cell.pillClass"
+                    :title="cell.title"
+                  >
+                    <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
+                    <span class="min-w-0 truncate">{{ cell.text }}</span>
+                  </span>
                 </td>
                 <td class="px-4 py-3">
                   <span
@@ -704,6 +796,18 @@ onMounted(load)
               <span v-if="m.in_gateway && m.in_catalog" class="text-xs text-emerald-400/90">{{ t('modelsPage.srcBoth') }}</span>
               <span v-else-if="m.in_gateway" class="text-xs text-cyan-400/90">{{ t('modelsPage.srcGw') }}</span>
               <span v-else class="text-xs text-slate-500">{{ t('modelsPage.srcCat') }}</span>
+            </MobileLabelValueRow>
+            <MobileLabelValueRow :label="t('modelsPage.thServiceStatus')">
+              <span
+                v-for="cell in [serviceStatusCell(m)]"
+                :key="`${m.id}-msvc`"
+                class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none"
+                :class="cell.pillClass"
+                :title="cell.title"
+              >
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
+                <span class="min-w-0 truncate">{{ cell.text }}</span>
+              </span>
             </MobileLabelValueRow>
             <MobileLabelValueRow :label="t('modelsPage.thUpstreamList')">
               <span

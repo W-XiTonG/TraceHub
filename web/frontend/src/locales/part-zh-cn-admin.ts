@@ -708,6 +708,14 @@ export default {
     hintUpstreamProbeDb:
       '若数据库中曾保存过本段两项，下方会提示；「恢复默认」不会清除这两项（避免误关探测）。',
     hintUpstreamProbeListDisclaimer: '标注依据上游 /v1/models 返回；部分供应商列表不全，「未见」不代表一定不可用。',
+    lblUpstreamCapabilityFailStaleHours: '接口失败标红保留时长（小时）',
+    hintUpstreamCapabilityFailStaleHours:
+      '近期 4xx 失败在列表中隐藏；超过此时长后显示为灰色「待验证」鼓励重试。0 表示永不过期（始终隐藏近期失败项）。合法范围 0–168，默认 6。',
+    lblUpstreamCapabilityProbeEnabled: '启用视频能力后台冒烟（默认关）',
+    hintUpstreamCapabilityProbeEnabled:
+      '开启后于模型列表探测轮次末尾低优先级发起最小 POST /v1/videos，仅 unknown/近期 fail 模型，每渠道每轮最多 10 个。',
+    descUpstreamCapabilityFailStaleHours: 'fail 超过此时长后 UI 显示为待验证（stale）',
+    descUpstreamCapabilityProbeEnabled: '是否启用后台视频能力冒烟',
     secGatewayRouting: '网关路由（全局默认）',
     secGatewayRoutingHint: '各分组可继承或覆盖；影响同模型多渠道时的选路与故障转移行为。',
     lblRoutingStrategy: '默认选路策略',

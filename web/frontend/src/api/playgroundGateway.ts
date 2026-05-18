@@ -6,21 +6,30 @@ const STICKY_HDR = 'X-TraceHub-Session'
 
 export type PlaygroundRouterHealth = 'healthy' | 'unhealthy' | 'catalog_only'
 
+export type PlaygroundServiceStatus = 'operational' | 'stale' | 'catalog_only' | 'degraded'
+
 export type PlaygroundRegistryMeta = {
   upstream_list_status?: string
   upstream_list_checked_at?: string
   in_gateway?: boolean
   labels?: string[]
+  service_status?: string
 }
 
 export type PlaygroundModelRow = {
   id: string
   routerHealth?: PlaygroundRouterHealth
+  serviceStatus?: PlaygroundServiceStatus
   labels?: string[]
 } & PlaygroundRegistryMeta
 
 function parseRouterHealth(v: unknown): PlaygroundRouterHealth | undefined {
   if (v === 'healthy' || v === 'unhealthy' || v === 'catalog_only') return v
+  return undefined
+}
+
+function parseServiceStatus(v: unknown): PlaygroundServiceStatus | undefined {
+  if (v === 'operational' || v === 'stale' || v === 'catalog_only' || v === 'degraded') return v
   return undefined
 }
 
@@ -46,7 +55,7 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
     throw new Error(parseOpenAIError(text) || `${res.status} ${res.statusText}`)
   }
   const data = (await res.json()) as {
-    data?: Array<{ id?: string; tracehub?: { router_health?: string; labels?: unknown } }>
+    data?: Array<{ id?: string; tracehub?: { router_health?: string; service_status?: string; labels?: unknown } }>
   }
   const rows: PlaygroundModelRow[] = []
   for (const m of data.data || []) {
@@ -55,6 +64,7 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
     rows.push({
       id,
       routerHealth: parseRouterHealth(m.tracehub?.router_health),
+      serviceStatus: parseServiceStatus(m.tracehub?.service_status),
       labels: parseTracehubLabels(m.tracehub?.labels),
     })
   }
@@ -68,6 +78,7 @@ type AvailModelItem = {
   upstream_list_checked_at?: string
   in_gateway?: boolean
   labels?: string[]
+  service_status?: string
 }
 
 /**
@@ -87,6 +98,7 @@ export async function fetchPlaygroundRegistryMap(): Promise<Map<string, Playgrou
         upstream_list_checked_at: it.upstream_list_checked_at,
         in_gateway: it.in_gateway,
         labels: it.labels,
+        service_status: it.service_status,
       })
     }
     return map
@@ -109,6 +121,7 @@ export function mergePlaygroundRegistry(
       upstream_list_checked_at: m.upstream_list_checked_at,
       in_gateway: m.in_gateway,
       labels: m.labels != null && m.labels.length > 0 ? m.labels : r.labels,
+      serviceStatus: parseServiceStatus(m.service_status) ?? r.serviceStatus,
     }
   })
 }
@@ -192,14 +205,63 @@ export async function imageGenerations(
   if (!res.ok) {
     throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
   }
-  const json = JSON.parse(raw) as { data?: Array<{ url?: string; b64_json?: string }> }
-  const imageOutputs: string[] = []
-  for (const d of json.data || []) {
-    if (typeof d.url === 'string' && d.url.trim()) imageOutputs.push(d.url.trim())
-    else if (typeof d.b64_json === 'string' && d.b64_json)
-      imageOutputs.push(`data:image/png;base64,${d.b64_json}`)
+  let json: unknown
+  try {
+    json = JSON.parse(raw)
+  } catch {
+    return { raw, imageOutputs: [] }
   }
-  return { raw, imageOutputs }
+  return { raw, imageOutputs: parseImageGenerationOutputs(json) }
+}
+
+/** 从 OpenAI 及常见兼容体的 images/generations JSON 提取可展示的 URL / data URL。 */
+export function parseImageGenerationOutputs(json: unknown): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  const push = (s: string) => {
+    const t = s.trim()
+    if (!t || seen.has(t)) return
+    seen.add(t)
+    out.push(t)
+  }
+  const pushUrl = (u: unknown) => {
+    if (typeof u !== 'string') return
+    const t = u.trim()
+    if (t.startsWith('http://') || t.startsWith('https://') || t.startsWith('data:image/')) push(t)
+  }
+  const pushB64 = (b: unknown) => {
+    if (typeof b !== 'string') return
+    const t = b.trim()
+    if (!t) return
+    if (t.startsWith('data:image/')) push(t)
+    else push(`data:image/png;base64,${t}`)
+  }
+  const walkRow = (row: unknown) => {
+    if (!row || typeof row !== 'object') return
+    const r = row as Record<string, unknown>
+    pushUrl(r.url)
+    pushUrl(r.image_url)
+    pushB64(r.b64_json)
+    pushB64(r.image)
+  }
+  if (!json || typeof json !== 'object') return out
+  const root = json as Record<string, unknown>
+  if (Array.isArray(root.data)) {
+    for (const row of root.data) walkRow(row)
+  }
+  if (Array.isArray(root.images)) {
+    for (const x of root.images) {
+      if (typeof x === 'string') pushUrl(x)
+      else walkRow(x)
+    }
+  }
+  if (Array.isArray(root.output)) {
+    for (const x of root.output) {
+      if (typeof x === 'string') pushUrl(x)
+      else walkRow(x)
+    }
+  }
+  return out
 }
 
 /** POST /v1/audio/speech（JSON；响应多为音频二进制） */

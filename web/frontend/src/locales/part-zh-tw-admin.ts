@@ -711,6 +711,14 @@ export default {
     hintUpstreamProbeInterval: '建議 60–720；最小 15，最大 1440（1 天）。預設 360（6 小時）。',
     hintUpstreamProbeDb: '若資料庫曾儲存本段兩項，下方會提示；「恢復預設」不會清除（避免誤關偵測）。',
     hintUpstreamProbeListDisclaimer: '標註依上游 /v1/models；部分供應商列表不全，「未見」不代表一定不可用。',
+    lblUpstreamCapabilityFailStaleHours: '介面失敗標紅保留時長（小時）',
+    hintUpstreamCapabilityFailStaleHours:
+      '近期 4xx 失敗在列表中隱藏；超過此時長後顯示為灰色「待驗證」。0 表示永不過期。範圍 0–168，預設 6。',
+    lblUpstreamCapabilityProbeEnabled: '啟用影片能力背景冒煙（預設關）',
+    hintUpstreamCapabilityProbeEnabled:
+      '於模型列表探測輪次末尾低優先級發起最小 POST /v1/videos，僅 unknown/近期 fail，每渠道每輪最多 10 個。',
+    descUpstreamCapabilityFailStaleHours: 'fail 超過此時長後 UI 顯示為待驗證',
+    descUpstreamCapabilityProbeEnabled: '是否啟用背景影片能力冒煙',
     secGatewayRouting: '閘道路由（全域預設）',
     secGatewayRoutingHint: '各分組可繼承或覆蓋；影響同模型多渠道時的選路與故障轉移。',
     lblRoutingStrategy: '預設選路策略',

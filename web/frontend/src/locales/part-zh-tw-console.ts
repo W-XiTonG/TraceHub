@@ -252,6 +252,13 @@ export default {
     upstreamUnavailable: '不可用',
     upstreamPartial: '部分可用',
     upstreamUnknown: '未核對',
+    thServiceStatus: '介面狀態',
+    thServiceStatusHint:
+      '來自真實呼叫記錄：可用=近期驗證成功；待驗證=曾失敗已過期可重試；僅登記=尚無記錄；部分可用=多渠道不一致。',
+    serviceStatusOperational: '介面可用',
+    serviceStatusStale: '待驗證',
+    serviceStatusCatalogOnly: '僅登記',
+    serviceStatusDegraded: '部分可用',
     thOwner: '归属',
     srcBoth: '网关 + 目录',
     srcGw: '网关',
@@ -267,6 +274,7 @@ export default {
     filterKindHint:
       '依模型名稱自動識別類型；可多選，滿足任一類型即顯示。僅供參考，不代表實際 API 能力。',
     filterUpstream: '服務登記',
+    filterServiceStatus: '介面狀態',
     filterPrice: '價格',
     filterOwner: '歸屬',
     filterAll: '全部',
@@ -582,6 +590,8 @@ export default {
     imageFormatB64: 'Base64 JSON',
     imageDoneCaption: '已產生圖片（見上方）。',
     imageNoUrlInResponse: '回應中未解析到圖片 URL 或 b64_json，請展開「顯示偵錯」查看原始 JSON。',
+    imageLoadFailed:
+      '圖片網址已回傳但瀏覽器無法載入（常見：需鑑權、防盜鏈或跨域）。請改試「回應格式：Base64」或展開偵錯查看 URL。',
     chatTitleImage: '文生圖',
     emptyImage: '在下方輸入畫面描述並傳送；紀錄保存在本機瀏覽器。',
     inputPhImage: '畫面描述…（Enter 傳送）',
@@ -610,6 +620,14 @@ export default {
       healthy: '可路由',
       unhealthy: '渠道異常',
       catalog_only: '僅目錄',
+    },
+    serviceStatusHint:
+      '介面能力狀態來自真實呼叫與可選背景探測：可用、待驗證、僅登記、部分可用。',
+    serviceStatus: {
+      operational: '介面可用',
+      stale: '待驗證',
+      catalog_only: '僅登記',
+      degraded: '部分可用',
     },
     modelEmpty: '先填 Key 並重新整理',
     modelSearchPh: '搜尋 ID 或類型…',

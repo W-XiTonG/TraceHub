@@ -52,6 +52,23 @@ func StartWorker(ctx context.Context, log *zap.Logger, client *ent.Client, aesKe
 						return
 					}
 				}
+				if sitecfg.EffectiveUpstreamCapabilityProbeEnabled(ctx, client) {
+					for _, ch := range channels {
+						if ctx.Err() != nil {
+							return
+						}
+						if err := ProbeChannelCapabilities(ctx, client, aesKey, ch, CapabilityProbeMaxPerRound); err != nil {
+							log.Warn("upstream_capability_probe channel failed",
+								zap.Int("channel_id", ch.ID),
+								zap.Error(err))
+						}
+						select {
+						case <-time.After(400 * time.Millisecond):
+						case <-ctx.Done():
+							return
+						}
+					}
+				}
 			}
 			wait := time.Duration(intervalMin) * time.Minute
 			if wait < 15*time.Minute {

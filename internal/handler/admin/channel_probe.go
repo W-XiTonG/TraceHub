@@ -40,3 +40,34 @@ func ProbeChannelUpstream(d ChannelDeps) gin.HandlerFunc {
 		httpx.OK(c, gin.H{"model_upstream_probe": fresh.ModelUpstreamProbe})
 	}
 }
+
+// ProbeChannelCapabilities POST /api/admin/channels/:id/probe-capabilities
+// 对单渠道执行视频能力冒烟探测（运维手动触发）。
+func ProbeChannelCapabilitiesHandler(d ChannelDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		ctx := c.Request.Context()
+		ch, err := d.Client.Channel.Get(ctx, id)
+		if err != nil {
+			httpx.BadRequest(c, "不存在")
+			return
+		}
+		if err := upstreamprobe.ProbeChannelCapabilities(ctx, d.Client, d.AESKey, ch, upstreamprobe.CapabilityProbeMaxPerRound); err != nil {
+			httpx.ServerError(c, "能力探测失败")
+			return
+		}
+		fresh, err := d.Client.Channel.Get(ctx, id)
+		if err != nil {
+			httpx.ServerError(c, "读取渠道失败")
+			return
+		}
+		auditLog(d.Client, adm.ID, "channel.probe_capabilities", "channel", strconv.Itoa(id), nil, c)
+		httpx.OK(c, gin.H{"model_upstream_probe": fresh.ModelUpstreamProbe})
+	}
+}
+

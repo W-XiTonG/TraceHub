@@ -121,7 +121,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			accept := "text/event-stream"
 			resp, err := relay.ForwardOpenAIPostWithHeaders(c.Request.Context(), baseURL, secret, "responses", patched, openAIPassthroughHeaders(c), accept)
 			if err != nil {
-				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err)
+				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err, nil)
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
 				WriteGatewayTransportError(c, err)
 				return
@@ -130,7 +130,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 			if resp.StatusCode >= 400 {
 				rawErr, _ := io.ReadAll(resp.Body)
-				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil)
+				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil, nil)
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
 				logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, rawErr)
 				WriteClientProxy(c, resp.StatusCode, "application/json", rawErr)
@@ -167,7 +167,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 				return
 			}
-			RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil)
+			RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil, nil)
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 			return

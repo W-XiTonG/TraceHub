@@ -21,6 +21,7 @@ import (
 	"tracehub/internal/pkg/metrics"
 	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/service/channelsecret"
+	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
 )
@@ -250,6 +251,13 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		if res.StatusCode >= 400 {
 			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(res.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+			if rec := UsageRecorderFrom(c); rec != nil {
+				rec.SetModel(model)
+				rec.SetChannel(ch.ID, sel.UpstreamModel)
+			}
+			upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
+			em := http.StatusText(res.StatusCode)
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, maxComp, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 			outCT := "application/json"
 			if res.Headers != nil {
 				if h := res.Headers.Get("Content-Type"); h != "" {
@@ -267,6 +275,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
+		upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, nil, upstreamprobe.CapSourceRuntime)
 		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 		outCT := "application/json"
 		if res.Headers != nil {
@@ -369,6 +378,13 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		if res.StatusCode >= 400 {
 			metrics.GatewayRequests.WithLabelValues(model, chType, http.StatusText(res.StatusCode)).Inc()
 			logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, res.Body)
+			if rec := UsageRecorderFrom(c); rec != nil {
+				rec.SetModel(model)
+				rec.SetChannel(ch.ID, sel.UpstreamModel)
+			}
+			upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
+			em := http.StatusText(res.StatusCode)
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compEst, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 			outCT := "application/json"
 			if res.Headers != nil {
 				if h := res.Headers.Get("Content-Type"); h != "" {
@@ -399,6 +415,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
+		upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, nil, upstreamprobe.CapSourceRuntime)
 		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 
 		outCT := "application/octet-stream"

@@ -34,6 +34,10 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateUpstreamModelProbeEnabled(value)
 	case SystemConfigKeyUpstreamModelProbeIntervalMinutes:
 		return ValidateUpstreamModelProbeIntervalMinutes(value)
+	case SystemConfigKeyUpstreamCapabilityFailStaleHours:
+		return ValidateUpstreamCapabilityFailStaleHours(value)
+	case SystemConfigKeyUpstreamCapabilityProbeEnabled:
+		return ValidateUpstreamCapabilityProbeEnabled(value)
 	case SystemConfigKeyRoutingStrategyDefault:
 		return ValidateRoutingStrategy(value)
 	case SystemConfigKeyRoutingFailoverEnabledDefault:

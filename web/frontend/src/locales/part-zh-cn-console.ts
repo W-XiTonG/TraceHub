@@ -252,6 +252,13 @@ export default {
     upstreamUnavailable: '不可用',
     upstreamPartial: '部分可用',
     upstreamUnknown: '未核对',
+    thServiceStatus: '接口状态',
+    thServiceStatusHint:
+      '来自真实调用记录：可用=近期验证成功；待验证=曾失败已过期可重试；仅登记=尚无记录；部分可用=多渠道不一致。',
+    serviceStatusOperational: '接口可用',
+    serviceStatusStale: '待验证',
+    serviceStatusCatalogOnly: '仅登记',
+    serviceStatusDegraded: '部分可用',
     thOwner: '归属',
     srcBoth: '网关 + 目录',
     srcGw: '网关',
@@ -267,6 +274,7 @@ export default {
     filterKindHint:
       '根据模型名称自动识别类型；可多选，满足任一类型即显示。仅供参考，不代表实际 API 能力。',
     filterUpstream: '服务登记',
+    filterServiceStatus: '接口状态',
     filterPrice: '价格',
     filterOwner: '归属',
     filterAll: '全部',
@@ -585,6 +593,8 @@ export default {
     imageFormatB64: 'Base64 JSON',
     imageDoneCaption: '已生成图片（见上方）。',
     imageNoUrlInResponse: '响应中未解析到图片 URL 或 b64_json，请展开「显示调试」查看原始 JSON。',
+    imageLoadFailed:
+      '图片地址已返回但浏览器无法加载（常见：链接需鉴权、防盗链或跨域）。请改试「响应格式：Base64」或展开调试查看 URL。',
     chatTitleImage: '文生图',
     emptyImage: '在下方输入画面描述并发送；记录保存在本机浏览器。',
     inputPhImage: '画面描述…（Enter 发送）',
@@ -613,6 +623,14 @@ export default {
       healthy: '可路由',
       unhealthy: '渠道异常',
       catalog_only: '仅目录',
+    },
+    serviceStatusHint:
+      '接口能力状态来自真实调用与可选后台探测：可用=近期验证成功；待验证=曾失败已过期可重试；仅登记=尚无成败记录；部分可用=多渠道结论不一致。',
+    serviceStatus: {
+      operational: '接口可用',
+      stale: '待验证',
+      catalog_only: '仅登记',
+      degraded: '部分可用',
     },
     modelEmpty: '先填写 Key 并刷新',
     modelSearchPh: '搜索 ID 或类型…',

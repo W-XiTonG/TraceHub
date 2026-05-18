@@ -149,7 +149,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			if stream {
 				resp, err := relay.ForwardOpenAIChat(c.Request.Context(), baseURL, secret, patched, true)
 				if err != nil {
-					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err)
+					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err, nil)
 					metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
 					WriteGatewayTransportError(c, err)
 					return
@@ -159,7 +159,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 
 				if resp.StatusCode >= 400 {
 					rawErr, _ := io.ReadAll(resp.Body)
-					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil)
+					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil, nil)
 					out := SanitizeClientProxyBody(resp.StatusCode, "application/json", rawErr)
 					c.Writer.Header().Set("Content-Type", "application/json")
 					c.Writer.WriteHeader(resp.StatusCode)
@@ -203,7 +203,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil)
+				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil, nil)
 				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 				return
 			}

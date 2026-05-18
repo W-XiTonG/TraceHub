@@ -717,6 +717,14 @@ export default {
     hintUpstreamProbeInterval: 'Suggested 60–720; min 15, max 1440 (1 day). Default 360 (6 hours).',
     hintUpstreamProbeDb:
       'If these keys were saved in the database, hints appear below. “Restore defaults” does not remove them (to avoid accidentally disabling probes).',
+    lblUpstreamCapabilityFailStaleHours: 'Capability fail highlight retention (hours)',
+    hintUpstreamCapabilityFailStaleHours:
+      'Recent 4xx failures are hidden from user lists; after this many hours they show as gray "pending verification". 0 = never expire. Range 0–168, default 6.',
+    lblUpstreamCapabilityProbeEnabled: 'Enable background video capability smoke (off by default)',
+    hintUpstreamCapabilityProbeEnabled:
+      'After each models-list probe round, low-priority minimal POST /v1/videos for unknown/recent-fail video models, max 10 per channel.',
+    descUpstreamCapabilityFailStaleHours: 'Hours before fail UI becomes stale (gray)',
+    descUpstreamCapabilityProbeEnabled: 'Background video capability smoke probe',
     hintUpstreamProbeListDisclaimer:
       'Labels follow upstream /v1/models; some vendors return incomplete lists—“Not listed” does not always mean unusable.',
     secGatewayRouting: 'Gateway routing (global defaults)',

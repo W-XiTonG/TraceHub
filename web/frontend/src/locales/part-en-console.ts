@@ -252,6 +252,13 @@ export default {
     upstreamUnavailable: 'Unavailable',
     upstreamPartial: 'Partial',
     upstreamUnknown: 'Not checked yet',
+    thServiceStatus: 'API status',
+    thServiceStatusHint:
+      'From real API calls: operational = recently OK; stale = failed but aged out—retry; catalog only = no capability record yet; degraded = mixed across channels.',
+    serviceStatusOperational: 'API available',
+    serviceStatusStale: 'Pending verification',
+    serviceStatusCatalogOnly: 'Catalog only',
+    serviceStatusDegraded: 'Partially available',
     thOwner: 'Owner',
     srcBoth: 'Gateway + catalog',
     srcGw: 'Gateway',
@@ -266,6 +273,7 @@ export default {
     filterKindHint:
       'Types are inferred from model names. Multi-select uses OR. Indicative only—not a guarantee of API capability.',
     filterUpstream: 'Service registry',
+    filterServiceStatus: 'API status',
     filterPrice: 'Price',
     filterOwner: 'Owner',
     filterAll: 'All',
@@ -584,6 +592,8 @@ export default {
     imageFormatB64: 'Base64 JSON',
     imageDoneCaption: 'Image generated (above).',
     imageNoUrlInResponse: 'No image URL or b64_json in the response; open debug to inspect raw JSON.',
+    imageLoadFailed:
+      'Image URL was returned but the browser could not load it (auth, hotlink, or CORS). Try response format Base64 or inspect the URL in debug.',
     chatTitleImage: 'Image generation',
     emptyImage: 'Describe the image below and send; history is stored locally in your browser.',
     inputPhImage: 'Prompt… (Enter to send)',
@@ -612,6 +622,14 @@ export default {
       healthy: 'Routable',
       unhealthy: 'Channel down',
       catalog_only: 'Catalog only',
+    },
+    serviceStatusHint:
+      'Capability status from real traffic and optional background probes: operational, stale (retry), catalog only, or degraded across channels.',
+    serviceStatus: {
+      operational: 'API available',
+      stale: 'Pending verification',
+      catalog_only: 'Catalog only',
+      degraded: 'Partially available',
     },
     modelEmpty: 'Enter key & refresh',
     modelSearchPh: 'Search id or type…',

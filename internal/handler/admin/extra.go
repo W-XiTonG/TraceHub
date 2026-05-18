@@ -1521,6 +1521,11 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			httpx.ServerError(c, "读取探测配置失败")
 			return
 		}
+		capStaleSet, capStaleVal, capStaleMetaErr := sitecfg.UpstreamCapabilityFailStaleHoursDBMeta(ctx, client)
+		if capStaleMetaErr != nil {
+			httpx.ServerError(c, "读取能力探测配置失败")
+			return
+		}
 		routingMeta, routingMetaErr := sitecfg.RoutingDBMeta(ctx, client)
 		if routingMetaErr != nil {
 			httpx.ServerError(c, "读取路由配置失败")
@@ -1560,6 +1565,10 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"upstream_model_probe_enabled_db_value":  strings.TrimSpace(probeEnVal),
 			"upstream_model_probe_interval_db_set":   probeIntSet,
 			"upstream_model_probe_interval_db_value": strings.TrimSpace(probeIntVal),
+			"upstream_capability_fail_stale_hours":     sitecfg.EffectiveUpstreamCapabilityFailStaleHours(ctx, client),
+			"upstream_capability_fail_stale_hours_db_set": capStaleSet,
+			"upstream_capability_fail_stale_hours_db_value": strings.TrimSpace(capStaleVal),
+			"upstream_capability_probe_enabled":          sitecfg.EffectiveUpstreamCapabilityProbeEnabled(ctx, client),
 			"routing_strategy_default":               routingDefaults.Strategy,
 			"routing_failover_enabled_default":       routingDefaults.FailoverEnabled,
 			"routing_failover_max_attempts_default":  routingDefaults.FailoverMaxAttempts,

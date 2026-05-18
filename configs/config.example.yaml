@@ -46,6 +46,11 @@ site:
   # realtime_call_mapping_ttl_sec: 86400
   # realtime_call_control_bill_reject_hangup: false
   #
+  # 能力探测（运行时 overlay + 异步落库；fail_stale_hours / probe.enabled 可在管理后台 system_configs 覆盖）
+  # upstream_capability.runtime_enabled: true
+  # upstream_capability.fail_stale_hours: 6   # 近期 fail 超时后 UI 显示「待验证」；0=永不过期
+  # upstream_capability_probe.enabled: false  # 后台视频冒烟，默认关
+  #
   # 三～五：OpenAI 兼容扩展（可选）
   # openai_compat_channel_types: [] # 例: ["siliconflow"] — 与 openai 一样走 /v1 JSON 透传的额外渠道类型名
   #

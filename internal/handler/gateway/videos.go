@@ -17,6 +17,7 @@ import (
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
+	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
 )
@@ -260,6 +261,13 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	outBody := normalizeVideoUpstreamBody(ct, res.Body)
 	if res.StatusCode >= 400 {
 		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+		if rec := UsageRecorderFrom(c); rec != nil {
+			rec.SetModel(model)
+			rec.SetChannel(ch.ID, sel.UpstreamModel)
+		}
+		upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityVideo, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
+		em := http.StatusText(res.StatusCode)
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 		WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 		return
 	}
@@ -276,6 +284,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 		})
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+	upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityVideo, res.StatusCode, nil, upstreamprobe.CapSourceRuntime)
 	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }

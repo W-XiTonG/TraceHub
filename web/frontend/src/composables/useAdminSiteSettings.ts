@@ -45,6 +45,10 @@ export type SiteSettingsPayload = {
   upstream_model_probe_enabled_db_value?: string
   upstream_model_probe_interval_db_set?: boolean
   upstream_model_probe_interval_db_value?: string
+  upstream_capability_fail_stale_hours?: number
+  upstream_capability_fail_stale_hours_db_set?: boolean
+  upstream_capability_fail_stale_hours_db_value?: string
+  upstream_capability_probe_enabled?: boolean
   routing_strategy_default?: string
   routing_failover_enabled_default?: boolean
   routing_failover_max_attempts_default?: number
@@ -74,6 +78,8 @@ export function createAdminSiteSettings() {
     apiPublicBaseUrl: '',
     upstreamProbeEnabled: false,
     upstreamProbeInterval: 360,
+    upstreamCapabilityFailStaleHours: 6,
+    upstreamCapabilityProbeEnabled: false,
     routingStrategy: 'weighted_random',
     routingFailoverEnabled: false,
     routingFailoverMaxAttempts: 2,
@@ -184,6 +190,9 @@ export function createAdminSiteSettings() {
     form.upstreamProbeInterval = iv >= 15 && iv <= 1440 ? iv : 360
     upstreamProbeEnabledDbOverride.value = Boolean(d.upstream_model_probe_enabled_db_set)
     upstreamProbeIntervalDbOverride.value = Boolean(d.upstream_model_probe_interval_db_set)
+    const staleH = pickInt64ish(d.upstream_capability_fail_stale_hours)
+    form.upstreamCapabilityFailStaleHours = staleH >= 0 && staleH <= 168 ? staleH : 6
+    form.upstreamCapabilityProbeEnabled = Boolean(d.upstream_capability_probe_enabled)
     form.routingStrategy =
       typeof d.routing_strategy_default === 'string' && d.routing_strategy_default.trim()
         ? d.routing_strategy_default
@@ -470,6 +479,16 @@ export function createAdminSiteSettings() {
         key: 'upstream_model_probe.interval_minutes',
         value: String(Math.min(1440, Math.max(15, Math.trunc(Number(form.upstreamProbeInterval)) || 360))),
         description: t('adminSystem.descUpstreamProbeInterval'),
+      },
+      {
+        key: 'upstream_capability.fail_stale_hours',
+        value: String(Math.min(168, Math.max(0, Math.trunc(Number(form.upstreamCapabilityFailStaleHours)) || 6))),
+        description: t('adminSystem.descUpstreamCapabilityFailStaleHours'),
+      },
+      {
+        key: 'upstream_capability_probe.enabled',
+        value: form.upstreamCapabilityProbeEnabled ? 'true' : 'false',
+        description: t('adminSystem.descUpstreamCapabilityProbeEnabled'),
       },
       {
         key: 'gateway.routing.strategy_default',
