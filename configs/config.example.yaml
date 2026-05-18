@@ -1,6 +1,7 @@
 server:
-  addr: ":8080"
-  mode: debug # release
+  # 生产运营常用 :80（浏览器访问 http://你的域名/ ，无需写端口）；本地开发可改为 :8080
+  addr: ":80"
+  mode: release # 本地联调可用 debug
 
 database:
   dsn: "postgres://tracehub:tracehub@localhost:5432/tracehub?sslmode=disable"
@@ -35,8 +36,10 @@ site:
   default_new_user_balance: 5000 # 试用额度（额度单位）
   # 注册页与官网首页推广说明（可被管理后台覆盖）；留空则不展示
   # register_promo_text: "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。"
-  # 浏览器跨域：列出完整 Origin（如 http://localhost:5173）；与 * 组合时 * 表示未匹配请求不携带 Credentials
+  # 浏览器跨域：生产请写完整 Origin（80 端口不写 :80），例 http://182.92.159.29 或 https://api.example.com
+  # 本地 npm run dev 时可加 http://127.0.0.1:5173；与 * 组合时 * 表示未匹配请求不携带 Credentials
   cors_origins:
+    - "http://182.92.159.29"
     - "*"
   # Realtime 通话子资源（POST .../realtime/calls/{id}/accept 等）：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
   # realtime_call_mapping_enabled: false
@@ -93,3 +96,5 @@ bootstrap:
 
 # 上线前自检：① security.jwt_secret / bootstrap.admin_password 已替换 ② 生产 database.sslmode 与 Redis 密码
 # ③ 按需设置 security.metrics_bearer_token 或限制 /metrics 仅内网 ④ site.cors_origins 为真实前端 Origin，勿用弱口令
+# ⑤ server.addr 为 :80 时 Linux 需 root 或 setcap；亦可 Nginx 占 80 反代到 :8080（见 docs/development-docs/deployment-ops.md）
+# ⑥ 管理后台「站点 / 公开」中设置 API 对外 Base URL，例 http://182.92.159.29/v1（勿带 :80）

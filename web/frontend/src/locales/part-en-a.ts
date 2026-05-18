@@ -70,6 +70,7 @@ export default {
     sendCodeWait: 'Resend in {n}s',
     sendCodeFail: 'Could not send code',
     redirectPrefix: 'After sign-in you will go to',
+    sessionExpired: 'Your session expired or is invalid. Please sign in again.',
     accountLabel: 'Email or username',
     accountPlaceholder: "e.g. admin or you{'@'}email.com",
     password: 'Password',

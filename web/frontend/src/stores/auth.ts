@@ -1,10 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
-import { http, type Envelope } from '../api/http'
+import { http, isPublicUserAuthApi, type Envelope } from '../api/http'
+import { i18n } from '../i18n'
 
 export function apiErrorMessage(e: unknown, fallback: string) {
   if (axios.isAxiosError(e)) {
+    const status = e.response?.status
+    if (status === 401 && !isPublicUserAuthApi(e.config?.url)) {
+      return i18n.global.t('login.sessionExpired')
+    }
     const d = e.response?.data
     if (d && typeof d === 'object' && 'message' in d) {
       const m = (d as { message?: unknown }).message

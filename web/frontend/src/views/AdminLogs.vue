@@ -47,9 +47,13 @@ const filterChannelId = ref('')
 const filterIp = ref('')
 
 function httpErr(e: unknown): string {
-  if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
-    const d = e.response.data as { message?: string }
-    if (typeof d.message === 'string' && d.message.trim()) return d.message.trim()
+  if (axios.isAxiosError(e)) {
+    if (e.response?.status === 401) return t('login.sessionExpired')
+    const d = e.response?.data
+    if (d && typeof d === 'object' && 'message' in d) {
+      const m = (d as { message?: string }).message
+      if (typeof m === 'string' && m.trim()) return m.trim()
+    }
   }
   return e instanceof Error ? e.message : t('adminCommon.requestFail')
 }

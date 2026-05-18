@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { sanitizeAppRedirect } from '../utils/safeRedirect'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -102,7 +103,8 @@ router.beforeEach(async (to) => {
     return { name: 'admin-billing-global-pricing', replace: true }
   }
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+    const back = sanitizeAppRedirect(to.fullPath)
+    return back ? { name: 'login', query: { redirect: back } } : { name: 'login' }
   }
   if (to.meta.requiresAdmin && !['admin', 'superadmin'].includes(auth.role)) {
     return { path: '/console', query: { denied: 'admin' } }

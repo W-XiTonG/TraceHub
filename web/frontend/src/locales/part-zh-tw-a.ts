@@ -74,6 +74,7 @@ export default {
     sendCodeWait: '{n} 秒後重發',
     sendCodeFail: '發送失敗',
     redirectPrefix: '登入成功后将前往',
+    sessionExpired: '登入已過期或無效，請重新登入',
     accountLabel: '邮箱或用戶名',
     accountPlaceholder: "例如 admin 或 your{'@'}email.com",
     password: '密碼',

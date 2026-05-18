@@ -4,9 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  appType: 'spa',
   plugins: [vue(), tailwindcss()],
   server: {
     proxy: {
+      // 本地后端默认 :8080；若本机也改为 :80 运营，把下面 target 改成 http://127.0.0.1:80
       // 与 gin 挂载的 /uploads/site-brand 静态资源一致；开发时 <img src="/uploads/..."> 需走后端
       '/uploads': { target: 'http://127.0.0.1:8080', changeOrigin: true },
       '/api': { target: 'http://127.0.0.1:8080', changeOrigin: true },

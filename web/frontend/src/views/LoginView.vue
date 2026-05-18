@@ -8,6 +8,7 @@ import axios from 'axios'
 import { useAuthStore, apiErrorMessage, type LoginCaptchaResponse } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
+import { sanitizeAppRedirect } from '../utils/safeRedirect'
 
 const { t, locale } = useI18n()
 const siteMeta = useSiteMetaStore()
@@ -121,6 +122,8 @@ onMounted(() => {
 onUnmounted(() => {
   if (cdTimer) clearInterval(cdTimer)
 })
+
+const sessionExpired = computed(() => route.query.reason === 'session_expired')
 
 const redirectLabel = computed(() => {
   const r = route.query.redirect
@@ -254,8 +257,8 @@ async function submit() {
     } else {
       await auth.login(account.value, password.value, captchaPayload())
     }
-    const redir = (route.query.redirect as string) || '/console'
-    router.push(redir)
+    const redir = sanitizeAppRedirect(route.query.redirect as string) || '/console'
+    await router.push(redir)
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : t('login.fail')
     if (mode.value === 'password' && captchaRequired.value) await loadCaptcha()
@@ -300,6 +303,13 @@ async function submit() {
             {{ t('login.modeCode') }}
           </button>
         </div>
+        <p
+          v-if="sessionExpired"
+          class="mb-5 rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2 text-center text-xs leading-relaxed text-amber-100/90"
+          role="status"
+        >
+          {{ t('login.sessionExpired') }}
+        </p>
         <p
           v-if="redirectLabel"
           class="mb-5 rounded-lg border border-cyan-500/15 bg-cyan-950/25 px-3 py-2 text-center text-[11px] leading-relaxed text-cyan-200/85"
