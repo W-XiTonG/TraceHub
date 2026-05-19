@@ -1079,15 +1079,34 @@ onMounted(load)
                   {{ t('adminGroups.lblSticky') }}
                 </label>
               </div>
-              <div class="mt-4 space-y-2 border-t border-slate-800 pt-4">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.secModelPin') }}</p>
-                <p class="text-xs text-slate-500">{{ t('adminGroups.modelPinHint') }}</p>
+              <details class="th-admin-disclosure mt-4 border-t border-slate-800 pt-4">
+                <summary>
+                  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('adminGroups.secModelPin') }}</span>
+                  <span class="flex items-center gap-2 text-[11px] text-slate-500">
+                    <ThLoadingState
+                      v-if="overlapsLoadingUi"
+                      variant="inline"
+                      size="sm"
+                      :label="t('adminGroups.loadingOverlaps')"
+                    />
+                    <span
+                      v-else-if="overlaps.length > 0"
+                      class="rounded-full bg-slate-800/90 px-2 py-0.5 font-mono tabular-nums text-slate-400"
+                    >{{ t('adminGroups.modelPinCount', { n: overlaps.length }) }}</span>
+                    <span v-else class="text-slate-600">{{ t('adminGroups.noOverlaps') }}</span>
+                    <svg class="th-admin-disclosure__chevron h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                    </svg>
+                  </span>
+                </summary>
+                <div class="th-admin-disclosure__body space-y-2">
+                  <p class="text-xs text-slate-500">{{ t('adminGroups.modelPinHint') }}</p>
                 <ThLoadingState v-if="overlapsLoadingUi" variant="inline" size="sm" :label="t('adminGroups.loadingOverlaps')" />
                 <p v-else-if="overlaps.length === 0" class="text-xs text-slate-600">{{ t('adminGroups.noOverlaps') }}</p>
                 <template v-else>
-                <div class="hidden overflow-x-auto rounded-lg border border-slate-800 lg:block">
-                  <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-950 text-slate-500">
+                    <div class="th-admin-disclosure__scroll thin-scrollbar hidden overflow-x-auto rounded-lg border border-slate-800 lg:block">
+                      <table class="w-full text-left text-xs">
+                        <thead class="sticky top-0 z-[1] bg-slate-950 text-slate-500">
                       <tr>
                         <th class="px-2 py-2">{{ t('adminGroups.thOverlapModel') }}</th>
                         <th class="px-2 py-2">{{ t('adminGroups.thOverlapChannels') }}</th>
@@ -1118,7 +1137,7 @@ onMounted(load)
                     </tbody>
                   </table>
                 </div>
-                <ul class="space-y-2 lg:hidden">
+                    <ul class="th-admin-disclosure__scroll thin-scrollbar space-y-2 lg:hidden">
                   <li
                     v-for="it in overlaps"
                     :key="`ov-m-${it.model}`"
@@ -1145,9 +1164,10 @@ onMounted(load)
                       </select>
                     </label>
                   </li>
-                </ul>
-                </template>
-              </div>
+                    </ul>
+                  </template>
+                </div>
+              </details>
               <div class="mt-3 space-y-2">
                 <button
                   type="button"

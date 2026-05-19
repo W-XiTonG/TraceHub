@@ -377,6 +377,7 @@ export default {
     loadingOverlaps: '正在掃描重複模型…',
     loadOverlapsFail: '載入重複模型失敗',
     noOverlaps: '目前分組無多渠道重複的模型。',
+    modelPinCount: '{n} 個重複模型',
     thOverlapModel: '模型',
     thOverlapChannels: '涉及渠道',
     thOverlapPin: '固定渠道',

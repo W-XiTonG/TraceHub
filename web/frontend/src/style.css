@@ -2331,6 +2331,39 @@
   background: rgba(8, 145, 178, 0.35);
 }
 
+/* 管理端表单内可折叠区块（如分组编辑 · 重复模型固定渠道） */
+.th-admin-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.th-admin-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.th-admin-disclosure__chevron {
+  flex-shrink: 0;
+  color: #64748b;
+  transition: transform 0.15s ease, color 0.12s ease;
+}
+.th-admin-disclosure[open] > summary .th-admin-disclosure__chevron {
+  transform: rotate(180deg);
+  color: #94a3b8;
+}
+.th-admin-disclosure > summary:hover .th-admin-disclosure__chevron {
+  color: #cbd5e1;
+}
+.th-admin-disclosure__body {
+  margin-top: 0.5rem;
+}
+.th-admin-disclosure__scroll {
+  max-height: min(16rem, 42vh);
+  overflow-y: auto;
+}
+
 .th-pg-btn-ghost--icon {
   padding: 0.5rem;
   border-radius: 0.75rem;

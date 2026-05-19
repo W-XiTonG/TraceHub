@@ -380,6 +380,7 @@ export default {
     loadingOverlaps: 'Scanning duplicate models…',
     loadOverlapsFail: 'Failed to load duplicate models',
     noOverlaps: 'No models duplicated across channels in this group.',
+    modelPinCount: '{n} duplicate models',
     thOverlapModel: 'Model',
     thOverlapChannels: 'Channels',
     thOverlapPin: 'Pinned channel',
