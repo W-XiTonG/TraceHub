@@ -318,7 +318,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			}
 			upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityImage, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
 			em := http.StatusText(res.StatusCode)
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compAssumed, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compAssumed, 0, 0, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 			return
 		}

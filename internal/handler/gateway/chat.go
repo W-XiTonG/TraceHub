@@ -463,6 +463,7 @@ func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptToken
 }
 
 func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration) {
+	cost = usageCostForStatus(status, cost)
 	ctx := context.Background()
 	ms := int(elapsed.Milliseconds())
 	creator := client.UsageLog.Create().

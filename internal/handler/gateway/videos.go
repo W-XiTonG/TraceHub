@@ -267,7 +267,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 		}
 		upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityVideo, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
 		em := http.StatusText(res.StatusCode)
-		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, 0, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 		WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 		return
 	}

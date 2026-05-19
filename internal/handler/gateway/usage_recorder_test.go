@@ -41,6 +41,21 @@ func TestUsageRecorder_MarkLogged_skipsFlush(t *testing.T) {
 	}
 }
 
+func TestUsageCostForStatus_4xxZero(t *testing.T) {
+	if got := usageCostForStatus(429, 1000); got != 0 {
+		t.Fatalf("429: got %d want 0", got)
+	}
+	if got := usageCostForStatus(500, 100); got != 0 {
+		t.Fatalf("500: got %d want 0", got)
+	}
+	if got := usageCostForStatus(200, 1000); got != 1000 {
+		t.Fatalf("200: got %d want 1000", got)
+	}
+	if got := usageCostForStatus(399, 50); got != 50 {
+		t.Fatalf("399: got %d want 50", got)
+	}
+}
+
 func TestUsageRecorder_NoteError(t *testing.T) {
 	rec := &UsageRecorder{}
 	rec.NoteError("余额不足")

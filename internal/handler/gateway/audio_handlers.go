@@ -257,7 +257,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			}
 			upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
 			em := http.StatusText(res.StatusCode)
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, maxComp, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, maxComp, 0, 0, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 			outCT := "application/json"
 			if res.Headers != nil {
 				if h := res.Headers.Get("Content-Type"); h != "" {
@@ -384,7 +384,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			}
 			upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
 			em := http.StatusText(res.StatusCode)
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compEst, 0, costPre, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compEst, 0, 0, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 			outCT := "application/json"
 			if res.Headers != nil {
 				if h := res.Headers.Get("Content-Type"); h != "" {

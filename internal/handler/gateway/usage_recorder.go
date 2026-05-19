@@ -13,6 +13,14 @@ import (
 
 const ctxUsageRecorderKey = "tracehub_usage_recorder"
 
+// usageCostForStatus 上游 HTTP 失败时不记非零费用（与 gatewayDeduct 一致：4xx/5xx 不扣费）。
+func usageCostForStatus(status int, cost int64) int64 {
+	if status >= 400 {
+		return 0
+	}
+	return cost
+}
+
 // usageLogSkipPaths 高频元数据接口，默认不写 usage_logs（性能/噪音）。
 var usageLogSkipPaths = map[string]struct{}{
 	"GET /v1/models":     {},

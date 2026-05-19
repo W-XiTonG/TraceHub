@@ -206,10 +206,10 @@ onMounted(() => void load())
 
     <ThTableSkeleton v-if="loadingUi && items.length === 0" :rows="8" :columns="6" toolbar class="mb-4" />
 
-    <div class="relative hidden overflow-x-auto rounded-lg border border-white/[0.06] lg:block">
+    <div class="th-admin-logs-table-scroll thin-scrollbar relative hidden rounded-lg border border-white/[0.06] lg:block">
       <ThLoadingState v-if="loadingUi && items.length > 0" variant="overlay" />
       <table class="w-full min-w-[88rem] text-left text-xs text-slate-300">
-        <thead class="border-b border-white/[0.06] bg-white/[0.02] text-[10px] uppercase tracking-wide text-slate-500">
+        <thead class="sticky top-0 z-[1] border-b border-white/[0.06] bg-slate-950 text-[10px] uppercase tracking-wide text-slate-500 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
           <tr>
             <th class="px-3 py-2">{{ t('adminLogs.thTime') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thUser') }}</th>
