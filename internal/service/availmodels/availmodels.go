@@ -227,14 +227,20 @@ type ConsoleModel struct {
 	Labels                []string      `json:"labels,omitempty"`                   // 类型标签（启发式 + 可选目录 metadata）
 	ServiceStatus         string        `json:"service_status,omitempty"`           // operational|unavailable|stale|degraded|catalog_only
 	Pricing               *ModelPricing `json:"pricing,omitempty"`
+	PricingChannelID      int           `json:"pricing_channel_id,omitempty"` // 参考价选渠；0=全站回退
+	PricingStrategy       string        `json:"pricing_strategy,omitempty"`   // 生效选路策略（weighted_random|priority|fixed_order）
 }
 
-// ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关侧仍以 ListForGroup 为准。
-func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int, opts ListOpts) ([]ConsoleModel, error) {
-	gatewayItems, err := ListForGroup(ctx, client, groupID)
+// ListConsoleMerged 合并渠道模型 ID 与模型市场 visible+enabled 条目；网关模型 ID 与 ListForGroup 同源（listGroupModelSet），
+// 但不在此处走 ListForGroup 的 Redis 能力覆盖与按状态过滤——由 attachServiceStatusFromChannels + filterConsoleModels 按 opts 处理。
+// groupChannels 为本次 listGroupModelSet 已加载的分组渠道（enabled+schedulable），可供 router.NewPricingPreviewWithChannels 复用，避免重复查库。
+func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int, opts ListOpts) (items []ConsoleModel, groupChannels []*ent.Channel, err error) {
+	set, _, _, channels, err := listGroupModelSet(ctx, client, groupID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	groupChannels = channels
+	gatewayItems := itemsFromModelIDSet(set)
 	catalogRows, err := client.ModelCatalogEntry.Query().
 		Where(
 			modelcatalogentry.Visible(true),
@@ -243,7 +249,7 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int, opt
 		Order(ent.Asc(modelcatalogentry.FieldModelID)).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, groupChannels, err
 	}
 	ts := time.Now().Unix()
 	byID := make(map[string]*ConsoleModel)
@@ -280,17 +286,7 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int, opt
 			InCatalog:   true,
 		}
 	}
-	if groupID > 0 {
-		channels, err := client.Channel.Query().
-			Where(
-				channel.Enabled(true),
-				channel.Schedulable(true),
-				channel.HasGroupWith(group.IDEQ(groupID)),
-			).
-			All(ctx)
-		if err != nil {
-			return nil, err
-		}
+	if len(channels) > 0 {
 		attachUpstreamListProbeFromChannels(channels, byID)
 		attachServiceStatusFromChannels(ctx, channels, byID, opts)
 	}
@@ -323,7 +319,7 @@ func ListConsoleMerged(ctx context.Context, client *ent.Client, groupID int, opt
 	for _, id := range ids {
 		out = append(out, *byID[id])
 	}
-	return filterConsoleModels(out, opts), nil
+	return filterConsoleModels(out, opts), groupChannels, nil
 }
 
 // GlobalPricingWorkspaceItem 管理端「全局计价」合并视图的一行：含代码基准、来源标签与可选的全局库记录。

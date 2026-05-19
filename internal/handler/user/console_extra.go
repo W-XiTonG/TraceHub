@@ -17,6 +17,7 @@ import (
 	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/pkg/usagelogfilter"
+	"tracehub/internal/gateway/router"
 	"tracehub/internal/service/availmodels"
 	"tracehub/internal/service/billing"
 
@@ -176,7 +177,8 @@ func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config
 		includeUnavail := strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_unavailable")), "1") ||
 			strings.EqualFold(strings.TrimSpace(c.Query("tracehub_include_unavailable")), "true")
 		opts := availmodels.ListOptsFromQuery(ctx, client, includeUnavail)
-		items, err := availmodels.ListConsoleMerged(ctx, client, gid, opts)
+		opts.SkipCapabilityOverlay = true // 大列表避免按模型×渠道触发 Redis 能力覆盖层查询
+		items, groupChannels, err := availmodels.ListConsoleMerged(ctx, client, gid, opts)
 		if err != nil {
 			httpx.ServerError(c, "读取模型列表失败")
 			return
@@ -187,17 +189,36 @@ func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config
 			if qerr == nil {
 				billUser = fu
 			}
-			for i := range items {
-				br, brErr := eng.ModelBillRates(ctx, billUser, items[i].ID, 0)
-				if brErr != nil {
-					continue
+			var pricingPreview *router.PricingPreview
+			pricingStrategy := ""
+			var pricingBatch *billing.ConsolePricingBatch
+			if gid > 0 {
+				pp, ppErr := router.NewPricingPreviewWithChannels(ctx, client, gid, groupChannels)
+				if ppErr == nil {
+					pricingPreview = pp
+					pricingStrategy = pp.EffectiveStrategy()
+					pricingBatch = eng.NewConsolePricingBatch(ctx, billUser, pp.ChannelIDs())
 				}
+			}
+			if pricingBatch == nil {
+				pricingBatch = eng.NewConsolePricingBatch(ctx, billUser, nil)
+			}
+			for i := range items {
+				channelID := 0
+				if pricingPreview != nil {
+					channelID = pricingPreview.ChannelIDForModel(items[i].ID)
+				}
+				br := pricingBatch.Rates(items[i].ID, channelID)
 				in, out := br.EffectiveQuotaPer1k()
 				items[i].Pricing = &availmodels.ModelPricing{
 					Billable:      br.Billable,
 					QuotaInPer1k:  in,
 					QuotaOutPer1k: out,
 					PricingUnit:   "per_1k_tokens",
+				}
+				items[i].PricingChannelID = channelID
+				if pricingStrategy != "" {
+					items[i].PricingStrategy = pricingStrategy
 				}
 			}
 		}

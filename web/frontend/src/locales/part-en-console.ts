@@ -229,7 +229,7 @@ export default {
     pricePerMillion: '/ 1M tokens',
     priceQuotaPer1k: 'quota / 1K tokens',
     priceQuotaUnit: 'quota / 1K tokens',
-    priceHint: 'Includes group rate, your multiplier and markup; shown as site-wide reference—actual billing uses the routed channel.',
+    priceHint: 'Includes group rate, your multiplier and markup; reference price uses a representative channel per your group routing strategy (weighted random shows the highest-weight channel as an estimate). Falls back to site defaults when channel pricing is unset; actual billing follows gateway routing.',
     priceCurrencyUsd: 'USD',
     priceCurrencyCny: 'CNY',
     priceCurrencyAria: 'Price currency',

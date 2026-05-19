@@ -229,7 +229,7 @@ export default {
     pricePerMillion: '/ 百万 token',
     priceQuotaPer1k: '额度/千 token',
     priceQuotaUnit: '额度/千 token',
-    priceHint: '已含分组倍率、用户倍率与成本加成；展示为全站参考价，实际扣费以网关选路渠道为准。',
+    priceHint: '已含分组倍率、用户倍率与成本加成；参考价按分组选路策略选取代表性渠道（加权随机为权重最高渠道估算）；渠道未单独计价时回退全站默认，实际扣费以网关选路为准。',
     priceCurrencyUsd: '美元',
     priceCurrencyCny: '人民币',
     priceCurrencyAria: '价格货币单位',

@@ -20,9 +20,10 @@ const (
 
 // ListOpts 控制模型列表聚合与过滤。
 type ListOpts struct {
-	OmitStatuses         []string
-	IncludeUnavailable   bool
-	FailStaleHours       int
+	OmitStatuses          []string
+	IncludeUnavailable    bool
+	FailStaleHours        int
+	SkipCapabilityOverlay bool // 控制台大列表：跳过 Redis 能力覆盖层，避免数百次 GET
 }
 
 func defaultListOpts(ctx context.Context, client *ent.Client) ListOpts {
@@ -64,6 +65,18 @@ func AggregateServiceStatusForModel(
 	labels []string,
 	failStaleHours int,
 ) string {
+	return AggregateServiceStatusForModelOpts(ctx, channels, modelID, labels, failStaleHours, false)
+}
+
+// AggregateServiceStatusForModelOpts 同 AggregateServiceStatusForModel；skipOverlay 为 true 时不读 Redis 覆盖层（大列表性能）。
+func AggregateServiceStatusForModelOpts(
+	ctx context.Context,
+	channels []*ent.Channel,
+	modelID string,
+	labels []string,
+	failStaleHours int,
+	skipOverlay bool,
+) string {
 	cap := upstreamprobe.PickPrimaryCapability(labels)
 	if cap == "" {
 		cap = guessCapability(modelID, labels)
@@ -76,7 +89,12 @@ func AggregateServiceStatusForModel(
 		if !channelDeclaresModel(ch, modelID) {
 			continue
 		}
-		_, eff := upstreamprobe.CapabilityFromProbeRow(ctx, ch, modelID, cap, failStaleHours)
+		var eff string
+		if skipOverlay {
+			_, eff = upstreamprobe.CapabilityFromProbeRowDBOnly(ch, modelID, cap, failStaleHours)
+		} else {
+			_, eff = upstreamprobe.CapabilityFromProbeRow(ctx, ch, modelID, cap, failStaleHours)
+		}
 		switch eff {
 		case upstreamprobe.CapStatusOK:
 			hasOK = true
@@ -119,7 +137,7 @@ func attachServiceStatusFromChannels(ctx context.Context, channels []*ent.Channe
 		if !cm.InGateway {
 			continue
 		}
-		cm.ServiceStatus = AggregateServiceStatusForModel(ctx, channels, id, cm.Labels, opts.FailStaleHours)
+		cm.ServiceStatus = AggregateServiceStatusForModelOpts(ctx, channels, id, cm.Labels, opts.FailStaleHours, opts.SkipCapabilityOverlay)
 	}
 }
 
@@ -158,7 +176,7 @@ func buildServiceStatusMap(ctx context.Context, channels []*ent.Channel, modelID
 	out := make(map[string]string, len(modelIDs))
 	for _, id := range modelIDs {
 		lbs := labelsByID[id]
-		out[id] = AggregateServiceStatusForModel(ctx, channels, id, lbs, failStaleHours)
+		out[id] = AggregateServiceStatusForModel(ctx, channels, id, lbs, failStaleHours) // gateway /v1/models 仍合并覆盖层
 	}
 	return out
 }
