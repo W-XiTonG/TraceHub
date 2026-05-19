@@ -2,9 +2,11 @@
 
 export type ModelPricing = {
   billable: boolean
-  quota_in_per_1k: number
-  quota_out_per_1k: number
+  quota_in_per_1k?: number
+  quota_out_per_1k?: number
+  quota_per_request?: number
   pricing_unit?: string
+  billing_mode?: string
 }
 
 export type PriceCurrency = 'usd' | 'cny'
@@ -140,6 +142,17 @@ export function formatModelPricingDisplay(
       searchBlob: labels.free,
       free: true,
       unified: false,
+    }
+  }
+  if (pricing.pricing_unit === 'per_request' && (pricing.quota_per_request ?? 0) > 0) {
+    const q = pricing.quota_per_request!
+    const sec = `${q} ${labels.quotaUnit}/次`
+    return {
+      fiatPrimary: sec,
+      quotaSecondary: '',
+      searchBlob: sec,
+      free: false,
+      unified: true,
     }
   }
   const qIn = pricing.quota_in_per_1k ?? 0

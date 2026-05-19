@@ -31,6 +31,10 @@ type GlobalModelPricing struct {
 	OutputRate float64 `json:"output_rate,omitempty"`
 	// nil=使用全站默认成本加成%; 扣费时在成本额度上乘 (1+m/100)
 	MarkupPercent *float64 `json:"markup_percent,omitempty"`
+	// token|per_request|hybrid_floor|hybrid_settle
+	BillingMode string `json:"billing_mode,omitempty"`
+	// 按次/混合模式每次请求基础额度
+	QuotaPerRequest *int64 `json:"quota_per_request,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -47,9 +51,9 @@ func (*GlobalModelPricing) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case globalmodelpricing.FieldInputRate, globalmodelpricing.FieldOutputRate, globalmodelpricing.FieldMarkupPercent:
 			values[i] = new(sql.NullFloat64)
-		case globalmodelpricing.FieldID, globalmodelpricing.FieldQuotaInPer1k, globalmodelpricing.FieldQuotaOutPer1k:
+		case globalmodelpricing.FieldID, globalmodelpricing.FieldQuotaInPer1k, globalmodelpricing.FieldQuotaOutPer1k, globalmodelpricing.FieldQuotaPerRequest:
 			values[i] = new(sql.NullInt64)
-		case globalmodelpricing.FieldModelName:
+		case globalmodelpricing.FieldModelName, globalmodelpricing.FieldBillingMode:
 			values[i] = new(sql.NullString)
 		case globalmodelpricing.FieldCreatedAt, globalmodelpricing.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -118,6 +122,19 @@ func (_m *GlobalModelPricing) assignValues(columns []string, values []any) error
 			} else if value.Valid {
 				_m.MarkupPercent = new(float64)
 				*_m.MarkupPercent = value.Float64
+			}
+		case globalmodelpricing.FieldBillingMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field billing_mode", values[i])
+			} else if value.Valid {
+				_m.BillingMode = value.String
+			}
+		case globalmodelpricing.FieldQuotaPerRequest:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field quota_per_request", values[i])
+			} else if value.Valid {
+				_m.QuotaPerRequest = new(int64)
+				*_m.QuotaPerRequest = value.Int64
 			}
 		case globalmodelpricing.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -191,6 +208,14 @@ func (_m *GlobalModelPricing) String() string {
 	builder.WriteString(", ")
 	if v := _m.MarkupPercent; v != nil {
 		builder.WriteString("markup_percent=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("billing_mode=")
+	builder.WriteString(_m.BillingMode)
+	builder.WriteString(", ")
+	if v := _m.QuotaPerRequest; v != nil {
+		builder.WriteString("quota_per_request=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")

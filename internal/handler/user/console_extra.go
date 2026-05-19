@@ -207,13 +207,18 @@ func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config
 					channelID = pricingPreview.ChannelIDForModel(items[i].ID)
 				}
 				br := pricingBatch.Rates(items[i].ID, channelID)
-				in, out := br.EffectiveQuotaPer1k()
-				items[i].Pricing = &availmodels.ModelPricing{
-					Billable:      br.Billable,
-					QuotaInPer1k:  in,
-					QuotaOutPer1k: out,
-					PricingUnit:   "per_1k_tokens",
+				mp := &availmodels.ModelPricing{Billable: br.Billable}
+				mp.BillingMode = br.BillingMode()
+				if br.IsPerRequest() || br.IsHybridFloor() {
+					mp.PricingUnit = "per_request"
+					mp.QuotaPerRequest = br.RequestCost()
+				} else {
+					in, out := br.EffectiveQuotaPer1k()
+					mp.QuotaInPer1k = in
+					mp.QuotaOutPer1k = out
+					mp.PricingUnit = "per_1k_tokens"
 				}
+				items[i].Pricing = mp
 				items[i].PricingChannelID = channelID
 				if pricingStrategy != "" {
 					items[i].PricingStrategy = pricingStrategy

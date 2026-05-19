@@ -685,7 +685,7 @@ POST /api/user/redeem
 | `/api/admin/global-model-pricing/import` | POST | `multipart/form-data` 字段 **`file`**（CSV）。表头须含 `model_name`、`enabled`、`input_rate`、`output_rate`、`quota_in_per_1k`、`quota_out_per_1k`（建议直接使用导出文件；额度列可留空表示清空覆盖，或与 `upstream_currency` 等配合由服务端换算）；`enabled` 支持 true/false、1/0、是/否 等。最多 **5000** 条数据行；文件最大 8MB。成功返回 `{ count }` 并批量 upsert（与 PUT 语义一致）。 |
 | `/api/admin/global-model-pricing/derive-quota` | POST | JSON：`currency`（`cny` \| `usd`）、`denominator_tokens`（`1` \| `1000` \| `1000000`）、`price_in`（非负）、`price_out`（可选，缺省则与 `price_in` 相同）、`margin_percent`（可选，如 `5` 表示在基准额度上乘以 1.05，向上取整到整数额度）。成功返回 `quota_in_per_1k`、`quota_out_per_1k` 及 `resolved`（换算说明字符串）。美元路径：优先 `site.currency_quota_per_usd`；否则使用 `site.pricing_cny_per_usd`（1 USD = R CNY）× `site.currency_quota_per_yuan`。 |
 | `/api/admin/global-model-pricing` | GET | 全站模型计价列表（独立表 `global_model_pricings`，含 `enabled=false` 行） |
-| `/api/admin/global-model-pricing` | PUT | 批量 upsert；每项含可选 `markup_percent`（`null`/省略表示清除行内覆盖、用全站默认）。**扣费**：`quota_*` 为成本基数；有效加成 = 行内 `markup_percent` 若已设，否则 `site.default_pricing_markup_percent`；`billing.ModelBillRates.Cost` 在 token×quota×倍率之后乘 `(1+加成%)`，再乘分组/用户倍率。 |
+| `/api/admin/global-model-pricing` | PUT | 批量 upsert；每项含可选 `markup_percent`（`null`/省略表示清除行内覆盖、用全站默认）、`billing_mode`（默认 `token`）、`quota_per_request`（`per_request` / `hybrid_floor` 时必填 >0）。**扣费**：`token` 模式走 `ModelBillRates.Cost`；`per_request` 为固定 `RequestCost()`；`hybrid_floor` 为 `max(RequestCost, Cost(tokens))`；均乘行内/全站加成与分组、用户倍率。 |
 | `/api/admin/global-model-pricing` | DELETE | 查询参数 `model_name`：删除一条全站模型计价配置 |
 | `/api/admin/channel-model-pricing/workspace` | GET | **渠道**合并视图：行集合 = 指定渠道的 `models` ∪ `model_alias` 键 ∪ 已有 `channel_model_pricings` 行。**Query**：`channel_id`（必填）、`q`、`page`、`page_size`（同全局 workspace）。每项含 `code_in_per_1k` / `code_out_per_1k`、`sources`（`channel_declared` / `channel_db`）、`channel`（库行）、`global`（同模型全站行，供对照）。 |
 | `/api/admin/channel-model-pricing` | PUT | 批量 upsert；每项须含 `channel_id`、`model_name` 及与全局相同的计价字段。 |
@@ -699,7 +699,7 @@ POST /api/user/redeem
 | `/api/admin/channel-model-pricing/import/preview/batch` | POST | 多渠道 CSV 预览；表头须含 `channel_id` 列。 |
 | `/api/admin/channel-model-pricing/import/batch` | POST | 多渠道 CSV 直接落库。 |
 
-**扣费优先级**（`billing.ModelBillRates`）：分组 `GroupModelRate`（含 `billable`）> 渠道 `channel_model_pricings`（非空字段覆盖）> 全站 `global_model_pricings` > 代码内建 `DefaultQuotaPer1K`。网关在 `SelectChannel` 之后传入 `channel_id` 取价。
+**扣费优先级**（`billing.ModelBillRates`）：分组 `GroupModelRate`（含 `billable`）> 渠道 `channel_model_pricings`（非空字段覆盖）> 全站 `global_model_pricings` > 代码内建 `DefaultQuotaPer1K` / `DefaultQuotaPerRequest`。`billing_mode` 与 `quota_per_request` 由全站行定义、渠道非空字段覆盖。网关在 `SelectChannel` 之后传入 `channel_id` 取价；`per_request` 模型预检跳过 tiktoken 估算。
 
 全局「免计费模型」由 `site.no_bill_models` 提供：配置文件 `site.no_bill_models`（YAML 字符串数组）与/或 `PUT /api/admin/config` 写入键 `site.no_bill_models`（JSON 字符串数组）；聚合展示见 `GET /api/admin/site-settings`，管理端在「计费 → 不计费模型」中编辑。
 

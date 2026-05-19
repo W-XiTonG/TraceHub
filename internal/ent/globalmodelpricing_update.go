@@ -179,6 +179,47 @@ func (_u *GlobalModelPricingUpdate) ClearMarkupPercent() *GlobalModelPricingUpda
 	return _u
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (_u *GlobalModelPricingUpdate) SetBillingMode(v string) *GlobalModelPricingUpdate {
+	_u.mutation.SetBillingMode(v)
+	return _u
+}
+
+// SetNillableBillingMode sets the "billing_mode" field if the given value is not nil.
+func (_u *GlobalModelPricingUpdate) SetNillableBillingMode(v *string) *GlobalModelPricingUpdate {
+	if v != nil {
+		_u.SetBillingMode(*v)
+	}
+	return _u
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (_u *GlobalModelPricingUpdate) SetQuotaPerRequest(v int64) *GlobalModelPricingUpdate {
+	_u.mutation.ResetQuotaPerRequest()
+	_u.mutation.SetQuotaPerRequest(v)
+	return _u
+}
+
+// SetNillableQuotaPerRequest sets the "quota_per_request" field if the given value is not nil.
+func (_u *GlobalModelPricingUpdate) SetNillableQuotaPerRequest(v *int64) *GlobalModelPricingUpdate {
+	if v != nil {
+		_u.SetQuotaPerRequest(*v)
+	}
+	return _u
+}
+
+// AddQuotaPerRequest adds value to the "quota_per_request" field.
+func (_u *GlobalModelPricingUpdate) AddQuotaPerRequest(v int64) *GlobalModelPricingUpdate {
+	_u.mutation.AddQuotaPerRequest(v)
+	return _u
+}
+
+// ClearQuotaPerRequest clears the value of the "quota_per_request" field.
+func (_u *GlobalModelPricingUpdate) ClearQuotaPerRequest() *GlobalModelPricingUpdate {
+	_u.mutation.ClearQuotaPerRequest()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *GlobalModelPricingUpdate) SetUpdatedAt(v time.Time) *GlobalModelPricingUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -231,6 +272,11 @@ func (_u *GlobalModelPricingUpdate) check() error {
 	if v, ok := _u.mutation.ModelName(); ok {
 		if err := globalmodelpricing.ModelNameValidator(v); err != nil {
 			return &ValidationError{Name: "model_name", err: fmt.Errorf(`ent: validator failed for field "GlobalModelPricing.model_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.BillingMode(); ok {
+		if err := globalmodelpricing.BillingModeValidator(v); err != nil {
+			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "GlobalModelPricing.billing_mode": %w`, err)}
 		}
 	}
 	return nil
@@ -292,6 +338,18 @@ func (_u *GlobalModelPricingUpdate) sqlSave(ctx context.Context) (_node int, err
 	}
 	if _u.mutation.MarkupPercentCleared() {
 		_spec.ClearField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.BillingMode(); ok {
+		_spec.SetField(globalmodelpricing.FieldBillingMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.QuotaPerRequest(); ok {
+		_spec.SetField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedQuotaPerRequest(); ok {
+		_spec.AddField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if _u.mutation.QuotaPerRequestCleared() {
+		_spec.ClearField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(globalmodelpricing.FieldUpdatedAt, field.TypeTime, value)
@@ -467,6 +525,47 @@ func (_u *GlobalModelPricingUpdateOne) ClearMarkupPercent() *GlobalModelPricingU
 	return _u
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (_u *GlobalModelPricingUpdateOne) SetBillingMode(v string) *GlobalModelPricingUpdateOne {
+	_u.mutation.SetBillingMode(v)
+	return _u
+}
+
+// SetNillableBillingMode sets the "billing_mode" field if the given value is not nil.
+func (_u *GlobalModelPricingUpdateOne) SetNillableBillingMode(v *string) *GlobalModelPricingUpdateOne {
+	if v != nil {
+		_u.SetBillingMode(*v)
+	}
+	return _u
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (_u *GlobalModelPricingUpdateOne) SetQuotaPerRequest(v int64) *GlobalModelPricingUpdateOne {
+	_u.mutation.ResetQuotaPerRequest()
+	_u.mutation.SetQuotaPerRequest(v)
+	return _u
+}
+
+// SetNillableQuotaPerRequest sets the "quota_per_request" field if the given value is not nil.
+func (_u *GlobalModelPricingUpdateOne) SetNillableQuotaPerRequest(v *int64) *GlobalModelPricingUpdateOne {
+	if v != nil {
+		_u.SetQuotaPerRequest(*v)
+	}
+	return _u
+}
+
+// AddQuotaPerRequest adds value to the "quota_per_request" field.
+func (_u *GlobalModelPricingUpdateOne) AddQuotaPerRequest(v int64) *GlobalModelPricingUpdateOne {
+	_u.mutation.AddQuotaPerRequest(v)
+	return _u
+}
+
+// ClearQuotaPerRequest clears the value of the "quota_per_request" field.
+func (_u *GlobalModelPricingUpdateOne) ClearQuotaPerRequest() *GlobalModelPricingUpdateOne {
+	_u.mutation.ClearQuotaPerRequest()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *GlobalModelPricingUpdateOne) SetUpdatedAt(v time.Time) *GlobalModelPricingUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -532,6 +631,11 @@ func (_u *GlobalModelPricingUpdateOne) check() error {
 	if v, ok := _u.mutation.ModelName(); ok {
 		if err := globalmodelpricing.ModelNameValidator(v); err != nil {
 			return &ValidationError{Name: "model_name", err: fmt.Errorf(`ent: validator failed for field "GlobalModelPricing.model_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.BillingMode(); ok {
+		if err := globalmodelpricing.BillingModeValidator(v); err != nil {
+			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "GlobalModelPricing.billing_mode": %w`, err)}
 		}
 	}
 	return nil
@@ -610,6 +714,18 @@ func (_u *GlobalModelPricingUpdateOne) sqlSave(ctx context.Context) (_node *Glob
 	}
 	if _u.mutation.MarkupPercentCleared() {
 		_spec.ClearField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.BillingMode(); ok {
+		_spec.SetField(globalmodelpricing.FieldBillingMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.QuotaPerRequest(); ok {
+		_spec.SetField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedQuotaPerRequest(); ok {
+		_spec.AddField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if _u.mutation.QuotaPerRequestCleared() {
+		_spec.ClearField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(globalmodelpricing.FieldUpdatedAt, field.TypeTime, value)

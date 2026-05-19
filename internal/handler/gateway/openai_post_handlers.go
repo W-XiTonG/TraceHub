@@ -103,22 +103,25 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 		return
 	}
 
-	promptToks, _ := d.Billing.EstimateTokens(previewSel.UpstreamModel, promptEst)
-	if promptToks < 1 {
-		promptToks = 1
-	}
-	preComp := maxCompFallback
-	if preComp < 0 {
-		preComp = 0
-	}
-	preChargeComp := preComp
-	if preChargeComp > 0 {
-		preChargeComp = completionTokensFallback(preChargeComp)
-	}
 	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, previewSel.Channel.ID)
-	costPre := br.Cost(promptToks, preChargeComp, 0)
-	if u.Balance < costPre {
-		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, preChargeComp)
+	var promptToks, preChargeComp int
+	if br.NeedsTokenEstimate() {
+		promptToks, _ = d.Billing.EstimateTokens(previewSel.UpstreamModel, promptEst)
+		if promptToks < 1 {
+			promptToks = 1
+		}
+		preComp := maxCompFallback
+		if preComp < 0 {
+			preComp = 0
+		}
+		preChargeComp = preComp
+		if preChargeComp > 0 {
+			preChargeComp = completionTokensFallback(preChargeComp)
+		}
+	}
+	if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+		return BillTokenEst{Prompt: promptToks, Completion: preChargeComp}, nil
+	}); !ok {
 		return
 	}
 
@@ -156,7 +159,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	if maxCompFallback > 0 {
 		applyCompletionFallback(&usage, maxCompFallback)
 	}
-	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+	cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
 	}

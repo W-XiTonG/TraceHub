@@ -35,6 +35,8 @@ type DraftRow = {
   quota_out_per_1k: string
   /** 行内成本加成 %；空=全站默认 */
   markup_percent: string
+  billing_mode: string
+  quota_per_request: string
   input_rate: number
   output_rate: number
 }
@@ -48,6 +50,8 @@ type ApiRow = {
   input_rate: number
   output_rate: number
   markup_percent?: number | null
+  billing_mode?: string | null
+  quota_per_request?: number | null
 }
 
 type WorkspaceRow = {
@@ -95,6 +99,8 @@ const selectedChannelLabel = computed(() => {
 
 const customDrafts = ref<DraftRow[]>([])
 const workspacePageDrafts = ref<DraftRow[]>([])
+/** 当前页工作区行加载时的快照，用于撤销未入库行的本地编辑 */
+const workspaceSnapshotByModel = ref<Map<string, DraftRow>>(new Map())
 const rows = ref<DraftRow[]>([])
 const page = ref(1)
 const pageSize = ref(50)
@@ -187,6 +193,39 @@ function rebuildRows() {
   rows.value = [...workspacePageDrafts.value, ...customDrafts.value]
 }
 
+function cloneDraftRow(d: DraftRow): DraftRow {
+  return {
+    ...d,
+    sources: d.sources ? [...d.sources] : [],
+  }
+}
+
+function syncWorkspaceSnapshotsFromDrafts() {
+  const m = new Map<string, DraftRow>()
+  for (const d of workspacePageDrafts.value) {
+    const key = d.model_name.trim()
+    if (key) m.set(key, cloneDraftRow(d))
+  }
+  workspaceSnapshotByModel.value = m
+}
+
+function rowDiffersFromSnapshot(r: DraftRow): boolean {
+  const key = r.model_name.trim()
+  if (!key) return false
+  const snap = workspaceSnapshotByModel.value.get(key)
+  if (!snap) return rowHasNonDefaultOverrides(r)
+  return (
+    r.enabled !== snap.enabled ||
+    r.quota_in_per_1k !== snap.quota_in_per_1k ||
+    r.quota_out_per_1k !== snap.quota_out_per_1k ||
+    r.markup_percent !== snap.markup_percent ||
+    r.billing_mode !== snap.billing_mode ||
+    r.quota_per_request !== snap.quota_per_request ||
+    r.input_rate !== snap.input_rate ||
+    r.output_rate !== snap.output_rate
+  )
+}
+
 function clearFlashDismissTimer() {
   if (flashDismissTimer !== undefined) {
     clearTimeout(flashDismissTimer)
@@ -247,6 +286,11 @@ function workspaceItemToDraft(w: WorkspaceRow): DraftRow {
     quota_out_per_1k: g?.quota_out_per_1k != null ? String(g.quota_out_per_1k) : '',
     markup_percent:
       g?.markup_percent != null && g.markup_percent !== undefined ? String(g.markup_percent) : '',
+    billing_mode: (g?.billing_mode || 'token').trim() || 'token',
+    quota_per_request:
+      g?.quota_per_request != null && g.quota_per_request !== undefined
+        ? String(g.quota_per_request)
+        : '',
     input_rate: g?.input_rate ?? 1,
     output_rate: g?.output_rate ?? 1,
   }
@@ -290,6 +334,8 @@ type ApiPricingItem = {
   input_rate: number
   output_rate: number
   markup_percent?: number | null
+  billing_mode?: string
+  quota_per_request?: number | null
 }
 
 /** 导入预览接口返回的单行（与 PUT 项字段一致） */
@@ -302,6 +348,8 @@ type ApiImportPreviewRow = {
   input_rate: number
   output_rate: number
   markup_percent?: number | null
+  billing_mode?: string
+  quota_per_request?: number | null
 }
 
 type CsvImportMode = 'global' | 'channel' | 'multi'
@@ -370,6 +418,15 @@ function validateRowToItem(r: DraftRow): { ok: true; item: ApiPricingItem } | { 
   if (qIn.value !== undefined) item.quota_in_per_1k = qIn.value
   if (qOut.value !== undefined) item.quota_out_per_1k = qOut.value
   item.markup_percent = mp.value ?? null
+  const bm = (r.billing_mode || 'token').trim() || 'token'
+  item.billing_mode = bm
+  if (bm !== 'token') {
+    const qpr = parseQuota(r.quota_per_request)
+    if (!qpr.ok || qpr.value === undefined || qpr.value <= 0) {
+      return { ok: false, message: t('adminGlobalPricing.errQuotaPerRequest') }
+    }
+    item.quota_per_request = qpr.value
+  }
   return { ok: true, item }
 }
 
@@ -405,6 +462,11 @@ function apiImportItemToDraft(it: ApiImportPreviewRow): DraftRow {
     markup_percent:
       it.markup_percent != null && it.markup_percent !== undefined
         ? String(it.markup_percent)
+        : '',
+    billing_mode: (it.billing_mode || 'token').trim() || 'token',
+    quota_per_request:
+      it.quota_per_request != null && it.quota_per_request !== undefined
+        ? String(it.quota_per_request)
         : '',
   }
 }
@@ -669,6 +731,23 @@ function sourceBadgeLabel(src: string): string {
   }
 }
 
+function sourceBadgeClass(src: string): string {
+  const base = 'th-admin-pricing-source-badge'
+  switch (src) {
+    case 'catalog':
+    case 'builtin':
+      return `${base} th-admin-pricing-source-badge--catalog`
+    case 'channel':
+    case 'channel_declared':
+    case 'channel_db':
+      return `${base} th-admin-pricing-source-badge--channel`
+    case 'global_db':
+      return `${base} th-admin-pricing-source-badge--global`
+    default:
+      return `${base} th-admin-pricing-source-badge--default`
+  }
+}
+
 async function loadChannelOptions() {
   channelsLoading.value = true
   try {
@@ -697,6 +776,7 @@ function onModelFocus(idx: number) {
 async function load() {
   if (isChannelScope.value && activeChannelId.value <= 0) {
     workspacePageDrafts.value = []
+    workspaceSnapshotByModel.value = new Map()
     total.value = 0
     rebuildRows()
     return
@@ -724,6 +804,7 @@ async function load() {
       page.value = data.data.page
     }
     workspacePageDrafts.value = (data.data.items || []).map(workspaceItemToDraft)
+    syncWorkspaceSnapshotsFromDrafts()
     rebuildRows()
     selectedRows.value = []
     void loadModelSuggestions()
@@ -766,6 +847,8 @@ function addRow() {
     quota_in_per_1k: '',
     quota_out_per_1k: '',
     markup_percent: '',
+    billing_mode: 'token',
+    quota_per_request: '',
     input_rate: 1,
     output_rate: 1,
   })
@@ -817,7 +900,18 @@ async function resetRow(idx: number) {
     flashSuccess(t('adminGlobalPricing.resetCustomRemoved'))
     return
   }
-  if (r.locked && r.id == null) return
+  if (r.locked && r.id == null) {
+    const key = r.model_name.trim()
+    if (!key) return
+    const snap = workspaceSnapshotByModel.value.get(key)
+    if (!snap) return
+    const wi = workspacePageDrafts.value.findIndex((d) => d.model_name.trim() === key)
+    if (wi < 0) return
+    workspacePageDrafts.value[wi] = cloneDraftRow(snap)
+    rebuildRows()
+    flashSuccess(t('adminGlobalPricing.resetRevertDone', { name: key }))
+    return
+  }
   if (r.id != null && r.model_name.trim()) {
     if (!confirm(t('adminGlobalPricing.resetConfirm', { name: r.model_name.trim() }))) return
     clearFlash()
@@ -832,8 +926,13 @@ async function resetRow(idx: number) {
   }
 }
 
-function canShowReset(r: DraftRow): boolean {
-  return r.isCustom === true || r.id != null || r.locked === false || r.locked === undefined
+/** 当前行是否可执行重置（无操作时按钮仍展示但禁用） */
+function canResetRow(r: DraftRow): boolean {
+  if (!r.model_name.trim()) return false
+  if (r.isCustom) return true
+  if (r.id != null) return true
+  if (r.locked === false || r.locked === undefined) return true
+  return rowDiffersFromSnapshot(r)
 }
 
 async function resetCurrentPage() {
@@ -1165,6 +1264,10 @@ const quotaOutPlaceholder = computed(() =>
     ? t('adminGlobalPricing.phOptional')
     : t('adminGlobalPricing.phQuotaUpstreamOut', { cur: priceUnitLabel.value }),
 )
+
+function rowUsesTokenQuota(r: DraftRow) {
+  return r.billing_mode === 'token' || r.billing_mode === 'hybrid_floor'
+}
 
 onMounted(() => {
   void loadChannelOptions()
@@ -1511,44 +1614,37 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
             >
               {{ t('adminGlobalPricing.linkConversionSettings') }}
             </RouterLink>
+            <span class="th-admin-pricing-toolbar__sep th-admin-pricing-toolbar__sep--before-search" aria-hidden="true" />
+            <div class="th-admin-pricing-toolbar__search flex min-w-0 w-full basis-full items-center gap-2 sm:basis-auto sm:flex-1 sm:max-w-[min(100%,28rem)]">
+              <span class="th-admin-pricing-toolbar__label shrink-0">{{ t('adminGlobalPricing.searchModel') }}</span>
+              <input
+                v-model="searchDraft"
+                type="search"
+                autocomplete="off"
+                class="th-input th-admin-pricing-toolbar__search-input h-9 min-w-0 flex-1 font-mono text-xs"
+                :placeholder="t('adminGlobalPricing.searchPlaceholder')"
+                @keydown.enter.prevent="applySearch"
+              />
+              <button
+                type="button"
+                class="h-9 shrink-0 rounded-lg border border-slate-600 px-3 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                :disabled="busy"
+                @click="applySearch"
+              >
+                {{ t('adminCommon.query') }}
+              </button>
+            </div>
           </div>
 
           <div class="mb-3 space-y-3 border-b border-slate-800/60 pb-4">
             <div
               class="th-admin-pricing-filter-bar flex flex-col gap-3 overflow-visible rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 pb-3 pt-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2 sm:pb-2.5 sm:pt-2"
             >
-              <!-- 筛选 -->
-              <div class="flex min-w-0 flex-1 items-center gap-2 sm:max-w-md">
-                <span class="shrink-0 text-xs text-slate-500">{{ t('adminGlobalPricing.searchModel') }}</span>
-                <input
-                  v-model="searchDraft"
-                  type="search"
-                  autocomplete="off"
-                  class="th-input h-9 min-w-0 flex-1 font-mono text-xs sm:max-w-[14rem]"
-                  :placeholder="t('adminGlobalPricing.searchPlaceholder')"
-                  @keydown.enter.prevent="applySearch"
-                />
-                <button
-                  type="button"
-                  class="h-9 shrink-0 rounded-lg border border-slate-600 px-3 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                  :disabled="busy"
-                  @click="applySearch"
-                >
-                  {{ t('adminCommon.query') }}
-                </button>
-              </div>
-
-              <div
-                class="hidden h-6 w-px shrink-0 bg-slate-700/90 sm:block"
-                aria-hidden="true"
-              />
-
-              <!-- 每页条数 -->
               <div class="flex shrink-0 items-center gap-2">
                 <span class="text-xs text-slate-500">{{ t('adminGlobalPricing.pageSize') }}</span>
                 <select
                   v-model.number="pageSize"
-                  class="th-input h-9 w-[4.25rem] py-0 pr-6 text-xs leading-none"
+                  class="th-select th-select--inline w-[4.25rem] !max-w-none py-0 pr-6 text-xs"
                   :disabled="busy"
                   @change="onPageSizeChange"
                 >
@@ -1564,7 +1660,6 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                 aria-hidden="true"
               />
 
-              <!-- 分页 -->
               <div class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none sm:basis-auto">
                 <span
                   class="min-w-0 truncate text-right text-xs tabular-nums text-slate-400 sm:max-w-[20rem]"
@@ -1776,10 +1871,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
 
           <div class="th-admin-table-shell relative overflow-x-auto rounded-xl border border-slate-800">
             <ThLoadingState v-if="listUi && rows.length > 0" variant="overlay" />
-            <table class="w-full min-w-[1080px] border-collapse text-left text-xs">
-              <thead class="bg-slate-900 text-slate-500">
+            <table class="th-admin-pricing-table w-full border-collapse text-left text-xs">
+              <thead class="th-admin-table-head text-slate-500">
                 <tr>
-                  <th class="w-10 shrink-0 px-2 py-2 text-center align-middle">
+                  <th class="th-admin-pricing-sticky-check w-10 shrink-0 px-2 py-2 text-center align-middle" rowspan="2">
                     <input
                       ref="selectAllInput"
                       type="checkbox"
@@ -1790,39 +1885,39 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       @change="onToggleSelectAll"
                     />
                   </th>
-                  <th class="min-w-[12rem] max-w-[min(42rem,85vw)] align-middle px-3 py-2">{{ t('adminGroups.thModelId') }}</th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thSources') }}</th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thCodeIn') }}</th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGlobalPricing.thCodeOut') }}</th>
-                  <th class="align-middle px-3 py-2">
-                    <span class="block">{{ thQuotaInLabel }}</span>
-                    <span
-                      v-if="!codeRefShowQuotaOnly"
-                      class="mt-0.5 block text-[10px] font-normal text-slate-500"
-                    >{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                  <th class="th-admin-pricing-sticky-model min-w-[10rem] align-middle px-2 py-2" rowspan="2">{{ t('adminGroups.thModelId') }}</th>
+                  <th class="w-[5.5rem] align-middle px-2 py-2" rowspan="2">{{ t('adminGlobalPricing.thSources') }}</th>
+                  <th class="th-admin-pricing-col-billing min-w-[8rem] align-middle px-2 py-2" rowspan="2">
+                    <span class="block leading-snug">{{ t('adminGlobalPricing.thBilling') }}</span>
                   </th>
-                  <th class="align-middle px-3 py-2">
-                    <span class="block">{{ thQuotaOutLabel }}</span>
-                    <span
-                      v-if="!codeRefShowQuotaOnly"
-                      class="mt-0.5 block text-[10px] font-normal text-slate-500"
-                    >{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
-                  </th>
-                  <th class="align-middle px-3 py-2">
+                  <th class="th-admin-pricing-col-token px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thTokenQuota') }}</th>
+                  <th class="w-14 align-middle px-2 py-2" rowspan="2">
                     <span class="block">{{ t('adminGlobalPricing.thMarkup') }}</span>
-                    <span class="mt-0.5 block text-[10px] font-normal text-slate-500">{{
-                      t('adminGlobalPricing.thMarkupSub')
-                    }}</span>
+                    <span class="mt-0.5 block text-[10px] font-normal text-slate-500">{{ t('adminGlobalPricing.thMarkupSub') }}</span>
                   </th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGroups.thIn') }}</th>
-                  <th class="align-middle px-3 py-2">{{ t('adminGroups.thOut') }}</th>
-                  <th class="align-middle px-3 py-2 text-center">{{ t('adminGroups.thEn') }}</th>
-                  <th class="min-w-[5.25rem] whitespace-nowrap px-1 py-2 text-right align-middle">{{ t('adminGlobalPricing.thActions') }}</th>
+                  <th class="th-admin-pricing-col-rates px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thRates') }}</th>
+                  <th class="th-admin-pricing-col-code px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thCodeRef') }}</th>
+                  <th class="w-10 align-middle px-2 py-2 text-center" rowspan="2">{{ t('adminGroups.thEn') }}</th>
+                  <th class="th-admin-pricing-sticky-actions min-w-[8.75rem] whitespace-nowrap px-1 py-2 text-right align-middle" rowspan="2">{{ t('adminGlobalPricing.thActions') }}</th>
+                </tr>
+                <tr class="text-[10px] font-normal">
+                  <th class="px-2 py-1">
+                    <span class="block">{{ thQuotaInLabel }}</span>
+                    <span v-if="!codeRefShowQuotaOnly" class="text-slate-600">{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                  </th>
+                  <th class="px-2 py-1">
+                    <span class="block">{{ thQuotaOutLabel }}</span>
+                    <span v-if="!codeRefShowQuotaOnly" class="text-slate-600">{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                  </th>
+                  <th class="px-2 py-1">{{ t('adminGroups.thIn') }}</th>
+                  <th class="px-2 py-1">{{ t('adminGroups.thOut') }}</th>
+                  <th class="px-2 py-1">{{ t('adminGlobalPricing.thCodeIn') }}</th>
+                  <th class="px-2 py-1">{{ t('adminGlobalPricing.thCodeOut') }}</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800">
+              <tbody class="th-admin-table-body divide-y divide-slate-800/80">
                 <tr v-for="(r, idx) in rows" :key="`gwp-${idx}-${r.model_name || 'new'}`">
-                  <td class="w-10 shrink-0 px-2 py-2 text-center align-middle">
+                  <td class="th-admin-pricing-sticky-check w-10 shrink-0 px-2 py-2 text-center align-middle">
                     <input
                       type="checkbox"
                       class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
@@ -1830,7 +1925,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       @change.stop="syncRowSelectionFromInput(idx, $event)"
                     />
                   </td>
-                  <td class="min-w-[11rem] max-w-[min(42rem,85vw)] align-top px-2 py-2">
+                  <td class="th-admin-pricing-sticky-model min-w-[11rem] max-w-[min(42rem,85vw)] align-top px-2 py-2">
                     <div
                       class="th-model-combobox relative w-full min-w-0"
                       :ref="(el) => setComboboxRef(idx, el)"
@@ -1838,7 +1933,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       <div class="flex w-full min-w-0 items-start gap-1">
                         <span
                           v-if="r.locked"
-                          class="block select-text break-all py-1.5 font-mono text-xs leading-relaxed text-slate-200"
+                          class="th-admin-pricing-model-locked block select-text break-all py-1.5 font-mono text-xs leading-relaxed"
                           :title="r.model_name"
                         >{{ r.model_name }}</span>
                         <template v-else>
@@ -1877,44 +1972,40 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       <span
                         v-for="src in r.sources || []"
                         :key="src"
-                        class="inline-block rounded border border-slate-700/90 bg-slate-800/60 px-1.5 py-0.5 font-mono text-[10px] text-slate-300"
+                        :class="sourceBadgeClass(src)"
                       >
                         {{ sourceBadgeLabel(src) }}
                       </span>
                       <span v-if="!(r.sources && r.sources.length)" class="text-slate-600">—</span>
                     </div>
                   </td>
-                  <td class="align-middle px-2 py-2 font-mono text-slate-400">
-                    <div
-                      class="flex flex-col gap-0.5 tabular-nums"
-                      :title="displayCodeRefCell(r.code_in_ref).title"
-                    >
-                      <span
-                        v-for="(line, li) in displayCodeRefCell(r.code_in_ref).lines"
-                        :key="`cin-${li}`"
-                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
-                      >{{ line.text }}</span>
+                  <td class="th-admin-pricing-col-billing align-middle px-2 py-2">
+                    <div class="flex min-w-[7.5rem] flex-col gap-1">
+                      <select
+                        v-model="r.billing_mode"
+                        class="th-select th-select--table-cell w-full"
+                      >
+                        <option value="token">{{ t('adminGlobalPricing.billingModeToken') }}</option>
+                        <option value="per_request">{{ t('adminGlobalPricing.billingModePerRequest') }}</option>
+                        <option value="hybrid_floor">{{ t('adminGlobalPricing.billingModeHybridFloor') }}</option>
+                      </select>
+                      <input
+                        v-if="r.billing_mode !== 'token'"
+                        v-model="r.quota_per_request"
+                        type="text"
+                        inputmode="numeric"
+                        class="th-input th-input--table-cell w-full font-mono"
+                        :placeholder="t('adminGlobalPricing.phQuotaPerRequest')"
+                      />
                     </div>
                   </td>
-                  <td class="align-middle px-2 py-2 font-mono text-slate-400">
-                    <div
-                      class="flex flex-col gap-0.5 tabular-nums"
-                      :title="displayCodeRefCell(r.code_out_ref).title"
-                    >
-                      <span
-                        v-for="(line, li) in displayCodeRefCell(r.code_out_ref).lines"
-                        :key="`cout-${li}`"
-                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
-                      >{{ line.text }}</span>
-                    </div>
-                  </td>
-                  <td class="align-middle px-2 py-2">
-                    <div class="flex flex-col gap-0.5">
+                  <td class="th-admin-pricing-col-token align-middle px-2 py-2" :class="{ 'opacity-45': !rowUsesTokenQuota(r) }">
+                    <div v-if="rowUsesTokenQuota(r)" class="flex flex-col gap-0.5">
                       <input
                         :value="quotaInputDisplay(r, idx, 'in')"
                         type="text"
                         :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                        class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                        class="th-input th-input--table-cell w-24 font-mono"
                         :placeholder="quotaInPlaceholder"
                         :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
                         autocomplete="off"
@@ -1931,14 +2022,15 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         })
                       }}</span>
                     </div>
+                    <span v-else class="block py-2 text-center text-slate-600">—</span>
                   </td>
-                  <td class="align-middle px-2 py-2">
-                    <div class="flex flex-col gap-0.5">
+                  <td class="th-admin-pricing-col-token align-middle px-2 py-2" :class="{ 'opacity-45': !rowUsesTokenQuota(r) }">
+                    <div v-if="rowUsesTokenQuota(r)" class="flex flex-col gap-0.5">
                       <input
                         :value="quotaInputDisplay(r, idx, 'out')"
                         type="text"
                         :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                        class="th-input h-9 w-28 py-1 font-mono text-xs leading-normal"
+                        class="th-input th-input--table-cell w-24 font-mono"
                         :placeholder="quotaOutPlaceholder"
                         :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
                         autocomplete="off"
@@ -1955,13 +2047,14 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         })
                       }}</span>
                     </div>
+                    <span v-else class="block py-2 text-center text-slate-600">—</span>
                   </td>
                   <td class="align-middle px-2 py-2">
                     <input
                       v-model="r.markup_percent"
                       type="text"
                       inputmode="decimal"
-                      class="th-input h-9 w-16 py-1 font-mono text-xs leading-normal"
+                      class="th-input th-input--table-cell w-16 font-mono"
                       :placeholder="t('adminGlobalPricing.phMarkupSiteDefault')"
                       :title="t('adminGlobalPricing.markupRowHint')"
                     />
@@ -1971,7 +2064,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       v-model.number="r.input_rate"
                       type="number"
                       step="0.01"
-                      class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
+                      class="th-input th-input--table-cell w-20 font-mono"
                     />
                   </td>
                   <td class="align-middle px-2 py-2">
@@ -1979,8 +2072,32 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       v-model.number="r.output_rate"
                       type="number"
                       step="0.01"
-                      class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
+                      class="th-input th-input--table-cell w-20 font-mono"
                     />
+                  </td>
+                  <td class="th-admin-pricing-col-code align-middle px-2 py-2 font-mono text-slate-400">
+                    <div
+                      class="flex flex-col gap-0.5 tabular-nums text-[11px]"
+                      :title="displayCodeRefCell(r.code_in_ref).title"
+                    >
+                      <span
+                        v-for="(line, li) in displayCodeRefCell(r.code_in_ref).lines"
+                        :key="`cin-${li}`"
+                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
+                      >{{ line.text }}</span>
+                    </div>
+                  </td>
+                  <td class="th-admin-pricing-col-code align-middle px-2 py-2 font-mono text-slate-400">
+                    <div
+                      class="flex flex-col gap-0.5 tabular-nums text-[11px]"
+                      :title="displayCodeRefCell(r.code_out_ref).title"
+                    >
+                      <span
+                        v-for="(line, li) in displayCodeRefCell(r.code_out_ref).lines"
+                        :key="`cout-${li}`"
+                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
+                      >{{ line.text }}</span>
+                    </div>
                   </td>
                   <td class="align-middle px-2 py-2 text-center">
                     <input
@@ -1989,8 +2106,8 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
                     />
                   </td>
-                  <td class="align-middle px-1 py-2 text-right">
-                    <div class="inline-flex max-w-full flex-nowrap items-center justify-end gap-1">
+                  <td class="th-admin-pricing-sticky-actions align-middle px-1 py-2 text-right">
+                    <div class="inline-flex flex-nowrap items-center justify-end gap-1">
                       <button
                         type="button"
                         class="th-btn-primary-flat th-admin-pricing-row-act shrink-0"
@@ -2008,10 +2125,18 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         {{ rowSavingIdx === idx ? t('common.submitting') : t('adminGlobalPricing.saveRow') }}
                       </button>
                       <button
-                        v-if="canShowReset(r)"
                         type="button"
                         class="th-pg-btn-ghost th-admin-pricing-row-act shrink-0"
-                        :title="r.isCustom ? t('adminGlobalPricing.resetCustomHint') : t('adminGlobalPricing.resetHint')"
+                        :disabled="!canResetRow(r) || rowSavingIdx !== null || anyListSaving || busy"
+                        :title="
+                          !canResetRow(r)
+                            ? t('adminGlobalPricing.resetRowDisabledTip')
+                            : r.isCustom
+                              ? t('adminGlobalPricing.resetCustomHint')
+                              : r.id != null
+                                ? t('adminGlobalPricing.resetHint')
+                                : t('adminGlobalPricing.resetRevertHint')
+                        "
                         @click="resetRow(idx)"
                       >
                         {{ t('adminGlobalPricing.reset') }}
@@ -2290,7 +2415,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       v-model.number="r.input_rate"
                       type="number"
                       step="0.01"
-                      class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
+                      class="th-input th-input--table-cell w-20 font-mono"
                     />
                   </td>
                   <td class="px-2 py-2 align-middle">
@@ -2298,7 +2423,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       v-model.number="r.output_rate"
                       type="number"
                       step="0.01"
-                      class="th-input h-9 w-20 py-1 font-mono text-xs leading-normal"
+                      class="th-input th-input--table-cell w-20 font-mono"
                     />
                   </td>
                   <td class="px-2 py-2 text-center align-middle">

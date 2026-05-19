@@ -404,7 +404,9 @@ type ModelBillRates struct {
 	groupMul, userMul, inRate, outRate float64
 	in1k, out1k                       int64
 	markupPercent                     float64
-	Billable                         bool
+	Billable                          bool
+	billingMode                       string
+	perRequest                        int64
 }
 
 // ModelBillRates 拉取该用户在指定 logical model 下的计价因子（与 Charge 一致）。
@@ -432,11 +434,68 @@ func (e *Engine) ModelBillRates(ctx context.Context, u *ent.User, model string, 
 	}
 	siteMarkup := e.cachedDefaultPricingMarkupPercent(ctx)
 	markup := ResolveMarkupPercent(siteMarkup, glo, ch)
+	mq := resolveBillingModeQuota(model, glo, ch)
 	return ModelBillRates{
 		groupMul: gm, userMul: um, inRate: ir, outRate: or,
 		in1k: in1k, out1k: out1k, markupPercent: markup,
-		Billable: e.modelBillable(ctx, u, model),
+		Billable:    e.modelBillable(ctx, u, model),
+		billingMode: mq.mode,
+		perRequest:  mq.perRequest,
 	}, nil
+}
+
+// BillingMode 返回 token|per_request|hybrid_floor|hybrid_settle。
+func (b ModelBillRates) BillingMode() string {
+	if b.billingMode == "" {
+		return BillingModeToken
+	}
+	return b.billingMode
+}
+
+func (b ModelBillRates) IsPerRequest() bool  { return b.BillingMode() == BillingModePerRequest }
+func (b ModelBillRates) IsHybridFloor() bool { return b.BillingMode() == BillingModeHybridFloor }
+func (b ModelBillRates) NeedsTokenEstimate() bool {
+	return b.BillingMode() == BillingModeToken || b.BillingMode() == BillingModeHybridFloor
+}
+
+// RequestCost 每次请求固定额度（含 markup 与分组/用户倍率）。
+func (b ModelBillRates) RequestCost() int64 {
+	if !b.Billable || b.perRequest <= 0 {
+		return 0
+	}
+	raw := float64(b.perRequest) * b.inRate
+	raw *= 1 + b.markupPercent/100.0
+	raw *= b.groupMul * b.userMul
+	if raw < 1 {
+		return 1
+	}
+	return int64(raw + 0.999999)
+}
+
+// PrecheckCost 预检额度；needTokenEst 为 true 时调用方须先估算 token 再传入非零 est 参数。
+func (b ModelBillRates) PrecheckCost(estPrompt, estComp, estCached int) (cost int64, needTokenEst bool) {
+	needTokenEst = b.NeedsTokenEstimate()
+	switch b.BillingMode() {
+	case BillingModePerRequest:
+		return b.RequestCost(), false
+	case BillingModeHybridFloor:
+		tc := b.Cost(estPrompt, estComp, estCached)
+		return maxInt64(b.RequestCost(), tc), true
+	default:
+		return b.Cost(estPrompt, estComp, estCached), needTokenEst
+	}
+}
+
+// FinalCost 成功响应实扣额度。
+func (b ModelBillRates) FinalCost(actualPrompt, actualComp, actualCached int) int64 {
+	switch b.BillingMode() {
+	case BillingModePerRequest:
+		return b.RequestCost()
+	case BillingModeHybridFloor:
+		return maxInt64(b.RequestCost(), b.Cost(actualPrompt, actualComp, actualCached))
+	default:
+		return b.Cost(actualPrompt, actualComp, actualCached)
+	}
 }
 
 // EffectiveQuotaPer1k 返回对该用户生效的每千 token 额度（入/出），与 Cost(1000,0,0)、Cost(0,1000,0) 一致。

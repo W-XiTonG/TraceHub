@@ -17,7 +17,6 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
 	"tracehub/internal/pkg/openaicompat"
-	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelsecret"
 
 	"github.com/gin-gonic/gin"
@@ -126,14 +125,16 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 			}
 		}
 
-		var costPre int64
-		var br billing.ModelBillRates
-		if promptToks > 0 {
-			br, _ = d.Billing.ModelBillRates(c.Request.Context(), u, route.LogicalModel, ch.ID)
-			compAssumed := completionTokensFallback(maxComp)
-			costPre = br.Cost(promptToks, compAssumed, 0)
-			if u.Balance < costPre {
-				WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, route.LogicalModel, ch.ID)
+		shouldPrecheck := promptToks > 0 || br.IsPerRequest() || br.IsHybridFloor()
+		if shouldPrecheck {
+			compAssumed := 0
+			if br.NeedsTokenEstimate() && promptToks > 0 {
+				compAssumed = completionTokensFallback(maxComp)
+			}
+			if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+				return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+			}); !ok {
 				return
 			}
 		}
@@ -196,7 +197,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 			if maxComp > 0 {
 				applyCompletionFallback(&usage, maxComp)
 			}
-			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+			cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}

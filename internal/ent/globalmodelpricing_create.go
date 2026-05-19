@@ -110,6 +110,34 @@ func (_c *GlobalModelPricingCreate) SetNillableMarkupPercent(v *float64) *Global
 	return _c
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (_c *GlobalModelPricingCreate) SetBillingMode(v string) *GlobalModelPricingCreate {
+	_c.mutation.SetBillingMode(v)
+	return _c
+}
+
+// SetNillableBillingMode sets the "billing_mode" field if the given value is not nil.
+func (_c *GlobalModelPricingCreate) SetNillableBillingMode(v *string) *GlobalModelPricingCreate {
+	if v != nil {
+		_c.SetBillingMode(*v)
+	}
+	return _c
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (_c *GlobalModelPricingCreate) SetQuotaPerRequest(v int64) *GlobalModelPricingCreate {
+	_c.mutation.SetQuotaPerRequest(v)
+	return _c
+}
+
+// SetNillableQuotaPerRequest sets the "quota_per_request" field if the given value is not nil.
+func (_c *GlobalModelPricingCreate) SetNillableQuotaPerRequest(v *int64) *GlobalModelPricingCreate {
+	if v != nil {
+		_c.SetQuotaPerRequest(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *GlobalModelPricingCreate) SetCreatedAt(v time.Time) *GlobalModelPricingCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -185,6 +213,10 @@ func (_c *GlobalModelPricingCreate) defaults() {
 		v := globalmodelpricing.DefaultOutputRate
 		_c.mutation.SetOutputRate(v)
 	}
+	if _, ok := _c.mutation.BillingMode(); !ok {
+		v := globalmodelpricing.DefaultBillingMode
+		_c.mutation.SetBillingMode(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := globalmodelpricing.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -213,6 +245,14 @@ func (_c *GlobalModelPricingCreate) check() error {
 	}
 	if _, ok := _c.mutation.OutputRate(); !ok {
 		return &ValidationError{Name: "output_rate", err: errors.New(`ent: missing required field "GlobalModelPricing.output_rate"`)}
+	}
+	if _, ok := _c.mutation.BillingMode(); !ok {
+		return &ValidationError{Name: "billing_mode", err: errors.New(`ent: missing required field "GlobalModelPricing.billing_mode"`)}
+	}
+	if v, ok := _c.mutation.BillingMode(); ok {
+		if err := globalmodelpricing.BillingModeValidator(v); err != nil {
+			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "GlobalModelPricing.billing_mode": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "GlobalModelPricing.created_at"`)}
@@ -273,6 +313,14 @@ func (_c *GlobalModelPricingCreate) createSpec() (*GlobalModelPricing, *sqlgraph
 	if value, ok := _c.mutation.MarkupPercent(); ok {
 		_spec.SetField(globalmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
 		_node.MarkupPercent = &value
+	}
+	if value, ok := _c.mutation.BillingMode(); ok {
+		_spec.SetField(globalmodelpricing.FieldBillingMode, field.TypeString, value)
+		_node.BillingMode = value
+	}
+	if value, ok := _c.mutation.QuotaPerRequest(); ok {
+		_spec.SetField(globalmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+		_node.QuotaPerRequest = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(globalmodelpricing.FieldCreatedAt, field.TypeTime, value)

@@ -21,6 +21,8 @@ func (GlobalModelPricing) Fields() []ent.Field {
 		field.Float("input_rate").Default(1),
 		field.Float("output_rate").Default(1),
 		field.Float("markup_percent").Optional().Nillable().Comment("nil=使用全站默认成本加成%; 扣费时在成本额度上乘 (1+m/100)"),
+		field.String("billing_mode").Default("token").MaxLen(32).Comment("token|per_request|hybrid_floor|hybrid_settle"),
+		field.Int64("quota_per_request").Optional().Nillable().Comment("按次/混合模式每次请求基础额度"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

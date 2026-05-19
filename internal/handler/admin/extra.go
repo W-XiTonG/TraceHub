@@ -394,13 +394,15 @@ func ListGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
 }
 
 type globalPricingUpsertItem struct {
-	ModelName      string
-	Enabled        bool
-	QuotaInPer1k   *int64
-	QuotaOutPer1k  *int64
-	InputRate      float64
-	OutputRate     float64
-	MarkupPercent  *float64
+	ModelName       string
+	Enabled         bool
+	QuotaInPer1k    *int64
+	QuotaOutPer1k   *int64
+	InputRate       float64
+	OutputRate      float64
+	MarkupPercent   *float64
+	BillingMode     string
+	QuotaPerRequest *int64
 }
 
 // upsertGlobalModelPricingBatch 执行批量 upsert。badRequest 非空返回 400；err 非空返回 500。
@@ -426,6 +428,27 @@ func upsertGlobalModelPricingBatch(ctx context.Context, client *ent.Client, item
 		if it.MarkupPercent != nil && !billing.ValidMarkupPercent(*it.MarkupPercent) {
 			return "markup_percent 须为大于 -100 的有效数字", nil
 		}
+		bm := strings.TrimSpace(it.BillingMode)
+		if bm == "" {
+			bm = billing.BillingModeToken
+		}
+		switch bm {
+		case billing.BillingModeToken, billing.BillingModePerRequest, billing.BillingModeHybridFloor, billing.BillingModeHybridSettle:
+		default:
+			return "billing_mode 无效（token|per_request|hybrid_floor|hybrid_settle）", nil
+		}
+		if bm != billing.BillingModeToken {
+			qpr := int64(0)
+			if it.QuotaPerRequest != nil {
+				qpr = *it.QuotaPerRequest
+			}
+			if qpr <= 0 {
+				return "按次/混合模式须设置 quota_per_request > 0", nil
+			}
+		}
+		if it.QuotaPerRequest != nil && *it.QuotaPerRequest < 0 {
+			return "quota_per_request 不能为负", nil
+		}
 		existing, qerr := client.GlobalModelPricing.Query().
 			Where(globalmodelpricing.ModelNameEQ(name)).
 			Only(ctx)
@@ -434,7 +457,8 @@ func upsertGlobalModelPricingBatch(ctx context.Context, client *ent.Client, item
 				SetModelName(name).
 				SetEnabled(it.Enabled).
 				SetInputRate(inR).
-				SetOutputRate(outR)
+				SetOutputRate(outR).
+				SetBillingMode(bm)
 			if it.QuotaInPer1k != nil {
 				cr.SetQuotaInPer1k(*it.QuotaInPer1k)
 			}
@@ -444,6 +468,9 @@ func upsertGlobalModelPricingBatch(ctx context.Context, client *ent.Client, item
 			if it.MarkupPercent != nil {
 				cr.SetMarkupPercent(*it.MarkupPercent)
 			}
+			if it.QuotaPerRequest != nil {
+				cr.SetQuotaPerRequest(*it.QuotaPerRequest)
+			}
 			if _, err := cr.Save(ctx); err != nil {
 				return "", err
 			}
@@ -451,7 +478,8 @@ func upsertGlobalModelPricingBatch(ctx context.Context, client *ent.Client, item
 			up := client.GlobalModelPricing.UpdateOne(existing).
 				SetEnabled(it.Enabled).
 				SetInputRate(inR).
-				SetOutputRate(outR)
+				SetOutputRate(outR).
+				SetBillingMode(bm)
 			if it.QuotaInPer1k != nil {
 				up.SetQuotaInPer1k(*it.QuotaInPer1k)
 			} else {
@@ -466,6 +494,11 @@ func upsertGlobalModelPricingBatch(ctx context.Context, client *ent.Client, item
 				up.SetMarkupPercent(*it.MarkupPercent)
 			} else {
 				up.ClearMarkupPercent()
+			}
+			if it.QuotaPerRequest != nil {
+				up.SetQuotaPerRequest(*it.QuotaPerRequest)
+			} else {
+				up.ClearQuotaPerRequest()
 			}
 			if err := up.Exec(ctx); err != nil {
 				return "", err
@@ -483,13 +516,15 @@ func PutGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
 			Items []struct {
-				ModelName      string   `json:"model_name"`
-				Enabled        bool     `json:"enabled"`
-				QuotaInPer1k   *int64   `json:"quota_in_per_1k"`
-				QuotaOutPer1k  *int64   `json:"quota_out_per_1k"`
-				InputRate      float64  `json:"input_rate"`
-				OutputRate     float64  `json:"output_rate"`
-				MarkupPercent  *float64 `json:"markup_percent"`
+				ModelName       string   `json:"model_name"`
+				Enabled         bool     `json:"enabled"`
+				QuotaInPer1k    *int64   `json:"quota_in_per_1k"`
+				QuotaOutPer1k   *int64   `json:"quota_out_per_1k"`
+				InputRate       float64  `json:"input_rate"`
+				OutputRate      float64  `json:"output_rate"`
+				MarkupPercent   *float64 `json:"markup_percent"`
+				BillingMode     string   `json:"billing_mode"`
+				QuotaPerRequest *int64   `json:"quota_per_request"`
 			} `json:"items"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -500,13 +535,15 @@ func PutGlobalModelPricing(client *ent.Client) gin.HandlerFunc {
 		items := make([]globalPricingUpsertItem, 0, len(req.Items))
 		for _, it := range req.Items {
 			items = append(items, globalPricingUpsertItem{
-				ModelName:     it.ModelName,
-				Enabled:       it.Enabled,
-				QuotaInPer1k:  it.QuotaInPer1k,
-				QuotaOutPer1k: it.QuotaOutPer1k,
-				InputRate:     it.InputRate,
-				OutputRate:    it.OutputRate,
-				MarkupPercent: it.MarkupPercent,
+				ModelName:       it.ModelName,
+				Enabled:         it.Enabled,
+				QuotaInPer1k:    it.QuotaInPer1k,
+				QuotaOutPer1k:   it.QuotaOutPer1k,
+				InputRate:       it.InputRate,
+				OutputRate:      it.OutputRate,
+				MarkupPercent:   it.MarkupPercent,
+				BillingMode:     it.BillingMode,
+				QuotaPerRequest: it.QuotaPerRequest,
 			})
 		}
 		if br, err := upsertGlobalModelPricingBatch(ctx, client, items); br != "" {

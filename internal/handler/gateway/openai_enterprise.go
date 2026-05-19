@@ -112,21 +112,28 @@ func enterpriseResolveUpstream(c *gin.Context, d ChatDeps, routingModel string, 
 		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
 
-	if prePrompt < 1 {
-		prePrompt = 1
-	}
-	if preComp < 0 {
-		preComp = 0
-	}
 	br, billErr := d.Billing.ModelBillRates(c.Request.Context(), u, routingModel, ch.ID)
 	if billErr != nil {
 		middleware.WriteOpenAIError(c, 500, "api_error", "计费状态异常")
 		return nil, nil, nil, "", "", "", false, billing.ModelBillRates{}
 	}
-	compAssumed := completionTokensFallback(preComp)
-	costPre := br.Cost(prePrompt, compAssumed, 0)
+	compAssumed := 0
+	if br.NeedsTokenEstimate() {
+		if prePrompt < 1 {
+			prePrompt = 1
+		}
+		if preComp < 0 {
+			preComp = 0
+		}
+		compAssumed = completionTokensFallback(preComp)
+	}
+	costPre, _ := br.PrecheckCost(prePrompt, compAssumed, 0)
 	if u.Balance < costPre {
-		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, prePrompt, compAssumed)
+		pt, comp := prePrompt, compAssumed
+		if br.IsPerRequest() {
+			pt, comp = 0, 0
+		}
+		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, pt, comp)
 		return nil, nil, nil, "", "", "", false, br
 	}
 
@@ -236,7 +243,7 @@ func enterpriseForwardJSON(
 	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, prePrompt)
 	applyCompletionFallback(&usage, preComp)
-	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+	cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
 	}
@@ -321,7 +328,7 @@ func enterpriseForwardStream(
 	if streamPT == 0 && streamCT == 0 {
 		comp = completionTokensFallback(preComp)
 	}
-	cost := br.Cost(pt, comp, cached)
+	cost := GatewayFinalCost(br,pt, comp, cached)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -407,7 +414,7 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 	if streamPT == 0 && streamCT == 0 {
 		comp = completionTokensFallback(preComp)
 	}
-	cost := br.Cost(pt, comp, cached)
+	cost := GatewayFinalCost(br,pt, comp, cached)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -479,7 +486,7 @@ func enterpriseForwardBinaryDownload(
 		}
 	}
 	comp := preComp
-	cost := br.Cost(pt, comp, 0)
+	cost := GatewayFinalCost(br,pt, comp, 0)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -569,7 +576,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 			usage.PromptTokens = imgTok
 		}
 		applyCompletionFallback(&usage, 2048)
-		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}

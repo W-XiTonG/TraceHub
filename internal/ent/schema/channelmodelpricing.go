@@ -24,6 +24,8 @@ func (ChannelModelPricing) Fields() []ent.Field {
 		field.Float("input_rate").Default(1),
 		field.Float("output_rate").Default(1),
 		field.Float("markup_percent").Optional().Nillable().Comment("nil=回退全站默认成本加成%"),
+		field.String("billing_mode").Optional().Nillable().MaxLen(32).Comment("nil=回退全站; token|per_request|hybrid_floor|hybrid_settle"),
+		field.Int64("quota_per_request").Optional().Nillable().Comment("nil=回退全站; 按次/混合模式每次请求基础额度"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

@@ -89,6 +89,16 @@ func MarkupPercent(v float64) predicate.GlobalModelPricing {
 	return predicate.GlobalModelPricing(sql.FieldEQ(FieldMarkupPercent, v))
 }
 
+// BillingMode applies equality check predicate on the "billing_mode" field. It's identical to BillingModeEQ.
+func BillingMode(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEQ(FieldBillingMode, v))
+}
+
+// QuotaPerRequest applies equality check predicate on the "quota_per_request" field. It's identical to QuotaPerRequestEQ.
+func QuotaPerRequest(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEQ(FieldQuotaPerRequest, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.GlobalModelPricing {
 	return predicate.GlobalModelPricing(sql.FieldEQ(FieldCreatedAt, v))
@@ -402,6 +412,121 @@ func MarkupPercentIsNil() predicate.GlobalModelPricing {
 // MarkupPercentNotNil applies the NotNil predicate on the "markup_percent" field.
 func MarkupPercentNotNil() predicate.GlobalModelPricing {
 	return predicate.GlobalModelPricing(sql.FieldNotNull(FieldMarkupPercent))
+}
+
+// BillingModeEQ applies the EQ predicate on the "billing_mode" field.
+func BillingModeEQ(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEQ(FieldBillingMode, v))
+}
+
+// BillingModeNEQ applies the NEQ predicate on the "billing_mode" field.
+func BillingModeNEQ(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNEQ(FieldBillingMode, v))
+}
+
+// BillingModeIn applies the In predicate on the "billing_mode" field.
+func BillingModeIn(vs ...string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldIn(FieldBillingMode, vs...))
+}
+
+// BillingModeNotIn applies the NotIn predicate on the "billing_mode" field.
+func BillingModeNotIn(vs ...string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNotIn(FieldBillingMode, vs...))
+}
+
+// BillingModeGT applies the GT predicate on the "billing_mode" field.
+func BillingModeGT(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldGT(FieldBillingMode, v))
+}
+
+// BillingModeGTE applies the GTE predicate on the "billing_mode" field.
+func BillingModeGTE(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldGTE(FieldBillingMode, v))
+}
+
+// BillingModeLT applies the LT predicate on the "billing_mode" field.
+func BillingModeLT(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldLT(FieldBillingMode, v))
+}
+
+// BillingModeLTE applies the LTE predicate on the "billing_mode" field.
+func BillingModeLTE(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldLTE(FieldBillingMode, v))
+}
+
+// BillingModeContains applies the Contains predicate on the "billing_mode" field.
+func BillingModeContains(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldContains(FieldBillingMode, v))
+}
+
+// BillingModeHasPrefix applies the HasPrefix predicate on the "billing_mode" field.
+func BillingModeHasPrefix(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldHasPrefix(FieldBillingMode, v))
+}
+
+// BillingModeHasSuffix applies the HasSuffix predicate on the "billing_mode" field.
+func BillingModeHasSuffix(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldHasSuffix(FieldBillingMode, v))
+}
+
+// BillingModeEqualFold applies the EqualFold predicate on the "billing_mode" field.
+func BillingModeEqualFold(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEqualFold(FieldBillingMode, v))
+}
+
+// BillingModeContainsFold applies the ContainsFold predicate on the "billing_mode" field.
+func BillingModeContainsFold(v string) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldContainsFold(FieldBillingMode, v))
+}
+
+// QuotaPerRequestEQ applies the EQ predicate on the "quota_per_request" field.
+func QuotaPerRequestEQ(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldEQ(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestNEQ applies the NEQ predicate on the "quota_per_request" field.
+func QuotaPerRequestNEQ(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNEQ(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestIn applies the In predicate on the "quota_per_request" field.
+func QuotaPerRequestIn(vs ...int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldIn(FieldQuotaPerRequest, vs...))
+}
+
+// QuotaPerRequestNotIn applies the NotIn predicate on the "quota_per_request" field.
+func QuotaPerRequestNotIn(vs ...int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNotIn(FieldQuotaPerRequest, vs...))
+}
+
+// QuotaPerRequestGT applies the GT predicate on the "quota_per_request" field.
+func QuotaPerRequestGT(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldGT(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestGTE applies the GTE predicate on the "quota_per_request" field.
+func QuotaPerRequestGTE(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldGTE(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestLT applies the LT predicate on the "quota_per_request" field.
+func QuotaPerRequestLT(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldLT(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestLTE applies the LTE predicate on the "quota_per_request" field.
+func QuotaPerRequestLTE(v int64) predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldLTE(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestIsNil applies the IsNil predicate on the "quota_per_request" field.
+func QuotaPerRequestIsNil() predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldIsNull(FieldQuotaPerRequest))
+}
+
+// QuotaPerRequestNotNil applies the NotNil predicate on the "quota_per_request" field.
+func QuotaPerRequestNotNil() predicate.GlobalModelPricing {
+	return predicate.GlobalModelPricing(sql.FieldNotNull(FieldQuotaPerRequest))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

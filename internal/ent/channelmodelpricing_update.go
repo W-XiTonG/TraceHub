@@ -194,6 +194,53 @@ func (_u *ChannelModelPricingUpdate) ClearMarkupPercent() *ChannelModelPricingUp
 	return _u
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (_u *ChannelModelPricingUpdate) SetBillingMode(v string) *ChannelModelPricingUpdate {
+	_u.mutation.SetBillingMode(v)
+	return _u
+}
+
+// SetNillableBillingMode sets the "billing_mode" field if the given value is not nil.
+func (_u *ChannelModelPricingUpdate) SetNillableBillingMode(v *string) *ChannelModelPricingUpdate {
+	if v != nil {
+		_u.SetBillingMode(*v)
+	}
+	return _u
+}
+
+// ClearBillingMode clears the value of the "billing_mode" field.
+func (_u *ChannelModelPricingUpdate) ClearBillingMode() *ChannelModelPricingUpdate {
+	_u.mutation.ClearBillingMode()
+	return _u
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (_u *ChannelModelPricingUpdate) SetQuotaPerRequest(v int64) *ChannelModelPricingUpdate {
+	_u.mutation.ResetQuotaPerRequest()
+	_u.mutation.SetQuotaPerRequest(v)
+	return _u
+}
+
+// SetNillableQuotaPerRequest sets the "quota_per_request" field if the given value is not nil.
+func (_u *ChannelModelPricingUpdate) SetNillableQuotaPerRequest(v *int64) *ChannelModelPricingUpdate {
+	if v != nil {
+		_u.SetQuotaPerRequest(*v)
+	}
+	return _u
+}
+
+// AddQuotaPerRequest adds value to the "quota_per_request" field.
+func (_u *ChannelModelPricingUpdate) AddQuotaPerRequest(v int64) *ChannelModelPricingUpdate {
+	_u.mutation.AddQuotaPerRequest(v)
+	return _u
+}
+
+// ClearQuotaPerRequest clears the value of the "quota_per_request" field.
+func (_u *ChannelModelPricingUpdate) ClearQuotaPerRequest() *ChannelModelPricingUpdate {
+	_u.mutation.ClearQuotaPerRequest()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ChannelModelPricingUpdate) SetUpdatedAt(v time.Time) *ChannelModelPricingUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -259,6 +306,11 @@ func (_u *ChannelModelPricingUpdate) check() error {
 			return &ValidationError{Name: "model_name", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPricing.model_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.BillingMode(); ok {
+		if err := channelmodelpricing.BillingModeValidator(v); err != nil {
+			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPricing.billing_mode": %w`, err)}
+		}
+	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelModelPricing.channel"`)
 	}
@@ -321,6 +373,21 @@ func (_u *ChannelModelPricingUpdate) sqlSave(ctx context.Context) (_node int, er
 	}
 	if _u.mutation.MarkupPercentCleared() {
 		_spec.ClearField(channelmodelpricing.FieldMarkupPercent, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.BillingMode(); ok {
+		_spec.SetField(channelmodelpricing.FieldBillingMode, field.TypeString, value)
+	}
+	if _u.mutation.BillingModeCleared() {
+		_spec.ClearField(channelmodelpricing.FieldBillingMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.QuotaPerRequest(); ok {
+		_spec.SetField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedQuotaPerRequest(); ok {
+		_spec.AddField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if _u.mutation.QuotaPerRequestCleared() {
+		_spec.ClearField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(channelmodelpricing.FieldUpdatedAt, field.TypeTime, value)
@@ -539,6 +606,53 @@ func (_u *ChannelModelPricingUpdateOne) ClearMarkupPercent() *ChannelModelPricin
 	return _u
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (_u *ChannelModelPricingUpdateOne) SetBillingMode(v string) *ChannelModelPricingUpdateOne {
+	_u.mutation.SetBillingMode(v)
+	return _u
+}
+
+// SetNillableBillingMode sets the "billing_mode" field if the given value is not nil.
+func (_u *ChannelModelPricingUpdateOne) SetNillableBillingMode(v *string) *ChannelModelPricingUpdateOne {
+	if v != nil {
+		_u.SetBillingMode(*v)
+	}
+	return _u
+}
+
+// ClearBillingMode clears the value of the "billing_mode" field.
+func (_u *ChannelModelPricingUpdateOne) ClearBillingMode() *ChannelModelPricingUpdateOne {
+	_u.mutation.ClearBillingMode()
+	return _u
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (_u *ChannelModelPricingUpdateOne) SetQuotaPerRequest(v int64) *ChannelModelPricingUpdateOne {
+	_u.mutation.ResetQuotaPerRequest()
+	_u.mutation.SetQuotaPerRequest(v)
+	return _u
+}
+
+// SetNillableQuotaPerRequest sets the "quota_per_request" field if the given value is not nil.
+func (_u *ChannelModelPricingUpdateOne) SetNillableQuotaPerRequest(v *int64) *ChannelModelPricingUpdateOne {
+	if v != nil {
+		_u.SetQuotaPerRequest(*v)
+	}
+	return _u
+}
+
+// AddQuotaPerRequest adds value to the "quota_per_request" field.
+func (_u *ChannelModelPricingUpdateOne) AddQuotaPerRequest(v int64) *ChannelModelPricingUpdateOne {
+	_u.mutation.AddQuotaPerRequest(v)
+	return _u
+}
+
+// ClearQuotaPerRequest clears the value of the "quota_per_request" field.
+func (_u *ChannelModelPricingUpdateOne) ClearQuotaPerRequest() *ChannelModelPricingUpdateOne {
+	_u.mutation.ClearQuotaPerRequest()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ChannelModelPricingUpdateOne) SetUpdatedAt(v time.Time) *ChannelModelPricingUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -615,6 +729,11 @@ func (_u *ChannelModelPricingUpdateOne) check() error {
 	if v, ok := _u.mutation.ModelName(); ok {
 		if err := channelmodelpricing.ModelNameValidator(v); err != nil {
 			return &ValidationError{Name: "model_name", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPricing.model_name": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.BillingMode(); ok {
+		if err := channelmodelpricing.BillingModeValidator(v); err != nil {
+			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPricing.billing_mode": %w`, err)}
 		}
 	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
@@ -696,6 +815,21 @@ func (_u *ChannelModelPricingUpdateOne) sqlSave(ctx context.Context) (_node *Cha
 	}
 	if _u.mutation.MarkupPercentCleared() {
 		_spec.ClearField(channelmodelpricing.FieldMarkupPercent, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.BillingMode(); ok {
+		_spec.SetField(channelmodelpricing.FieldBillingMode, field.TypeString, value)
+	}
+	if _u.mutation.BillingModeCleared() {
+		_spec.ClearField(channelmodelpricing.FieldBillingMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.QuotaPerRequest(); ok {
+		_spec.SetField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedQuotaPerRequest(); ok {
+		_spec.AddField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+	}
+	if _u.mutation.QuotaPerRequestCleared() {
+		_spec.ClearField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(channelmodelpricing.FieldUpdatedAt, field.TypeTime, value)

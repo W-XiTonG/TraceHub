@@ -68,29 +68,30 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		var promptToks int
-		if len(inputRaw) == 0 {
-			promptToks, err = d.Billing.EstimateTokens(previewSel.UpstreamModel, "")
-			if err != nil {
-				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法估算 input token")
-				return
-			}
-		} else {
-			promptToks, err = EstimateResponsesInputPromptTokens(inputRaw, previewSel.UpstreamModel, d.Billing)
-			if err != nil {
-				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "input 无效或无法估算 token")
-				return
-			}
-		}
-		if promptToks < 1 {
-			promptToks = 1
-		}
-
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, previewSel.Channel.ID)
-		compAssumed := completionTokensFallback(maxOut)
-		costPre := br.Cost(promptToks, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		var promptToks, compAssumed int
+		if br.NeedsTokenEstimate() {
+			if len(inputRaw) == 0 {
+				promptToks, err = d.Billing.EstimateTokens(previewSel.UpstreamModel, "")
+				if err != nil {
+					middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法估算 input token")
+					return
+				}
+			} else {
+				promptToks, err = EstimateResponsesInputPromptTokens(inputRaw, previewSel.UpstreamModel, d.Billing)
+				if err != nil {
+					middleware.WriteOpenAIError(c, 400, "invalid_request_error", "input 无效或无法估算 token")
+					return
+				}
+			}
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			compAssumed = completionTokensFallback(maxOut)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -160,7 +161,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			if streamPT == 0 && streamCT == 0 {
 				comp = completionTokensFallback(maxOut)
 			}
-			cost := br.Cost(pt, comp, cached)
+			cost := GatewayFinalCost(br,pt, comp, cached)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -199,7 +200,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxOut)
-		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}

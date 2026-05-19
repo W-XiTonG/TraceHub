@@ -117,6 +117,34 @@ func (_c *ChannelModelPricingCreate) SetNillableMarkupPercent(v *float64) *Chann
 	return _c
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (_c *ChannelModelPricingCreate) SetBillingMode(v string) *ChannelModelPricingCreate {
+	_c.mutation.SetBillingMode(v)
+	return _c
+}
+
+// SetNillableBillingMode sets the "billing_mode" field if the given value is not nil.
+func (_c *ChannelModelPricingCreate) SetNillableBillingMode(v *string) *ChannelModelPricingCreate {
+	if v != nil {
+		_c.SetBillingMode(*v)
+	}
+	return _c
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (_c *ChannelModelPricingCreate) SetQuotaPerRequest(v int64) *ChannelModelPricingCreate {
+	_c.mutation.SetQuotaPerRequest(v)
+	return _c
+}
+
+// SetNillableQuotaPerRequest sets the "quota_per_request" field if the given value is not nil.
+func (_c *ChannelModelPricingCreate) SetNillableQuotaPerRequest(v *int64) *ChannelModelPricingCreate {
+	if v != nil {
+		_c.SetQuotaPerRequest(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ChannelModelPricingCreate) SetCreatedAt(v time.Time) *ChannelModelPricingCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -229,6 +257,11 @@ func (_c *ChannelModelPricingCreate) check() error {
 	if _, ok := _c.mutation.OutputRate(); !ok {
 		return &ValidationError{Name: "output_rate", err: errors.New(`ent: missing required field "ChannelModelPricing.output_rate"`)}
 	}
+	if v, ok := _c.mutation.BillingMode(); ok {
+		if err := channelmodelpricing.BillingModeValidator(v); err != nil {
+			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "ChannelModelPricing.billing_mode": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ChannelModelPricing.created_at"`)}
 	}
@@ -291,6 +324,14 @@ func (_c *ChannelModelPricingCreate) createSpec() (*ChannelModelPricing, *sqlgra
 	if value, ok := _c.mutation.MarkupPercent(); ok {
 		_spec.SetField(channelmodelpricing.FieldMarkupPercent, field.TypeFloat64, value)
 		_node.MarkupPercent = &value
+	}
+	if value, ok := _c.mutation.BillingMode(); ok {
+		_spec.SetField(channelmodelpricing.FieldBillingMode, field.TypeString, value)
+		_node.BillingMode = &value
+	}
+	if value, ok := _c.mutation.QuotaPerRequest(); ok {
+		_spec.SetField(channelmodelpricing.FieldQuotaPerRequest, field.TypeInt64, value)
+		_node.QuotaPerRequest = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(channelmodelpricing.FieldCreatedAt, field.TypeTime, value)

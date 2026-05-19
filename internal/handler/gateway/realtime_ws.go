@@ -86,14 +86,16 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		// Realtime 会话按固定占位计费（上游 usage 在 WS 帧内，不在此解析）。
+		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 		const promptToks = 4096
 		const compToks = 4096
-		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		compAssumed := completionTokensFallback(compToks)
-		costPre := br.Cost(promptToks, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		var compAssumed int
+		if br.NeedsTokenEstimate() {
+			compAssumed = completionTokensFallback(compToks)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -181,7 +183,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		}
 		defer upConn.Close()
 
-		cost := br.Cost(promptToks, compToks, 0)
+		cost := GatewayFinalCost(br,promptToks, compToks, 0)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			slog.Warn("realtime ws deduct failed", "user_id", u.ID, "err", err)
 		}

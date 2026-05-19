@@ -6610,29 +6610,32 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 // ChannelModelPricingMutation represents an operation that mutates the ChannelModelPricing nodes in the graph.
 type ChannelModelPricingMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	model_name          *string
-	enabled             *bool
-	quota_in_per_1k     *int64
-	addquota_in_per_1k  *int64
-	quota_out_per_1k    *int64
-	addquota_out_per_1k *int64
-	input_rate          *float64
-	addinput_rate       *float64
-	output_rate         *float64
-	addoutput_rate      *float64
-	markup_percent      *float64
-	addmarkup_percent   *float64
-	created_at          *time.Time
-	updated_at          *time.Time
-	clearedFields       map[string]struct{}
-	channel             *int
-	clearedchannel      bool
-	done                bool
-	oldValue            func(context.Context) (*ChannelModelPricing, error)
-	predicates          []predicate.ChannelModelPricing
+	op                   Op
+	typ                  string
+	id                   *int
+	model_name           *string
+	enabled              *bool
+	quota_in_per_1k      *int64
+	addquota_in_per_1k   *int64
+	quota_out_per_1k     *int64
+	addquota_out_per_1k  *int64
+	input_rate           *float64
+	addinput_rate        *float64
+	output_rate          *float64
+	addoutput_rate       *float64
+	markup_percent       *float64
+	addmarkup_percent    *float64
+	billing_mode         *string
+	quota_per_request    *int64
+	addquota_per_request *int64
+	created_at           *time.Time
+	updated_at           *time.Time
+	clearedFields        map[string]struct{}
+	channel              *int
+	clearedchannel       bool
+	done                 bool
+	oldValue             func(context.Context) (*ChannelModelPricing, error)
+	predicates           []predicate.ChannelModelPricing
 }
 
 var _ ent.Mutation = (*ChannelModelPricingMutation)(nil)
@@ -7163,6 +7166,125 @@ func (m *ChannelModelPricingMutation) ResetMarkupPercent() {
 	delete(m.clearedFields, channelmodelpricing.FieldMarkupPercent)
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (m *ChannelModelPricingMutation) SetBillingMode(s string) {
+	m.billing_mode = &s
+}
+
+// BillingMode returns the value of the "billing_mode" field in the mutation.
+func (m *ChannelModelPricingMutation) BillingMode() (r string, exists bool) {
+	v := m.billing_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBillingMode returns the old "billing_mode" field's value of the ChannelModelPricing entity.
+// If the ChannelModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPricingMutation) OldBillingMode(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBillingMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBillingMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBillingMode: %w", err)
+	}
+	return oldValue.BillingMode, nil
+}
+
+// ClearBillingMode clears the value of the "billing_mode" field.
+func (m *ChannelModelPricingMutation) ClearBillingMode() {
+	m.billing_mode = nil
+	m.clearedFields[channelmodelpricing.FieldBillingMode] = struct{}{}
+}
+
+// BillingModeCleared returns if the "billing_mode" field was cleared in this mutation.
+func (m *ChannelModelPricingMutation) BillingModeCleared() bool {
+	_, ok := m.clearedFields[channelmodelpricing.FieldBillingMode]
+	return ok
+}
+
+// ResetBillingMode resets all changes to the "billing_mode" field.
+func (m *ChannelModelPricingMutation) ResetBillingMode() {
+	m.billing_mode = nil
+	delete(m.clearedFields, channelmodelpricing.FieldBillingMode)
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (m *ChannelModelPricingMutation) SetQuotaPerRequest(i int64) {
+	m.quota_per_request = &i
+	m.addquota_per_request = nil
+}
+
+// QuotaPerRequest returns the value of the "quota_per_request" field in the mutation.
+func (m *ChannelModelPricingMutation) QuotaPerRequest() (r int64, exists bool) {
+	v := m.quota_per_request
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuotaPerRequest returns the old "quota_per_request" field's value of the ChannelModelPricing entity.
+// If the ChannelModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPricingMutation) OldQuotaPerRequest(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuotaPerRequest is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuotaPerRequest requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuotaPerRequest: %w", err)
+	}
+	return oldValue.QuotaPerRequest, nil
+}
+
+// AddQuotaPerRequest adds i to the "quota_per_request" field.
+func (m *ChannelModelPricingMutation) AddQuotaPerRequest(i int64) {
+	if m.addquota_per_request != nil {
+		*m.addquota_per_request += i
+	} else {
+		m.addquota_per_request = &i
+	}
+}
+
+// AddedQuotaPerRequest returns the value that was added to the "quota_per_request" field in this mutation.
+func (m *ChannelModelPricingMutation) AddedQuotaPerRequest() (r int64, exists bool) {
+	v := m.addquota_per_request
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearQuotaPerRequest clears the value of the "quota_per_request" field.
+func (m *ChannelModelPricingMutation) ClearQuotaPerRequest() {
+	m.quota_per_request = nil
+	m.addquota_per_request = nil
+	m.clearedFields[channelmodelpricing.FieldQuotaPerRequest] = struct{}{}
+}
+
+// QuotaPerRequestCleared returns if the "quota_per_request" field was cleared in this mutation.
+func (m *ChannelModelPricingMutation) QuotaPerRequestCleared() bool {
+	_, ok := m.clearedFields[channelmodelpricing.FieldQuotaPerRequest]
+	return ok
+}
+
+// ResetQuotaPerRequest resets all changes to the "quota_per_request" field.
+func (m *ChannelModelPricingMutation) ResetQuotaPerRequest() {
+	m.quota_per_request = nil
+	m.addquota_per_request = nil
+	delete(m.clearedFields, channelmodelpricing.FieldQuotaPerRequest)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ChannelModelPricingMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -7296,7 +7418,7 @@ func (m *ChannelModelPricingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelModelPricingMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.channel != nil {
 		fields = append(fields, channelmodelpricing.FieldChannelID)
 	}
@@ -7320,6 +7442,12 @@ func (m *ChannelModelPricingMutation) Fields() []string {
 	}
 	if m.markup_percent != nil {
 		fields = append(fields, channelmodelpricing.FieldMarkupPercent)
+	}
+	if m.billing_mode != nil {
+		fields = append(fields, channelmodelpricing.FieldBillingMode)
+	}
+	if m.quota_per_request != nil {
+		fields = append(fields, channelmodelpricing.FieldQuotaPerRequest)
 	}
 	if m.created_at != nil {
 		fields = append(fields, channelmodelpricing.FieldCreatedAt)
@@ -7351,6 +7479,10 @@ func (m *ChannelModelPricingMutation) Field(name string) (ent.Value, bool) {
 		return m.OutputRate()
 	case channelmodelpricing.FieldMarkupPercent:
 		return m.MarkupPercent()
+	case channelmodelpricing.FieldBillingMode:
+		return m.BillingMode()
+	case channelmodelpricing.FieldQuotaPerRequest:
+		return m.QuotaPerRequest()
 	case channelmodelpricing.FieldCreatedAt:
 		return m.CreatedAt()
 	case channelmodelpricing.FieldUpdatedAt:
@@ -7380,6 +7512,10 @@ func (m *ChannelModelPricingMutation) OldField(ctx context.Context, name string)
 		return m.OldOutputRate(ctx)
 	case channelmodelpricing.FieldMarkupPercent:
 		return m.OldMarkupPercent(ctx)
+	case channelmodelpricing.FieldBillingMode:
+		return m.OldBillingMode(ctx)
+	case channelmodelpricing.FieldQuotaPerRequest:
+		return m.OldQuotaPerRequest(ctx)
 	case channelmodelpricing.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case channelmodelpricing.FieldUpdatedAt:
@@ -7449,6 +7585,20 @@ func (m *ChannelModelPricingMutation) SetField(name string, value ent.Value) err
 		}
 		m.SetMarkupPercent(v)
 		return nil
+	case channelmodelpricing.FieldBillingMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBillingMode(v)
+		return nil
+	case channelmodelpricing.FieldQuotaPerRequest:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuotaPerRequest(v)
+		return nil
 	case channelmodelpricing.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -7486,6 +7636,9 @@ func (m *ChannelModelPricingMutation) AddedFields() []string {
 	if m.addmarkup_percent != nil {
 		fields = append(fields, channelmodelpricing.FieldMarkupPercent)
 	}
+	if m.addquota_per_request != nil {
+		fields = append(fields, channelmodelpricing.FieldQuotaPerRequest)
+	}
 	return fields
 }
 
@@ -7504,6 +7657,8 @@ func (m *ChannelModelPricingMutation) AddedField(name string) (ent.Value, bool) 
 		return m.AddedOutputRate()
 	case channelmodelpricing.FieldMarkupPercent:
 		return m.AddedMarkupPercent()
+	case channelmodelpricing.FieldQuotaPerRequest:
+		return m.AddedQuotaPerRequest()
 	}
 	return nil, false
 }
@@ -7548,6 +7703,13 @@ func (m *ChannelModelPricingMutation) AddField(name string, value ent.Value) err
 		}
 		m.AddMarkupPercent(v)
 		return nil
+	case channelmodelpricing.FieldQuotaPerRequest:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQuotaPerRequest(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ChannelModelPricing numeric field %s", name)
 }
@@ -7564,6 +7726,12 @@ func (m *ChannelModelPricingMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(channelmodelpricing.FieldMarkupPercent) {
 		fields = append(fields, channelmodelpricing.FieldMarkupPercent)
+	}
+	if m.FieldCleared(channelmodelpricing.FieldBillingMode) {
+		fields = append(fields, channelmodelpricing.FieldBillingMode)
+	}
+	if m.FieldCleared(channelmodelpricing.FieldQuotaPerRequest) {
+		fields = append(fields, channelmodelpricing.FieldQuotaPerRequest)
 	}
 	return fields
 }
@@ -7587,6 +7755,12 @@ func (m *ChannelModelPricingMutation) ClearField(name string) error {
 		return nil
 	case channelmodelpricing.FieldMarkupPercent:
 		m.ClearMarkupPercent()
+		return nil
+	case channelmodelpricing.FieldBillingMode:
+		m.ClearBillingMode()
+		return nil
+	case channelmodelpricing.FieldQuotaPerRequest:
+		m.ClearQuotaPerRequest()
 		return nil
 	}
 	return fmt.Errorf("unknown ChannelModelPricing nullable field %s", name)
@@ -7619,6 +7793,12 @@ func (m *ChannelModelPricingMutation) ResetField(name string) error {
 		return nil
 	case channelmodelpricing.FieldMarkupPercent:
 		m.ResetMarkupPercent()
+		return nil
+	case channelmodelpricing.FieldBillingMode:
+		m.ResetBillingMode()
+		return nil
+	case channelmodelpricing.FieldQuotaPerRequest:
+		m.ResetQuotaPerRequest()
 		return nil
 	case channelmodelpricing.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -9972,27 +10152,30 @@ func (m *FeedbackMutation) ResetEdge(name string) error {
 // GlobalModelPricingMutation represents an operation that mutates the GlobalModelPricing nodes in the graph.
 type GlobalModelPricingMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	model_name          *string
-	enabled             *bool
-	quota_in_per_1k     *int64
-	addquota_in_per_1k  *int64
-	quota_out_per_1k    *int64
-	addquota_out_per_1k *int64
-	input_rate          *float64
-	addinput_rate       *float64
-	output_rate         *float64
-	addoutput_rate      *float64
-	markup_percent      *float64
-	addmarkup_percent   *float64
-	created_at          *time.Time
-	updated_at          *time.Time
-	clearedFields       map[string]struct{}
-	done                bool
-	oldValue            func(context.Context) (*GlobalModelPricing, error)
-	predicates          []predicate.GlobalModelPricing
+	op                   Op
+	typ                  string
+	id                   *int
+	model_name           *string
+	enabled              *bool
+	quota_in_per_1k      *int64
+	addquota_in_per_1k   *int64
+	quota_out_per_1k     *int64
+	addquota_out_per_1k  *int64
+	input_rate           *float64
+	addinput_rate        *float64
+	output_rate          *float64
+	addoutput_rate       *float64
+	markup_percent       *float64
+	addmarkup_percent    *float64
+	billing_mode         *string
+	quota_per_request    *int64
+	addquota_per_request *int64
+	created_at           *time.Time
+	updated_at           *time.Time
+	clearedFields        map[string]struct{}
+	done                 bool
+	oldValue             func(context.Context) (*GlobalModelPricing, error)
+	predicates           []predicate.GlobalModelPricing
 }
 
 var _ ent.Mutation = (*GlobalModelPricingMutation)(nil)
@@ -10487,6 +10670,112 @@ func (m *GlobalModelPricingMutation) ResetMarkupPercent() {
 	delete(m.clearedFields, globalmodelpricing.FieldMarkupPercent)
 }
 
+// SetBillingMode sets the "billing_mode" field.
+func (m *GlobalModelPricingMutation) SetBillingMode(s string) {
+	m.billing_mode = &s
+}
+
+// BillingMode returns the value of the "billing_mode" field in the mutation.
+func (m *GlobalModelPricingMutation) BillingMode() (r string, exists bool) {
+	v := m.billing_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBillingMode returns the old "billing_mode" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldBillingMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBillingMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBillingMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBillingMode: %w", err)
+	}
+	return oldValue.BillingMode, nil
+}
+
+// ResetBillingMode resets all changes to the "billing_mode" field.
+func (m *GlobalModelPricingMutation) ResetBillingMode() {
+	m.billing_mode = nil
+}
+
+// SetQuotaPerRequest sets the "quota_per_request" field.
+func (m *GlobalModelPricingMutation) SetQuotaPerRequest(i int64) {
+	m.quota_per_request = &i
+	m.addquota_per_request = nil
+}
+
+// QuotaPerRequest returns the value of the "quota_per_request" field in the mutation.
+func (m *GlobalModelPricingMutation) QuotaPerRequest() (r int64, exists bool) {
+	v := m.quota_per_request
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuotaPerRequest returns the old "quota_per_request" field's value of the GlobalModelPricing entity.
+// If the GlobalModelPricing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GlobalModelPricingMutation) OldQuotaPerRequest(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuotaPerRequest is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuotaPerRequest requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuotaPerRequest: %w", err)
+	}
+	return oldValue.QuotaPerRequest, nil
+}
+
+// AddQuotaPerRequest adds i to the "quota_per_request" field.
+func (m *GlobalModelPricingMutation) AddQuotaPerRequest(i int64) {
+	if m.addquota_per_request != nil {
+		*m.addquota_per_request += i
+	} else {
+		m.addquota_per_request = &i
+	}
+}
+
+// AddedQuotaPerRequest returns the value that was added to the "quota_per_request" field in this mutation.
+func (m *GlobalModelPricingMutation) AddedQuotaPerRequest() (r int64, exists bool) {
+	v := m.addquota_per_request
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearQuotaPerRequest clears the value of the "quota_per_request" field.
+func (m *GlobalModelPricingMutation) ClearQuotaPerRequest() {
+	m.quota_per_request = nil
+	m.addquota_per_request = nil
+	m.clearedFields[globalmodelpricing.FieldQuotaPerRequest] = struct{}{}
+}
+
+// QuotaPerRequestCleared returns if the "quota_per_request" field was cleared in this mutation.
+func (m *GlobalModelPricingMutation) QuotaPerRequestCleared() bool {
+	_, ok := m.clearedFields[globalmodelpricing.FieldQuotaPerRequest]
+	return ok
+}
+
+// ResetQuotaPerRequest resets all changes to the "quota_per_request" field.
+func (m *GlobalModelPricingMutation) ResetQuotaPerRequest() {
+	m.quota_per_request = nil
+	m.addquota_per_request = nil
+	delete(m.clearedFields, globalmodelpricing.FieldQuotaPerRequest)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *GlobalModelPricingMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -10593,7 +10882,7 @@ func (m *GlobalModelPricingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GlobalModelPricingMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 11)
 	if m.model_name != nil {
 		fields = append(fields, globalmodelpricing.FieldModelName)
 	}
@@ -10614,6 +10903,12 @@ func (m *GlobalModelPricingMutation) Fields() []string {
 	}
 	if m.markup_percent != nil {
 		fields = append(fields, globalmodelpricing.FieldMarkupPercent)
+	}
+	if m.billing_mode != nil {
+		fields = append(fields, globalmodelpricing.FieldBillingMode)
+	}
+	if m.quota_per_request != nil {
+		fields = append(fields, globalmodelpricing.FieldQuotaPerRequest)
 	}
 	if m.created_at != nil {
 		fields = append(fields, globalmodelpricing.FieldCreatedAt)
@@ -10643,6 +10938,10 @@ func (m *GlobalModelPricingMutation) Field(name string) (ent.Value, bool) {
 		return m.OutputRate()
 	case globalmodelpricing.FieldMarkupPercent:
 		return m.MarkupPercent()
+	case globalmodelpricing.FieldBillingMode:
+		return m.BillingMode()
+	case globalmodelpricing.FieldQuotaPerRequest:
+		return m.QuotaPerRequest()
 	case globalmodelpricing.FieldCreatedAt:
 		return m.CreatedAt()
 	case globalmodelpricing.FieldUpdatedAt:
@@ -10670,6 +10969,10 @@ func (m *GlobalModelPricingMutation) OldField(ctx context.Context, name string) 
 		return m.OldOutputRate(ctx)
 	case globalmodelpricing.FieldMarkupPercent:
 		return m.OldMarkupPercent(ctx)
+	case globalmodelpricing.FieldBillingMode:
+		return m.OldBillingMode(ctx)
+	case globalmodelpricing.FieldQuotaPerRequest:
+		return m.OldQuotaPerRequest(ctx)
 	case globalmodelpricing.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case globalmodelpricing.FieldUpdatedAt:
@@ -10732,6 +11035,20 @@ func (m *GlobalModelPricingMutation) SetField(name string, value ent.Value) erro
 		}
 		m.SetMarkupPercent(v)
 		return nil
+	case globalmodelpricing.FieldBillingMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBillingMode(v)
+		return nil
+	case globalmodelpricing.FieldQuotaPerRequest:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuotaPerRequest(v)
+		return nil
 	case globalmodelpricing.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -10769,6 +11086,9 @@ func (m *GlobalModelPricingMutation) AddedFields() []string {
 	if m.addmarkup_percent != nil {
 		fields = append(fields, globalmodelpricing.FieldMarkupPercent)
 	}
+	if m.addquota_per_request != nil {
+		fields = append(fields, globalmodelpricing.FieldQuotaPerRequest)
+	}
 	return fields
 }
 
@@ -10787,6 +11107,8 @@ func (m *GlobalModelPricingMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedOutputRate()
 	case globalmodelpricing.FieldMarkupPercent:
 		return m.AddedMarkupPercent()
+	case globalmodelpricing.FieldQuotaPerRequest:
+		return m.AddedQuotaPerRequest()
 	}
 	return nil, false
 }
@@ -10831,6 +11153,13 @@ func (m *GlobalModelPricingMutation) AddField(name string, value ent.Value) erro
 		}
 		m.AddMarkupPercent(v)
 		return nil
+	case globalmodelpricing.FieldQuotaPerRequest:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQuotaPerRequest(v)
+		return nil
 	}
 	return fmt.Errorf("unknown GlobalModelPricing numeric field %s", name)
 }
@@ -10847,6 +11176,9 @@ func (m *GlobalModelPricingMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(globalmodelpricing.FieldMarkupPercent) {
 		fields = append(fields, globalmodelpricing.FieldMarkupPercent)
+	}
+	if m.FieldCleared(globalmodelpricing.FieldQuotaPerRequest) {
+		fields = append(fields, globalmodelpricing.FieldQuotaPerRequest)
 	}
 	return fields
 }
@@ -10870,6 +11202,9 @@ func (m *GlobalModelPricingMutation) ClearField(name string) error {
 		return nil
 	case globalmodelpricing.FieldMarkupPercent:
 		m.ClearMarkupPercent()
+		return nil
+	case globalmodelpricing.FieldQuotaPerRequest:
+		m.ClearQuotaPerRequest()
 		return nil
 	}
 	return fmt.Errorf("unknown GlobalModelPricing nullable field %s", name)
@@ -10899,6 +11234,12 @@ func (m *GlobalModelPricingMutation) ResetField(name string) error {
 		return nil
 	case globalmodelpricing.FieldMarkupPercent:
 		m.ResetMarkupPercent()
+		return nil
+	case globalmodelpricing.FieldBillingMode:
+		m.ResetBillingMode()
+		return nil
+	case globalmodelpricing.FieldQuotaPerRequest:
+		m.ResetQuotaPerRequest()
 		return nil
 	case globalmodelpricing.FieldCreatedAt:
 		m.ResetCreatedAt()

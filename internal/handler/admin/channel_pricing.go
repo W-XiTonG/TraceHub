@@ -17,14 +17,16 @@ import (
 )
 
 type channelPricingUpsertItem struct {
-	ChannelID     int
-	ModelName     string
-	Enabled       bool
-	QuotaInPer1k  *int64
-	QuotaOutPer1k *int64
-	InputRate     float64
-	OutputRate    float64
-	MarkupPercent *float64
+	ChannelID       int
+	ModelName       string
+	Enabled         bool
+	QuotaInPer1k    *int64
+	QuotaOutPer1k   *int64
+	InputRate       float64
+	OutputRate      float64
+	MarkupPercent   *float64
+	BillingMode     *string
+	QuotaPerRequest *int64
 }
 
 func upsertChannelModelPricingBatch(ctx context.Context, client *ent.Client, items []channelPricingUpsertItem) (badRequest string, err error) {
@@ -58,6 +60,19 @@ func upsertChannelModelPricingBatch(ctx context.Context, client *ent.Client, ite
 		if it.MarkupPercent != nil && !billing.ValidMarkupPercent(*it.MarkupPercent) {
 			return "markup_percent 须为大于 -100 的有效数字", nil
 		}
+		if it.BillingMode != nil {
+			bm := strings.TrimSpace(*it.BillingMode)
+			if bm != "" {
+				switch bm {
+				case billing.BillingModeToken, billing.BillingModePerRequest, billing.BillingModeHybridFloor, billing.BillingModeHybridSettle:
+				default:
+					return "billing_mode 无效（token|per_request|hybrid_floor|hybrid_settle）", nil
+				}
+			}
+		}
+		if it.QuotaPerRequest != nil && *it.QuotaPerRequest < 0 {
+			return "quota_per_request 不能为负", nil
+		}
 		existing, qerr := client.ChannelModelPricing.Query().
 			Where(
 				channelmodelpricing.ChannelIDEQ(it.ChannelID),
@@ -79,6 +94,15 @@ func upsertChannelModelPricingBatch(ctx context.Context, client *ent.Client, ite
 			}
 			if it.MarkupPercent != nil {
 				cr.SetMarkupPercent(*it.MarkupPercent)
+			}
+			if it.BillingMode != nil {
+				bm := strings.TrimSpace(*it.BillingMode)
+				if bm != "" {
+					cr.SetBillingMode(bm)
+				}
+			}
+			if it.QuotaPerRequest != nil {
+				cr.SetQuotaPerRequest(*it.QuotaPerRequest)
 			}
 			if _, err := cr.Save(ctx); err != nil {
 				return "", err
@@ -102,6 +126,19 @@ func upsertChannelModelPricingBatch(ctx context.Context, client *ent.Client, ite
 				up.SetMarkupPercent(*it.MarkupPercent)
 			} else {
 				up.ClearMarkupPercent()
+			}
+			if it.BillingMode != nil {
+				bm := strings.TrimSpace(*it.BillingMode)
+				if bm != "" {
+					up.SetBillingMode(bm)
+				} else {
+					up.ClearBillingMode()
+				}
+			}
+			if it.QuotaPerRequest != nil {
+				up.SetQuotaPerRequest(*it.QuotaPerRequest)
+			} else {
+				up.ClearQuotaPerRequest()
 			}
 			if err := up.Exec(ctx); err != nil {
 				return "", err
@@ -158,14 +195,16 @@ func PutChannelModelPricing(client *ent.Client) gin.HandlerFunc {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
 			Items []struct {
-				ChannelID     int      `json:"channel_id"`
-				ModelName     string   `json:"model_name"`
-				Enabled       bool     `json:"enabled"`
-				QuotaInPer1k  *int64   `json:"quota_in_per_1k"`
-				QuotaOutPer1k *int64   `json:"quota_out_per_1k"`
-				InputRate     float64  `json:"input_rate"`
-				OutputRate    float64  `json:"output_rate"`
-				MarkupPercent *float64 `json:"markup_percent"`
+				ChannelID       int      `json:"channel_id"`
+				ModelName       string   `json:"model_name"`
+				Enabled         bool     `json:"enabled"`
+				QuotaInPer1k    *int64   `json:"quota_in_per_1k"`
+				QuotaOutPer1k   *int64   `json:"quota_out_per_1k"`
+				InputRate       float64  `json:"input_rate"`
+				OutputRate      float64  `json:"output_rate"`
+				MarkupPercent   *float64 `json:"markup_percent"`
+				BillingMode     *string  `json:"billing_mode"`
+				QuotaPerRequest *int64   `json:"quota_per_request"`
 			} `json:"items"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -177,14 +216,16 @@ func PutChannelModelPricing(client *ent.Client) gin.HandlerFunc {
 		channelIDs := make(map[int]struct{})
 		for _, it := range req.Items {
 			items = append(items, channelPricingUpsertItem{
-				ChannelID:     it.ChannelID,
-				ModelName:     it.ModelName,
-				Enabled:       it.Enabled,
-				QuotaInPer1k:  it.QuotaInPer1k,
-				QuotaOutPer1k: it.QuotaOutPer1k,
-				InputRate:     it.InputRate,
-				OutputRate:    it.OutputRate,
-				MarkupPercent: it.MarkupPercent,
+				ChannelID:       it.ChannelID,
+				ModelName:       it.ModelName,
+				Enabled:         it.Enabled,
+				QuotaInPer1k:    it.QuotaInPer1k,
+				QuotaOutPer1k:   it.QuotaOutPer1k,
+				InputRate:       it.InputRate,
+				OutputRate:      it.OutputRate,
+				MarkupPercent:   it.MarkupPercent,
+				BillingMode:     it.BillingMode,
+				QuotaPerRequest: it.QuotaPerRequest,
 			})
 			if it.ChannelID > 0 {
 				channelIDs[it.ChannelID] = struct{}{}

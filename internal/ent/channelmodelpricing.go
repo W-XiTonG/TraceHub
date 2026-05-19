@@ -34,6 +34,10 @@ type ChannelModelPricing struct {
 	OutputRate float64 `json:"output_rate,omitempty"`
 	// nil=回退全站默认成本加成%
 	MarkupPercent *float64 `json:"markup_percent,omitempty"`
+	// nil=回退全站; token|per_request|hybrid_floor|hybrid_settle
+	BillingMode *string `json:"billing_mode,omitempty"`
+	// nil=回退全站; 按次/混合模式每次请求基础额度
+	QuotaPerRequest *int64 `json:"quota_per_request,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -73,9 +77,9 @@ func (*ChannelModelPricing) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case channelmodelpricing.FieldInputRate, channelmodelpricing.FieldOutputRate, channelmodelpricing.FieldMarkupPercent:
 			values[i] = new(sql.NullFloat64)
-		case channelmodelpricing.FieldID, channelmodelpricing.FieldChannelID, channelmodelpricing.FieldQuotaInPer1k, channelmodelpricing.FieldQuotaOutPer1k:
+		case channelmodelpricing.FieldID, channelmodelpricing.FieldChannelID, channelmodelpricing.FieldQuotaInPer1k, channelmodelpricing.FieldQuotaOutPer1k, channelmodelpricing.FieldQuotaPerRequest:
 			values[i] = new(sql.NullInt64)
-		case channelmodelpricing.FieldModelName:
+		case channelmodelpricing.FieldModelName, channelmodelpricing.FieldBillingMode:
 			values[i] = new(sql.NullString)
 		case channelmodelpricing.FieldCreatedAt, channelmodelpricing.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -150,6 +154,20 @@ func (_m *ChannelModelPricing) assignValues(columns []string, values []any) erro
 			} else if value.Valid {
 				_m.MarkupPercent = new(float64)
 				*_m.MarkupPercent = value.Float64
+			}
+		case channelmodelpricing.FieldBillingMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field billing_mode", values[i])
+			} else if value.Valid {
+				_m.BillingMode = new(string)
+				*_m.BillingMode = value.String
+			}
+		case channelmodelpricing.FieldQuotaPerRequest:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field quota_per_request", values[i])
+			} else if value.Valid {
+				_m.QuotaPerRequest = new(int64)
+				*_m.QuotaPerRequest = value.Int64
 			}
 		case channelmodelpricing.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -231,6 +249,16 @@ func (_m *ChannelModelPricing) String() string {
 	builder.WriteString(", ")
 	if v := _m.MarkupPercent; v != nil {
 		builder.WriteString("markup_percent=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.BillingMode; v != nil {
+		builder.WriteString("billing_mode=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.QuotaPerRequest; v != nil {
+		builder.WriteString("quota_per_request=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")

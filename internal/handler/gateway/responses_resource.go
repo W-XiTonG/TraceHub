@@ -98,13 +98,16 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 		return
 	}
 
+	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, previewSel.Channel.ID)
 	promptToks := 64
 	maxOut := 512
-	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, previewSel.Channel.ID)
-	compAssumed := completionTokensFallback(maxOut)
-	costPre := br.Cost(promptToks, compAssumed, 0)
-	if u.Balance < costPre {
-		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+	var compAssumed int
+	if br.NeedsTokenEstimate() {
+		compAssumed = completionTokensFallback(maxOut)
+	}
+	if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+		return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+	}); !ok {
 		return
 	}
 
@@ -151,7 +154,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, promptToks)
 	applyCompletionFallback(&usage, maxOut)
-	cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+	cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
 	}

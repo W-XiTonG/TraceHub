@@ -143,22 +143,26 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		if len(body) > 0 && json.Valid(body) {
 			maxComp = passthroughMaxCompletionHints(body)
 		}
-		promptToks, err := EstimatePromptTokensFromOpenAIBody(body, sel.UpstreamModel, model, d.Billing)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效或无法估算 token")
-			return
-		}
-		if promptToks < 1 {
-			promptToks = 1
-		}
-		if maxComp < 0 {
-			maxComp = 0
-		}
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		compAssumed := completionTokensFallback(maxComp)
-		costPre := br.Cost(promptToks, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		var promptToks, compAssumed int
+		if br.NeedsTokenEstimate() {
+			var err error
+			promptToks, err = EstimatePromptTokensFromOpenAIBody(body, sel.UpstreamModel, model, d.Billing)
+			if err != nil {
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效或无法估算 token")
+				return
+			}
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			if maxComp < 0 {
+				maxComp = 0
+			}
+			compAssumed = completionTokensFallback(maxComp)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -233,7 +237,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				if streamPT == 0 && streamCT == 0 {
 					comp = completionTokensFallback(maxComp)
 				}
-				cost := br.Cost(pt, comp, cached)
+				cost := GatewayFinalCost(br,pt, comp, cached)
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -258,7 +262,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			usage := parseUsageFlexible(out)
 			applyPromptFallback(&usage, promptToks)
 			applyCompletionFallback(&usage, maxComp)
-			cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+			cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
 			}
@@ -314,7 +318,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxComp)
-		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}

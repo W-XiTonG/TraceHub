@@ -122,9 +122,12 @@ func (b *ConsolePricingBatch) Rates(model string, channelID int) ModelBillRates 
 		ir, or = glo.InputRate, glo.OutputRate
 	}
 	markup := ResolveMarkupPercent(b.siteMarkup, glo, ch)
+	mq := resolveBillingModeQuota(model, glo, ch)
 	return ModelBillRates{
 		groupMul: b.groupMul, userMul: b.userMul, inRate: ir, outRate: or,
 		in1k: in1k, out1k: out1k, markupPercent: markup,
-		Billable: b.billable(model),
+		Billable:    b.billable(model),
+		billingMode: mq.mode,
+		perRequest:  mq.perRequest,
 	}
 }

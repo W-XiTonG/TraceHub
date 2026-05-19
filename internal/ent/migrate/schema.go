@@ -231,6 +231,8 @@ var (
 		{Name: "input_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "output_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "markup_percent", Type: field.TypeFloat64, Nullable: true},
+		{Name: "billing_mode", Type: field.TypeString, Nullable: true, Size: 32},
+		{Name: "quota_per_request", Type: field.TypeInt64, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "channel_id", Type: field.TypeInt},
@@ -243,7 +245,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_model_pricings_channels_channel_model_pricings",
-				Columns:    []*schema.Column{ChannelModelPricingsColumns[10]},
+				Columns:    []*schema.Column{ChannelModelPricingsColumns[12]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -252,7 +254,7 @@ var (
 			{
 				Name:    "channelmodelpricing_channel_id_model_name",
 				Unique:  true,
-				Columns: []*schema.Column{ChannelModelPricingsColumns[10], ChannelModelPricingsColumns[1]},
+				Columns: []*schema.Column{ChannelModelPricingsColumns[12], ChannelModelPricingsColumns[1]},
 			},
 			{
 				Name:    "channelmodelpricing_model_name",
@@ -341,6 +343,8 @@ var (
 		{Name: "input_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "output_rate", Type: field.TypeFloat64, Default: 1},
 		{Name: "markup_percent", Type: field.TypeFloat64, Nullable: true},
+		{Name: "billing_mode", Type: field.TypeString, Size: 32, Default: "token"},
+		{Name: "quota_per_request", Type: field.TypeInt64, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

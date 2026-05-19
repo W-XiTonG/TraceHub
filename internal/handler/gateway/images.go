@@ -129,22 +129,25 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 				totalFile += fh.Size
 			}
 		}
-		textEst := multipartTextFieldsForBilling(form, "model")
-		imgTok := int(totalFile / 256)
-		if imgTok < 80 {
-			imgTok = 80
-		}
-		textTok, _ := d.Billing.EstimateTokens(sel.UpstreamModel, textEst)
-		promptToks := textTok + imgTok
-		if promptToks < 1 {
-			promptToks = 1
-		}
 		maxOut := imageGenDefaultCompletionTokens
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		compAssumed := completionTokensFallback(maxOut)
-		costPre := br.Cost(promptToks, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		var promptToks, compAssumed int
+		if br.NeedsTokenEstimate() {
+			textEst := multipartTextFieldsForBilling(form, "model")
+			imgTok := int(totalFile / 256)
+			if imgTok < 80 {
+				imgTok = 80
+			}
+			textTok, _ := d.Billing.EstimateTokens(sel.UpstreamModel, textEst)
+			promptToks = textTok + imgTok
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			compAssumed = completionTokensFallback(maxOut)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -206,7 +209,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 		usage := ParseOpenAIUsageJSON(raw)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxOut)
-		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			em := err.Error()
 			metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -267,16 +270,19 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptText)
-		if promptToks < 1 {
-			promptToks = 1
-		}
 		maxOut := imageGenDefaultCompletionTokens
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		compAssumed := completionTokensFallback(maxOut)
-		costPre := br.Cost(promptToks, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		var promptToks, compAssumed int
+		if br.NeedsTokenEstimate() {
+			promptToks, _ = d.Billing.EstimateTokens(sel.UpstreamModel, promptText)
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			compAssumed = completionTokensFallback(maxOut)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -325,7 +331,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 		usage := ParseOpenAIUsageJSON(res.Body)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxOut)
-		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			em := err.Error()
 			metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()

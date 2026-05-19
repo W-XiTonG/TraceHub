@@ -30,6 +30,10 @@ const (
 	FieldOutputRate = "output_rate"
 	// FieldMarkupPercent holds the string denoting the markup_percent field in the database.
 	FieldMarkupPercent = "markup_percent"
+	// FieldBillingMode holds the string denoting the billing_mode field in the database.
+	FieldBillingMode = "billing_mode"
+	// FieldQuotaPerRequest holds the string denoting the quota_per_request field in the database.
+	FieldQuotaPerRequest = "quota_per_request"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -58,6 +62,8 @@ var Columns = []string{
 	FieldInputRate,
 	FieldOutputRate,
 	FieldMarkupPercent,
+	FieldBillingMode,
+	FieldQuotaPerRequest,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -81,6 +87,8 @@ var (
 	DefaultInputRate float64
 	// DefaultOutputRate holds the default value on creation for the "output_rate" field.
 	DefaultOutputRate float64
+	// BillingModeValidator is a validator for the "billing_mode" field. It is called by the builders before save.
+	BillingModeValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -135,6 +143,16 @@ func ByOutputRate(opts ...sql.OrderTermOption) OrderOption {
 // ByMarkupPercent orders the results by the markup_percent field.
 func ByMarkupPercent(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMarkupPercent, opts...).ToFunc()
+}
+
+// ByBillingMode orders the results by the billing_mode field.
+func ByBillingMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBillingMode, opts...).ToFunc()
+}
+
+// ByQuotaPerRequest orders the results by the quota_per_request field.
+func ByQuotaPerRequest(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuotaPerRequest, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

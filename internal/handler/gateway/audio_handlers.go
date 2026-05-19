@@ -109,32 +109,33 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			return
 		}
 
-		promptEst := multipartTextFieldsForBilling(form, "model")
 		audioTok := int(totalFile / 256)
 		if audioTok < 80 {
 			audioTok = 80
 		}
-		// Preflight only: scale file contribution to prompt (~2x) without decoding audio, so balance checks
-		// stay ahead of post-upstream debit paths (e.g. usage.seconds) and reduce post-402 deduct failures.
-		audioTokPre := int((totalFile*2 + 255) / 256)
-		if audioTokPre < 80 {
-			audioTokPre = 80
-		}
-		textTok, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptEst)
-		promptToks := textTok + audioTok
-		promptToksPre := textTok + audioTokPre
-		if promptToks < 1 {
-			promptToks = 1
-		}
-		if promptToksPre < 1 {
-			promptToksPre = 1
-		}
 		maxComp := 2048
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		compAssumed := completionTokensFallback(maxComp)
-		costPre := br.Cost(promptToksPre, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToksPre, compAssumed)
+		var promptToks, promptToksPre, compAssumed int
+		if br.NeedsTokenEstimate() {
+			promptEst := multipartTextFieldsForBilling(form, "model")
+			audioTokPre := int((totalFile*2 + 255) / 256)
+			if audioTokPre < 80 {
+				audioTokPre = 80
+			}
+			textTok, _ := d.Billing.EstimateTokens(sel.UpstreamModel, promptEst)
+			promptToks = textTok + audioTok
+			promptToksPre = textTok + audioTokPre
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			if promptToksPre < 1 {
+				promptToksPre = 1
+			}
+			compAssumed = completionTokensFallback(maxComp)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToksPre, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -214,7 +215,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			if streamPT == 0 && streamCT == 0 {
 				comp = completionTokensFallback(maxComp)
 			}
-			cost := br.Cost(pt, comp, cached)
+			cost := GatewayFinalCost(br,pt, comp, cached)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, chType, "deduct_err").Inc()
@@ -270,7 +271,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
 		applyCompletionFallback(&usage, maxComp)
-		cost := br.Cost(usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}
@@ -334,20 +335,23 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		inRunes := utf8.RuneCountInString(inputText)
-		promptToks, _ := d.Billing.EstimateTokens(sel.UpstreamModel, inputText)
-		if promptToks < 1 {
-			promptToks = 1
-		}
-		compEst := inRunes * 4
-		if compEst < 512 {
-			compEst = 512
-		}
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		compAssumed := completionTokensFallback(compEst)
-		costPre := br.Cost(promptToks, compAssumed, 0)
-		if u.Balance < costPre {
-			WriteInsufficientBalance402Precheck(c, u.Balance, costPre, promptToks, compAssumed)
+		var promptToks, compAssumed int
+		if br.NeedsTokenEstimate() {
+			promptToks, _ = d.Billing.EstimateTokens(sel.UpstreamModel, inputText)
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			inRunes := utf8.RuneCountInString(inputText)
+			compEst := inRunes * 4
+			if compEst < 512 {
+				compEst = 512
+			}
+			compAssumed = completionTokensFallback(compEst)
+		}
+		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
+			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
+		}); !ok {
 			return
 		}
 
@@ -384,7 +388,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			}
 			upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityAudio, res.StatusCode, res.Body, upstreamprobe.CapSourceRuntime)
 			em := http.StatusText(res.StatusCode)
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compEst, 0, 0, c.ClientIP(), res.StatusCode, &em, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compAssumed, 0, 0, c.ClientIP(), res.StatusCode, &em, time.Since(start))
 			outCT := "application/json"
 			if res.Headers != nil {
 				if h := res.Headers.Get("Content-Type"); h != "" {
@@ -405,12 +409,12 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 			if ct2 < 256 {
 				ct2 = 256
 			}
-			if ct2 < compEst {
-				ct2 = compEst
+			if compAssumed > 0 && ct2 < compAssumed {
+				ct2 = compAssumed
 			}
 			ct2 = completionTokensFallback(ct2)
 		}
-		cost := br.Cost(pt2, ct2, usage.CachedPromptTokens)
+		cost := GatewayFinalCost(br,pt2, ct2, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
 		}

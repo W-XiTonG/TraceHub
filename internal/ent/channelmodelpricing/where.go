@@ -95,6 +95,16 @@ func MarkupPercent(v float64) predicate.ChannelModelPricing {
 	return predicate.ChannelModelPricing(sql.FieldEQ(FieldMarkupPercent, v))
 }
 
+// BillingMode applies equality check predicate on the "billing_mode" field. It's identical to BillingModeEQ.
+func BillingMode(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldEQ(FieldBillingMode, v))
+}
+
+// QuotaPerRequest applies equality check predicate on the "quota_per_request" field. It's identical to QuotaPerRequestEQ.
+func QuotaPerRequest(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldEQ(FieldQuotaPerRequest, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.ChannelModelPricing {
 	return predicate.ChannelModelPricing(sql.FieldEQ(FieldCreatedAt, v))
@@ -428,6 +438,131 @@ func MarkupPercentIsNil() predicate.ChannelModelPricing {
 // MarkupPercentNotNil applies the NotNil predicate on the "markup_percent" field.
 func MarkupPercentNotNil() predicate.ChannelModelPricing {
 	return predicate.ChannelModelPricing(sql.FieldNotNull(FieldMarkupPercent))
+}
+
+// BillingModeEQ applies the EQ predicate on the "billing_mode" field.
+func BillingModeEQ(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldEQ(FieldBillingMode, v))
+}
+
+// BillingModeNEQ applies the NEQ predicate on the "billing_mode" field.
+func BillingModeNEQ(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldNEQ(FieldBillingMode, v))
+}
+
+// BillingModeIn applies the In predicate on the "billing_mode" field.
+func BillingModeIn(vs ...string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldIn(FieldBillingMode, vs...))
+}
+
+// BillingModeNotIn applies the NotIn predicate on the "billing_mode" field.
+func BillingModeNotIn(vs ...string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldNotIn(FieldBillingMode, vs...))
+}
+
+// BillingModeGT applies the GT predicate on the "billing_mode" field.
+func BillingModeGT(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldGT(FieldBillingMode, v))
+}
+
+// BillingModeGTE applies the GTE predicate on the "billing_mode" field.
+func BillingModeGTE(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldGTE(FieldBillingMode, v))
+}
+
+// BillingModeLT applies the LT predicate on the "billing_mode" field.
+func BillingModeLT(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldLT(FieldBillingMode, v))
+}
+
+// BillingModeLTE applies the LTE predicate on the "billing_mode" field.
+func BillingModeLTE(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldLTE(FieldBillingMode, v))
+}
+
+// BillingModeContains applies the Contains predicate on the "billing_mode" field.
+func BillingModeContains(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldContains(FieldBillingMode, v))
+}
+
+// BillingModeHasPrefix applies the HasPrefix predicate on the "billing_mode" field.
+func BillingModeHasPrefix(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldHasPrefix(FieldBillingMode, v))
+}
+
+// BillingModeHasSuffix applies the HasSuffix predicate on the "billing_mode" field.
+func BillingModeHasSuffix(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldHasSuffix(FieldBillingMode, v))
+}
+
+// BillingModeIsNil applies the IsNil predicate on the "billing_mode" field.
+func BillingModeIsNil() predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldIsNull(FieldBillingMode))
+}
+
+// BillingModeNotNil applies the NotNil predicate on the "billing_mode" field.
+func BillingModeNotNil() predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldNotNull(FieldBillingMode))
+}
+
+// BillingModeEqualFold applies the EqualFold predicate on the "billing_mode" field.
+func BillingModeEqualFold(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldEqualFold(FieldBillingMode, v))
+}
+
+// BillingModeContainsFold applies the ContainsFold predicate on the "billing_mode" field.
+func BillingModeContainsFold(v string) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldContainsFold(FieldBillingMode, v))
+}
+
+// QuotaPerRequestEQ applies the EQ predicate on the "quota_per_request" field.
+func QuotaPerRequestEQ(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldEQ(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestNEQ applies the NEQ predicate on the "quota_per_request" field.
+func QuotaPerRequestNEQ(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldNEQ(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestIn applies the In predicate on the "quota_per_request" field.
+func QuotaPerRequestIn(vs ...int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldIn(FieldQuotaPerRequest, vs...))
+}
+
+// QuotaPerRequestNotIn applies the NotIn predicate on the "quota_per_request" field.
+func QuotaPerRequestNotIn(vs ...int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldNotIn(FieldQuotaPerRequest, vs...))
+}
+
+// QuotaPerRequestGT applies the GT predicate on the "quota_per_request" field.
+func QuotaPerRequestGT(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldGT(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestGTE applies the GTE predicate on the "quota_per_request" field.
+func QuotaPerRequestGTE(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldGTE(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestLT applies the LT predicate on the "quota_per_request" field.
+func QuotaPerRequestLT(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldLT(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestLTE applies the LTE predicate on the "quota_per_request" field.
+func QuotaPerRequestLTE(v int64) predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldLTE(FieldQuotaPerRequest, v))
+}
+
+// QuotaPerRequestIsNil applies the IsNil predicate on the "quota_per_request" field.
+func QuotaPerRequestIsNil() predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldIsNull(FieldQuotaPerRequest))
+}
+
+// QuotaPerRequestNotNil applies the NotNil predicate on the "quota_per_request" field.
+func QuotaPerRequestNotNil() predicate.ChannelModelPricing {
+	return predicate.ChannelModelPricing(sql.FieldNotNull(FieldQuotaPerRequest))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

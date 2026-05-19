@@ -305,12 +305,16 @@ func init() {
 	channelmodelpricingDescOutputRate := channelmodelpricingFields[6].Descriptor()
 	// channelmodelpricing.DefaultOutputRate holds the default value on creation for the output_rate field.
 	channelmodelpricing.DefaultOutputRate = channelmodelpricingDescOutputRate.Default.(float64)
+	// channelmodelpricingDescBillingMode is the schema descriptor for billing_mode field.
+	channelmodelpricingDescBillingMode := channelmodelpricingFields[8].Descriptor()
+	// channelmodelpricing.BillingModeValidator is a validator for the "billing_mode" field. It is called by the builders before save.
+	channelmodelpricing.BillingModeValidator = channelmodelpricingDescBillingMode.Validators[0].(func(string) error)
 	// channelmodelpricingDescCreatedAt is the schema descriptor for created_at field.
-	channelmodelpricingDescCreatedAt := channelmodelpricingFields[8].Descriptor()
+	channelmodelpricingDescCreatedAt := channelmodelpricingFields[10].Descriptor()
 	// channelmodelpricing.DefaultCreatedAt holds the default value on creation for the created_at field.
 	channelmodelpricing.DefaultCreatedAt = channelmodelpricingDescCreatedAt.Default.(func() time.Time)
 	// channelmodelpricingDescUpdatedAt is the schema descriptor for updated_at field.
-	channelmodelpricingDescUpdatedAt := channelmodelpricingFields[9].Descriptor()
+	channelmodelpricingDescUpdatedAt := channelmodelpricingFields[11].Descriptor()
 	// channelmodelpricing.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	channelmodelpricing.DefaultUpdatedAt = channelmodelpricingDescUpdatedAt.Default.(func() time.Time)
 	// channelmodelpricing.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -449,12 +453,18 @@ func init() {
 	globalmodelpricingDescOutputRate := globalmodelpricingFields[5].Descriptor()
 	// globalmodelpricing.DefaultOutputRate holds the default value on creation for the output_rate field.
 	globalmodelpricing.DefaultOutputRate = globalmodelpricingDescOutputRate.Default.(float64)
+	// globalmodelpricingDescBillingMode is the schema descriptor for billing_mode field.
+	globalmodelpricingDescBillingMode := globalmodelpricingFields[7].Descriptor()
+	// globalmodelpricing.DefaultBillingMode holds the default value on creation for the billing_mode field.
+	globalmodelpricing.DefaultBillingMode = globalmodelpricingDescBillingMode.Default.(string)
+	// globalmodelpricing.BillingModeValidator is a validator for the "billing_mode" field. It is called by the builders before save.
+	globalmodelpricing.BillingModeValidator = globalmodelpricingDescBillingMode.Validators[0].(func(string) error)
 	// globalmodelpricingDescCreatedAt is the schema descriptor for created_at field.
-	globalmodelpricingDescCreatedAt := globalmodelpricingFields[7].Descriptor()
+	globalmodelpricingDescCreatedAt := globalmodelpricingFields[9].Descriptor()
 	// globalmodelpricing.DefaultCreatedAt holds the default value on creation for the created_at field.
 	globalmodelpricing.DefaultCreatedAt = globalmodelpricingDescCreatedAt.Default.(func() time.Time)
 	// globalmodelpricingDescUpdatedAt is the schema descriptor for updated_at field.
-	globalmodelpricingDescUpdatedAt := globalmodelpricingFields[8].Descriptor()
+	globalmodelpricingDescUpdatedAt := globalmodelpricingFields[10].Descriptor()
 	// globalmodelpricing.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	globalmodelpricing.DefaultUpdatedAt = globalmodelpricingDescUpdatedAt.Default.(func() time.Time)
 	// globalmodelpricing.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

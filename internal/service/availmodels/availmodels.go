@@ -207,10 +207,12 @@ func DistinctDeclaredModelCountSiteWide(ctx context.Context, client *ent.Client)
 
 // ModelPricing 用户侧展示的有效单价（与 billing.ModelBillRates 一致）。
 type ModelPricing struct {
-	Billable      bool   `json:"billable"`
-	QuotaInPer1k  int64  `json:"quota_in_per_1k"`
-	QuotaOutPer1k int64  `json:"quota_out_per_1k"`
-	PricingUnit   string `json:"pricing_unit"` // per_1k_tokens
+	Billable        bool   `json:"billable"`
+	QuotaInPer1k    int64  `json:"quota_in_per_1k,omitempty"`
+	QuotaOutPer1k   int64  `json:"quota_out_per_1k,omitempty"`
+	QuotaPerRequest int64  `json:"quota_per_request,omitempty"`
+	PricingUnit     string `json:"pricing_unit"` // per_1k_tokens | per_request
+	BillingMode     string `json:"billing_mode,omitempty"`
 }
 
 // ConsoleModel 控制台合并列表：网关渠道可调度模型 + 模型市场中对用户可见的目录条目。
