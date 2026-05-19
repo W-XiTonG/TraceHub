@@ -1265,6 +1265,24 @@ const quotaOutPlaceholder = computed(() =>
     : t('adminGlobalPricing.phQuotaUpstreamOut', { cur: priceUnitLabel.value }),
 )
 
+const quotaInHeaderTitle = computed(() => {
+  const billing = t('adminGlobalPricing.thQuotaBillingSub')
+  if (codeRefShowQuotaOnly.value) {
+    return `${t('adminGlobalPricing.thQuotaIn')} · ${billing}`
+  }
+  return `${t('adminGlobalPricing.thQuotaInUpstream', { unit: priceUnitLabel.value })} · ${billing}`
+})
+const quotaOutHeaderTitle = computed(() => {
+  const billing = t('adminGlobalPricing.thQuotaBillingSub')
+  if (codeRefShowQuotaOnly.value) {
+    return `${t('adminGlobalPricing.thQuotaOut')} · ${billing}`
+  }
+  return `${t('adminGlobalPricing.thQuotaOutUpstream', { unit: priceUnitLabel.value })} · ${billing}`
+})
+const markupHeaderTitle = computed(
+  () => `${t('adminGlobalPricing.thMarkupSub')} — ${t('adminGlobalPricing.markupRowHint')}`,
+)
+
 function rowUsesTokenQuota(r: DraftRow) {
   return r.billing_mode === 'token' || r.billing_mode === 'hybrid_floor'
 }
@@ -1891,29 +1909,51 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                   <th class="th-admin-pricing-col-billing min-w-[8rem] align-middle px-2 py-2" rowspan="2">
                     <span class="block leading-snug">{{ t('adminGlobalPricing.thBilling') }}</span>
                   </th>
-                  <th class="th-admin-pricing-col-token px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thTokenQuota') }}</th>
-                  <th class="w-14 align-middle px-2 py-2" rowspan="2">
-                    <span class="block">{{ t('adminGlobalPricing.thMarkup') }}</span>
-                    <span class="mt-0.5 block text-[10px] font-normal text-slate-500">{{ t('adminGlobalPricing.thMarkupSub') }}</span>
+                  <th class="th-admin-pricing-col-token th-admin-pricing-th-group px-2 py-2 text-center" colspan="2">
+                    <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thTokenQuota') }}</span>
+                    <span v-if="!codeRefShowQuotaOnly" class="th-admin-pricing-th-group__unit">{{ priceUnitLabel }}</span>
                   </th>
-                  <th class="th-admin-pricing-col-rates px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thRates') }}</th>
-                  <th class="th-admin-pricing-col-code px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thCodeRef') }}</th>
+                  <th
+                    class="th-admin-pricing-th-markup align-middle px-2 py-2 text-center"
+                    rowspan="2"
+                    :title="markupHeaderTitle"
+                  >
+                    <span class="th-admin-pricing-th-markup__label">{{ t('adminGlobalPricing.thMarkup') }}</span>
+                  </th>
+                  <th class="th-admin-pricing-col-rates th-admin-pricing-th-group px-2 py-2 text-center" colspan="2">
+                    <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thRates') }}</span>
+                  </th>
+                  <th class="th-admin-pricing-col-code th-admin-pricing-th-group px-2 py-2 text-center" colspan="2">
+                    <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thCodeRef') }}</span>
+                  </th>
                   <th class="w-10 align-middle px-2 py-2 text-center" rowspan="2">{{ t('adminGroups.thEn') }}</th>
                   <th class="th-admin-pricing-sticky-actions min-w-[8.75rem] whitespace-nowrap px-1 py-2 text-center align-middle" rowspan="2">{{ t('adminGlobalPricing.thActions') }}</th>
                 </tr>
-                <tr class="text-[10px] font-normal">
-                  <th class="px-2 py-1">
-                    <span class="block">{{ thQuotaInLabel }}</span>
-                    <span v-if="!codeRefShowQuotaOnly" class="text-slate-600">{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                <tr class="th-admin-pricing-subhead">
+                  <th class="th-admin-pricing-subhead__cell" :title="quotaInHeaderTitle">
+                    {{ t('adminGlobalPricing.thQuotaColIn') }}
                   </th>
-                  <th class="px-2 py-1">
-                    <span class="block">{{ thQuotaOutLabel }}</span>
-                    <span v-if="!codeRefShowQuotaOnly" class="text-slate-600">{{ t('adminGlobalPricing.thQuotaBillingSub') }}</span>
+                  <th class="th-admin-pricing-subhead__cell" :title="quotaOutHeaderTitle">
+                    {{ t('adminGlobalPricing.thQuotaColOut') }}
                   </th>
-                  <th class="px-2 py-1">{{ t('adminGroups.thIn') }}</th>
-                  <th class="px-2 py-1">{{ t('adminGroups.thOut') }}</th>
-                  <th class="px-2 py-1">{{ t('adminGlobalPricing.thCodeIn') }}</th>
-                  <th class="px-2 py-1">{{ t('adminGlobalPricing.thCodeOut') }}</th>
+                  <th class="th-admin-pricing-subhead__cell" :title="t('adminGroups.thIn')">
+                    {{ t('adminGlobalPricing.thRateColIn') }}
+                  </th>
+                  <th class="th-admin-pricing-subhead__cell" :title="t('adminGroups.thOut')">
+                    {{ t('adminGlobalPricing.thRateColOut') }}
+                  </th>
+                  <th
+                    class="th-admin-pricing-subhead__cell th-admin-pricing-subhead__cell--code"
+                    :title="t('adminGlobalPricing.thCodeIn')"
+                  >
+                    {{ t('adminGlobalPricing.thCodeColIn') }}
+                  </th>
+                  <th
+                    class="th-admin-pricing-subhead__cell th-admin-pricing-subhead__cell--code"
+                    :title="t('adminGlobalPricing.thCodeOut')"
+                  >
+                    {{ t('adminGlobalPricing.thCodeColOut') }}
+                  </th>
                 </tr>
               </thead>
               <tbody class="th-admin-table-body divide-y divide-slate-800/80">

@@ -1344,17 +1344,42 @@ html[data-th-theme="dawn"] .th-admin-pricing-table thead,
 html[data-th-theme="paper"] .th-admin-pricing-table thead {
   color: #64748b;
 }
-html[data-th-theme="dawn"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:first-child th,
-html[data-th-theme="dawn"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:nth-child(2) th,
-html[data-th-theme="paper"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:first-child th,
-html[data-th-theme="paper"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:nth-child(2) th {
+html[data-th-theme="dawn"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead th,
+html[data-th-theme="paper"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead th {
   background-color: #f8fafc;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:last-child th,
+html[data-th-theme="paper"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:last-child th {
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
 }
 html[data-th-theme="dawn"] .th-admin-pricing-table thead .text-slate-500,
 html[data-th-theme="paper"] .th-admin-pricing-table thead .text-slate-500,
 html[data-th-theme="dawn"] .th-admin-pricing-table thead .text-slate-600,
 html[data-th-theme="paper"] .th-admin-pricing-table thead .text-slate-600 {
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-th-group,
+html[data-th-theme="paper"] .th-admin-pricing-th-group {
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-th-group__title,
+html[data-th-theme="paper"] .th-admin-pricing-th-group__title {
+  color: #475569;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-th-group__unit,
+html[data-th-theme="paper"] .th-admin-pricing-th-group__unit {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.06);
+  color: #334155;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-th-markup__label,
+html[data-th-theme="paper"] .th-admin-pricing-th-markup__label {
+  color: #475569;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-subhead,
+html[data-th-theme="paper"] .th-admin-pricing-subhead,
+html[data-th-theme="dawn"] .th-admin-pricing-subhead__cell,
+html[data-th-theme="paper"] .th-admin-pricing-subhead__cell {
   color: #64748b;
 }
 html[data-th-theme="dawn"] .th-admin-pricing-table tbody,

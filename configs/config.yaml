@@ -8,7 +8,7 @@ database:
 
 redis:
   addr: "192.168.236.164:6379"
-  password: "mbYJozX1OBI"
+  password: ""
   db: 0
 
 security:
