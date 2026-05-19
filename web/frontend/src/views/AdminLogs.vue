@@ -267,6 +267,10 @@ onMounted(() => void load())
           <p class="mt-0.5 break-all font-mono text-sm text-slate-200">{{ l.model }}</p>
         </template>
         <MobileLabelValueRow :label="t('adminLogs.thUser')">{{ userCell(l) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thChannel')">{{ channelCell(l) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thUpstreamModel')">
+          {{ (l.model_upstream ?? '').trim() || t('adminCommon.dash') }}
+        </MobileLabelValueRow>
         <MobileLabelValueRow :label="t('adminLogs.thToken')">{{ l.prompt_tokens }} / {{ l.completion_tokens }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('adminLogs.thCost')">{{ l.total_cost }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('adminLogs.thStatus')">{{ l.status_code ?? '—' }}</MobileLabelValueRow>

@@ -111,8 +111,6 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 				"id":                l.ID,
 				"request_id":        l.RequestID,
 				"model":             l.Model,
-				"model_upstream":    l.ModelUpstream,
-				"channel_id":        l.ChannelID,
 				"api_key_id":        l.APIKeyID,
 				"prompt_tokens":     l.PromptTokens,
 				"completion_tokens": l.CompletionTokens,
