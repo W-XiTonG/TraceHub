@@ -57,9 +57,13 @@ type LedgerAdminRow = {
 }
 
 const items = ref<Row[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(30)
 const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
 const deltaByUser = ref<Record<number, string>>({})
 const filterText = ref('')
+const filterApplied = ref('')
 const compact = ref(false)
 const selectedIds = ref<number[]>([])
 const flash = ref('')
@@ -101,18 +105,13 @@ function rowIsElevated(u: Row) {
   return u.role === 'admin' || u.role === 'superadmin'
 }
 
-const filteredItems = computed(() => {
-  const q = filterText.value.trim().toLowerCase()
-  if (!q) return items.value
-  return items.value.filter((u) => {
-    const idStr = String(u.id)
-    const email = (u.email || '').toLowerCase()
-    return email.includes(q) || idStr.includes(q)
-  })
+const totalPages = computed(() => {
+  if (total.value <= 0) return 1
+  return Math.max(1, Math.ceil(total.value / pageSize.value))
 })
 
 const allFilteredSelected = computed(() => {
-  const f = filteredItems.value
+  const f = items.value
   if (!f.length) return false
   return f.every((u) => selectedIds.value.includes(u.id))
 })
@@ -120,12 +119,28 @@ const allFilteredSelected = computed(() => {
 function toggleSelectAll(checked: boolean) {
   if (checked) {
     const set = new Set(selectedIds.value)
-    for (const u of filteredItems.value) set.add(u.id)
+    for (const u of items.value) set.add(u.id)
     selectedIds.value = [...set]
   } else {
-    const drop = new Set(filteredItems.value.map((u) => u.id))
+    const drop = new Set(items.value.map((u) => u.id))
     selectedIds.value = selectedIds.value.filter((id) => !drop.has(id))
   }
+}
+
+function listQueryParams(): Record<string, string | number> {
+  const params: Record<string, string | number> = {
+    page: page.value,
+    page_size: pageSize.value,
+  }
+  const q = filterApplied.value.trim()
+  if (q) {
+    if (/^\d+$/.test(q)) {
+      params.user_id = q
+    } else {
+      params.email = q
+    }
+  }
+  return params
 }
 
 function toggleRow(id: number) {
@@ -139,9 +154,15 @@ function toggleRow(id: number) {
 async function load() {
   err.value = ''
   await runLoad(async () => {
-    const { data } = await http.get<Envelope<{ items: Row[] }>>('/api/admin/users')
+    const { data } = await http.get<
+      Envelope<{ items: Row[]; total: number; page: number; page_size: number }>
+    >('/api/admin/users', { params: listQueryParams() })
     if (data.code !== 0) throw new Error(data.message || t('adminCommon.loadFail'))
-    items.value = data.data.items
+    items.value = data.data?.items ?? []
+    total.value = typeof data.data?.total === 'number' ? data.data.total : 0
+    if (typeof data.data?.page === 'number' && data.data.page >= 1) {
+      page.value = data.data.page
+    }
     const idSet = new Set(items.value.map((x) => x.id))
     selectedIds.value = selectedIds.value.filter((id) => idSet.has(id))
   }).catch((e: unknown) => {
@@ -149,8 +170,33 @@ async function load() {
   })
 }
 
+function applyFilters() {
+  filterApplied.value = filterText.value.trim()
+  page.value = 1
+  void load()
+}
+
 function resetFilter() {
   filterText.value = ''
+  filterApplied.value = ''
+  page.value = 1
+  void load()
+}
+
+function onPageSizeChange() {
+  page.value = 1
+  void load()
+}
+
+function prevPage() {
+  if (page.value <= 1) return
+  page.value -= 1
+  void load()
+}
+
+function nextPage() {
+  if (page.value >= totalPages.value) return
+  page.value += 1
   void load()
 }
 
@@ -357,22 +403,75 @@ onMounted(() => {
       </button>
     </div>
 
-    <div class="th-console-muted-bar th-console-muted-bar--sm mb-6 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <div class="th-console-muted-bar th-console-muted-bar--sm mb-4 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
       <input
         v-model="filterText"
         type="search"
         :placeholder="t('adminUsers.searchPh')"
         class="th-input min-w-[12rem] flex-1 text-sm sm:max-w-xs"
+        @keydown.enter.prevent="applyFilters"
       />
-      <button type="button" class="th-btn-primary-flat shrink-0 px-3 py-2 text-sm" @click="load">
+      <button type="button" class="th-btn-primary-flat shrink-0 px-3 py-2 text-sm" :disabled="loading" @click="applyFilters">
         {{ t('adminCommon.query') }}
       </button>
-      <button type="button" class="th-ghost-hover shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="resetFilter">
+      <button type="button" class="th-ghost-hover shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" :disabled="loading" @click="resetFilter">
         {{ t('adminUsers.resetFilter') }}
       </button>
       <button type="button" class="th-ghost-hover shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200" @click="copyEmails">
         {{ t('adminUsers.copyEmails') }}
       </button>
+    </div>
+
+    <div
+      class="mb-6 flex flex-col gap-3 overflow-visible rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2"
+    >
+      <div class="flex shrink-0 items-center gap-2">
+        <span class="text-xs text-slate-500">{{ t('adminGlobalPricing.pageSize') }}</span>
+        <select
+          v-model.number="pageSize"
+          class="th-select th-select--inline w-[4.25rem] !max-w-none py-0 pr-6 text-xs"
+          :disabled="loading"
+          @change="onPageSizeChange"
+        >
+          <option :value="20">20</option>
+          <option :value="30">30</option>
+          <option :value="50">50</option>
+          <option :value="100">100</option>
+        </select>
+      </div>
+
+      <div class="hidden h-6 w-px shrink-0 bg-slate-700/90 sm:block" aria-hidden="true" />
+
+      <div class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none sm:basis-auto">
+        <span
+          class="min-w-0 truncate text-right text-xs tabular-nums text-slate-400 sm:max-w-[20rem]"
+          :title="`${t('adminGlobalPricing.pageTotal', { total })} · ${t('adminGlobalPricing.pageStatus', { page, pages: totalPages })}`"
+        >
+          <span class="text-slate-300">{{ t('adminGlobalPricing.pageTotal', { total }) }}</span>
+          <span class="mx-1.5 text-slate-600" aria-hidden="true">·</span>
+          <span class="font-mono text-slate-300">{{
+            t('adminGlobalPricing.pageStatus', { page, pages: totalPages })
+          }}</span>
+        </span>
+        <div class="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            class="h-9 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+            :disabled="page <= 1 || loading"
+            @click="prevPage"
+          >
+            {{ t('adminCommon.prevPage') }}
+          </button>
+          <button
+            type="button"
+            class="h-9 rounded-lg border border-slate-600 px-2.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+            :disabled="page >= totalPages || loading"
+            @click="nextPage"
+          >
+            {{ t('adminCommon.nextPage') }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <p v-if="flash" class="mb-3 text-sm text-emerald-400">{{ flash }}</p>
@@ -406,7 +505,7 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="u in filteredItems" :key="u.id">
+          <tr v-for="u in items" :key="u.id">
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <input
                 type="checkbox"
@@ -456,10 +555,10 @@ onMounted(() => {
               </div>
             </td>
           </tr>
-          <tr v-if="items.length && !filteredItems.length">
+          <tr v-if="!items.length && !loadingUi && filterApplied">
             <td colspan="8" class="px-3 py-8 text-center text-slate-500">{{ t('adminUsers.noMatch') }}</td>
           </tr>
-          <tr v-if="!items.length">
+          <tr v-if="!items.length && !loadingUi && !filterApplied">
             <td colspan="8" class="px-3 py-8 text-center text-slate-500">{{ t('adminCommon.dash') }}</td>
           </tr>
         </tbody>
@@ -467,7 +566,7 @@ onMounted(() => {
     </div>
 
     <div class="space-y-3 lg:hidden">
-      <MobileLabelValueCard v-for="u in filteredItems" :key="`au-m-${u.id}`" :title="u.email">
+      <MobileLabelValueCard v-for="u in items" :key="`au-m-${u.id}`" :title="u.email">
         <template #title>
           <div class="flex items-start gap-2">
             <input
@@ -514,8 +613,8 @@ onMounted(() => {
           </div>
         </MobileLabelValueRow>
       </MobileLabelValueCard>
-      <p v-if="items.length && !filteredItems.length" class="py-8 text-center text-sm text-slate-500">{{ t('adminUsers.noMatch') }}</p>
-      <p v-if="!items.length" class="py-8 text-center text-sm text-slate-500">{{ t('adminCommon.dash') }}</p>
+      <p v-if="!items.length && !loadingUi && filterApplied" class="py-8 text-center text-sm text-slate-500">{{ t('adminUsers.noMatch') }}</p>
+      <p v-if="!items.length && !loadingUi && !filterApplied" class="py-8 text-center text-sm text-slate-500">{{ t('adminCommon.dash') }}</p>
     </div>
 
     <Teleport to="body">

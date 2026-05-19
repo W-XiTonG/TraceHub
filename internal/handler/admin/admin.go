@@ -58,6 +58,11 @@ func ListUsers(client *ent.Client) gin.HandlerFunc {
 		}
 		ctx := c.Request.Context()
 		q := client.User.Query().WithGroup()
+		if uidStr := strings.TrimSpace(c.Query("user_id")); uidStr != "" {
+			if uid, err := strconv.Atoi(uidStr); err == nil && uid > 0 {
+				q = q.Where(user.IDEQ(uid))
+			}
+		}
 		if em := strings.TrimSpace(c.Query("email")); em != "" {
 			q = q.Where(user.EmailContainsFold(em))
 		}
