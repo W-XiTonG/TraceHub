@@ -15,6 +15,7 @@ import {
   formatUpstreamPrice,
   upstreamPriceFromQuotaPer1K,
 } from '../utils/upstreamQuotaDerive'
+import { channelRefLabel, type AdminModelChannelRef } from '../utils/adminModelChannelMap'
 
 const { t } = useI18n()
 
@@ -168,6 +169,8 @@ const {
   filteredOpenModelSuggestIds,
   suggestListTruncated,
   channelCountForModel,
+  channelsForModel,
+  resolveRowChannel,
   scheduleSuggestLayout,
   toggleModelSuggestRow,
   focusModelSuggestRow,
@@ -648,6 +651,14 @@ function displayCodeRefCell(ref: number | null | undefined): { lines: CodeRefLin
   }
 }
 
+function displayCodeRefCompactLine(ref: number | null | undefined): string {
+  const { lines } = displayCodeRefCell(ref)
+  if (lines.length === 1) return lines[0]?.text ?? '—'
+  const a = lines[0]?.text ?? ''
+  const b = lines[1]?.text ?? ''
+  return b ? `${a} · ${b}` : a
+}
+
 const selectAllInput = ref<HTMLInputElement | null>(null)
 watch(
   [allVisibleSelected, someVisibleSelected, () => rows.value.length],
@@ -766,6 +777,31 @@ function onChannelScopeChange() {
   page.value = 1
   customDrafts.value = []
   void load()
+}
+
+function rowChannels(r: DraftRow): AdminModelChannelRef[] {
+  return channelsForModel(r.model_name.trim())
+}
+
+/** 全站计价：模型 ID 下方展示的渠道说明（单渠道/已选/多渠并列） */
+function rowChannelSubtitle(r: DraftRow): string {
+  if (isChannelScope.value) return ''
+  const m = r.model_name.trim()
+  if (!m) return ''
+  const chs = rowChannels(r)
+  if (chs.length === 0) return t('adminNoBill.channelNone')
+  if (r.channel_id != null) {
+    const picked = chs.find((c) => c.id === r.channel_id)
+    if (picked) return channelRefLabel(picked)
+  }
+  if (chs.length === 1) return channelRefLabel(chs[0])
+  return chs.map((c) => channelRefLabel(c)).join(' · ')
+}
+
+function onModelIdInput(idx: number) {
+  const r = rows.value[idx]
+  if (r) resolveRowChannel(r)
+  scheduleSuggestLayout()
 }
 
 function onModelFocus(idx: number) {
@@ -1890,10 +1926,22 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
           <div class="th-admin-pricing-workspace">
           <div class="th-admin-pricing-table-scroll thin-scrollbar relative rounded-xl border border-slate-800">
             <ThLoadingState v-if="listUi && rows.length > 0" variant="overlay" />
-            <table class="th-admin-pricing-table w-full border-collapse text-left text-xs">
+            <table class="th-admin-pricing-table th-admin-pricing-table--fit w-full border-collapse text-left text-xs">
+              <colgroup>
+                <col class="th-admin-pricing-col-check" />
+                <col class="th-admin-pricing-col-model" />
+                <col class="th-admin-pricing-col-sources" />
+                <col class="th-admin-pricing-col-billing" />
+                <col class="th-admin-pricing-col-token-pair" />
+                <col class="th-admin-pricing-col-markup" />
+                <col class="th-admin-pricing-col-rates-pair" />
+                <col class="th-admin-pricing-col-code-pair" />
+                <col class="th-admin-pricing-col-enabled" />
+                <col class="th-admin-pricing-col-actions" />
+              </colgroup>
               <thead class="th-admin-table-head text-slate-500">
                 <tr>
-                  <th class="th-admin-pricing-sticky-check w-10 shrink-0 px-2 py-2 text-center align-middle" rowspan="2">
+                  <th class="th-admin-pricing-sticky-check px-1 py-2 text-center align-middle">
                     <input
                       ref="selectAllInput"
                       type="checkbox"
@@ -1904,55 +1952,39 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       @change="onToggleSelectAll"
                     />
                   </th>
-                  <th class="th-admin-pricing-sticky-model min-w-[10rem] align-middle px-2 py-2" rowspan="2">{{ t('adminGroups.thModelId') }}</th>
-                  <th class="w-[5.5rem] align-middle px-2 py-2" rowspan="2">{{ t('adminGlobalPricing.thSources') }}</th>
-                  <th class="th-admin-pricing-col-billing min-w-[8rem] align-middle px-2 py-2" rowspan="2">
-                    <span class="block leading-snug">{{ t('adminGlobalPricing.thBilling') }}</span>
+                  <th class="th-admin-pricing-sticky-model px-2 py-2 align-middle">{{ t('adminGroups.thModelId') }}</th>
+                  <th class="th-admin-pricing-col-sources px-1.5 py-2 align-middle">{{ t('adminGlobalPricing.thSources') }}</th>
+                  <th class="th-admin-pricing-col-billing px-1.5 py-2 align-middle">
+                    {{ t('adminGlobalPricing.thBilling') }}
                   </th>
-                  <th class="th-admin-pricing-col-token th-admin-pricing-th-group px-2 py-2 text-center" colspan="2">
+                  <th
+                    class="th-admin-pricing-col-token-pair th-admin-pricing-th-group px-1.5 py-2 text-center"
+                    :title="`${quotaInHeaderTitle} / ${quotaOutHeaderTitle}`"
+                  >
                     <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thTokenQuota') }}</span>
                     <span v-if="!codeRefShowQuotaOnly" class="th-admin-pricing-th-group__unit">{{ priceUnitLabel }}</span>
+                    <span class="th-admin-pricing-th-group__pair-hint">{{ t('adminGlobalPricing.thTokenPairHint') }}</span>
                   </th>
-                  <th
-                    class="th-admin-pricing-th-markup align-middle px-2 py-2 text-center"
-                    rowspan="2"
-                    :title="markupHeaderTitle"
-                  >
+                  <th class="th-admin-pricing-col-markup px-1 py-2 text-center align-middle" :title="markupHeaderTitle">
                     <span class="th-admin-pricing-th-markup__label">{{ t('adminGlobalPricing.thMarkup') }}</span>
                   </th>
-                  <th class="th-admin-pricing-col-rates th-admin-pricing-th-group px-2 py-2 text-center" colspan="2">
+                  <th
+                    class="th-admin-pricing-col-rates-pair th-admin-pricing-th-group px-1.5 py-2 text-center"
+                    :title="`${t('adminGroups.thIn')} / ${t('adminGroups.thOut')}`"
+                  >
                     <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thRates') }}</span>
+                    <span class="th-admin-pricing-th-group__pair-hint">{{ t('adminGlobalPricing.thRatePairHint') }}</span>
                   </th>
-                  <th class="th-admin-pricing-col-code th-admin-pricing-th-group px-2 py-2 text-center" colspan="2">
+                  <th
+                    class="th-admin-pricing-col-code-pair th-admin-pricing-th-group px-1.5 py-2 text-center"
+                    :title="`${t('adminGlobalPricing.thCodeIn')} / ${t('adminGlobalPricing.thCodeOut')}`"
+                  >
                     <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thCodeRef') }}</span>
+                    <span class="th-admin-pricing-th-group__pair-hint">{{ t('adminGlobalPricing.thCodePairHint') }}</span>
                   </th>
-                  <th class="w-10 align-middle px-2 py-2 text-center" rowspan="2">{{ t('adminGroups.thEn') }}</th>
-                  <th class="th-admin-pricing-sticky-actions min-w-[8.75rem] whitespace-nowrap px-1 py-2 text-center align-middle" rowspan="2">{{ t('adminGlobalPricing.thActions') }}</th>
-                </tr>
-                <tr class="th-admin-pricing-subhead">
-                  <th class="th-admin-pricing-subhead__cell" :title="quotaInHeaderTitle">
-                    {{ t('adminGlobalPricing.thQuotaColIn') }}
-                  </th>
-                  <th class="th-admin-pricing-subhead__cell" :title="quotaOutHeaderTitle">
-                    {{ t('adminGlobalPricing.thQuotaColOut') }}
-                  </th>
-                  <th class="th-admin-pricing-subhead__cell" :title="t('adminGroups.thIn')">
-                    {{ t('adminGlobalPricing.thRateColIn') }}
-                  </th>
-                  <th class="th-admin-pricing-subhead__cell" :title="t('adminGroups.thOut')">
-                    {{ t('adminGlobalPricing.thRateColOut') }}
-                  </th>
-                  <th
-                    class="th-admin-pricing-subhead__cell th-admin-pricing-subhead__cell--code"
-                    :title="t('adminGlobalPricing.thCodeIn')"
-                  >
-                    {{ t('adminGlobalPricing.thCodeColIn') }}
-                  </th>
-                  <th
-                    class="th-admin-pricing-subhead__cell th-admin-pricing-subhead__cell--code"
-                    :title="t('adminGlobalPricing.thCodeOut')"
-                  >
-                    {{ t('adminGlobalPricing.thCodeColOut') }}
+                  <th class="th-admin-pricing-col-enabled px-1 py-2 text-center align-middle">{{ t('adminGroups.thEn') }}</th>
+                  <th class="th-admin-pricing-sticky-actions px-1 py-2 text-center align-middle">
+                    {{ t('adminGlobalPricing.thActions') }}
                   </th>
                 </tr>
               </thead>
@@ -1972,39 +2004,48 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       :ref="(el) => setComboboxRef(idx, el)"
                     >
                       <div class="flex w-full min-w-0 items-start gap-1">
-                        <span
-                          v-if="r.locked"
-                          class="th-admin-pricing-model-locked block select-text break-all py-1.5 font-mono text-xs leading-relaxed"
-                          :title="r.model_name"
-                        >{{ r.model_name }}</span>
-                        <template v-else>
+                        <div class="min-w-0 flex-1">
+                          <span
+                            v-if="r.locked"
+                            class="th-admin-pricing-model-locked block select-text break-all py-0.5 font-mono text-xs leading-relaxed"
+                            :title="r.model_name"
+                          >{{ r.model_name }}</span>
                           <input
+                            v-else
                             v-model="r.model_name"
-                            class="th-input h-9 min-w-[8rem] flex-1 overflow-x-auto py-1 font-mono text-xs leading-normal"
+                            class="th-input h-9 min-w-[8rem] w-full overflow-x-auto py-1 font-mono text-xs leading-normal"
                             autocomplete="off"
                             spellcheck="false"
                             :placeholder="t('adminGroups.modelIdPh')"
                             :title="r.model_name.trim() ? r.model_name : undefined"
                             @focus="onModelFocus(idx)"
-                            @input="scheduleSuggestLayout"
+                            @input="onModelIdInput(idx)"
                           />
-                          <button
-                            type="button"
-                            class="th-input flex h-9 w-9 min-w-9 shrink-0 items-center justify-center !w-9 !max-w-9 !px-0"
-                            :title="t('adminGroups.modelSuggestToggle')"
-                            :aria-expanded="openModelSuggestRow === idx"
-                            @mousedown.prevent
-                            @click="toggleModelSuggestRow(idx)"
+                          <p
+                            v-if="rowChannelSubtitle(r)"
+                            class="th-admin-pricing-model-channel"
+                            :title="rowChannelSubtitle(r)"
                           >
-                            <svg class="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                              <path
-                                fill-rule="evenodd"
-                                d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                                clip-rule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        </template>
+                            {{ rowChannelSubtitle(r) }}
+                          </p>
+                        </div>
+                        <button
+                          v-if="!r.locked"
+                          type="button"
+                          class="th-input flex h-9 w-9 min-w-9 shrink-0 items-center justify-center !w-9 !max-w-9 !px-0"
+                          :title="t('adminGroups.modelSuggestToggle')"
+                          :aria-expanded="openModelSuggestRow === idx"
+                          @mousedown.prevent
+                          @click="toggleModelSuggestRow(idx)"
+                        >
+                          <svg class="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path
+                              fill-rule="evenodd"
+                              d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                              clip-rule="evenodd"
+                            />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -2020,8 +2061,8 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       <span v-if="!(r.sources && r.sources.length)" class="text-slate-600">—</span>
                     </div>
                   </td>
-                  <td class="th-admin-pricing-col-billing align-middle px-2 py-2">
-                    <div class="flex min-w-[7.5rem] flex-col gap-1">
+                  <td class="th-admin-pricing-col-billing align-middle px-1.5 py-1.5">
+                    <div class="flex flex-col gap-1">
                       <select
                         v-model="r.billing_mode"
                         class="th-select th-select--table-cell w-full"
@@ -2040,13 +2081,22 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       />
                     </div>
                   </td>
-                  <td class="th-admin-pricing-col-token align-middle px-2 py-2" :class="{ 'opacity-45': !rowUsesTokenQuota(r) }">
-                    <div v-if="rowUsesTokenQuota(r)" class="flex flex-col gap-0.5">
+                  <td
+                    class="th-admin-pricing-col-token-pair align-middle px-1.5 py-1.5"
+                    :class="{ 'opacity-45': !rowUsesTokenQuota(r) }"
+                  >
+                    <div v-if="rowUsesTokenQuota(r)" class="th-admin-pricing-pair-grid th-admin-pricing-pair-grid--token">
+                      <span class="th-admin-pricing-pair-lbl" :title="quotaInHeaderTitle">{{
+                        t('adminGlobalPricing.thQuotaColIn')
+                      }}</span>
+                      <span class="th-admin-pricing-pair-lbl" :title="quotaOutHeaderTitle">{{
+                        t('adminGlobalPricing.thQuotaColOut')
+                      }}</span>
                       <input
                         :value="quotaInputDisplay(r, idx, 'in')"
                         type="text"
                         :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                        class="th-input th-input--table-cell w-24 font-mono"
+                        class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
                         :placeholder="quotaInPlaceholder"
                         :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
                         autocomplete="off"
@@ -2054,24 +2104,11 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         @input="onQuotaInput(idx, 'in', $event)"
                         @blur="commitQuotaBlur(r, idx, 'in')"
                       />
-                      <span
-                        v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
-                        class="font-mono text-[10px] tabular-nums text-slate-500"
-                      >{{
-                        t('adminGlobalPricing.quotaBillingCell', {
-                          q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
-                        })
-                      }}</span>
-                    </div>
-                    <span v-else class="block py-2 text-center text-slate-600">—</span>
-                  </td>
-                  <td class="th-admin-pricing-col-token align-middle px-2 py-2" :class="{ 'opacity-45': !rowUsesTokenQuota(r) }">
-                    <div v-if="rowUsesTokenQuota(r)" class="flex flex-col gap-0.5">
                       <input
                         :value="quotaInputDisplay(r, idx, 'out')"
                         type="text"
                         :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                        class="th-input th-input--table-cell w-24 font-mono"
+                        class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
                         :placeholder="quotaOutPlaceholder"
                         :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
                         autocomplete="off"
@@ -2080,78 +2117,80 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         @blur="commitQuotaBlur(r, idx, 'out')"
                       />
                       <span
+                        v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
+                        class="th-admin-pricing-pair-preview"
+                      >{{
+                        t('adminGlobalPricing.quotaBillingCell', {
+                          q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
+                        })
+                      }}</span>
+                      <span v-else class="th-admin-pricing-pair-preview th-admin-pricing-pair-preview--spacer" aria-hidden="true" />
+                      <span
                         v-if="r.quota_out_per_1k.trim() && billingChargePreview(r.quota_out_per_1k, r.markup_percent)"
-                        class="font-mono text-[10px] tabular-nums text-slate-500"
+                        class="th-admin-pricing-pair-preview"
                       >{{
                         t('adminGlobalPricing.quotaBillingCell', {
                           q: billingChargePreview(r.quota_out_per_1k, r.markup_percent),
                         })
                       }}</span>
+                      <span v-else class="th-admin-pricing-pair-preview th-admin-pricing-pair-preview--spacer" aria-hidden="true" />
                     </div>
                     <span v-else class="block py-2 text-center text-slate-600">—</span>
                   </td>
-                  <td class="align-middle px-2 py-2">
+                  <td class="th-admin-pricing-col-markup align-middle px-1 py-1.5">
                     <input
                       v-model="r.markup_percent"
                       type="text"
                       inputmode="decimal"
-                      class="th-input th-input--table-cell w-16 font-mono"
+                      class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
                       :placeholder="t('adminGlobalPricing.phMarkupSiteDefault')"
                       :title="t('adminGlobalPricing.markupRowHint')"
                     />
                   </td>
-                  <td class="align-middle px-2 py-2">
-                    <input
-                      v-model.number="r.input_rate"
-                      type="number"
-                      step="0.01"
-                      class="th-input th-input--table-cell w-20 font-mono"
-                    />
-                  </td>
-                  <td class="align-middle px-2 py-2">
-                    <input
-                      v-model.number="r.output_rate"
-                      type="number"
-                      step="0.01"
-                      class="th-input th-input--table-cell w-20 font-mono"
-                    />
-                  </td>
-                  <td class="th-admin-pricing-col-code align-middle px-2 py-2 font-mono text-slate-400">
-                    <div
-                      class="flex flex-col gap-0.5 tabular-nums text-[11px]"
-                      :title="displayCodeRefCell(r.code_in_ref).title"
-                    >
-                      <span
-                        v-for="(line, li) in displayCodeRefCell(r.code_in_ref).lines"
-                        :key="`cin-${li}`"
-                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
-                      >{{ line.text }}</span>
+                  <td class="th-admin-pricing-col-rates-pair align-middle px-1.5 py-1.5">
+                    <div class="th-admin-pricing-pair-grid th-admin-pricing-pair-grid--rates">
+                      <input
+                        v-model.number="r.input_rate"
+                        type="number"
+                        step="0.01"
+                        class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
+                        :title="t('adminGroups.thIn')"
+                        :aria-label="t('adminGroups.thIn')"
+                      />
+                      <input
+                        v-model.number="r.output_rate"
+                        type="number"
+                        step="0.01"
+                        class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
+                        :title="t('adminGroups.thOut')"
+                        :aria-label="t('adminGroups.thOut')"
+                      />
                     </div>
                   </td>
-                  <td class="th-admin-pricing-col-code align-middle px-2 py-2 font-mono text-slate-400">
-                    <div
-                      class="flex flex-col gap-0.5 tabular-nums text-[11px]"
-                      :title="displayCodeRefCell(r.code_out_ref).title"
-                    >
-                      <span
-                        v-for="(line, li) in displayCodeRefCell(r.code_out_ref).lines"
-                        :key="`cout-${li}`"
-                        :class="line.muted ? 'text-[10px] text-slate-500' : ''"
-                      >{{ line.text }}</span>
+                  <td class="th-admin-pricing-col-code-pair align-middle px-1.5 py-1.5 font-mono text-slate-400">
+                    <div class="th-admin-pricing-code-pair tabular-nums">
+                      <div class="th-admin-pricing-code-pair__row" :title="displayCodeRefCell(r.code_in_ref).title">
+                        <span class="th-admin-pricing-pair-lbl">{{ t('adminGlobalPricing.thQuotaColIn') }}</span>
+                        <span class="min-w-0 truncate">{{ displayCodeRefCompactLine(r.code_in_ref) }}</span>
+                      </div>
+                      <div class="th-admin-pricing-code-pair__row" :title="displayCodeRefCell(r.code_out_ref).title">
+                        <span class="th-admin-pricing-pair-lbl">{{ t('adminGlobalPricing.thQuotaColOut') }}</span>
+                        <span class="min-w-0 truncate">{{ displayCodeRefCompactLine(r.code_out_ref) }}</span>
+                      </div>
                     </div>
                   </td>
-                  <td class="align-middle px-2 py-2 text-center">
+                  <td class="th-admin-pricing-col-enabled align-middle px-1 py-1.5 text-center">
                     <input
                       v-model="r.enabled"
                       type="checkbox"
                       class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
                     />
                   </td>
-                  <td class="th-admin-pricing-sticky-actions align-middle px-1 py-2 text-center">
-                    <div class="inline-flex flex-nowrap items-center justify-center gap-1">
+                  <td class="th-admin-pricing-sticky-actions align-middle px-1 py-1.5 text-center">
+                    <div class="th-admin-pricing-row-actions">
                       <button
                         type="button"
-                        class="th-btn-primary-flat th-admin-pricing-row-act shrink-0"
+                        class="th-btn-primary-flat th-admin-pricing-row-act"
                         :disabled="
                           !shouldPersistRow(r) ||
                           rowSavingIdx !== null ||
@@ -2167,7 +2206,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       </button>
                       <button
                         type="button"
-                        class="th-pg-btn-ghost th-admin-pricing-row-act shrink-0"
+                        class="th-pg-btn-ghost th-admin-pricing-row-act"
                         :disabled="!canResetRow(r) || rowSavingIdx !== null || anyListSaving || busy"
                         :title="
                           !canResetRow(r)
@@ -2180,7 +2219,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         "
                         @click="resetRow(idx)"
                       >
-                        {{ t('adminGlobalPricing.reset') }}
+                        {{ t('adminGlobalPricing.resetShort') }}
                       </button>
                     </div>
                   </td>

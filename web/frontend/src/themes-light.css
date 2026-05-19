@@ -1382,6 +1382,14 @@ html[data-th-theme="dawn"] .th-admin-pricing-subhead__cell,
 html[data-th-theme="paper"] .th-admin-pricing-subhead__cell {
   color: #64748b;
 }
+html[data-th-theme="dawn"] .th-admin-pricing-th-group__pair-hint,
+html[data-th-theme="paper"] .th-admin-pricing-th-group__pair-hint,
+html[data-th-theme="dawn"] .th-admin-pricing-pair-lbl,
+html[data-th-theme="paper"] .th-admin-pricing-pair-lbl,
+html[data-th-theme="dawn"] .th-admin-pricing-pair-preview,
+html[data-th-theme="paper"] .th-admin-pricing-pair-preview {
+  color: #64748b;
+}
 html[data-th-theme="dawn"] .th-admin-pricing-table tbody,
 html[data-th-theme="paper"] .th-admin-pricing-table tbody {
   border-color: rgba(15, 23, 42, 0.08);
@@ -1389,6 +1397,10 @@ html[data-th-theme="paper"] .th-admin-pricing-table tbody {
 html[data-th-theme="dawn"] .th-admin-pricing-model-locked,
 html[data-th-theme="paper"] .th-admin-pricing-model-locked {
   color: #334155;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-model-channel,
+html[data-th-theme="paper"] .th-admin-pricing-model-channel {
+  color: #64748b;
 }
 html[data-th-theme="dawn"] .th-admin-pricing-source-badge--catalog,
 html[data-th-theme="paper"] .th-admin-pricing-source-badge--catalog {
