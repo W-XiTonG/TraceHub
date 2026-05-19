@@ -9,6 +9,7 @@ import { useAuthStore, apiErrorMessage, type RegisterEmailCodeMeta, type LoginCa
 import { useSiteMetaStore } from '../stores/siteMeta'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
 import RegisterPromoDropdown from '../components/RegisterPromoDropdown.vue'
+import ThPasswordInput from '../components/ui/ThPasswordInput.vue'
 
 const { t, locale } = useI18n()
 const siteMeta = useSiteMetaStore()
@@ -262,7 +263,7 @@ async function submit() {
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('register.password') }}</label>
-            <input v-model="password" type="password" required minlength="6" class="th-input" autocomplete="new-password" />
+            <ThPasswordInput v-model="password" required :minlength="6" autocomplete="new-password" />
           </div>
           <div v-if="meta?.required" class="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div class="min-w-0 flex-1">

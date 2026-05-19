@@ -2974,6 +2974,45 @@
   box-shadow: 0 0 0 3px var(--th-input-focus-ring);
 }
 
+.th-password-input {
+  position: relative;
+  width: 100%;
+}
+.th-password-input__field {
+  padding-right: 2.75rem;
+}
+.th-password-input__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+.th-password-input__toggle:hover {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.12);
+}
+.th-password-input__toggle:focus-visible {
+  outline: 2px solid var(--th-input-focus-border);
+  outline-offset: 1px;
+}
+.th-password-input__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  pointer-events: none;
+}
+
 /* 管理端分组模型倍率：模型 ID 自定义下拉（Teleport + fixed，与 th-input 同色，避免原生 datalist 系统浅色弹层） */
 .th-model-combobox-list {
   margin: 0;

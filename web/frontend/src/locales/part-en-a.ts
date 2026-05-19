@@ -35,6 +35,8 @@ export default {
     loggingIn: 'Signing in…',
     sending: 'Sending…',
     confirmDelete: 'Delete this item?',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     documentTitle: '迹径 · TraceHub — Xunji Future',
     documentTitleTpl: '{brand} · TraceHub — {tagline}',
     documentTitleTplTraceHubSingle: 'TraceHub — {tagline}',

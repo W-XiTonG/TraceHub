@@ -8,6 +8,7 @@ import axios from 'axios'
 import { useAuthStore, apiErrorMessage, type LoginCaptchaResponse } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
+import ThPasswordInput from '../components/ui/ThPasswordInput.vue'
 import { sanitizeAppRedirect } from '../utils/safeRedirect'
 
 const { t, locale } = useI18n()
@@ -333,7 +334,7 @@ async function submit() {
           </div>
           <div v-if="mode === 'password'">
             <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('login.password') }}</label>
-            <input v-model="password" type="password" required class="th-input" autocomplete="current-password" />
+            <ThPasswordInput v-model="password" required autocomplete="current-password" />
           </div>
           <div v-else class="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div class="min-w-0 flex-1">
