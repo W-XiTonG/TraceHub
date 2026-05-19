@@ -2,6 +2,7 @@ package adminhandler
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -73,7 +74,42 @@ func isSiteUploadLibraryFilename(name string) bool {
 	default:
 		return false
 	}
-	return strings.HasPrefix(name, "site-brand-") || strings.HasPrefix(name, "site-contact-qr-")
+	return strings.HasPrefix(name, "site-brand-") ||
+		strings.HasPrefix(name, "site-contact-qr-") ||
+		strings.HasPrefix(name, "site-favicon-") ||
+		strings.HasPrefix(name, "site-og-") ||
+		strings.HasPrefix(name, "site-contact-card-")
+}
+
+// configKeyForUploadFilename 按文件名前缀返回关联的 system_configs 键；联系 QR 仅填表不落独立键。
+func configKeyForUploadFilename(filename string) string {
+	switch {
+	case strings.HasPrefix(filename, "site-brand-"):
+		return sitecfg.SystemConfigKeyBrandIconURL
+	case strings.HasPrefix(filename, "site-favicon-"):
+		return sitecfg.SystemConfigKeyBrandFaviconURL
+	case strings.HasPrefix(filename, "site-og-"):
+		return sitecfg.SystemConfigKeyBrandOGImageURL
+	case strings.HasPrefix(filename, "site-contact-card-"):
+		return sitecfg.SystemConfigKeyBrandContactCardURL
+	default:
+		return ""
+	}
+}
+
+func storedURLForConfigKey(ctx context.Context, client *ent.Client, configKey string) string {
+	switch configKey {
+	case sitecfg.SystemConfigKeyBrandIconURL:
+		return sitecfg.StoredBrandIconURL(ctx, client)
+	case sitecfg.SystemConfigKeyBrandFaviconURL:
+		return sitecfg.StoredBrandFaviconURL(ctx, client)
+	case sitecfg.SystemConfigKeyBrandOGImageURL:
+		return sitecfg.StoredBrandOGImageURL(ctx, client)
+	case sitecfg.SystemConfigKeyBrandContactCardURL:
+		return sitecfg.StoredBrandContactCardURL(ctx, client)
+	default:
+		return ""
+	}
 }
 
 // isBrandLibraryFilename 兼容旧名：本地上传图库中的栅格图文件名。
@@ -140,7 +176,7 @@ func GetBrandIconLibrary(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// DeleteBrandIcon DELETE /api/admin/site-brand/icons/:filename — 删除本地上传目录中的单个图标文件；若与当前 site.brand.icon_url 一致则清空该配置。
+// DeleteBrandIcon DELETE /api/admin/site-brand/icons/:filename — 删除本地上传文件；若 URL 与对应配置一致则清空该键。
 func DeleteBrandIcon(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -167,21 +203,23 @@ func DeleteBrandIcon(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 
 		ctx := c.Request.Context()
 		deletedURL := brandIconPublicURL(filename)
-		stored := sitecfg.StoredBrandIconURL(ctx, client)
 		cleared := false
-		if strings.TrimSpace(stored) == deletedURL {
-			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(sitecfg.SystemConfigKeyBrandIconURL)).Only(ctx)
-			if err != nil {
-				if !ent.IsNotFound(err) {
-					httpx.ServerError(c, "读取配置失败")
-					return
+		if configKey := configKeyForUploadFilename(filename); configKey != "" {
+			stored := storedURLForConfigKey(ctx, client, configKey)
+			if strings.TrimSpace(stored) == deletedURL {
+				ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(configKey)).Only(ctx)
+				if err != nil {
+					if !ent.IsNotFound(err) {
+						httpx.ServerError(c, "读取配置失败")
+						return
+					}
+				} else {
+					if err := client.SystemConfig.UpdateOne(ex).SetConfigValue("").Exec(ctx); err != nil {
+						httpx.ServerError(c, "更新配置失败")
+						return
+					}
+					cleared = true
 				}
-			} else {
-				if err := client.SystemConfig.UpdateOne(ex).SetConfigValue("").Exec(ctx); err != nil {
-					httpx.ServerError(c, "更新配置失败")
-					return
-				}
-				cleared = true
 			}
 		}
 
@@ -195,8 +233,29 @@ func DeleteBrandIcon(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// PostBrandIconUpload POST /api/admin/site-upload/brand-icon — multipart 字段 file；写入磁盘（保留历史文件）并更新 site.brand.icon_url。
-func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+type siteRasterUploadOpts struct {
+	filenamePrefix string
+	configKey      string
+	auditAction    string
+}
+
+func upsertBrandConfigURL(ctx context.Context, client *ent.Client, configKey, url, description string) error {
+	ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(configKey)).Only(ctx)
+	if ent.IsNotFound(err) {
+		_, err = client.SystemConfig.Create().
+			SetConfigKey(configKey).
+			SetConfigValue(url).
+			SetDescription(description).
+			Save(ctx)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	return client.SystemConfig.UpdateOne(ex).SetConfigValue(url).Exec(ctx)
+}
+
+func postSiteRasterUpload(client *ent.Client, cfg *config.Config, opts siteRasterUploadOpts) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		if err := c.Request.ParseMultipartForm(brandIconMaxBytes + 1); err != nil {
@@ -240,7 +299,7 @@ func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc
 			return
 		}
 
-		filename := "site-brand-" + uuid.New().String() + ext
+		filename := opts.filenamePrefix + uuid.New().String() + ext
 		dest := filepath.Join(root, filename)
 		if err := os.WriteFile(dest, data, 0o644); err != nil {
 			httpx.ServerError(c, "保存文件失败："+err.Error())
@@ -254,27 +313,50 @@ func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc
 		}
 
 		ctx := c.Request.Context()
-		ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(sitecfg.SystemConfigKeyBrandIconURL)).Only(ctx)
-		if ent.IsNotFound(err) {
-			_, err = client.SystemConfig.Create().
-				SetConfigKey(sitecfg.SystemConfigKeyBrandIconURL).
-				SetConfigValue(url).
-				SetDescription("Brand icon (uploaded)").
-				Save(ctx)
-		} else if err != nil {
-			httpx.ServerError(c, "更新配置失败")
-			return
-		} else {
-			err = client.SystemConfig.UpdateOne(ex).SetConfigValue(url).Exec(ctx)
-		}
-		if err != nil {
+		if err := upsertBrandConfigURL(ctx, client, opts.configKey, url, opts.configKey+" (uploaded)"); err != nil {
 			httpx.ServerError(c, "更新配置失败")
 			return
 		}
 
-		auditLog(client, adm.ID, "site.brand_icon_upload", "system_config", sitecfg.SystemConfigKeyBrandIconURL, map[string]any{"url": url}, c)
+		auditLog(client, adm.ID, opts.auditAction, "system_config", opts.configKey, map[string]any{"url": url}, c)
 		httpx.OK(c, gin.H{"url": url})
 	}
+}
+
+// PostBrandIconUpload POST /api/admin/site-upload/brand-icon
+func PostBrandIconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return postSiteRasterUpload(client, cfg, siteRasterUploadOpts{
+		filenamePrefix: "site-brand-",
+		configKey:      sitecfg.SystemConfigKeyBrandIconURL,
+		auditAction:    "site.brand_icon_upload",
+	})
+}
+
+// PostBrandFaviconUpload POST /api/admin/site-upload/brand-favicon
+func PostBrandFaviconUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return postSiteRasterUpload(client, cfg, siteRasterUploadOpts{
+		filenamePrefix: "site-favicon-",
+		configKey:      sitecfg.SystemConfigKeyBrandFaviconURL,
+		auditAction:    "site.brand_favicon_upload",
+	})
+}
+
+// PostBrandOGImageUpload POST /api/admin/site-upload/brand-og-image
+func PostBrandOGImageUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return postSiteRasterUpload(client, cfg, siteRasterUploadOpts{
+		filenamePrefix: "site-og-",
+		configKey:      sitecfg.SystemConfigKeyBrandOGImageURL,
+		auditAction:    "site.brand_og_upload",
+	})
+}
+
+// PostContactCardUpload POST /api/admin/site-upload/contact-card
+func PostContactCardUpload(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
+	return postSiteRasterUpload(client, cfg, siteRasterUploadOpts{
+		filenamePrefix: "site-contact-card-",
+		configKey:      sitecfg.SystemConfigKeyBrandContactCardURL,
+		auditAction:    "site.contact_card_upload",
+	})
 }
 
 // PostContactQRUpload POST /api/admin/site-upload/contact-qr — 上传联系我们二维码图片；仅返回 URL，不修改站点图标配置。

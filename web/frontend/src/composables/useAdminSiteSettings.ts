@@ -5,20 +5,31 @@ import { useSmoothLoading } from './useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { useSiteMetaStore, type PublicContactPayload } from '../stores/siteMeta'
+import defaultContactCardAsset from '../assets/xunji-contact-card.png'
 
 /** 与后端 sitecfg.DefaultBrandIconURL 一致 */
 export const defaultBrandIconUrl = '/tracehub-icon.svg'
+export const defaultBrandFaviconUrl = '/tracehub-icon.svg'
+/** 内置企微名片（仅预览；表单空时不写入库） */
+export const defaultContactCardPreviewUrl = defaultContactCardAsset
+
+export type SiteImageFieldId = 'icon' | 'favicon' | 'og' | 'contactCard'
 
 export type BrandLibIcon = {
   url: string
   uploaded_at?: number
   filename?: string
   is_builtin_default?: boolean
+  /** OG 等「无图」内置项 */
+  is_builtin_no_image?: boolean
 }
 
 export type SiteSettingsPayload = {
   brand_name?: string
   brand_icon_url?: string
+  brand_favicon_url?: string
+  brand_og_image_url?: string
+  brand_contact_card_url?: string
   login_captcha_enabled?: boolean
   login_captcha_file?: boolean
   login_captcha_db_set?: boolean
@@ -70,6 +81,9 @@ export function createAdminSiteSettings() {
   const form = reactive({
     brandName: '',
     brandIconUrl: '',
+    brandFaviconUrl: '',
+    brandOgImageUrl: '',
+    brandContactCardUrl: '',
     loginCaptcha: false,
     operatorDisplayName: '',
     defaultNewUserBalance: 0,
@@ -95,7 +109,7 @@ export function createAdminSiteSettings() {
   const uploadingContactRow = ref<number | null>(null)
   const { busy, visible: busyUi, run: runLoad } = useSmoothLoading()
   const saving = ref(false)
-  const uploadingIcon = ref(false)
+  const uploadingImageField = ref<SiteImageFieldId | null>(null)
   const msg = ref('')
   const err = ref('')
   const brandIcons = ref<BrandLibIcon[]>([])
@@ -121,21 +135,71 @@ export function createAdminSiteSettings() {
     gatewayIpBlacklistRows.value.splice(idx, 1)
   }
 
-  const brandIconPreviewSrc = computed(() => {
-    const u = form.brandIconUrl.trim()
-    return u || defaultBrandIconUrl
+  const brandIconPreviewSrc = computed(() => previewForUrl(form.brandIconUrl, defaultBrandIconUrl))
+  const brandFaviconPreviewSrc = computed(() => previewForUrl(form.brandFaviconUrl, defaultBrandFaviconUrl))
+  const brandOgPreviewSrc = computed(() => {
+    const u = form.brandOgImageUrl.trim()
+    return u || ''
   })
+  const brandContactCardPreviewSrc = computed(() =>
+    previewForUrl(form.brandContactCardUrl, defaultContactCardPreviewUrl),
+  )
 
-  const brandIconsForUi = computed((): BrandLibIcon[] => {
-    const rest = brandIcons.value.filter((x) => x.url.trim() !== defaultBrandIconUrl)
-    const head: BrandLibIcon = {
+  function previewForUrl(stored: string, fallback: string): string {
+    const u = stored.trim()
+    return u || fallback
+  }
+
+  function iconsForUiWithBuiltin(
+    storedUrl: string,
+    builtin: BrandLibIcon,
+    excludeUrl?: string,
+  ): BrandLibIcon[] {
+    const rest = brandIcons.value.filter((x) => {
+      const u = x.url.trim()
+      if (!u) return false
+      if (excludeUrl && u === excludeUrl) return false
+      return true
+    })
+    return [builtin, ...rest]
+  }
+
+  const brandIconsForUi = computed((): BrandLibIcon[] =>
+    iconsForUiWithBuiltin(form.brandIconUrl, {
       url: defaultBrandIconUrl,
       uploaded_at: 0,
       filename: 'default',
       is_builtin_default: true,
-    }
-    return [head, ...rest]
-  })
+    }, defaultBrandIconUrl),
+  )
+
+  const brandFaviconIconsForUi = computed((): BrandLibIcon[] =>
+    iconsForUiWithBuiltin(form.brandFaviconUrl, {
+      url: defaultBrandFaviconUrl,
+      uploaded_at: 0,
+      filename: 'default',
+      is_builtin_default: true,
+    }, defaultBrandFaviconUrl),
+  )
+
+  const brandOgIconsForUi = computed((): BrandLibIcon[] =>
+    iconsForUiWithBuiltin(form.brandOgImageUrl, {
+      url: '',
+      uploaded_at: 0,
+      filename: 'default',
+      is_builtin_default: true,
+      is_builtin_no_image: true,
+    }),
+  )
+
+  const brandContactCardIconsForUi = computed((): BrandLibIcon[] =>
+    iconsForUiWithBuiltin(form.brandContactCardUrl, {
+      url: defaultContactCardPreviewUrl,
+      uploaded_at: 0,
+      filename: 'default',
+      is_builtin_default: true,
+    }),
+  )
 
   const brandIconsUploadedOnly = computed(() => brandIcons.value)
 
@@ -167,6 +231,9 @@ export function createAdminSiteSettings() {
   function applyPayload(d: SiteSettingsPayload) {
     form.brandName = typeof d.brand_name === 'string' ? d.brand_name : ''
     form.brandIconUrl = typeof d.brand_icon_url === 'string' ? d.brand_icon_url : ''
+    form.brandFaviconUrl = typeof d.brand_favicon_url === 'string' ? d.brand_favicon_url : ''
+    form.brandOgImageUrl = typeof d.brand_og_image_url === 'string' ? d.brand_og_image_url : ''
+    form.brandContactCardUrl = typeof d.brand_contact_card_url === 'string' ? d.brand_contact_card_url : ''
     form.loginCaptcha = Boolean(d.login_captcha_enabled)
     form.operatorDisplayName = typeof d.operator_display_name === 'string' ? d.operator_display_name : ''
     form.defaultNewUserBalance = pickInt64ish(d.default_new_user_balance)
@@ -261,29 +328,79 @@ export function createAdminSiteSettings() {
     }
   }
 
-  function brandIconTitle(ico: BrandLibIcon): string {
-    if (ico.is_builtin_default) return t('adminSystem.brandIconDefault')
+  function brandIconTitle(ico: BrandLibIcon, field: SiteImageFieldId = 'icon'): string {
+    if (ico.is_builtin_default) {
+      if (field === 'og') return t('adminSystem.brandOgDefault')
+      if (field === 'contactCard') return t('adminSystem.brandContactCardDefault')
+      if (field === 'favicon') return t('adminSystem.brandFaviconDefault')
+      return t('adminSystem.brandIconDefault')
+    }
     const name = typeof ico.filename === 'string' && ico.filename.trim() ? ico.filename.trim() : ico.url
     const ts = typeof ico.uploaded_at === 'number' && ico.uploaded_at > 0 ? ico.uploaded_at * 1000 : 0
     const when = ts ? new Date(ts).toLocaleString() : ''
     return when ? `${name}\n${when}` : name
   }
 
-  function isBrandIconTileSelected(ico: BrandLibIcon): boolean {
-    if (ico.is_builtin_default) {
-      const u = form.brandIconUrl.trim()
-      return u === '' || u === defaultBrandIconUrl
+  function storedUrlForField(field: SiteImageFieldId): string {
+    switch (field) {
+      case 'icon':
+        return form.brandIconUrl.trim()
+      case 'favicon':
+        return form.brandFaviconUrl.trim()
+      case 'og':
+        return form.brandOgImageUrl.trim()
+      case 'contactCard':
+        return form.brandContactCardUrl.trim()
     }
-    return form.brandIconUrl.trim() === ico.url.trim()
+  }
+
+  function setStoredUrlForField(field: SiteImageFieldId, url: string) {
+    switch (field) {
+      case 'icon':
+        form.brandIconUrl = url
+        break
+      case 'favicon':
+        form.brandFaviconUrl = url
+        break
+      case 'og':
+        form.brandOgImageUrl = url
+        break
+      case 'contactCard':
+        form.brandContactCardUrl = url
+        break
+    }
+  }
+
+  function isBuiltinSelected(field: SiteImageFieldId, stored: string): boolean {
+    if (stored !== '') {
+      if (field === 'icon' && stored === defaultBrandIconUrl) return true
+      if (field === 'favicon' && stored === defaultBrandFaviconUrl) return true
+      return false
+    }
+    return true
+  }
+
+  function isImageTileSelected(field: SiteImageFieldId, ico: BrandLibIcon): boolean {
+    const stored = storedUrlForField(field)
+    if (ico.is_builtin_default) return isBuiltinSelected(field, stored)
+    return stored === ico.url.trim()
+  }
+
+  function isBrandIconTileSelected(ico: BrandLibIcon): boolean {
+    return isImageTileSelected('icon', ico)
+  }
+
+  function selectLibraryIcon(field: SiteImageFieldId, ico: BrandLibIcon) {
+    contactPickQrIndex.value = null
+    if (ico.is_builtin_default) {
+      setStoredUrlForField(field, '')
+      return
+    }
+    setStoredUrlForField(field, ico.url.trim())
   }
 
   function selectBrandIcon(ico: BrandLibIcon) {
-    contactPickQrIndex.value = null
-    if (ico.is_builtin_default) {
-      form.brandIconUrl = ''
-      return
-    }
-    form.brandIconUrl = ico.url.trim()
+    selectLibraryIcon('icon', ico)
   }
 
   async function confirmDeleteBrandIcon(ico: BrandLibIcon) {
@@ -299,8 +416,10 @@ export function createAdminSiteSettings() {
         `/api/admin/site-brand/icons/${encodeURIComponent(fn)}`,
       )
       if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.brandIconDeleteFail'))
-      if (form.brandIconUrl.trim() === ico.url.trim()) {
-        form.brandIconUrl = ''
+      for (const field of ['icon', 'favicon', 'og', 'contactCard'] as const) {
+        if (storedUrlForField(field) === ico.url.trim()) {
+          setStoredUrlForField(field, '')
+        }
       }
       await refresh()
       await siteMeta.refreshFromServer()
@@ -383,31 +502,78 @@ export function createAdminSiteSettings() {
     await loadBrandIcons()
   }
 
-  async function uploadBrandIcon(ev: Event) {
+  async function uploadSiteImage(
+    ev: Event,
+    field: SiteImageFieldId,
+    endpoint: string,
+    failKey: string,
+    successKey: string,
+  ) {
     const input = ev.target as HTMLInputElement
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
     contactPickQrIndex.value = null
-    uploadingIcon.value = true
+    uploadingImageField.value = field
     err.value = ''
     msg.value = ''
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const { data } = await http.post<Envelope<{ url?: string }>>('/api/admin/site-upload/brand-icon', fd)
-      if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.brandIconUploadFail'))
+      const { data } = await http.post<Envelope<{ url?: string }>>(endpoint, fd)
+      if (!isEnvelopeSuccess(data)) throw new Error(data.message || t(failKey))
       const u = data.data && typeof data.data.url === 'string' ? data.data.url.trim() : ''
-      if (!u) throw new Error(t('adminSystem.brandIconUploadFail'))
-      form.brandIconUrl = u
+      if (!u) throw new Error(t(failKey))
+      setStoredUrlForField(field, u)
       await refresh()
       await siteMeta.refreshFromServer()
-      msg.value = t('adminSystem.brandIconUploaded')
+      brandPreviewNonce.value += 1
+      msg.value = t(successKey)
     } catch (e: unknown) {
       err.value = httpErr(e)
     } finally {
-      uploadingIcon.value = false
+      uploadingImageField.value = null
     }
+  }
+
+  function uploadBrandIcon(ev: Event) {
+    return uploadSiteImage(
+      ev,
+      'icon',
+      '/api/admin/site-upload/brand-icon',
+      'adminSystem.brandIconUploadFail',
+      'adminSystem.brandIconUploaded',
+    )
+  }
+
+  function uploadBrandFavicon(ev: Event) {
+    return uploadSiteImage(
+      ev,
+      'favicon',
+      '/api/admin/site-upload/brand-favicon',
+      'adminSystem.brandFaviconUploadFail',
+      'adminSystem.brandFaviconUploaded',
+    )
+  }
+
+  function uploadBrandOgImage(ev: Event) {
+    return uploadSiteImage(
+      ev,
+      'og',
+      '/api/admin/site-upload/brand-og-image',
+      'adminSystem.brandOgUploadFail',
+      'adminSystem.brandOgUploaded',
+    )
+  }
+
+  function uploadContactCard(ev: Event) {
+    return uploadSiteImage(
+      ev,
+      'contactCard',
+      '/api/admin/site-upload/contact-card',
+      'adminSystem.brandContactCardUploadFail',
+      'adminSystem.brandContactCardUploaded',
+    )
   }
 
   async function save() {
@@ -425,6 +591,13 @@ export function createAdminSiteSettings() {
     const items = [
       { key: 'site.brand.name', value: form.brandName.trim(), description: t('adminSystem.descBrandName') },
       { key: 'site.brand.icon_url', value: form.brandIconUrl.trim(), description: t('adminSystem.descBrandIcon') },
+      { key: 'site.brand.favicon_url', value: form.brandFaviconUrl.trim(), description: t('adminSystem.descBrandFavicon') },
+      { key: 'site.brand.og_image_url', value: form.brandOgImageUrl.trim(), description: t('adminSystem.descBrandOg') },
+      {
+        key: 'site.brand.contact_card_url',
+        value: form.brandContactCardUrl.trim(),
+        description: t('adminSystem.descBrandContactCard'),
+      },
       {
         key: 'site.login_captcha.enabled',
         value: form.loginCaptcha ? 'true' : 'false',
@@ -569,7 +742,7 @@ export function createAdminSiteSettings() {
     busy,
     busyUi,
     saving,
-    uploadingIcon,
+    uploadingImageField,
     msg,
     err,
     brandIcons,
@@ -589,11 +762,19 @@ export function createAdminSiteSettings() {
     addGatewayIpBlacklistRow,
     removeGatewayIpBlacklistRow,
     brandIconPreviewSrc,
+    brandFaviconPreviewSrc,
+    brandOgPreviewSrc,
+    brandContactCardPreviewSrc,
     brandIconsForUi,
+    brandFaviconIconsForUi,
+    brandOgIconsForUi,
+    brandContactCardIconsForUi,
     brandIconsUploadedOnly,
     brandIconTitle,
     isBrandIconTileSelected,
+    isImageTileSelected,
     selectBrandIcon,
+    selectLibraryIcon,
     confirmDeleteBrandIcon,
     addContactQrRow,
     removeContactQrRow,
@@ -602,6 +783,9 @@ export function createAdminSiteSettings() {
     uploadContactQr,
     refresh,
     uploadBrandIcon,
+    uploadBrandFavicon,
+    uploadBrandOgImage,
+    uploadContactCard,
     save,
     resetDefaults,
   })

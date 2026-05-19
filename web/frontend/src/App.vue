@@ -19,9 +19,75 @@ const titleBrandDupesProductMark = (brand: string) => {
 /** 站点名与产品代号 TraceHub 相同时，不再写「{brand} · TraceHub」，避免出现两个 TraceHub */
 const titleBrandIsTraceHubCode = (brand: string) => brand.trim().toLowerCase() === 'tracehub'
 
+function imageMimeFromUrl(url: string): string {
+  const u = url.split('?')[0]?.toLowerCase() ?? ''
+  if (u.endsWith('.svg')) return 'image/svg+xml'
+  if (u.endsWith('.png')) return 'image/png'
+  if (u.endsWith('.jpg') || u.endsWith('.jpeg')) return 'image/jpeg'
+  if (u.endsWith('.gif')) return 'image/gif'
+  if (u.endsWith('.webp')) return 'image/webp'
+  return 'image/png'
+}
+
+function upsertHeadLink(rel: string, href: string, type?: string) {
+  if (typeof document === 'undefined') return
+  let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`)
+  if (!el) {
+    el = document.createElement('link')
+    el.rel = rel
+    document.head.appendChild(el)
+  }
+  const current = el.getAttribute('href') ?? ''
+  if (current === href && (!type || el.type === type)) return
+  el.setAttribute('href', href)
+  if (type) el.type = type
+  else el.removeAttribute('type')
+}
+
+function upsertMetaProperty(property: string, content: string) {
+  if (typeof document === 'undefined') return
+  let el = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`)
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute('property', property)
+    document.head.appendChild(el)
+  }
+  if (el.content === content) return
+  el.content = content
+}
+
+function removeMetaProperty(property: string) {
+  if (typeof document === 'undefined') return
+  document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`)?.remove()
+}
+
 onMounted(() => {
   void siteMeta.ensureLoaded()
 })
+
+watch(
+  () => siteMeta.displayFaviconUrl,
+  (href) => {
+    const type = imageMimeFromUrl(href)
+    upsertHeadLink('icon', href, type)
+    upsertHeadLink('apple-touch-icon', href)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => siteMeta.displayOgImageUrl,
+  (og) => {
+    if (og) {
+      upsertMetaProperty('og:image', og)
+      upsertMetaProperty('twitter:image', og)
+    } else {
+      removeMetaProperty('og:image')
+      removeMetaProperty('twitter:image')
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   [

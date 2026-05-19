@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import contactCardImg from '../assets/xunji-contact-card.png'
+import { useSiteMetaStore } from '../stores/siteMeta'
+
+const siteMeta = useSiteMetaStore()
 
 const props = withDefaults(
   defineProps<{
@@ -40,7 +43,7 @@ const imgClass = computed(() => {
     </summary>
     <div :class="rowClass">
       <img
-        :src="contactCardImg"
+        :src="siteMeta.displayContactCardUrl ?? contactCardImg"
         :alt="t('home.contactCardAlt')"
         :width="compact ? 200 : 240"
         loading="lazy"

@@ -67,7 +67,7 @@ onMounted(() => {
           ctx.saving ||
           ctx.busy ||
           ctx.resettingDefaults ||
-          ctx.uploadingIcon ||
+          ctx.uploadingImageField !== null ||
           ctx.deletingBrandFilename !== null ||
           ctx.contactPickQrIndex !== null
         "

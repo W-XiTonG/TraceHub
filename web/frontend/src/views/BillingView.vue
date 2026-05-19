@@ -4,8 +4,8 @@ import { useRoute, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
-import { useSiteMetaStore } from '../stores/siteMeta'
 import contactCardImg from '../assets/xunji-contact-card.png'
+import { useSiteMetaStore } from '../stores/siteMeta'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -188,7 +188,7 @@ onUnmounted(() => stopPoll())
         <div class="mt-5 flex flex-col items-center gap-3 sm:items-start">
           <div class="rounded-xl border-2 border-white/10 bg-white/[0.04] p-3 shadow-inner ring-2 ring-cyan-500/25">
             <img
-              :src="contactCardImg"
+              :src="siteMeta.displayContactCardUrl ?? contactCardImg"
               :alt="t('home.contactCardAlt')"
               width="300"
               loading="eager"

@@ -20,9 +20,12 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config, payStore *payment.Confi
 		c.Header("Pragma", "no-cache")
 		ctx := c.Request.Context()
 		out := gin.H{
-			"brand_name":     sitecfg.EffectiveBrandName(ctx, client),
-			"brand_icon_url": sitecfg.EffectiveBrandIconURL(ctx, client),
-			"app_version":    cfg.AppVersion(),
+			"brand_name":          sitecfg.EffectiveBrandName(ctx, client),
+			"brand_icon_url":      sitecfg.EffectiveBrandIconURL(ctx, client),
+			"brand_favicon_url":   sitecfg.EffectiveBrandFaviconURL(ctx, client),
+			"brand_og_image_url":  sitecfg.EffectiveBrandOGImageURL(ctx, client),
+			"contact_card_url":    sitecfg.EffectiveBrandContactCardURL(ctx, client),
+			"app_version":         cfg.AppVersion(),
 		}
 		if promo := sitecfg.EffectiveRegisterPromoText(ctx, client, cfg); promo != "" {
 			out["register_promo_text"] = promo

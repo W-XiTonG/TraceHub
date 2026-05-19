@@ -22,7 +22,16 @@ function onNavClick() {
     class="group mb-8 flex items-center gap-3 rounded-xl px-2 py-1.5 outline-none transition hover:bg-white/[0.05]"
     @click="onNavClick"
   >
-    <div class="th-logo-mark th-logo-mark--md th-logo-mark--amber shrink-0 transition group-hover:brightness-105">AD</div>
+    <div class="th-logo-mark th-logo-mark--md th-logo-mark--image shrink-0 transition group-hover:brightness-105">
+      <img
+        :key="siteMeta.displayIconUrl"
+        :src="siteMeta.displayIconUrl"
+        :alt="siteMeta.displayName"
+        width="40"
+        height="40"
+        decoding="async"
+      />
+    </div>
     <div class="min-w-0">
       <p class="th-sidebar-brand th-admin-sidebar-brand text-sm font-semibold">{{ t('layout.adminTitle') }}</p>
       <p class="text-[10px] uppercase tracking-[0.18em] text-slate-600">{{ t('layout.adminTag') }}</p>

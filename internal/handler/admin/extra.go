@@ -1539,6 +1539,9 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		httpx.OK(c, gin.H{
 			"brand_name":                             sitecfg.EffectiveBrandName(ctx, client),
 			"brand_icon_url":                         sitecfg.StoredBrandIconURL(ctx, client),
+			"brand_favicon_url":                      sitecfg.StoredBrandFaviconURL(ctx, client),
+			"brand_og_image_url":                     sitecfg.StoredBrandOGImageURL(ctx, client),
+			"brand_contact_card_url":                 sitecfg.StoredBrandContactCardURL(ctx, client),
 			"login_captcha_enabled":                  sitecfg.EffectiveLoginCaptchaEnabled(ctx, client, cfg),
 			"login_captcha_file":                     cfg.Site.LoginCaptcha.Enabled,
 			"login_captcha_db_set":                   dbSet,
@@ -1629,6 +1632,9 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 		keys := []string{
 			sitecfg.SystemConfigKeyBrandName,
 			sitecfg.SystemConfigKeyBrandIconURL,
+			sitecfg.SystemConfigKeyBrandFaviconURL,
+			sitecfg.SystemConfigKeyBrandOGImageURL,
+			sitecfg.SystemConfigKeyBrandContactCardURL,
 			sitecfg.SystemConfigKeyLoginCaptchaEnabled,
 			sitecfg.SystemConfigKeyOperatorDisplayName,
 			sitecfg.SystemConfigKeyDefaultNewUserBalance,

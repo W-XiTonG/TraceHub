@@ -13,6 +13,9 @@ export type PublicContactPayload = {
 type PubSiteMeta = {
   brand_name?: string
   brand_icon_url?: string
+  brand_favicon_url?: string
+  brand_og_image_url?: string
+  contact_card_url?: string
   app_version?: string
   api_public_base_url?: string
   /** 注册推广说明（纯文本）；空或未返回则不展示 */
@@ -48,12 +51,22 @@ function normalizePublicContact(raw: unknown): PublicContactPayload | null {
   return { title, qr_items, emails }
 }
 
-/** 与后端 sitecfg.DefaultBrandIconURL 一致；接口返回该值时存为空串表示「无自定义」 */
+/** 与后端 sitecfg 默认一致；接口返回该值时存为空串表示「无自定义」 */
 const defaultPubIcon = '/tracehub-icon.svg'
+const defaultPubFavicon = '/tracehub-icon.svg'
+
+function normalizeStoredBrandUrl(apiUrl: string | undefined, defaultUrl: string): string {
+  if (typeof apiUrl !== 'string') return ''
+  const u = apiUrl.trim()
+  return u === defaultUrl ? '' : u
+}
 
 export const useSiteMetaStore = defineStore('siteMeta', () => {
   const brandName = ref('')
   const brandIconUrl = ref('')
+  const brandFaviconUrl = ref('')
+  const brandOgImageUrl = ref('')
+  const contactCardUrl = ref('')
   const appVersion = ref('')
   /** 管理员配置的 OpenAI 兼容 Base URL（含 /v1）；空则 effectiveOpenaiApiBase 回退为当前站点 origin + /v1 */
   const apiPublicBaseUrl = ref('')
@@ -75,6 +88,21 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   const displayIconUrl = computed(() => {
     const u = brandIconUrl.value.trim()
     return u || defaultPubIcon
+  })
+
+  const displayFaviconUrl = computed(() => {
+    const u = brandFaviconUrl.value.trim()
+    return u || defaultPubFavicon
+  })
+
+  const displayOgImageUrl = computed(() => {
+    const u = brandOgImageUrl.value.trim()
+    return u || null
+  })
+
+  const displayContactCardUrl = computed(() => {
+    const u = contactCardUrl.value.trim()
+    return u || null
   })
 
   const displayVersion = computed(() => {
@@ -102,10 +130,12 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
         if (typeof data.data.brand_name === 'string') {
           brandName.value = data.data.brand_name
         }
-        if (typeof data.data.brand_icon_url === 'string') {
-          const u = data.data.brand_icon_url.trim()
-          brandIconUrl.value = u === defaultPubIcon ? '' : u
-        }
+        brandIconUrl.value = normalizeStoredBrandUrl(data.data.brand_icon_url, defaultPubIcon)
+        brandFaviconUrl.value = normalizeStoredBrandUrl(data.data.brand_favicon_url, defaultPubFavicon)
+        brandOgImageUrl.value =
+          typeof data.data.brand_og_image_url === 'string' ? data.data.brand_og_image_url.trim() : ''
+        contactCardUrl.value =
+          typeof data.data.contact_card_url === 'string' ? data.data.contact_card_url.trim() : ''
         if (typeof data.data.app_version === 'string') {
           appVersion.value = data.data.app_version.trim()
         } else {
@@ -157,6 +187,9 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     loaded.value = false
     brandName.value = ''
     brandIconUrl.value = ''
+    brandFaviconUrl.value = ''
+    brandOgImageUrl.value = ''
+    contactCardUrl.value = ''
     appVersion.value = ''
     apiPublicBaseUrl.value = ''
     registerPromoText.value = ''
@@ -177,6 +210,9 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   return {
     brandName,
     brandIconUrl,
+    brandFaviconUrl,
+    brandOgImageUrl,
+    contactCardUrl,
     appVersion,
     apiPublicBaseUrl,
     registerPromoText,
@@ -187,6 +223,9 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     loaded,
     displayName,
     displayIconUrl,
+    displayFaviconUrl,
+    displayOgImageUrl,
+    displayContactCardUrl,
     displayVersion,
     effectiveOpenaiApiBase,
     ensureLoaded,
