@@ -1344,6 +1344,13 @@ html[data-th-theme="dawn"] .th-admin-pricing-table thead,
 html[data-th-theme="paper"] .th-admin-pricing-table thead {
   color: #64748b;
 }
+html[data-th-theme="dawn"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:first-child th,
+html[data-th-theme="dawn"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:nth-child(2) th,
+html[data-th-theme="paper"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:first-child th,
+html[data-th-theme="paper"] .th-admin-pricing-table-scroll .th-admin-pricing-table thead tr:nth-child(2) th {
+  background-color: #f8fafc;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+}
 html[data-th-theme="dawn"] .th-admin-pricing-table thead .text-slate-500,
 html[data-th-theme="paper"] .th-admin-pricing-table thead .text-slate-500,
 html[data-th-theme="dawn"] .th-admin-pricing-table thead .text-slate-600,

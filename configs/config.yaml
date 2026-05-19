@@ -4,10 +4,10 @@ server:
   mode: release
 
 database:
-  dsn: "postgres://tracehub:tracehub@10.117.57.171:15432/tracehub?sslmode=disable"
+  dsn: "postgres://tracehub:tracehub@localhost:5432/tracehub?sslmode=disable"
 
 redis:
-  addr: "10.117.57.171:6379"
+  addr: "192.168.236.164:6379"
   password: "mbYJozX1OBI"
   db: 0
 

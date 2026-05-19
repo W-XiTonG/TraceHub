@@ -24,36 +24,75 @@ type Item struct {
 	ServiceStatus string `json:"service_status,omitempty"`
 }
 
+type channelModelKeyAgg struct {
+	canonical string
+	healthy   bool
+}
+
 // collectChannelModelKeys 从已筛选的渠道列表中汇总「声明的模型/别名」及其中健康渠道（health_status==1）覆盖的子集。
+// 模型名按 trim 后、大小写不敏感去重（保留首次出现的写法）；路由匹配仍区分大小写。
 func collectChannelModelKeys(channels []*ent.Channel) (all map[string]struct{}, healthy map[string]struct{}) {
-	all = make(map[string]struct{})
-	healthy = make(map[string]struct{})
+	byLower := make(map[string]*channelModelKeyAgg)
+	add := func(id string, hsOK bool) {
+		if id == "" {
+			return
+		}
+		lk := strings.ToLower(id)
+		if agg, ok := byLower[lk]; ok {
+			if hsOK {
+				agg.healthy = true
+			}
+			return
+		}
+		byLower[lk] = &channelModelKeyAgg{canonical: id, healthy: hsOK}
+	}
 	for _, ch := range channels {
 		hsOK := ch.HealthStatus == 1
 		for _, m := range ch.Models {
-			id := strings.TrimSpace(m)
-			if id == "" {
-				continue
-			}
-			all[id] = struct{}{}
-			if hsOK {
-				healthy[id] = struct{}{}
-			}
+			add(strings.TrimSpace(m), hsOK)
 		}
 		if ch.ModelAlias != nil {
 			for alias := range ch.ModelAlias {
-				a := strings.TrimSpace(alias)
-				if a == "" {
-					continue
-				}
-				all[a] = struct{}{}
-				if hsOK {
-					healthy[a] = struct{}{}
-				}
+				add(strings.TrimSpace(alias), hsOK)
 			}
 		}
 	}
+	all = make(map[string]struct{}, len(byLower))
+	healthy = make(map[string]struct{})
+	for _, agg := range byLower {
+		all[agg.canonical] = struct{}{}
+		if agg.healthy {
+			healthy[agg.canonical] = struct{}{}
+		}
+	}
 	return all, healthy
+}
+
+// omitAliasUpstreamTargets 从用户可见列表中移除「仅作为 model_alias 指向上游 id」的 models 项，
+// 避免试玩/GET /v1/models 同时出现 ep-xxx 与其友好别名。直接请求上游 id 仍可由网关路由。
+func omitAliasUpstreamTargets(set map[string]struct{}, channels []*ent.Channel) {
+	targets := make(map[string]struct{})
+	for _, ch := range channels {
+		if ch.ModelAlias == nil {
+			continue
+		}
+		for alias, target := range ch.ModelAlias {
+			a := strings.TrimSpace(alias)
+			t := strings.TrimSpace(target)
+			if a == "" || t == "" || strings.EqualFold(a, t) {
+				continue
+			}
+			targets[strings.ToLower(t)] = struct{}{}
+		}
+	}
+	if len(targets) == 0 {
+		return
+	}
+	for id := range set {
+		if _, drop := targets[strings.ToLower(id)]; drop {
+			delete(set, id)
+		}
+	}
 }
 
 func itemsFromModelIDSet(set map[string]struct{}) []Item {
@@ -121,6 +160,7 @@ func listGroupModelSet(ctx context.Context, client *ent.Client, groupID int) (
 	for id := range channelAll {
 		set[id] = struct{}{}
 	}
+	omitAliasUpstreamTargets(set, channels)
 	if len(set) == 0 {
 		rows, err := client.ModelCatalogEntry.Query().
 			Where(

@@ -1510,7 +1510,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
 <template>
   <div>
     <article
-      class="overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/60 ring-1 ring-white/[0.04]"
+      class="rounded-2xl border border-slate-800/90 bg-slate-900/60 ring-1 ring-white/[0.04]"
     >
       <div class="border-b border-slate-800/80 px-5 py-4">
         <h3 class="text-lg font-semibold text-white">{{ t('adminGlobalPricing.title') }}</h3>
@@ -1869,7 +1869,8 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
             </p>
           </div>
 
-          <div class="th-admin-table-shell relative overflow-x-auto rounded-xl border border-slate-800">
+          <div class="th-admin-pricing-workspace">
+          <div class="th-admin-pricing-table-scroll thin-scrollbar relative rounded-xl border border-slate-800">
             <ThLoadingState v-if="listUi && rows.length > 0" variant="overlay" />
             <table class="th-admin-pricing-table w-full border-collapse text-left text-xs">
               <thead class="th-admin-table-head text-slate-500">
@@ -1898,7 +1899,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                   <th class="th-admin-pricing-col-rates px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thRates') }}</th>
                   <th class="th-admin-pricing-col-code px-2 py-1 text-center" colspan="2">{{ t('adminGlobalPricing.thCodeRef') }}</th>
                   <th class="w-10 align-middle px-2 py-2 text-center" rowspan="2">{{ t('adminGroups.thEn') }}</th>
-                  <th class="th-admin-pricing-sticky-actions min-w-[8.75rem] whitespace-nowrap px-1 py-2 text-right align-middle" rowspan="2">{{ t('adminGlobalPricing.thActions') }}</th>
+                  <th class="th-admin-pricing-sticky-actions min-w-[8.75rem] whitespace-nowrap px-1 py-2 text-center align-middle" rowspan="2">{{ t('adminGlobalPricing.thActions') }}</th>
                 </tr>
                 <tr class="text-[10px] font-normal">
                   <th class="px-2 py-1">
@@ -2106,8 +2107,8 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
                     />
                   </td>
-                  <td class="th-admin-pricing-sticky-actions align-middle px-1 py-2 text-right">
-                    <div class="inline-flex flex-nowrap items-center justify-end gap-1">
+                  <td class="th-admin-pricing-sticky-actions align-middle px-1 py-2 text-center">
+                    <div class="inline-flex flex-nowrap items-center justify-center gap-1">
                       <button
                         type="button"
                         class="th-btn-primary-flat th-admin-pricing-row-act shrink-0"
@@ -2152,7 +2153,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
           </div>
 
           <div
-            class="mt-3 flex flex-col gap-2 rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between"
+            class="th-admin-pricing-bottom-bar flex flex-col gap-2 rounded-lg border border-slate-800/80 bg-slate-900/90 px-3 py-2 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between"
             role="group"
             :aria-label="t('adminGlobalPricing.bottomBarAria')"
           >
@@ -2269,6 +2270,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                 </button>
               </div>
             </div>
+          </div>
           </div>
           <p class="mt-2 text-[11px] leading-relaxed text-slate-600">{{ t('adminGlobalPricing.csvRoundTripHint') }}</p>
         </template>

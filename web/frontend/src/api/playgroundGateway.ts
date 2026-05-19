@@ -58,9 +58,13 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
     data?: Array<{ id?: string; tracehub?: { router_health?: string; service_status?: string; labels?: unknown } }>
   }
   const rows: PlaygroundModelRow[] = []
+  const seen = new Set<string>()
   for (const m of data.data || []) {
-    const id = typeof m.id === 'string' ? m.id : ''
+    const id = typeof m.id === 'string' ? m.id.trim() : ''
     if (!id) continue
+    const key = id.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
     rows.push({
       id,
       routerHealth: parseRouterHealth(m.tracehub?.router_health),
