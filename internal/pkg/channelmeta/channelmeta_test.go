@@ -19,7 +19,7 @@ func TestDefaultBaseURL_deepseek(t *testing.T) {
 
 func TestBuiltInPresetModels_volcengine(t *testing.T) {
 	models := BuiltInPresetModels("volcengine")
-	if len(models) < 5 {
+	if len(models) < 8 {
 		t.Fatalf("expected seedance presets, got %d", len(models))
 	}
 }
