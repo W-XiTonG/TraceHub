@@ -317,6 +317,12 @@ function rowHasNonDefaultOverrides(r: DraftRow): boolean {
   const qIn = parseQuota(r.quota_in_per_1k)
   const qOut = parseQuota(r.quota_out_per_1k)
   if (qIn.value !== undefined || qOut.value !== undefined) return true
+  const mode = (r.billing_mode || 'token').trim() || 'token'
+  if (mode !== 'token') return true
+  const qpr = parseQuota(r.quota_per_request)
+  if (qpr.value !== undefined) return true
+  const mp = parseMarkup(r.markup_percent)
+  if (mp.ok && mp.value != null) return true
   return rateDiffersDefault(r)
 }
 
@@ -324,6 +330,10 @@ function shouldPersistRow(r: DraftRow): boolean {
   if (r.isCustom || r.locked === false || r.locked === undefined) {
     return r.model_name.trim().length > 0
   }
+  const key = r.model_name.trim()
+  if (!key) return false
+  const snap = workspaceSnapshotByModel.value.get(key)
+  if (snap) return rowDiffersFromSnapshot(r)
   if (r.id != null) return true
   return rowHasNonDefaultOverrides(r)
 }
