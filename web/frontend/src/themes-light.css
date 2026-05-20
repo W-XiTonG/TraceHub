@@ -1311,6 +1311,33 @@ html[data-th-theme="paper"] .th-admin-pricing-filter-bar {
 }
 html[data-th-theme="dawn"] .th-admin-pricing-table,
 html[data-th-theme="paper"] .th-admin-pricing-table{--th-pricing-row-bg:transparent;--th-pricing-row-hover-bg:rgba(15,23,42,.035)}
+html[data-th-theme="dawn"] .th-admin-pricing-table--stacked thead,
+html[data-th-theme="paper"] .th-admin-pricing-table--stacked thead{
+  background:rgba(248,250,252,.9);
+  border-bottom-color:rgba(15,23,42,.1);
+}
+html[data-th-theme="dawn"] .th-admin-pricing-table--stacked tbody tr,
+html[data-th-theme="paper"] .th-admin-pricing-table--stacked tbody tr{
+  border-color:rgba(15,23,42,.12);
+  background:rgba(255,255,255,.88);
+  box-shadow:0 1px 2px rgba(15,23,42,.06);
+}
+html[data-th-theme="dawn"] .th-admin-pricing-table--stacked tbody tr:hover,
+html[data-th-theme="paper"] .th-admin-pricing-table--stacked tbody tr:hover{
+  background:#fff;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-table--stacked tbody td,
+html[data-th-theme="paper"] .th-admin-pricing-table--stacked tbody td{
+  border-bottom-color:rgba(15,23,42,.08);
+}
+html[data-th-theme="dawn"] .th-admin-pricing-table--stacked tbody td::before,
+html[data-th-theme="paper"] .th-admin-pricing-table--stacked tbody td::before{
+  color:#64748b;
+}
+html[data-th-theme="dawn"] .th-admin-pricing-table--stacked .th-admin-pricing-sticky-model,
+html[data-th-theme="paper"] .th-admin-pricing-table--stacked .th-admin-pricing-sticky-model{
+  border-bottom-color:rgba(15,23,42,.1);
+}
 html[data-th-theme="dawn"] .th-admin-pricing-table thead.th-admin-table-head,
 html[data-th-theme="paper"] .th-admin-pricing-table thead.th-admin-table-head{color:#64748b}
 html[data-th-theme="dawn"] .th-admin-pricing-table thead.th-admin-table-head .th-admin-pricing-sticky-check,

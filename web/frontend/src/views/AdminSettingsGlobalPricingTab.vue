@@ -1333,16 +1333,31 @@ function rowUsesTokenQuota(r: DraftRow) {
   return r.billing_mode === 'token' || r.billing_mode === 'hybrid_floor'
 }
 
+/** 仅桌面端压缩列宽；手机/平板用宽表 + 横向滚动，避免表头与数据列错位 */
+const PRICING_TABLE_FIT_MQ = '(min-width: 1024px)'
+const pricingTableFit = ref(false)
+let pricingTableFitMq: MediaQueryList | null = null
+
+function syncPricingTableFit() {
+  pricingTableFit.value = pricingTableFitMq?.matches ?? false
+}
+
 onMounted(() => {
   void loadChannelOptions()
   void load()
   void loadSitePricingMeta()
   document.addEventListener('click', onExportMenusDocClick)
+  if (typeof window !== 'undefined') {
+    pricingTableFitMq = window.matchMedia(PRICING_TABLE_FIT_MQ)
+    syncPricingTableFit()
+    pricingTableFitMq.addEventListener('change', syncPricingTableFit)
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', onExportMenusDocClick)
   clearFlashDismissTimer()
+  pricingTableFitMq?.removeEventListener('change', syncPricingTableFit)
 })
 
 function parseExportFilename(cd: string | undefined): string {
@@ -1931,12 +1946,24 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
             <p class="th-admin-pricing-workspace-hint px-0.5 text-[11px] leading-relaxed text-slate-500">
               {{ t('adminGlobalPricing.customRowsHint') }}
             </p>
+            <p
+              v-if="!pricingTableFit"
+              class="th-admin-pricing-mobile-hint mb-2 px-0.5 text-[11px] leading-relaxed text-cyan-300/75"
+            >
+              {{ t('adminGlobalPricing.mobileCardHint') }}
+            </p>
           </div>
 
           <div class="th-admin-pricing-workspace">
           <div class="th-admin-pricing-table-scroll thin-scrollbar relative rounded-xl border border-slate-800">
             <ThLoadingState v-if="listUi && rows.length > 0" variant="overlay" />
-            <table class="th-admin-pricing-table th-admin-pricing-table--fit w-full border-collapse text-left text-xs">
+            <table
+              class="th-admin-pricing-table border-collapse text-left text-xs"
+              :class="{
+                'th-admin-pricing-table--fit w-full': pricingTableFit,
+                'th-admin-pricing-table--stacked w-full min-w-0': !pricingTableFit,
+              }"
+            >
               <colgroup>
                 <col class="th-admin-pricing-col-check" />
                 <col class="th-admin-pricing-col-model" />
@@ -1979,14 +2006,14 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                     <span class="th-admin-pricing-th-markup__label">{{ t('adminGlobalPricing.thMarkup') }}</span>
                   </th>
                   <th
-                    class="th-admin-pricing-col-rates-pair th-admin-pricing-th-group px-1.5 py-2 text-center"
+                    class="th-admin-pricing-col-rates-pair th-admin-pricing-th-group th-admin-pricing-mobile-hide px-1.5 py-2 text-center"
                     :title="`${t('adminGroups.thIn')} / ${t('adminGroups.thOut')}`"
                   >
                     <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thRates') }}</span>
                     <span class="th-admin-pricing-th-group__pair-hint">{{ t('adminGlobalPricing.thRatePairHint') }}</span>
                   </th>
                   <th
-                    class="th-admin-pricing-col-code-pair th-admin-pricing-th-group px-1.5 py-2 text-center"
+                    class="th-admin-pricing-col-code-pair th-admin-pricing-th-group th-admin-pricing-mobile-hide px-1.5 py-2 text-center"
                     :title="`${t('adminGlobalPricing.thCodeIn')} / ${t('adminGlobalPricing.thCodeOut')}`"
                   >
                     <span class="th-admin-pricing-th-group__title">{{ t('adminGlobalPricing.thCodeRef') }}</span>
@@ -2000,7 +2027,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
               </thead>
               <tbody class="th-admin-table-body divide-y divide-slate-800/80">
                 <tr v-for="(r, idx) in rows" :key="`gwp-${idx}-${r.model_name || 'new'}`">
-                  <td class="th-admin-pricing-sticky-check w-10 shrink-0 px-2 py-2 text-center align-middle">
+                  <td
+                    class="th-admin-pricing-sticky-check w-10 shrink-0 px-2 py-2 text-center align-middle"
+                    :data-label="t('adminGlobalPricing.selectRowLabel')"
+                  >
                     <input
                       type="checkbox"
                       class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
@@ -2008,7 +2038,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       @change.stop="syncRowSelectionFromInput(idx, $event)"
                     />
                   </td>
-                  <td class="th-admin-pricing-sticky-model min-w-[11rem] max-w-[min(42rem,85vw)] align-top px-2 py-2">
+                  <td
+                    class="th-admin-pricing-sticky-model min-w-[11rem] max-w-[min(42rem,85vw)] align-top px-2 py-2"
+                    :data-label="t('adminGroups.thModelId')"
+                  >
                     <div
                       class="th-model-combobox relative w-full min-w-0"
                       :ref="(el) => setComboboxRef(idx, el)"
@@ -2059,8 +2092,8 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       </div>
                     </div>
                   </td>
-                  <td class="align-middle px-2 py-2">
-                    <div class="flex max-w-[10rem] flex-wrap gap-1">
+                  <td class="align-middle px-2 py-2" :data-label="t('adminGlobalPricing.thSources')">
+                    <div class="th-admin-pricing-sources flex max-w-full flex-wrap gap-1">
                       <span
                         v-for="src in r.sources || []"
                         :key="src"
@@ -2071,7 +2104,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       <span v-if="!(r.sources && r.sources.length)" class="text-slate-600">—</span>
                     </div>
                   </td>
-                  <td class="th-admin-pricing-col-billing align-middle px-1.5 py-1.5">
+                  <td
+                    class="th-admin-pricing-col-billing align-middle px-1.5 py-1.5"
+                    :data-label="t('adminGlobalPricing.thBilling')"
+                  >
                     <div class="flex flex-col gap-1">
                       <select
                         v-model="r.billing_mode"
@@ -2094,6 +2130,7 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                   <td
                     class="th-admin-pricing-col-token-pair align-middle px-1.5 py-1.5"
                     :class="{ 'opacity-45': !rowUsesTokenQuota(r) }"
+                    :data-label="t('adminGlobalPricing.thTokenQuota')"
                   >
                     <div v-if="rowUsesTokenQuota(r)" class="th-admin-pricing-pair-grid th-admin-pricing-pair-grid--token">
                       <span class="th-admin-pricing-pair-lbl" :title="quotaInHeaderTitle">{{
@@ -2147,7 +2184,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                     </div>
                     <span v-else class="block py-2 text-center text-slate-600">—</span>
                   </td>
-                  <td class="th-admin-pricing-col-markup align-middle px-1 py-1.5">
+                  <td
+                    class="th-admin-pricing-col-markup align-middle px-1 py-1.5"
+                    :data-label="t('adminGlobalPricing.thMarkup')"
+                  >
                     <input
                       v-model="r.markup_percent"
                       type="text"
@@ -2157,7 +2197,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       :title="t('adminGlobalPricing.markupRowHint')"
                     />
                   </td>
-                  <td class="th-admin-pricing-col-rates-pair align-middle px-1.5 py-1.5">
+                  <td
+                    class="th-admin-pricing-col-rates-pair th-admin-pricing-mobile-hide align-middle px-1.5 py-1.5"
+                    :data-label="t('adminGlobalPricing.thRates')"
+                  >
                     <div class="th-admin-pricing-pair-grid th-admin-pricing-pair-grid--rates">
                       <input
                         v-model.number="r.input_rate"
@@ -2177,7 +2220,10 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       />
                     </div>
                   </td>
-                  <td class="th-admin-pricing-col-code-pair align-middle px-1.5 py-1.5 font-mono text-slate-400">
+                  <td
+                    class="th-admin-pricing-col-code-pair th-admin-pricing-mobile-hide align-middle px-1.5 py-1.5 font-mono text-slate-400"
+                    :data-label="t('adminGlobalPricing.thCodeRef')"
+                  >
                     <div class="th-admin-pricing-code-pair tabular-nums">
                       <div class="th-admin-pricing-code-pair__row" :title="displayCodeRefCell(r.code_in_ref).title">
                         <span class="th-admin-pricing-pair-lbl">{{ t('adminGlobalPricing.thQuotaColIn') }}</span>
@@ -2189,14 +2235,20 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                       </div>
                     </div>
                   </td>
-                  <td class="th-admin-pricing-col-enabled align-middle px-1 py-1.5 text-center">
+                  <td
+                    class="th-admin-pricing-col-enabled align-middle px-1 py-1.5 text-center"
+                    :data-label="t('adminGroups.thEn')"
+                  >
                     <input
                       v-model="r.enabled"
                       type="checkbox"
                       class="h-4 w-4 cursor-pointer align-middle accent-cyan-600"
                     />
                   </td>
-                  <td class="th-admin-pricing-sticky-actions align-middle px-1 py-1.5 text-center">
+                  <td
+                    class="th-admin-pricing-sticky-actions align-middle px-1 py-1.5 text-center"
+                    :data-label="t('adminGlobalPricing.thActions')"
+                  >
                     <div class="th-admin-pricing-row-actions">
                       <button
                         type="button"

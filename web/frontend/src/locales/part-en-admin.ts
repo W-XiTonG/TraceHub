@@ -921,6 +921,8 @@ export default {
     saveRowDisabledTip: 'Row matches defaults with no DB row yet — nothing to submit',
     thActions: 'Actions',
     selectAllVisible: 'Select all visible rows',
+    selectRowLabel: 'Select',
+    mobileCardHint: 'Card layout on narrow screens. Edit rates and code reference on desktop or a wider window.',
     savedPage: 'Saved {n} row(s) (current workspace page + bottom custom rows).',
     savedFull: 'Saved {n} row(s) (full list for current filter).',
     savedSelected: 'Saved {n} selected row(s).',

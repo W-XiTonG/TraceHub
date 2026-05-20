@@ -70,6 +70,24 @@ function fiatPerMillion(
   return quotaPer1kToUsdPerMillion(quotaPer1k, factors)
 }
 
+function quotaPerRequestToFiat(
+  quota: number,
+  currency: PriceCurrency,
+  factors: SiteCurrencyFactors,
+): number {
+  if (!(quota >= 0)) return 0
+  if (currency === 'cny' && factors.quotaPerYuan > 0) {
+    return quota / factors.quotaPerYuan
+  }
+  if (currency === 'usd' && factors.quotaPerUsd > 0) {
+    return quota / factors.quotaPerUsd
+  }
+  if (currency === 'usd' && factors.quotaPerYuan > 0 && factors.cnyPerUsd > 0) {
+    return quota / factors.quotaPerYuan / factors.cnyPerUsd
+  }
+  return 0
+}
+
 function canShowFiat(currency: PriceCurrency, factors: SiteCurrencyFactors): boolean {
   if (currency === 'cny') return factors.quotaPerYuan > 0
   return factors.quotaPerUsd > 0 || (factors.quotaPerYuan > 0 && factors.cnyPerUsd > 0)
@@ -88,6 +106,9 @@ function formatFiatLines(
     perMillion: string
     quotaPer1k: string
     quotaUnit: string
+    quotaPerRequest: string
+    perRequest: string
+    hybridFloor: string
     symbolUsd: string
     symbolCny: string
   },
@@ -128,6 +149,9 @@ export function formatModelPricingDisplay(
     perMillion: string
     quotaPer1k: string
     quotaUnit: string
+    quotaPerRequest: string
+    perRequest: string
+    hybridFloor: string
     symbolUsd: string
     symbolCny: string
   },
@@ -146,11 +170,22 @@ export function formatModelPricingDisplay(
   }
   if (pricing.pricing_unit === 'per_request' && (pricing.quota_per_request ?? 0) > 0) {
     const q = pricing.quota_per_request!
-    const sec = `${q} ${labels.quotaUnit}/次`
+    const isHybrid = pricing.billing_mode === 'hybrid_floor'
+    const unitLabel = isHybrid ? labels.hybridFloor : labels.quotaPerRequest
+    const quotaLine = `${q} ${unitLabel}`
+    const showFiat = canShowFiat(currency, factors)
+    const sym = currency === 'usd' ? labels.symbolUsd : labels.symbolCny
+    const fiatAmt = showFiat ? quotaPerRequestToFiat(q, currency, factors) : 0
+    const fiatPrimary =
+      showFiat && fiatAmt > 0
+        ? `${sym}${fmtFiat(fiatAmt)}${labels.perRequest}`
+        : quotaLine
+    const quotaSecondary = showFiat && fiatAmt > 0 ? quotaLine : ''
+    const searchBlob = [fiatPrimary, quotaSecondary].filter(Boolean).join(' ')
     return {
-      fiatPrimary: sec,
-      quotaSecondary: '',
-      searchBlob: sec,
+      fiatPrimary,
+      quotaSecondary,
+      searchBlob,
       free: false,
       unified: true,
     }

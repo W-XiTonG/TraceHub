@@ -95,6 +95,9 @@ const pricingLabels = computed(() => ({
   perMillion: t('modelsPage.pricePerMillion'),
   quotaPer1k: t('modelsPage.priceQuotaPer1k'),
   quotaUnit: t('modelsPage.priceQuotaUnit'),
+  quotaPerRequest: t('modelsPage.priceQuotaPerRequest'),
+  perRequest: t('modelsPage.pricePerRequest'),
+  hybridFloor: t('modelsPage.priceHybridFloor'),
   symbolUsd: '$',
   symbolCny: '¥',
 }))
@@ -262,11 +265,9 @@ function modelLabelsSearchBlob(m: ModelItem): string {
 
 function serviceStatusCell(m: ModelItem): {
   text: string
-  title: string
   pillClass: string
   dotClass: string
 } {
-  const hint = t('modelsPage.thServiceStatusHint')
   const st = (m.service_status ?? '').trim()
   const baseAvail =
     'th-models-upstream-pill th-models-upstream-pill--available border border-emerald-400/25 bg-gradient-to-br from-emerald-500/[0.22] via-teal-500/10 to-slate-900/40 text-emerald-50'
@@ -278,28 +279,24 @@ function serviceStatusCell(m: ModelItem): {
     case 'operational':
       return {
         text: t('modelsPage.serviceStatusOperational'),
-        title: hint,
         pillClass: baseAvail,
         dotClass: 'th-models-upstream-pill-dot bg-emerald-400',
       }
     case 'stale':
       return {
         text: t('modelsPage.serviceStatusStale'),
-        title: hint,
         pillClass: baseStale,
         dotClass: 'th-models-upstream-pill-dot bg-slate-500',
       }
     case 'degraded':
       return {
         text: t('modelsPage.serviceStatusDegraded'),
-        title: hint,
         pillClass: basePartial,
         dotClass: 'th-models-upstream-pill-dot bg-amber-400',
       }
     default:
       return {
         text: t('modelsPage.serviceStatusCatalogOnly'),
-        title: hint,
         pillClass: baseStale,
         dotClass: 'th-models-upstream-pill-dot bg-slate-600',
       }
@@ -308,7 +305,6 @@ function serviceStatusCell(m: ModelItem): {
 
 function upstreamListCell(m: ModelItem): {
   text: string
-  title: string
   variant: 'unknown' | 'available' | 'unavailable' | 'partial'
   pillClass: string
   dotClass: string
@@ -318,21 +314,16 @@ function upstreamListCell(m: ModelItem): {
   if (!m.in_gateway) {
     return {
       text: t('modelsPage.upstreamUnknown'),
-      title: '',
       variant: 'unknown',
       pillClass: unknownPill,
       dotClass: 'th-models-upstream-pill-dot bg-slate-600',
     }
   }
   const st = (m.upstream_list_status ?? '').trim()
-  const checked = (m.upstream_list_checked_at ?? '').trim()
-  const hint = t('modelsPage.thUpstreamListHint')
-  const timeTitle = checked ? `${checked}\n${hint}` : hint
   switch (st) {
     case 'listed':
       return {
         text: t('modelsPage.upstreamAvailable'),
-        title: timeTitle,
         variant: 'available',
         pillClass:
           'th-models-upstream-pill th-models-upstream-pill--available border border-emerald-400/25 bg-gradient-to-br from-emerald-500/[0.22] via-teal-500/10 to-slate-900/40 text-emerald-50 ring-1 ring-inset ring-white/[0.06] shadow-[0_0_28px_-12px_rgba(16,185,129,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]',
@@ -341,7 +332,6 @@ function upstreamListCell(m: ModelItem): {
     case 'not_listed':
       return {
         text: t('modelsPage.upstreamUnavailable'),
-        title: timeTitle,
         variant: 'unavailable',
         pillClass:
           'th-models-upstream-pill th-models-upstream-pill--unavailable border border-rose-400/25 bg-gradient-to-br from-rose-500/[0.18] via-fuchsia-900/10 to-slate-900/45 text-rose-50 ring-1 ring-inset ring-white/[0.05] shadow-[0_0_26px_-12px_rgba(244,63,94,0.45),inset_0_1px_0_rgba(255,255,255,0.05)]',
@@ -350,7 +340,6 @@ function upstreamListCell(m: ModelItem): {
     case 'mixed':
       return {
         text: t('modelsPage.upstreamPartial'),
-        title: timeTitle,
         variant: 'partial',
         pillClass:
           'th-models-upstream-pill th-models-upstream-pill--partial border border-amber-400/30 bg-gradient-to-br from-amber-500/[0.2] via-violet-600/10 to-slate-900/40 text-amber-50 ring-1 ring-inset ring-white/[0.06] shadow-[0_0_28px_-12px_rgba(245,158,11,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]',
@@ -359,7 +348,6 @@ function upstreamListCell(m: ModelItem): {
     default:
       return {
         text: t('modelsPage.upstreamUnknown'),
-        title: hint,
         variant: 'unknown',
         pillClass: unknownPill,
         dotClass: 'th-models-upstream-pill-dot bg-slate-500',
@@ -510,7 +498,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+  <div class="flex min-h-0 min-w-0 flex-col lg:flex-1">
     <p class="th-kicker mb-2"><span class="th-kicker-accent">{{ t('modelsPage.kicker') }}</span></p>
     <h1 class="text-3xl font-semibold tracking-tight text-slate-100">{{ t('modelsPage.title') }}</h1>
     <p class="mt-2 max-w-2xl shrink-0 text-sm leading-relaxed text-slate-500">
@@ -666,19 +654,25 @@ onMounted(load)
         </div>
       </div>
 
-      <div class="th-glass relative mt-6 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <ThLoadingState v-if="loadingUi" variant="overlay" :label="t('modelsPage.loading')" />
+      <div
+        class="th-glass relative mt-6 flex min-w-0 flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden"
+      >
+        <ThLoadingState
+          v-if="loadingUi && filtered.length === 0"
+          variant="overlay"
+          :label="t('modelsPage.loading')"
+        />
         <div class="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
         <div class="th-table-wrap th-table-wrap--scrollable thin-scrollbar min-h-0 flex-1">
           <table class="w-full text-left text-sm">
             <thead class="sticky top-0 z-10">
               <tr class="border-b border-white/[0.06] bg-slate-900/95 text-xs uppercase tracking-wider text-slate-500 shadow-[0_1px_0_rgba(0,0,0,0.35)] backdrop-blur-sm">
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thModel') }}</th>
-                <th class="px-4 py-3 font-medium" :title="t('modelsPage.priceHint')">{{ t('modelsPage.thPrice') }}</th>
-                <th class="px-4 py-3 font-medium" :title="t('modelsPage.labelsHint')">{{ t('modelsPage.thLabels') }}</th>
+                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thPrice') }}</th>
+                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thLabels') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thSource') }}</th>
-                <th class="px-4 py-3 font-medium" :title="t('modelsPage.thServiceStatusHint')">{{ t('modelsPage.thServiceStatus') }}</th>
-                <th class="px-4 py-3 font-medium" :title="t('modelsPage.thUpstreamListHint')">{{ t('modelsPage.thUpstreamList') }}</th>
+                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thServiceStatus') }}</th>
+                <th class="px-4 py-3 font-medium">{{ t('modelsPage.thUpstreamList') }}</th>
                 <th class="px-4 py-3 font-medium">{{ t('modelsPage.thOwner') }}</th>
               </tr>
             </thead>
@@ -694,7 +688,7 @@ onMounted(load)
                     {{ m.id }}
                   </div>
                 </td>
-                <td class="px-4 py-3" :title="t('modelsPage.priceHint')">
+                <td class="px-4 py-3">
                   <template v-for="price in [modelPricingCell(m)]" :key="`${m.id}-price`">
                     <span
                       v-if="price.free"
@@ -717,7 +711,6 @@ onMounted(load)
                       v-for="lab in m.labels ?? []"
                       :key="`${m.id}-kind-${lab}`"
                       class="th-model-kind-pill"
-                      :title="t('modelsPage.labelsHint')"
                     >
                       {{ modelKindDisplayLabel(lab) }}
                     </span>
@@ -735,7 +728,6 @@ onMounted(load)
                     :key="`${m.id}-svc`"
                     class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none"
                     :class="cell.pillClass"
-                    :title="cell.title"
                   >
                     <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
                     <span class="min-w-0 truncate">{{ cell.text }}</span>
@@ -748,7 +740,6 @@ onMounted(load)
                     class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide tabular-nums backdrop-blur-[2px] transition-[box-shadow,transform] duration-200 hover:brightness-110"
                     :class="cell.pillClass"
                     :data-upstream-variant="cell.variant"
-                    :title="cell.title"
                   >
                     <span
                       class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
@@ -765,7 +756,7 @@ onMounted(load)
         </div>
         </div>
 
-        <div class="thin-scrollbar space-y-3 overflow-y-auto p-3 lg:hidden">
+        <div class="space-y-3 p-3 lg:hidden">
           <MobileLabelValueCard v-for="m in filtered" :key="`card-${m.id}`">
             <template #title>
               <p class="font-medium text-slate-200">{{ modelTitle(m.display_name, m.id) }}</p>
@@ -803,7 +794,6 @@ onMounted(load)
                 :key="`${m.id}-msvc`"
                 class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none"
                 :class="cell.pillClass"
-                :title="cell.title"
               >
                 <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
                 <span class="min-w-0 truncate">{{ cell.text }}</span>
@@ -815,7 +805,6 @@ onMounted(load)
                 :key="`${m.id}-mupstream`"
                 class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide tabular-nums backdrop-blur-[2px]"
                 :class="cell.pillClass"
-                :title="cell.title"
               >
                 <span class="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20" :class="cell.dotClass" aria-hidden="true" />
                 <span class="min-w-0 truncate">{{ cell.text }}</span>
@@ -825,12 +814,20 @@ onMounted(load)
               {{ m.owned_by ?? t('modelsPage.dash') }}
             </MobileLabelValueRow>
           </MobileLabelValueCard>
+          <p v-if="payload.total === 0" class="py-12 text-center text-sm text-slate-500">
+            {{ t('modelsPage.emptyData') }}
+          </p>
+          <p v-else-if="filtered.length === 0" class="py-8 text-center text-sm text-slate-500">
+            {{ t('modelsPage.emptyFilter') }}
+          </p>
         </div>
 
-        <p v-if="payload.total === 0" class="px-4 py-12 text-center text-sm text-slate-500">
+        <p v-if="payload.total === 0" class="hidden px-4 py-12 text-center text-sm text-slate-500 lg:block">
           {{ t('modelsPage.emptyData') }}
         </p>
-        <p v-else-if="filtered.length === 0" class="px-4 py-8 text-center text-sm text-slate-500">{{ t('modelsPage.emptyFilter') }}</p>
+        <p v-else-if="filtered.length === 0" class="hidden px-4 py-8 text-center text-sm text-slate-500 lg:block">
+          {{ t('modelsPage.emptyFilter') }}
+        </p>
       </div>
     </template>
   </div>

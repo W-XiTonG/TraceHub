@@ -907,6 +907,8 @@ export default {
     saveRowDisabledTip: '当前行与默认值一致且无库记录，无需单独提交',
     thActions: '操作',
     selectAllVisible: '全选当前可见行',
+    selectRowLabel: '选择',
+    mobileCardHint: '手机端以卡片编辑；倍率与代码基准请用宽屏或电脑查看。',
     savedPage: '已保存 {n} 条（当前页工作区 + 底部自定义行）',
     savedFull: '已保存 {n} 条（当前筛选下全量）',
     savedSelected: '已保存 {n} 条（选中行）',

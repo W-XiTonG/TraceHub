@@ -910,6 +910,8 @@ export default {
     saveRowDisabledTip: '此列與預設值一致且尚無庫記錄，無需單獨提交',
     thActions: '操作',
     selectAllVisible: '全選目前可見列',
+    selectRowLabel: '選擇',
+    mobileCardHint: '手機端以卡片編輯；倍率與程式碼基準請用寬螢幕或電腦查看。',
     savedPage: '已儲存 {n} 筆（目前頁工作區 + 底部自訂列）',
     savedFull: '已儲存 {n} 筆（目前篩選下全量）',
     savedSelected: '已儲存 {n} 筆（已選列）',
