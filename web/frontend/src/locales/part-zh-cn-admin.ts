@@ -370,6 +370,8 @@ export default {
     routingFixedOrder: '固定顺序（model_routing）',
     overrideRoutingOptions: '覆盖全局路由选项',
     lblFailover: '启用故障转移',
+    hintFailover:
+      '同一模型有多条渠道时，连接失败、5xx、429 会自动换渠道；4xx 与已开始输出的流式不重试。留空继承全局默认。',
     lblFailoverMax: '最大尝试次数（含首次）',
     lblSticky: '启用粘性会话',
     modelRoutingHint: '为每个模型填写渠道 ID 顺序（逗号分隔）；多 ID 时在固定顺序策略下按序 failover，其他策略下作为绑定白名单',
@@ -761,6 +763,11 @@ export default {
     routingPriority: '优先级',
     routingFixedOrder: '固定顺序',
     lblRoutingFailover: '默认启用故障转移',
+    hintRoutingFailoverRecommend: '推荐开启（同一模型配置多条渠道时）',
+    hintRoutingFailoverOn:
+      '开启后：同一模型有多条渠道时，连接失败、5xx、429 会自动换渠道重试（次数见下方）。流式请求仅在尚未开始向客户端输出时才会换渠道。',
+    hintRoutingFailoverOff:
+      '不会重试：4xx（密钥、参数、余额等）、已向客户端开始输出的流式响应。',
     lblRoutingFailoverMax: '默认最大尝试次数',
     lblRoutingSticky: '默认启用粘性会话',
     lblRoutingAutoHealth: '探测失败自动标记渠道不健康',

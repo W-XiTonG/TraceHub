@@ -12,10 +12,11 @@ import (
 
 // UpstreamResult 上游 HTTP 转发结果。
 type UpstreamResult struct {
-	StatusCode   int
-	Body         []byte
-	Headers      http.Header
-	TransportErr error
+	StatusCode     int
+	Body           []byte
+	Headers        http.Header
+	TransportErr   error
+	StreamResponse *http.Response // 仅流式 200 且未读 body 时使用；调用方负责关闭
 }
 
 // UpstreamAttemptFunc 执行一次上游请求。

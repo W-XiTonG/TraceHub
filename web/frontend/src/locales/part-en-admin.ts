@@ -374,6 +374,8 @@ export default {
     routingFixedOrder: 'Fixed order (model_routing)',
     overrideRoutingOptions: 'Override global routing options',
     lblFailover: 'Enable failover',
+    hintFailover:
+      'For models with multiple channels, connection errors, 5xx, and 429 switch channels automatically; 4xx and in-progress streams do not retry. Leave unchecked to inherit global defaults.',
     lblFailoverMax: 'Max attempts (incl. first)',
     lblSticky: 'Enable sticky session',
     modelRoutingHint: 'Per model, comma-separated channel IDs; multiple IDs define failover order under fixed_order, or a binding whitelist under other strategies',
@@ -772,6 +774,11 @@ export default {
     routingPriority: 'Priority',
     routingFixedOrder: 'Fixed order',
     lblRoutingFailover: 'Default enable failover',
+    hintRoutingFailoverRecommend: 'Recommended when a model has multiple channels',
+    hintRoutingFailoverOn:
+      'When on: for models with multiple channels, connection errors, 5xx, and 429 trigger automatic channel switch (up to max attempts below). Streaming retries only before bytes are sent to the client.',
+    hintRoutingFailoverOff:
+      'No retry for: 4xx (keys, parameters, balance, etc.) and streaming responses that have already started writing to the client.',
     lblRoutingFailoverMax: 'Default max attempts',
     lblRoutingSticky: 'Default enable sticky session',
     lblRoutingAutoHealth: 'Mark channel unhealthy after probe failures',

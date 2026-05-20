@@ -506,6 +506,7 @@ onMounted(load)
       <code class="th-dash-code-inline px-1.5 py-0.5 text-xs">GET /v1/models</code>
       {{ t('modelsPage.mid2') }}<span class="text-slate-400">{{ t('modelsPage.cat') }}</span>{{ t('modelsPage.after') }}
     </p>
+    <p class="mt-2 max-w-2xl shrink-0 text-xs leading-relaxed text-slate-500">{{ t('modelsPage.routingAvailabilityHint') }}</p>
 
     <p v-if="err" class="mt-4 shrink-0 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2 text-sm text-red-300">{{ err }}</p>
 

@@ -151,30 +151,42 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		switch {
 		case router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras):
 			if stream {
-				resp, err := relay.ForwardOpenAIChat(c.Request.Context(), baseURL, secret, patched, true)
+				routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
+				sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, false, sel, body, nil,
+					func(b []byte) []byte {
+						out, _ := injectStreamUsageJSON(b)
+						return out
+					},
+					func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
+						secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+						if !ok {
+							return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+						}
+						resp, ferr := relay.ForwardOpenAIChat(ctx, baseURL, secret, patched, true)
+						return HTTPStreamResponseToUpstreamResult(resp, ferr)
+					})
 				if err != nil {
-					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 0, err, nil)
 					metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
 					WriteGatewayTransportError(c, err)
 					return
 				}
-				defer relay.DrainBody(resp.Body)
+				ch = sel.Channel
+				ct = strings.ToLower(strings.TrimSpace(ch.ChannelType))
 				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-
-				if resp.StatusCode >= 400 {
-					rawErr, _ := io.ReadAll(resp.Body)
-					RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, resp.StatusCode, nil, nil)
-					out := SanitizeClientProxyBody(resp.StatusCode, "application/json", rawErr)
-					c.Writer.Header().Set("Content-Type", "application/json")
-					c.Writer.WriteHeader(resp.StatusCode)
-					if f, ok := c.Writer.(http.Flusher); ok {
-						f.Flush()
-					}
-					_, _ = c.Writer.Write(out)
-					metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(resp.StatusCode)).Inc()
-					logUpstreamQuotaDeclineIfLikely(c, resp.StatusCode, out)
+				if res.StatusCode >= 400 {
+					metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+					out := SanitizeClientProxyBody(res.StatusCode, "application/json", res.Body)
+					logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, out)
+					WriteClientProxy(c, res.StatusCode, "application/json", out)
 					return
 				}
+				resp := res.StreamResponse
+				if resp == nil || resp.Body == nil {
+					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
+					middleware.WriteOpenAIError(c, 502, "api_error", "上游响应无效")
+					return
+				}
+				defer relay.DrainBody(resp.Body)
 				h := resp.Header.Get("Content-Type")
 				if h != "" {
 					c.Writer.Header().Set("Content-Type", h)

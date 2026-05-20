@@ -95,7 +95,7 @@ export function createAdminSiteSettings() {
     upstreamCapabilityFailStaleHours: 6,
     upstreamCapabilityProbeEnabled: false,
     routingStrategy: 'weighted_random',
-    routingFailoverEnabled: false,
+    routingFailoverEnabled: true,
     routingFailoverMaxAttempts: 2,
     routingStickyEnabled: true,
     routingAutoHealthFromProbe: false,

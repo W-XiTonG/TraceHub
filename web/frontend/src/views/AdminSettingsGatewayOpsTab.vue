@@ -25,8 +25,15 @@ const s = inject(adminSiteSettingsKey)!
         </div>
         <label class="flex cursor-pointer items-start gap-3">
           <input v-model="s.form.routingFailoverEnabled" type="checkbox" class="mt-1" />
-          <span class="text-xs text-slate-300">{{ t('adminSystem.lblRoutingFailover') }}</span>
+          <span class="block text-xs text-slate-300">
+            {{ t('adminSystem.lblRoutingFailover') }}
+            <span class="mt-0.5 block text-[11px] text-slate-500">{{ t('adminSystem.hintRoutingFailoverRecommend') }}</span>
+          </span>
         </label>
+        <p v-if="s.form.routingFailoverEnabled" class="text-[11px] leading-relaxed text-slate-500">
+          {{ t('adminSystem.hintRoutingFailoverOn') }}
+        </p>
+        <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintRoutingFailoverOff') }}</p>
         <div v-if="s.form.routingFailoverEnabled">
           <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminSystem.lblRoutingFailoverMax') }}</label>
           <input v-model.number="s.form.routingFailoverMaxAttempts" type="number" min="1" max="5" class="th-input max-w-xs font-mono text-sm" />

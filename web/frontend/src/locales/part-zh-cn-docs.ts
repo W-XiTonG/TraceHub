@@ -180,7 +180,8 @@ export default {
     routingFailoverP:
       '全局与各分组均可配置，默认关闭。开启后，非流式请求在服务端 5xx、HTTP 429 或传输失败时，网关可能自动换渠道重试（最大次数通常 1–5，可配置）。',
     routingFailoverLi1: '4xx 等业务错误不会重试，避免重复扣费或重复副作用。',
-    routingFailoverLi2: '流式 SSE、已开始向客户端输出的下载、大文件 multipart 上传等路径通常不重试。',
+    routingFailoverLi2:
+      '流式请求在尚未开始向客户端输出时，也会对 5xx、429、连接错误自动换渠道；一旦开始输出则不再切换。已开始向客户端输出的下载、大文件 multipart 上传等路径通常不重试。',
     routingFailoverLi3: 'failover 关闭时，每条请求只选路一次，与未启用该功能时性能一致。',
     routingHealthH3: '健康状态与错误反馈',
     routingHealthP:

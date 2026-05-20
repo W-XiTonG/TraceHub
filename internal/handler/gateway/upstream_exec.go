@@ -91,6 +91,30 @@ func HTTPResponseToUpstreamResult(resp *http.Response, transportErr error) (*rou
 	}, nil
 }
 
+// HTTPStreamResponseToUpstreamResult 流式尝试：失败时读尽 body 并关闭；200 时保留 *http.Response 供 SSE 透传。
+func HTTPStreamResponseToUpstreamResult(resp *http.Response, transportErr error) (*router.UpstreamResult, error) {
+	if transportErr != nil {
+		return &router.UpstreamResult{TransportErr: transportErr}, transportErr
+	}
+	if resp == nil {
+		return nil, nil
+	}
+	if resp.StatusCode >= 400 {
+		raw, _ := io.ReadAll(resp.Body)
+		relay.DrainBody(resp.Body)
+		return &router.UpstreamResult{
+			StatusCode: resp.StatusCode,
+			Body:       raw,
+			Headers:    resp.Header,
+		}, nil
+	}
+	return &router.UpstreamResult{
+		StatusCode:     resp.StatusCode,
+		Headers:        resp.Header,
+		StreamResponse: resp,
+	}, nil
+}
+
 func (d RoutingExecDeps) executeWithFailoverRecorded(
 	ctx context.Context,
 	userID int64,

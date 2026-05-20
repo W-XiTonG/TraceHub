@@ -1066,6 +1066,7 @@ onMounted(load)
                 <span class="text-xs text-slate-400">{{ t('adminGroups.overrideRoutingOptions') }}</span>
               </label>
               <div v-if="editForm.overrideRoutingOptions" class="mb-3 space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminGroups.hintFailover') }}</p>
                 <label class="flex items-center gap-2 text-xs text-slate-300">
                   <input v-model="editForm.failoverEnabled" type="checkbox" />
                   {{ t('adminGroups.lblFailover') }}

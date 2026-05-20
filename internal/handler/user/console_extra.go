@@ -143,6 +143,7 @@ func MyGroup(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		g := fu.Edges.Group
+		routing, _ := router.ResolveRoutingConfig(ctx, client, g.ID)
 		rates, err := client.GroupModelRate.Query().
 			Where(groupmodelrate.GroupIDEQ(g.ID)).
 			Order(ent.Asc(groupmodelrate.FieldModelName)).
@@ -153,13 +154,17 @@ func MyGroup(client *ent.Client) gin.HandlerFunc {
 		}
 		httpx.OK(c, gin.H{
 			"group": gin.H{
-				"id":                g.ID,
-				"name":              g.Name,
-				"description":       g.Description,
-				"rate_multiplier":   g.RateMultiplier,
-				"rpm_limit":         g.RpmLimit,
-				"default_model":     g.DefaultModel,
-				"subscription_type": g.SubscriptionType,
+				"id":                      g.ID,
+				"name":                    g.Name,
+				"description":             g.Description,
+				"rate_multiplier":         g.RateMultiplier,
+				"rpm_limit":               g.RpmLimit,
+				"default_model":           g.DefaultModel,
+				"subscription_type":       g.SubscriptionType,
+				"routing_strategy":        routing.Strategy,
+				"failover_enabled":        routing.FailoverEnabled,
+				"failover_max_attempts":   routing.FailoverMaxAttempts,
+				"sticky_enabled":          routing.StickyEnabled,
 			},
 			"model_rates": rates,
 		})

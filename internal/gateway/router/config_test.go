@@ -26,8 +26,8 @@ func TestResolveRoutingConfig_inheritGlobal(t *testing.T) {
 	if cfg.Strategy != sitecfg.RoutingStrategyWeightedRandom {
 		t.Fatalf("strategy=%q", cfg.Strategy)
 	}
-	if cfg.FailoverEnabled {
-		t.Fatal("expected failover off by default")
+	if !cfg.FailoverEnabled {
+		t.Fatal("expected failover on by default")
 	}
 	if !cfg.StickyEnabled {
 		t.Fatal("expected sticky on by default")

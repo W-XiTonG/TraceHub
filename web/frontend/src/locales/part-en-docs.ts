@@ -180,7 +180,8 @@ export default {
     routingFailoverP:
       'Configurable globally and per group; off by default. When on, non-streaming requests may retry on remote 5xx, HTTP 429, or transport failure (max attempts typically 1–5).',
     routingFailoverLi1: '4xx business errors are not retried—avoids duplicate side effects or charges.',
-    routingFailoverLi2: 'Streaming SSE, downloads already writing to the client, and large multipart uploads usually do not retry.',
+    routingFailoverLi2:
+      'For streaming, 5xx, 429, and connection errors retry on another channel only before bytes are sent to the client; once output starts, no switch. Downloads already writing to the client and large multipart uploads usually do not retry.',
     routingFailoverLi3: 'With failover off, each request selects a channel once—same performance as before the feature.',
     routingHealthH3: 'Health & error feedback',
     routingHealthP:

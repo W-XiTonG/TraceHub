@@ -37,7 +37,7 @@ type RoutingDefaults struct {
 func DefaultRoutingDefaults() RoutingDefaults {
 	return RoutingDefaults{
 		Strategy:            RoutingStrategyWeightedRandom,
-		FailoverEnabled:     false,
+		FailoverEnabled:     true,
 		FailoverMaxAttempts: 2,
 		StickyEnabled:       true,
 		AutoHealthFromProbe: false,

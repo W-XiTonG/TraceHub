@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
@@ -18,6 +18,10 @@ type GroupInfo = {
   rpm_limit: number
   default_model?: string
   subscription_type?: string
+  routing_strategy?: string
+  failover_enabled?: boolean
+  failover_max_attempts?: number
+  sticky_enabled?: boolean
 }
 
 type RateRow = {
@@ -32,6 +36,29 @@ const group = ref<GroupInfo | null>(null)
 const rates = ref<RateRow[]>([])
 const err = ref('')
 const { busy: loading, visible: loadingUi, run: runLoad } = useSmoothLoading()
+
+const routingStrategyLabel = computed(() => {
+  const s = group.value?.routing_strategy?.trim() || 'weighted_random'
+  if (s === 'priority') return t('groupPage.routingPriority')
+  if (s === 'fixed_order') return t('groupPage.routingFixedOrder')
+  return t('groupPage.routingWeighted')
+})
+
+const failoverSummary = computed(() => {
+  const g = group.value
+  if (!g) return ''
+  if (g.failover_enabled) {
+    const n = Math.min(5, Math.max(1, g.failover_max_attempts ?? 2))
+    return t('groupPage.failoverOn', { n })
+  }
+  return t('groupPage.failoverOff')
+})
+
+const stickySummary = computed(() => {
+  const g = group.value
+  if (!g) return ''
+  return g.sticky_enabled !== false ? t('groupPage.stickyOn') : t('groupPage.stickyOff')
+})
 
 onMounted(async () => {
   await runLoad(async () => {
@@ -62,6 +89,16 @@ onMounted(async () => {
         <div v-if="group.default_model"><span class="text-slate-500">{{ t('groupPage.defModel') }}</span> <span class="ml-2 break-all font-mono text-xs">{{ group.default_model }}</span></div>
         <div><span class="text-slate-500">{{ t('groupPage.billType') }}</span> <span class="ml-2">{{ group.subscription_type || t('modelsPage.dash') }}</span></div>
       </dl>
+      <div class="mt-6 border-t border-slate-800 pt-4">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('groupPage.secRouting') }}</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-slate-300">
+          <li>
+            <span class="text-slate-500">{{ t('groupPage.routingStrategy') }}：</span>{{ routingStrategyLabel }}
+          </li>
+          <li>{{ failoverSummary }}</li>
+          <li>{{ stickySummary }}</li>
+        </ul>
+      </div>
     </div>
     <div v-else-if="!err" class="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-slate-500">{{ t('groupPage.noGroup') }}</div>
 
