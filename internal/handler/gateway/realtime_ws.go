@@ -81,7 +81,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			rec.SetChannel(ch.ID, sel.UpstreamModel)
 		}
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(chType, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}

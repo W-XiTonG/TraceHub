@@ -118,7 +118,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
@@ -265,7 +265,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}

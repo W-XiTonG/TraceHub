@@ -100,7 +100,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 
 		ch := route.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}

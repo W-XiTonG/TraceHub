@@ -104,7 +104,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		}
 		ch := sel.Channel
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(chType, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}
@@ -330,7 +330,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		}
 		ch := sel.Channel
 		chType := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(chType, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(chType, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}

@@ -134,7 +134,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		}
 		ch := sel.Channel
 		ct := strings.ToLower(strings.TrimSpace(ch.ChannelType))
-		if !router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+		if !router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras) {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 			return
 		}

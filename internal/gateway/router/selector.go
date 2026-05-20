@@ -12,6 +12,7 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
+	"tracehub/internal/pkg/channelmeta"
 	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/redis/go-redis/v9"
@@ -149,20 +150,7 @@ func PatchModelInBody(body []byte, upstream string) ([]byte, error) {
 }
 
 func DefaultBaseURL(chType string) string {
-	switch strings.ToLower(chType) {
-	case "openai":
-		return "https://api.openai.com/v1"
-	case "deepseek":
-		return "https://api.deepseek.com/v1"
-	case "claude":
-		return "https://api.anthropic.com/v1"
-	case "gemini":
-		return "https://generativelanguage.googleapis.com"
-	case "volcengine":
-		return "https://ark.cn-beijing.volces.com/api/v3"
-	default:
-		return ""
-	}
+	return channelmeta.DefaultBaseURL(chType)
 }
 
 // StrategyName 返回生效策略名（供调试头）。

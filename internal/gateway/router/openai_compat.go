@@ -21,3 +21,11 @@ func IsOpenAICompatChannelType(channelType string, extra []string) bool {
 	}
 	return false
 }
+
+// UsesOpenAICompatRelay 是否走 OpenAI 兼容 JSON/SSE/multipart relay（含火山方舟 Ark /api/v3）。
+func UsesOpenAICompatRelay(channelType string, extra []string) bool {
+	if IsOpenAICompatChannelType(channelType, extra) {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(channelType), "volcengine")
+}

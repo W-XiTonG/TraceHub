@@ -306,6 +306,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.DELETE("/channels/:id", adminhandler.DeleteChannel(opt.Client))
 	a.POST("/channels/:id/probe-upstream-models", adminhandler.ProbeChannelUpstream(chAdmin))
 	a.POST("/channels/:id/probe-capabilities", adminhandler.ProbeChannelCapabilitiesHandler(chAdmin))
+	a.GET("/channel-types", adminhandler.ChannelTypes())
 	a.GET("/channel-model-presets", adminhandler.ChannelModelPresets(opt.Client))
 	a.POST("/channel-models/fetch-upstream", adminhandler.FetchUpstreamModelList())
 	a.GET("/groups", adminhandler.ListGroups(opt.Client))

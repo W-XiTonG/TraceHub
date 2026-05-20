@@ -9,57 +9,15 @@ import (
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/modelcatalogentry"
+	"tracehub/internal/pkg/channelmeta"
 	"tracehub/internal/pkg/httpx"
-	"tracehub/internal/service/billing"
 	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
 )
 
-// modelMatchesChannelType 判断内置模型 ID 是否大致属于某渠道类型（用于推荐列表过滤）。
-func modelMatchesChannelType(modelID, channelType string) bool {
-	m := strings.ToLower(strings.TrimSpace(modelID))
-	ct := strings.ToLower(strings.TrimSpace(channelType))
-	switch ct {
-	case "openai":
-		return strings.HasPrefix(m, "gpt") || strings.HasPrefix(m, "o1") ||
-			strings.HasPrefix(m, "o3") || strings.Contains(m, "embedding")
-	case "deepseek":
-		return strings.HasPrefix(m, "deepseek")
-	case "claude":
-		return strings.HasPrefix(m, "claude")
-	case "gemini":
-		return strings.HasPrefix(m, "gemini")
-	case "volcengine":
-		return strings.Contains(m, "seedance") || strings.Contains(m, "doubao-seedance") ||
-			strings.HasPrefix(m, "seedance")
-	default:
-		return true
-	}
-}
-
-var volcengineVideoPresetModels = []string{
-	// Seedance 2.0（方舟官方 Model ID，非简写 seedance-2-0）
-	"doubao-seedance-2-0-260128",
-	"doubao-seedance-2-0-fast-260128",
-	"doubao-seedance-1-0-pro-250528",
-	"doubao-seedance-1-0-lite-250528",
-	"doubao-seedance-1-0-lite-i2v-250428", // 图生视频专用；方舟常需 model_alias → ep- 接入点
-	"doubao-seedance-1-5-pro-251215",
-	"seedance-1-0-pro",
-}
-
 func builtInModelIDsForChannelType(channelType string) []string {
-	if strings.EqualFold(strings.TrimSpace(channelType), "volcengine") {
-		return append([]string(nil), volcengineVideoPresetModels...)
-	}
-	var out []string
-	for _, id := range billing.DefaultModelIDs() {
-		if modelMatchesChannelType(id, channelType) {
-			out = append(out, id)
-		}
-	}
-	return out
+	return channelmeta.BuiltInPresetModels(channelType)
 }
 
 func catalogModelIDsForChannelType(ctx context.Context, client *ent.Client, channelType string) ([]string, error) {
@@ -69,7 +27,6 @@ func catalogModelIDsForChannelType(ctx context.Context, client *ent.Client, chan
 			modelcatalogentry.Visible(true),
 			modelcatalogentry.Enabled(true),
 		)
-	// 目录里 provider_slug 与渠道类型一致，或留空表示通用，都纳入推荐
 	rows, err := q.All(ctx)
 	if err != nil {
 		return nil, err
@@ -111,8 +68,31 @@ func mergeUniqueSorted(a, b []string) []string {
 	return out
 }
 
+func metaJSON(m channelmeta.Meta) gin.H {
+	return gin.H{
+		"channel_type":     m.ChannelType,
+		"display_name":     m.DisplayName,
+		"default_base_url": m.DefaultBaseURL,
+		"capabilities":     m.Capabilities,
+		"video_protocol":   m.VideoProtocol,
+		"admin_hints":      m.AdminHints,
+	}
+}
+
+// ChannelTypes GET /api/admin/channel-types — 全部已注册渠道类型元数据。
+func ChannelTypes() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		all := channelmeta.All()
+		items := make([]gin.H, 0, len(all))
+		for _, m := range all {
+			items = append(items, metaJSON(m))
+		}
+		httpx.OK(c, gin.H{"items": items})
+	}
+}
+
 // ChannelModelPresets GET /api/admin/channel-model-presets?channel_type=openai
-// 返回内置推荐、模型目录、合并列表，供管理后台批量填入渠道模型列表。
+// 返回内置推荐、模型目录、合并列表及渠道类型元数据，供管理后台批量填入渠道模型列表。
 func ChannelModelPresets(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ct := c.Query("channel_type")
@@ -128,12 +108,21 @@ func ChannelModelPresets(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		merged := mergeUniqueSorted(builtIn, catalog)
-		httpx.OK(c, gin.H{
-			"channel_type": ct,
-			"built_in":     builtIn,
-			"catalog":      catalog,
-			"merged":       merged,
-		})
+		resp := gin.H{
+			"channel_type":     ct,
+			"built_in":         builtIn,
+			"catalog":          catalog,
+			"merged":           merged,
+			"default_base_url": channelmeta.DefaultBaseURL(ct),
+		}
+		if m, ok := channelmeta.Lookup(ct); ok {
+			resp["meta"] = metaJSON(m)
+			resp["display_name"] = m.DisplayName
+			resp["capabilities"] = m.Capabilities
+			resp["video_protocol"] = m.VideoProtocol
+			resp["admin_hints"] = m.AdminHints
+		}
+		httpx.OK(c, resp)
 	}
 }
 
@@ -156,12 +145,9 @@ func FetchUpstreamModelList() gin.HandlerFunc {
 			return
 		}
 		baseURL := strings.TrimSpace(req.APIBaseURL)
-		if baseURL == "" && strings.EqualFold(strings.TrimSpace(req.ChannelType), "volcengine") {
-			baseURL = "https://ark.cn-beijing.volces.com/api/v3"
-		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 55*time.Second)
 		defer cancel()
-		ids, fetchedURL, err := upstreamprobe.FetchUpstreamModelIDs(ctx, baseURL, key)
+		ids, fetchedURL, err := upstreamprobe.FetchUpstreamModelIDs(ctx, req.ChannelType, baseURL, key)
 		if err != nil {
 			msg := err.Error()
 			if strings.Contains(msg, "invalid api_base_url") ||
@@ -183,12 +169,13 @@ func FetchUpstreamModelList() gin.HandlerFunc {
 			httpx.Err(c, http.StatusBadGateway, 50201, "连接上游失败（请检查网络、代理与 api_base_url）: "+msg)
 			return
 		}
-		base, _ := upstreamprobe.NormalizeOpenAICompatBaseURL(baseURL)
+		resolved, _ := upstreamprobe.ResolveModelsListBaseURL(req.ChannelType, baseURL)
 		httpx.OK(c, gin.H{
 			"model_ids":         ids,
 			"count":             len(ids),
-			"resolved_base_url": base,
+			"resolved_base_url": resolved,
 			"fetched_url":       fetchedURL,
+			"default_base_url":  channelmeta.DefaultBaseURL(req.ChannelType),
 		})
 	}
 }

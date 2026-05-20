@@ -98,7 +98,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 		return
 	}
 	ctPreview := strings.ToLower(strings.TrimSpace(previewSel.Channel.ChannelType))
-	if !router.IsOpenAICompatChannelType(ctPreview, d.OpenAICompatExtras) {
+	if !router.UsesOpenAICompatRelay(ctPreview, d.OpenAICompatExtras) {
 		middleware.WriteOpenAIError(c, 400, "invalid_request_error", MsgCapabilityUnsupported)
 		return
 	}

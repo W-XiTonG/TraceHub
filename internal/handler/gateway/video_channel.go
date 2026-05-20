@@ -8,7 +8,7 @@ import (
 
 func supportsVideoChannel(ct string, extras []string) bool {
 	ct = strings.ToLower(strings.TrimSpace(ct))
-	return router.IsOpenAICompatChannelType(ct, extras) || ct == "volcengine"
+	return router.UsesOpenAICompatRelay(ct, extras)
 }
 
 func isVolcengineVideoChannel(ct string) bool {

@@ -28,8 +28,9 @@ var (
 		"input_rate", "output_rate", "markup_percent",
 	}
 	channelPricingBatchImportTemplateHeader = []string{
-		"channel_id", "model_name", "enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
+		"channel_id", "channel_name", "channel_type", "model_name", "enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
 		"upstream_currency", "upstream_denominator_tokens", "upstream_price_in", "upstream_price_out", "upstream_margin_percent",
+		"billing_mode", "quota_per_request", "capability_hint",
 	}
 )
 
@@ -51,14 +52,16 @@ func channelPricingMarkupCSVCell(row *ent.ChannelModelPricing) string {
 }
 
 type channelPricingCSVFields struct {
-	enabled bool
-	qIn     string
-	qOut    string
-	qInPtr  *int64
-	qOutPtr *int64
-	inR     float64
-	outR    float64
-	markup  string
+	enabled         bool
+	qIn             string
+	qOut            string
+	qInPtr          *int64
+	qOutPtr         *int64
+	inR             float64
+	outR            float64
+	markup          string
+	billingMode     string
+	quotaPerRequest *int64
 }
 
 func channelPricingCSVFieldsFromRow(row *ent.ChannelModelPricing) channelPricingCSVFields {
@@ -80,6 +83,10 @@ func channelPricingCSVFieldsFromRow(row *ent.ChannelModelPricing) channelPricing
 		out.qOut = strconv.FormatInt(*row.QuotaOutPer1k, 10)
 	}
 	out.markup = channelPricingMarkupCSVCell(row)
+	if row.BillingMode != nil {
+		out.billingMode = strings.TrimSpace(*row.BillingMode)
+	}
+	out.quotaPerRequest = row.QuotaPerRequest
 	return out
 }
 
@@ -87,15 +94,22 @@ func globalItemsToChannelItems(global []globalPricingUpsertItem, channelID int) 
 	out := make([]channelPricingUpsertItem, len(global))
 	for i := range global {
 		g := global[i]
+		var bmPtr *string
+		if strings.TrimSpace(g.BillingMode) != "" {
+			b := strings.TrimSpace(g.BillingMode)
+			bmPtr = &b
+		}
 		out[i] = channelPricingUpsertItem{
-			ChannelID:     channelID,
-			ModelName:     g.ModelName,
-			Enabled:       g.Enabled,
-			QuotaInPer1k:  g.QuotaInPer1k,
-			QuotaOutPer1k: g.QuotaOutPer1k,
-			InputRate:     g.InputRate,
-			OutputRate:    g.OutputRate,
-			MarkupPercent: g.MarkupPercent,
+			ChannelID:       channelID,
+			ModelName:       g.ModelName,
+			Enabled:         g.Enabled,
+			QuotaInPer1k:    g.QuotaInPer1k,
+			QuotaOutPer1k:   g.QuotaOutPer1k,
+			InputRate:       g.InputRate,
+			OutputRate:      g.OutputRate,
+			MarkupPercent:   g.MarkupPercent,
+			BillingMode:     bmPtr,
+			QuotaPerRequest: g.QuotaPerRequest,
 		}
 	}
 	return out
@@ -205,15 +219,22 @@ func parseChannelPricingBatchCSVBytes(ctx context.Context, client *ent.Client, b
 		if rowMarkup != nil {
 			markup = rowMarkup
 		}
+		bm, qpr, billErr := parseGlobalPricingOptionalBillingCSV(line, col, get)
+		if billErr != "" {
+			return nil, billErr
+		}
+		bmPtr := &bm
 		items = append(items, channelPricingUpsertItem{
-			ChannelID:     cid,
-			ModelName:     name,
-			Enabled:       en,
-			QuotaInPer1k:  qIn,
-			QuotaOutPer1k: qOut,
-			InputRate:     inR,
-			OutputRate:    outR,
-			MarkupPercent: markup,
+			ChannelID:       cid,
+			ModelName:       name,
+			Enabled:         en,
+			QuotaInPer1k:    qIn,
+			QuotaOutPer1k:   qOut,
+			InputRate:       inR,
+			OutputRate:      outR,
+			MarkupPercent:   markup,
+			BillingMode:     bmPtr,
+			QuotaPerRequest: qpr,
 		})
 	}
 	if len(items) == 0 {
@@ -299,7 +320,7 @@ func writeChannelWorkspaceDataRow(w *csv.Writer, it availmodels.ChannelPricingWo
 		if pOut == "" && pIn != "" {
 			pOut = pIn
 		}
-		_ = w.Write([]string{
+		row := appendGlobalPricingImportTemplateExtras([]string{
 			it.ModelName,
 			strconv.FormatBool(f.enabled),
 			f.qIn,
@@ -311,7 +332,8 @@ func writeChannelWorkspaceDataRow(w *csv.Writer, it availmodels.ChannelPricingWo
 			pIn,
 			pOut,
 			f.markup,
-		})
+		}, it.ModelName, f.billingMode, f.quotaPerRequest)
+		_ = w.Write(row)
 	} else {
 		_ = w.Write([]string{
 			it.ModelName,
@@ -325,10 +347,11 @@ func writeChannelWorkspaceDataRow(w *csv.Writer, it availmodels.ChannelPricingWo
 	}
 }
 
-func writeChannelBatchDataRow(w *csv.Writer, channelID int, channelName string, it availmodels.ChannelPricingWorkspaceItem, withUpstream bool, factors billing.SitePricingFactors, currency string, denom int64) {
+func writeChannelBatchDataRow(w *csv.Writer, channelID int, channelName, channelType string, it availmodels.ChannelPricingWorkspaceItem, withUpstream bool, factors billing.SitePricingFactors, currency string, denom int64) {
 	ch := it.Channel
 	f := channelPricingCSVFieldsFromRow(ch)
 	chName := strings.TrimSpace(channelName)
+	ct := strings.TrimSpace(channelType)
 	if withUpstream {
 		denomStr := strconv.FormatInt(denom, 10)
 		pIn := upstreamPriceCellFromQuota(factors, currency, denom, f.qInPtr)
@@ -336,9 +359,11 @@ func writeChannelBatchDataRow(w *csv.Writer, channelID int, channelName string, 
 		if pOut == "" && pIn != "" {
 			pOut = pIn
 		}
-		_ = w.Write([]string{
+		row := append([]string{
 			strconv.Itoa(channelID),
 			chName,
+			ct,
+		}, appendGlobalPricingImportTemplateExtras([]string{
 			it.ModelName,
 			strconv.FormatBool(f.enabled),
 			f.qIn,
@@ -350,7 +375,8 @@ func writeChannelBatchDataRow(w *csv.Writer, channelID int, channelName string, 
 			pIn,
 			pOut,
 			f.markup,
-		})
+		}, it.ModelName, f.billingMode, f.quotaPerRequest)...)
+		_ = w.Write(row)
 	} else {
 		_ = w.Write([]string{
 			strconv.Itoa(channelID),
@@ -515,7 +541,7 @@ func ExportChannelModelPricingImportTemplate(client *ent.Client, cfg *config.Con
 			if pOut == "" && pIn != "" {
 				pOut = pIn
 			}
-			_ = w.Write([]string{
+			row := appendGlobalPricingImportTemplateExtras([]string{
 				it.ModelName,
 				strconv.FormatBool(f.enabled),
 				"", "",
@@ -526,7 +552,8 @@ func ExportChannelModelPricingImportTemplate(client *ent.Client, cfg *config.Con
 				pIn,
 				pOut,
 				f.markup,
-			})
+			}, it.ModelName, f.billingMode, f.quotaPerRequest)
+			_ = w.Write(row)
 		}
 		w.Flush()
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -607,12 +634,12 @@ func ExportChannelModelPricingBatchCSV(client *ent.Client, cfg *config.Config) g
 			factors = adminSitePricingFactors(ctx, client, cfg)
 		}
 		if withUpstream {
-			_ = w.Write(append([]string{"channel_id", "channel_name"}, globalPricingImportTemplateHeader...))
+			_ = w.Write(append([]string{"channel_id", "channel_name", "channel_type"}, globalPricingImportTemplateHeader...))
 		} else {
 			_ = w.Write(channelPricingBatchDataExportHeader)
 		}
 		for _, row := range flat {
-			writeChannelBatchDataRow(w, row.ch.ID, row.ch.ChannelName, row.item, withUpstream, factors, currency, denom)
+			writeChannelBatchDataRow(w, row.ch.ID, row.ch.ChannelName, row.ch.ChannelType, row.item, withUpstream, factors, currency, denom)
 		}
 		w.Flush()
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -664,8 +691,8 @@ func ExportChannelModelPricingBatchImportTemplate(client *ent.Client, cfg *confi
 			if pOut == "" && pIn != "" {
 				pOut = pIn
 			}
-			_ = w.Write([]string{
-				strconv.Itoa(row.ch.ID),
+			chName := strings.TrimSpace(row.ch.ChannelName)
+			cells := appendGlobalPricingImportTemplateExtras([]string{
 				row.item.ModelName,
 				strconv.FormatBool(f.enabled),
 				"", "",
@@ -676,7 +703,12 @@ func ExportChannelModelPricingBatchImportTemplate(client *ent.Client, cfg *confi
 				pIn,
 				pOut,
 				f.markup,
-			})
+			}, row.item.ModelName, f.billingMode, f.quotaPerRequest)
+			_ = w.Write(append([]string{
+				strconv.Itoa(row.ch.ID),
+				chName,
+				strings.TrimSpace(row.ch.ChannelType),
+			}, cells...))
 		}
 		w.Flush()
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)

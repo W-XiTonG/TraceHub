@@ -140,7 +140,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
 			return
 		}
-		if stream && router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras) {
+		if stream && router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras) {
 			patched, _ = injectStreamUsageJSON(patched)
 		}
 
@@ -149,7 +149,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 
 		start := time.Now()
 		switch {
-		case router.IsOpenAICompatChannelType(ct, d.OpenAICompatExtras):
+		case router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras):
 			if stream {
 				resp, err := relay.ForwardOpenAIChat(c.Request.Context(), baseURL, secret, patched, true)
 				if err != nil {

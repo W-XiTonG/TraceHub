@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/gateway/relay"
+	"tracehub/internal/pkg/channelmeta"
 	"tracehub/internal/pkg/modelkind"
+	"tracehub/internal/pkg/volcvideo"
 )
 
 // CapabilityProbeMaxPerRound 每渠道每轮能力冒烟上限。
@@ -25,6 +28,10 @@ func ProbeChannelCapabilities(ctx context.Context, client *ent.Client, aesKey []
 		return err
 	}
 	baseURL := strings.TrimSpace(ch.APIBaseURL)
+	if baseURL == "" {
+		baseURL = channelmeta.DefaultBaseURL(ch.ChannelType)
+	}
+	volc := channelmeta.IsVolcengineChannelType(ch.ChannelType)
 	localKeys := collectLocalModelKeys(ch.Models, ch.ModelAlias)
 	cutoff := time.Now().Add(-24 * time.Hour)
 	var picked []string
@@ -56,7 +63,23 @@ func ProbeChannelCapabilities(ctx context.Context, client *ent.Client, aesKey []
 			"model":  upstream,
 			"prompt": "tracehub capability probe",
 		})
-		resp, ferr := relay.ForwardOpenAIVideoCreate(ctx, baseURL, bearer, body)
+		var resp *http.Response
+		var ferr error
+		if volc {
+			arkBody, aerr := volcvideo.PrepareVolcVideoCreateBody(body)
+			if aerr != nil {
+				NotifyCapabilityOutcome(ch.ID, modelID, CapabilityVideo, 400, []byte(aerr.Error()), CapSourceProbe)
+				select {
+				case <-time.After(400 * time.Millisecond):
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+				continue
+			}
+			resp, ferr = relay.ForwardVolcVideoCreate(ctx, baseURL, bearer, arkBody)
+		} else {
+			resp, ferr = relay.ForwardOpenAIVideoCreate(ctx, baseURL, bearer, body)
+		}
 		var status int
 		var raw []byte
 		if ferr != nil {

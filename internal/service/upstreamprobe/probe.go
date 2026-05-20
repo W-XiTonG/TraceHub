@@ -140,7 +140,7 @@ func ProbeChannel(ctx context.Context, client *ent.Client, aesKey []byte, ch *en
 		return applyProbeHealthIfEnabled(ctx, client, ch.ID, false)
 	}
 
-	ids, _, err := FetchUpstreamModelIDs(ctx, ch.APIBaseURL, bearer)
+	ids, _, err := FetchUpstreamModelIDs(ctx, ch.ChannelType, ch.APIBaseURL, bearer)
 	if err != nil {
 		merged := cloneProbeForKeys(oldProbe, keep)
 		merged[ProbeMetaChannelKey] = map[string]interface{}{

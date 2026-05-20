@@ -34,6 +34,7 @@ import (
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/service/availmodels"
@@ -812,6 +813,54 @@ func globalPricingMarkupCSVCell(g *ent.GlobalModelPricing) string {
 	return strconv.FormatFloat(*g.MarkupPercent, 'f', -1, 64)
 }
 
+func capabilityHintForModel(modelName string) string {
+	for _, l := range modelkind.LabelsForModel(modelName, nil, nil) {
+		if l == "video" {
+			return "video"
+		}
+	}
+	return ""
+}
+
+func globalPricingBillingCSVCells(billingMode string, quotaPerRequest *int64) (bm, qpr string) {
+	bm = strings.TrimSpace(billingMode)
+	if bm == "" {
+		bm = billing.BillingModeToken
+	}
+	if quotaPerRequest != nil {
+		qpr = strconv.FormatInt(*quotaPerRequest, 10)
+	}
+	return bm, qpr
+}
+
+func appendGlobalPricingImportTemplateExtras(cells []string, modelName, billingMode string, quotaPerRequest *int64) []string {
+	bm, qpr := globalPricingBillingCSVCells(billingMode, quotaPerRequest)
+	return append(cells, bm, qpr, capabilityHintForModel(modelName))
+}
+
+func parseGlobalPricingOptionalBillingCSV(line int, col map[string]int, get func(string) string) (bm string, qpr *int64, errMsg string) {
+	bm = billing.BillingModeToken
+	if _, ok := col["billing_mode"]; ok {
+		s := strings.TrimSpace(strings.ToLower(get("billing_mode")))
+		if s != "" {
+			switch s {
+			case billing.BillingModeToken, billing.BillingModePerRequest, billing.BillingModeHybridFloor, billing.BillingModeHybridSettle:
+				bm = s
+			default:
+				return "", nil, fmt.Sprintf("第 %d 行: billing_mode 无效（token|per_request|hybrid_floor|hybrid_settle）", line)
+			}
+		}
+	}
+	if _, ok := col["quota_per_request"]; ok {
+		var err error
+		qpr, err = parseGlobalPricingOptionalInt64Cell(get("quota_per_request"))
+		if err != nil {
+			return "", nil, fmt.Sprintf("第 %d 行 quota_per_request: %v", line, err)
+		}
+	}
+	return bm, qpr, ""
+}
+
 var (
 	globalPricingDataExportHeader = []string{
 		"model_name", "enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate", "markup_percent",
@@ -819,6 +868,7 @@ var (
 	globalPricingImportTemplateHeader = []string{
 		"model_name", "enabled", "quota_in_per_1k", "quota_out_per_1k", "input_rate", "output_rate",
 		"upstream_currency", "upstream_denominator_tokens", "upstream_price_in", "upstream_price_out", "upstream_margin_percent",
+		"billing_mode", "quota_per_request", "capability_hint",
 	}
 )
 
@@ -961,7 +1011,11 @@ func ExportGlobalModelPricingCSV(client *ent.Client, cfg *config.Config) gin.Han
 				if pOut == "" && pIn != "" {
 					pOut = pIn
 				}
-				_ = w.Write([]string{
+				bm, qpr := "", (*int64)(nil)
+				if g != nil {
+					bm, qpr = g.BillingMode, g.QuotaPerRequest
+				}
+				row := appendGlobalPricingImportTemplateExtras([]string{
 					it.ModelName,
 					strconv.FormatBool(enabled),
 					qIn,
@@ -973,7 +1027,8 @@ func ExportGlobalModelPricingCSV(client *ent.Client, cfg *config.Config) gin.Han
 					pIn,
 					pOut,
 					globalPricingMarkupCSVCell(g),
-				})
+				}, it.ModelName, bm, qpr)
+				_ = w.Write(row)
 			}
 		} else {
 			_ = w.Write(globalPricingDataExportHeader)
@@ -1056,7 +1111,11 @@ func ExportGlobalModelPricingImportTemplate(client *ent.Client, cfg *config.Conf
 			if pOut == "" && pIn != "" {
 				pOut = pIn
 			}
-			_ = w.Write([]string{
+			bm, qpr := "", (*int64)(nil)
+			if g != nil {
+				bm, qpr = g.BillingMode, g.QuotaPerRequest
+			}
+			row := appendGlobalPricingImportTemplateExtras([]string{
 				it.ModelName,
 				strconv.FormatBool(enabled),
 				"", "",
@@ -1067,7 +1126,8 @@ func ExportGlobalModelPricingImportTemplate(client *ent.Client, cfg *config.Conf
 				pIn,
 				pOut,
 				globalPricingMarkupCSVCell(g),
-			})
+			}, it.ModelName, bm, qpr)
+			_ = w.Write(row)
 		}
 		w.Flush()
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
@@ -1183,14 +1243,20 @@ func parseGlobalPricingCSVBytes(ctx context.Context, client *ent.Client, body []
 		if rowMarkup != nil {
 			markup = rowMarkup
 		}
+		bm, qpr, billErr := parseGlobalPricingOptionalBillingCSV(line, col, get)
+		if billErr != "" {
+			return nil, billErr
+		}
 		items = append(items, globalPricingUpsertItem{
-			ModelName:     name,
-			Enabled:       en,
-			QuotaInPer1k:  qIn,
-			QuotaOutPer1k: qOut,
-			InputRate:     inR,
-			OutputRate:    outR,
-			MarkupPercent: markup,
+			ModelName:       name,
+			Enabled:         en,
+			QuotaInPer1k:    qIn,
+			QuotaOutPer1k:   qOut,
+			InputRate:       inR,
+			OutputRate:      outR,
+			MarkupPercent:   markup,
+			BillingMode:     bm,
+			QuotaPerRequest: qpr,
 		})
 	}
 	if len(items) == 0 {

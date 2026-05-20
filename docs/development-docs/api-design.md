@@ -242,6 +242,21 @@ DELETE /v1/videos/{video_id}?model=sora-2
 
 创建响应与 OpenAI Video 对象类似（含 `id`、`status` 等）；`volcengine` 渠道下网关会将上游方舟任务响应规范化（如 `task_id` → `id`）。
 
+#### 2.6.1 渠道类型与协议对照（管理端配置）
+
+选路依据请求中的 **逻辑 `model` 名** 与渠道 `models` / `model_alias`，**不依据** `api_base_url`。`api_base_url` 留空时使用下表默认根地址（可在渠道上覆盖）。
+
+| `channel_type` | 默认 Base URL（可覆盖） | 对话 `chat/completions` | 视频 `/v1/videos` | 上游视频协议 |
+|----------------|-------------------------|-------------------------|-------------------|--------------|
+| `openai` | `https://api.openai.com/v1` | OpenAI 兼容转发 | 直转 `/videos` | OpenAI Videos |
+| `deepseek` | `https://api.deepseek.com/v1` | OpenAI 兼容转发 | 直转 `/videos`（若上游支持） | OpenAI Videos |
+| `claude` | `https://api.anthropic.com/v1` | Messages API 适配 | 不支持 | — |
+| `gemini` | `https://generativelanguage.googleapis.com` | generateContent 适配 | 不支持 | — |
+| `volcengine` | `https://ark.cn-beijing.volces.com/api/v3` | OpenAI 兼容转发（`/api/v3/chat/completions` 等） | 网关转换为方舟 `contents/generations/tasks` | 方舟任务 API |
+| `openai_compat`（`site.openai_compat_channel_types`） | 须在渠道填写 | OpenAI 兼容转发 | 直转 `/videos`（取决于上游） | 取决于上游 |
+
+管理端：`GET /api/admin/channel-types` 返回各类型元数据（默认 URL、能力标签、运营提示）；`GET /api/admin/channel-model-presets?channel_type=` 含相同字段及推荐模型列表。
+
 ---
 
 ### 2.7 音频（OpenAI Audio API）
@@ -285,7 +300,7 @@ file=@sample.mp3
 
 ### 2.8 火山方舟：视频与 3D（`volcengine` 渠道）
 
-当请求选路至 **`channel_type = volcengine`** 时，`/v1/videos` 在网关内转换为方舟 **`POST /api/v3/contents/generations/tasks`**（非 OpenAI 原生 `/videos`）。对外仍使用 **§2.6** 的路径与 API Key，无需单独「火山专用」Base URL。
+当请求选路至 **`channel_type = volcengine`** 时，`/v1/videos` 在网关内转换为方舟 **`POST /api/v3/contents/generations/tasks`**（非 OpenAI 原生 `/videos`）。对话、`embeddings` 等其它 OpenAI 兼容接口则直转方舟 **`/api/v3/*`**（与 `openai` 渠道相同 relay 实现）。对外仍使用 **§2.6** 的路径与 API Key，无需单独「火山专用」Base URL。Realtime、Responses 等是否可用取决于方舟账号与模型开通情况。
 
 #### 2.8.1 模型 ID
 

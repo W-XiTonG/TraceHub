@@ -11,46 +11,49 @@ import (
 	"strings"
 	"time"
 
+	"tracehub/internal/pkg/channelmeta"
 	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/pkg/safehttp"
 
 	"github.com/google/uuid"
 )
 
-// NormalizeOpenAICompatBaseURL 将 Base URL 规范为 OpenAI 兼容 …/v1 根路径。
+// NormalizeOpenAICompatBaseURL 将 Base URL 规范为 OpenAI 兼容根路径（与网关 openaicompat.NormalizeOpenAIAPIRoot 对齐）。
 func NormalizeOpenAICompatBaseURL(raw string) (string, error) {
-	raw = strings.TrimSpace(raw)
+	return ResolveModelsListBaseURL("", raw)
+}
+
+// ResolveModelsListBaseURL 解析拉取模型列表用的 API 根地址（剥离误粘贴的子路径，火山保留 …/api/v3）。
+func ResolveModelsListBaseURL(channelType, apiBaseURL string) (string, error) {
+	raw := strings.TrimSpace(apiBaseURL)
 	if raw == "" {
-		return "https://api.openai.com/v1", nil
+		raw = channelmeta.DefaultBaseURL(channelType)
 	}
-	raw = strings.TrimRight(raw, "/")
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return "", fmt.Errorf("invalid api_base_url")
+	if raw == "" {
+		return "", fmt.Errorf("缺少 api_base_url")
 	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", fmt.Errorf("api_base_url 仅支持 http/https")
-	}
-	path := strings.TrimSuffix(u.Path, "/")
-	switch {
-	case openaicompat.IsArkAPIv3Root(path):
-		u.Path = path
-	case path == "" || path == "/":
-		u.Path = "/v1"
-	case strings.HasSuffix(path, "/v1"):
-		u.Path = path
-	default:
-		u.Path = path + "/v1"
-	}
-	u.RawQuery = ""
-	u.Fragment = ""
-	return strings.TrimRight(u.String(), "/"), nil
+	return openaicompat.NormalizeOpenAIAPIRoot(raw)
 }
 
 type openAIModelsResp struct {
 	Data []struct {
-		ID string `json:"id"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
 	} `json:"data"`
+}
+
+func addModelIDFromObject(set map[string]struct{}, obj map[string]interface{}) {
+	if id, ok := obj["id"].(string); ok {
+		if s := strings.TrimSpace(id); s != "" {
+			set[s] = struct{}{}
+			return
+		}
+	}
+	if name, ok := obj["name"].(string); ok {
+		if s := strings.TrimSpace(name); s != "" {
+			set[s] = struct{}{}
+		}
+	}
 }
 
 // ParseModelIDsFromResponseBody 解析 OpenAI 兼容 /v1/models JSON 为 id 列表。
@@ -61,9 +64,10 @@ func ParseModelIDsFromResponseBody(body []byte) ([]string, error) {
 	}
 	set := make(map[string]struct{})
 	for _, d := range parsed.Data {
-		id := strings.TrimSpace(d.ID)
-		if id != "" {
+		if id := strings.TrimSpace(d.ID); id != "" {
 			set[id] = struct{}{}
+		} else if name := strings.TrimSpace(d.Name); name != "" {
+			set[name] = struct{}{}
 		}
 	}
 	if len(set) > 0 {
@@ -83,9 +87,7 @@ func ParseModelIDsFromResponseBody(body []byte) ([]string, error) {
 			continue
 		}
 		for _, obj := range arr {
-			if id, ok := obj["id"].(string); ok && strings.TrimSpace(id) != "" {
-				set[strings.TrimSpace(id)] = struct{}{}
-			}
+			addModelIDFromObject(set, obj)
 		}
 		if len(set) > 0 {
 			return sortedKeys(set), nil
@@ -106,12 +108,12 @@ func sortedKeys(set map[string]struct{}) []string {
 var modelsHTTPClient = &http.Client{Timeout: 45 * time.Second}
 
 // FetchUpstreamModelIDs 请求 GET {base}/models，返回上游模型 id 列表。
-func FetchUpstreamModelIDs(ctx context.Context, apiBaseURL, bearerToken string) ([]string, string, error) {
+func FetchUpstreamModelIDs(ctx context.Context, channelType, apiBaseURL, bearerToken string) ([]string, string, error) {
 	key := strings.TrimSpace(bearerToken)
 	if key == "" {
 		return nil, "", fmt.Errorf("缺少凭证")
 	}
-	base, err := NormalizeOpenAICompatBaseURL(apiBaseURL)
+	base, err := ResolveModelsListBaseURL(channelType, apiBaseURL)
 	if err != nil {
 		return nil, "", err
 	}

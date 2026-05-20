@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminActionBanner from '../components/admin/AdminActionBanner.vue'
 import ThLoadingState from '../components/ui/ThLoadingState.vue'
@@ -36,7 +36,19 @@ type Ch = {
 
 type G = { id: number; name: string }
 
+type ChannelTypeMeta = {
+  channel_type: string
+  display_name?: string
+  default_base_url?: string
+  capabilities?: string[]
+  video_protocol?: string
+  admin_hints?: string[]
+}
+
 const channels = ref<Ch[]>([])
+/** 首次列表请求结束后为 true，避免首屏先显示「共 0 条」与空状态 */
+const channelsListReady = ref(false)
+const channelTypesMeta = ref<ChannelTypeMeta[]>([])
 const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 const groups = ref<G[]>([])
 const form = reactive({
@@ -102,8 +114,70 @@ const editModalIsError = ref(false)
 /** 表单内联提示（预设/拉取）；保存类操作用顶部 AdminActionBanner */
 const presetHint = ref('')
 
+const activeTypeMeta = computed(() => {
+  const ct = form.channel_type.trim().toLowerCase()
+  return channelTypesMeta.value.find((x) => x.channel_type.toLowerCase() === ct) ?? null
+})
+
+const baseUrlPlaceholder = computed(() => {
+  const d = activeTypeMeta.value?.default_base_url?.trim()
+  if (d) return t('adminChannels.baseUrlDefaultPh', { url: d })
+  return t('adminChannels.baseUrlPh')
+})
+
 /** 分组下拉用字符串 v-model，避免动态 option 与 v-model.number 在部分浏览器下不同步 */
 const groupIdStr = ref('')
+
+function defaultBaseURLForType(channelType: string): string {
+  const ct = channelType.trim().toLowerCase()
+  const m = channelTypesMeta.value.find((x) => x.channel_type.toLowerCase() === ct)
+  return m?.default_base_url?.trim() ?? ''
+}
+
+/** 拉取上游模型列表用的 Base URL：空则用类型默认；火山时若仍是其它厂商地址则改用方舟默认。 */
+function baseURLForUpstreamFetch(): string {
+  const typed = form.api_base_url.trim()
+  const def = defaultBaseURLForType(form.channel_type)
+  if (!typed) return def
+  const ct = form.channel_type.trim().toLowerCase()
+  if (ct === 'volcengine' && def && !typed.includes('volces.com')) {
+    return def
+  }
+  return typed
+}
+
+function fillDefaultBaseURL() {
+  const d = defaultBaseURLForType(form.channel_type)
+  if (d) form.api_base_url = d
+}
+
+async function loadChannelTypes() {
+  try {
+    const { data } = await http.get<Envelope<{ items: ChannelTypeMeta[] }>>('/api/admin/channel-types')
+    if (!envelopeOk(data)) return
+    const inner = pickEnvelopeData<{ items?: unknown }>(data)
+    const raw = inner?.items ?? (data as Record<string, unknown>).items
+    if (!Array.isArray(raw)) return
+    const out: ChannelTypeMeta[] = []
+    for (const x of raw) {
+      if (!x || typeof x !== 'object') continue
+      const o = x as Record<string, unknown>
+      const channel_type = typeof o.channel_type === 'string' ? o.channel_type.trim() : ''
+      if (!channel_type) continue
+      out.push({
+        channel_type,
+        display_name: typeof o.display_name === 'string' ? o.display_name : undefined,
+        default_base_url: typeof o.default_base_url === 'string' ? o.default_base_url : undefined,
+        capabilities: coerceStringList(o.capabilities),
+        video_protocol: typeof o.video_protocol === 'string' ? o.video_protocol : undefined,
+        admin_hints: coerceStringList(o.admin_hints),
+      })
+    }
+    channelTypesMeta.value = out
+  } catch {
+    /* 元数据加载失败时仍可用硬编码下拉与空默认 URL */
+  }
+}
 
 function normalizeGroupRows(raw: unknown): G[] {
   if (!Array.isArray(raw)) return []
@@ -242,9 +316,7 @@ async function fetchFromUpstream() {
   }
   fetchLoading.value = true
   try {
-    const base =
-      form.api_base_url.trim() ||
-      (form.channel_type === 'volcengine' ? 'https://ark.cn-beijing.volces.com/api/v3' : '')
+    const base = baseURLForUpstreamFetch()
     const { data } = await http.post<Envelope<{ model_ids: string[]; count: number }>>(
       '/api/admin/channel-models/fetch-upstream',
       {
@@ -279,28 +351,32 @@ function clearModels() {
 }
 
 async function load() {
-  await runPageLoad(async () => {
-    const [cRes, gRes] = await Promise.allSettled([
-      http.get<Envelope<{ items: Ch[] }>>('/api/admin/channels'),
-      http.get<Envelope<{ items: unknown[] }>>('/api/admin/groups'),
-    ])
+  try {
+    await runPageLoad(async () => {
+      const [cRes, gRes] = await Promise.allSettled([
+        http.get<Envelope<{ items: Ch[] }>>('/api/admin/channels'),
+        http.get<Envelope<{ items: unknown[] }>>('/api/admin/groups'),
+      ])
 
-    if (cRes.status === 'fulfilled') {
-      const body = cRes.value.data
-      if (envelopeOk(body)) {
-        const items = pickListItems(body) as Ch[]
-        channels.value = Array.isArray(items) ? items : []
+      if (cRes.status === 'fulfilled') {
+        const body = cRes.value.data
+        if (envelopeOk(body)) {
+          const items = pickListItems(body) as Ch[]
+          channels.value = Array.isArray(items) ? items : []
+        }
       }
-    }
 
-    if (gRes.status === 'fulfilled') {
-      const body = gRes.value.data
-      if (envelopeOk(body)) {
-        groups.value = normalizeGroupRows(pickListItems(body))
-        syncGroupPickToForm()
+      if (gRes.status === 'fulfilled') {
+        const body = gRes.value.data
+        if (envelopeOk(body)) {
+          groups.value = normalizeGroupRows(pickListItems(body))
+          syncGroupPickToForm()
+        }
       }
-    }
-  })
+    })
+  } finally {
+    channelsListReady.value = true
+  }
 }
 
 async function createCh() {
@@ -414,7 +490,10 @@ async function remove(id: number) {
   })
 }
 
-onMounted(load)
+onMounted(async () => {
+  await loadChannelTypes()
+  await load()
+})
 
 function groupLabel(gid: number): string {
   const g = groups.value.find((x) => x.id === gid)
@@ -427,6 +506,7 @@ function typeBadgeClass(ty: string): string {
     deepseek: 'bg-sky-500/15 text-sky-400 ring-sky-500/30',
     claude: 'bg-orange-500/15 text-orange-400 ring-orange-500/30',
     gemini: 'bg-blue-500/15 text-blue-400 ring-blue-500/30',
+    volcengine: 'bg-violet-500/15 text-violet-300 ring-violet-500/30',
   }
   return m[ty?.toLowerCase()] ?? 'bg-slate-500/15 text-slate-400 ring-slate-500/30'
 }
@@ -557,13 +637,33 @@ async function probeChannelNow(ch: Ch) {
                 aria-labelledby="admin-ch-type-lbl"
                 class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
               >
-                <option value="openai">openai</option>
-                <option value="deepseek">deepseek</option>
-                <option value="claude">claude</option>
-                <option value="gemini">gemini</option>
-                <option value="volcengine">volcengine</option>
+                <option
+                  v-for="tm in channelTypesMeta.length ? channelTypesMeta : [
+                    { channel_type: 'openai' },
+                    { channel_type: 'deepseek' },
+                    { channel_type: 'claude' },
+                    { channel_type: 'gemini' },
+                    { channel_type: 'volcengine' },
+                  ]"
+                  :key="tm.channel_type"
+                  :value="tm.channel_type"
+                >
+                  {{ tm.display_name ? `${tm.display_name} (${tm.channel_type})` : tm.channel_type }}
+                </option>
               </select>
             </div>
+          </div>
+          <div
+            v-if="activeTypeMeta && (activeTypeMeta.admin_hints?.length || activeTypeMeta.capabilities?.length)"
+            class="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2 text-xs text-slate-400"
+          >
+            <p v-if="activeTypeMeta.capabilities?.length" class="mb-1 text-slate-500">
+              {{ t('adminChannels.channelCapabilities', { caps: activeTypeMeta.capabilities.join(', ') }) }}
+            </p>
+            <p class="mb-1 font-medium text-slate-500">{{ t('adminChannels.channelTypeHints') }}</p>
+            <ul class="list-inside list-disc space-y-0.5 leading-relaxed text-slate-500">
+              <li v-for="(hint, hi) in activeTypeMeta.admin_hints" :key="hi">{{ hint }}</li>
+            </ul>
           </div>
           <label class="flex flex-col gap-1.5">
             <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblChannelName') }}</span>
@@ -587,10 +687,20 @@ async function probeChannelNow(ch: Ch) {
               <span class="text-xs font-medium text-slate-400">{{ t('adminChannels.lblBaseUrl') }}</span>
               <input
                 v-model="form.api_base_url"
-                :placeholder="t('adminChannels.baseUrlPh')"
+                :placeholder="baseUrlPlaceholder"
                 class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
               />
-              <span class="text-xs text-slate-600">{{ t('adminChannels.baseUrlHint') }}</span>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs text-slate-600">{{ t('adminChannels.baseUrlHint') }}</span>
+                <button
+                  v-if="defaultBaseURLForType(form.channel_type)"
+                  type="button"
+                  class="text-xs text-amber-400/90 hover:text-amber-300"
+                  @click="fillDefaultBaseURL"
+                >
+                  {{ t('adminChannels.btnFillDefaultUrl') }}
+                </button>
+              </div>
             </label>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
@@ -681,30 +791,35 @@ async function probeChannelNow(ch: Ch) {
       <div class="mb-6 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-4 sm:flex-row sm:items-end">
         <div>
           <h2 class="text-xl font-semibold text-white">{{ t('adminChannels.listTitle') }}</h2>
-          <p class="mt-1 text-sm text-slate-500">{{ t('adminChannels.listCount', { n: channels.length }) }}</p>
+          <p v-if="!channelsListReady" class="mt-1 text-sm text-slate-500">{{ t('adminChannels.listLoading') }}</p>
+          <p v-else class="mt-1 text-sm text-slate-500">{{ t('adminChannels.listCount', { n: channels.length }) }}</p>
         </div>
         <button
           type="button"
-          class="self-start rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:border-slate-600 hover:text-slate-300"
+          class="self-start rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:border-slate-600 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="pageLoading"
           @click="load"
         >
-          {{ t('adminCommon.refresh') }}
+          {{ pageLoading ? t('adminChannels.listRefreshing') : t('adminCommon.refresh') }}
         </button>
       </div>
 
-      <ThTableSkeleton v-if="pageLoadingUi && channels.length === 0" :rows="4" :columns="3" class="mb-4" />
+      <ThTableSkeleton v-if="!channelsListReady" :rows="4" :columns="3" class="mb-4" />
 
       <div
         v-else-if="channels.length === 0"
         class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 px-8 py-16 text-center"
       >
-        <div class="mb-3 rounded-full bg-slate-800 p-3 ring-1 ring-slate-700">
-          <svg class="h-8 w-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-        </div>
-        <p class="text-sm font-medium text-slate-400">{{ t('adminChannels.emptyTitle') }}</p>
-        <p class="mt-1 max-w-sm text-xs text-slate-600">{{ t('adminChannels.emptyDesc') }}</p>
+        <ThLoadingState v-if="pageLoading" class="py-4" />
+        <template v-else>
+          <div class="mb-3 rounded-full bg-slate-800 p-3 ring-1 ring-slate-700">
+            <svg class="h-8 w-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-slate-400">{{ t('adminChannels.emptyTitle') }}</p>
+          <p class="mt-1 max-w-sm text-xs text-slate-600">{{ t('adminChannels.emptyDesc') }}</p>
+        </template>
       </div>
 
       <div v-else class="relative grid gap-4 lg:grid-cols-2">
