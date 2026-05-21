@@ -21,9 +21,20 @@ func TestBuildArkCreateBody(t *testing.T) {
 	if m["resolution"] != "720p" {
 		t.Fatalf("resolution %v", m["resolution"])
 	}
-	content, ok := m["content"].([]any)
-	if !ok || len(content) == 0 {
-		t.Fatalf("content %v", m["content"])
+}
+
+func TestBuildArkCreateBody_1080pFromSize(t *testing.T) {
+	in := []byte(`{"model":"doubao-seedance-2-0-260128","prompt":"a cat","seconds":"8","size":"1920x1080"}`)
+	out, err := BuildArkCreateBody(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(out, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["resolution"] != "1080p" {
+		t.Fatalf("resolution %v", m["resolution"])
 	}
 }
 
@@ -95,7 +106,7 @@ func TestBuildArk3DCreateBody_fromImageURL(t *testing.T) {
 	if iu["url"] != "https://example.com/ref.png" {
 		t.Fatalf("url %v", iu["url"])
 	}
-	for _, k := range []string{"duration", "resolution", "ratio", "image_data", "prompt"} {
+	for _, k := range []string{"image_data", "prompt"} {
 		if _, ok := m[k]; ok {
 			t.Fatalf("seed3d must not send top-level %s", k)
 		}
@@ -129,7 +140,7 @@ func TestPrepareVolcVideoCreateBody_seed3dFromContentImageURL(t *testing.T) {
 	if iu["url"] != "https://example.com/a.jpg" {
 		t.Fatalf("url %v", iu["url"])
 	}
-	if _, ok := m["duration"]; ok {
+	if m["duration"] != float64(8) {
 		t.Fatalf("duration %v", m["duration"])
 	}
 }

@@ -18,6 +18,7 @@ export type PlaygroundRegistryMeta = {
 
 export type PlaygroundModelRow = {
   id: string
+  ownedBy?: string
   routerHealth?: PlaygroundRouterHealth
   serviceStatus?: PlaygroundServiceStatus
   labels?: string[]
@@ -55,7 +56,11 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
     throw new Error(parseOpenAIError(text) || `${res.status} ${res.statusText}`)
   }
   const data = (await res.json()) as {
-    data?: Array<{ id?: string; tracehub?: { router_health?: string; service_status?: string; labels?: unknown } }>
+    data?: Array<{
+      id?: string
+      owned_by?: string
+      tracehub?: { router_health?: string; service_status?: string; labels?: unknown }
+    }>
   }
   const rows: PlaygroundModelRow[] = []
   const seen = new Set<string>()
@@ -65,8 +70,10 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
     const key = id.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
+    const ownedBy = typeof m.owned_by === 'string' ? m.owned_by.trim() : ''
     rows.push({
       id,
+      ownedBy: ownedBy || undefined,
       routerHealth: parseRouterHealth(m.tracehub?.router_health),
       serviceStatus: parseServiceStatus(m.tracehub?.service_status),
       labels: parseTracehubLabels(m.tracehub?.labels),

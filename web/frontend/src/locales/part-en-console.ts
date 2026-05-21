@@ -558,6 +558,10 @@ export default {
     videoStatusCancelled: 'Cancelled',
     videoCreated: 'Job created ({id}); polling…',
     videoCompleted: 'Video ready — play above.',
+    videoReloadHint:
+      'Reload is needed after a refresh. Keep your API Key filled in and select the same model used when the job was created.',
+    videoReload: 'Reload video',
+    videoRestoring: 'Loading video…',
     videoFailed: 'Video generation failed',
     videoPollTimeout: 'Polling timed out. Retry or open debug for the last response.',
     videoCancel: 'Cancel',
@@ -601,6 +605,15 @@ export default {
     audioNeedFile: 'Pick an audio file first.',
     audioUploadSize: 'Audio must be at most {maxMb} MB',
     imageGenSize: 'Size',
+    hintImageOpenAI: 'OpenAI-style model: sizes like 1024×1024; DALL·E does not use 2K/4K literals.',
+    hintImageVolc:
+      'Seedream-style model: prefer 2K, 4K, or 2048×2048. Common OpenAI sizes like 1024×1024 may fail.',
+    hintImageGeneric: 'Mixed vendors: pick size per model docs; options update when you change model.',
+    hintVideoOpenAI: 'OpenAI-style video: 1920×1080 is available; image-to-video needs a public image URL in JSON.',
+    hintVideoVolc:
+      'Seedance-style: prefer 1280×720. Some models do not support 1080p; wrong size may fail. For image-to-video use a public URL in JSON or upload a first frame below.',
+    hintVideoVolcRef: 'First frame selected: if the job fails, try JSON with a public image_url in the body.',
+    hintVideoGeneric: 'Video params vary by model; use 1280×720 and the exact model ID from your channel when unsure.',
     imageResponseFormat: 'Response format',
     imageFormatUrl: 'Image URL',
     imageFormatB64: 'Base64 JSON',

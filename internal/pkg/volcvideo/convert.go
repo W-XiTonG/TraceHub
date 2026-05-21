@@ -14,17 +14,17 @@ func PatchCreateRequestBody(openAIBody []byte) ([]byte, error) {
 }
 
 // PrepareVolcVideoCreateBody 已是方舟原生 content[] 时透传并补全字段；否则由 OpenAI Video 形态转换。
-// seed3d / 3dgen 使用独立 body（model + prompt + image_data 字符串），不走 content[]。
+// seed3d / 3dgen 在 OpenAI 形态（prompt / image_url 等）时转为 model + content[]。
 func PrepareVolcVideoCreateBody(body []byte) ([]byte, error) {
 	var m map[string]any
 	if err := json.Unmarshal(body, &m); err != nil {
 		return nil, err
 	}
-	if model, _ := m["model"].(string); IsVolc3DGenModel(model) {
-		return BuildArk3DCreateBody(body)
-	}
 	if isArkNativeVideoCreate(m) {
 		return json.Marshal(mergeArkNativeCreateFields(m))
+	}
+	if model, _ := m["model"].(string); IsVolc3DGenModel(model) {
+		return BuildArk3DCreateBody(body)
 	}
 	return BuildArkCreateBody(body)
 }
@@ -34,8 +34,7 @@ func isArkNativeVideoCreate(m map[string]any) bool {
 	return ok && len(content) > 0
 }
 
-// IsVolc3DGenModel 方舟 3D 生成（seed3d / 3dgen）仅接受 model + prompt + image_data 等字段；
-// duration、resolution、ratio 等视频参数须省略（上游要求为空）。
+// IsVolc3DGenModel 方舟 3D 生成（seed3d / 3dgen）；OpenAI 形态请求会转为 model + content[]。
 func IsVolc3DGenModel(model string) bool {
 	m := strings.ToLower(strings.TrimSpace(model))
 	return strings.Contains(m, "seed3d") || strings.Contains(m, "3dgen")
@@ -50,19 +49,7 @@ func ImageDataFromBytes(mime string, raw []byte) string {
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(raw)
 }
 
-func stripUnsupported3DGenFields(m map[string]any) {
-	if model, _ := m["model"].(string); !IsVolc3DGenModel(model) {
-		return
-	}
-	for _, k := range []string{
-		"duration", "seconds", "resolution", "ratio", "size",
-		"generate_audio", "watermark",
-	} {
-		delete(m, k)
-	}
-}
-
-// mergeArkNativeCreateFields 在透传方舟原生 body 时合并 seconds→duration、size→ratio 等兼容字段。
+// mergeArkNativeCreateFields 在透传方舟原生 body 时合并 seconds→duration、size→ratio 等兼容字段（不修改用户已填数值）。
 func mergeArkNativeCreateFields(m map[string]any) map[string]any {
 	out := make(map[string]any, len(m)+4)
 	for k, v := range m {
@@ -92,7 +79,6 @@ func mergeArkNativeCreateFields(m map[string]any) map[string]any {
 			}
 		}
 	}
-	stripUnsupported3DGenFields(out)
 	return out
 }
 
@@ -146,7 +132,6 @@ func BuildArkCreateBody(openAIBody []byte) ([]byte, error) {
 		}
 	}
 	copyArkOptionalFields(m, out)
-	stripUnsupported3DGenFields(out)
 	return json.Marshal(out)
 }
 
@@ -182,12 +167,10 @@ func BuildArk3DCreateBody(body []byte) ([]byte, error) {
 			},
 		},
 	}
-	out := map[string]any{
+	return json.Marshal(map[string]any{
 		"model":   model,
 		"content": content,
-	}
-	stripUnsupported3DGenFields(out)
-	return json.Marshal(out)
+	})
 }
 
 // copyArkOptionalFields 透传方舟扩展字段（Seedance 2.0 等多模态参数）。

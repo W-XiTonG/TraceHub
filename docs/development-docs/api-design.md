@@ -344,7 +344,7 @@ POST /v1/videos
 
 #### 2.8.3 Seed3D 图生 3D（`doubao-seed3d-*`）
 
-3D 生成**必须提供参考图**，且**不能**携带视频参数 `duration`、`resolution`、`ratio`、`seconds`、`size`（网关会自动剔除）。
+3D 生成**必须提供参考图**；若携带 `duration`、`resolution`、`ratio`、`seconds`、`size` 等视频参数，上游可能报错，请按模型说明 omit。
 
 对外仍调用 **`POST /v1/videos`**，`model` 填 Seed3D 的 Model ID，例如 `doubao-seed3d-2-0-260328`。
 

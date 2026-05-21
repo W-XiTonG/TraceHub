@@ -112,11 +112,6 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 	if form.File != nil && len(form.File["input_reference"]) > 0 {
 		hasInputRef = true
 	}
-	if hasInputRef && isVolcengineVideoChannel(ct) && !volcvideo.IsVolc3DGenModel(sel.UpstreamModel) {
-		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "该模型图生视频请使用 JSON 创建并在 content 中提供公网 image_url；本地上传参考图请使用支持 multipart 的模型")
-		return
-	}
-
 	secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, ch)
 	if !ok {
 		WriteGatewayChannelConfigError(c)
@@ -135,17 +130,22 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 			"seconds": parsed.Seconds,
 			"size":    parsed.Size,
 		}
-		if hasInputRef && volcvideo.IsVolc3DGenModel(sel.UpstreamModel) {
+		if hasInputRef {
 			imgBytes, mime, got, rerr := readMultipartInputReference(form)
 			if rerr != nil {
 				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法读取 input_reference 文件")
 				return
 			}
 			if !got || len(imgBytes) == 0 {
-				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "seed3d 需要参考图（input_reference）")
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "图生视频需要参考图（input_reference）")
 				return
 			}
-			oaiBody["image_data"] = volcvideo.ImageDataFromBytes(mime, imgBytes)
+			dataURL := volcvideo.ImageDataFromBytes(mime, imgBytes)
+			if volcvideo.IsVolc3DGenModel(sel.UpstreamModel) {
+				oaiBody["image_data"] = dataURL
+			} else {
+				oaiBody["image_url"] = dataURL
+			}
 		}
 		oai, _ := json.Marshal(oaiBody)
 		arkBody, aerr := volcvideo.PrepareVolcVideoCreateBody(oai)
