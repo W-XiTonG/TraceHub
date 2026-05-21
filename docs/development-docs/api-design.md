@@ -340,7 +340,9 @@ POST /v1/videos
 }
 ```
 
-**图生视频（公网图）**：在 JSON 中提供 `image_url` 或 `content` 内 `image_url`；**不要**依赖 multipart `input_reference`（火山渠道下本地首帧上传仅 **Seed3D** 支持，见下）。
+**图生视频（参考图）**：
+- **JSON**：在 `image_url` 或 `content` 内提供公网可访问的图片 URL（推荐）。
+- **multipart `input_reference`（试玩等）**：网关将本地上传编码后写入请求；普通 Seedance 转为 `image_url`（data URL），Seed3D 转为 `content` 内 `image_url`。部分模型仍建议优先使用公网 URL。
 
 #### 2.8.3 Seed3D 图生 3D（`doubao-seed3d-*`）
 
