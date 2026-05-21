@@ -37,10 +37,10 @@ export default {
     confirmDelete: 'Delete this item?',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
-    documentTitle: '迹径 · TraceHub — Xunji Future',
+    documentTitle: 'TraceHub — Xunji Future',
     documentTitleTpl: '{brand} · TraceHub — {tagline}',
     documentTitleTplTraceHubSingle: 'TraceHub — {tagline}',
-    documentTitleTagline: '迹径',
+    documentTitleTagline: 'Xunji Future',
     documentTitleTaglineAlt: 'Xunji Future',
   },
   announcement: {

@@ -41,10 +41,10 @@ export default {
     confirmDelete: '确定删除？',
     showPassword: '显示密码',
     hidePassword: '隐藏密码',
-    documentTitle: '迹径 · TraceHub — 循迹未来',
+    documentTitle: 'TraceHub — 循迹未来',
     documentTitleTpl: '{brand} · TraceHub — {tagline}',
     documentTitleTplTraceHubSingle: 'TraceHub — {tagline}',
-    documentTitleTagline: '迹径',
+    documentTitleTagline: '循迹未来',
     documentTitleTaglineAlt: '循迹未来',
   },
   announcement: {

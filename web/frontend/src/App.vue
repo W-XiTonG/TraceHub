@@ -10,7 +10,7 @@ const route = useRoute()
 const { t, locale } = useI18n()
 const siteMeta = useSiteMetaStore()
 
-/** 与标题后缀「迹径」同义时避免重复，改用 common.documentTitleTaglineAlt */
+/** 品牌名为「迹径」等同产品副标时避免「迹径 · TraceHub — 迹径」，改用 documentTitleTaglineAlt */
 const titleBrandDupesProductMark = (brand: string) => {
   const b = brand.trim()
   return b === '迹径' || b === '跡徑' || b === '跡径'

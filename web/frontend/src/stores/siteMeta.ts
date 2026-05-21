@@ -82,7 +82,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
 
   const displayName = computed(() => {
     const s = brandName.value.trim()
-    return s || '迹径'
+    return s || 'TraceHub'
   })
 
   const displayIconUrl = computed(() => {
