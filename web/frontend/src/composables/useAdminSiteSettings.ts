@@ -44,6 +44,10 @@ export type SiteSettingsPayload = {
   register_promo_text_file?: string
   register_promo_text_db_set?: boolean
   register_promo_text_db_value?: string
+  beian_footer_text?: string
+  beian_footer_text_file?: string
+  beian_footer_text_db_set?: boolean
+  beian_footer_text_db_value?: string
   no_bill_models?: string[]
   no_bill_models_file?: string[]
   no_bill_models_db_set?: boolean
@@ -88,6 +92,7 @@ export function createAdminSiteSettings() {
     operatorDisplayName: '',
     defaultNewUserBalance: 0,
     registerPromoText: '',
+    beianFooterText: '',
     noBillModelsText: '',
     apiPublicBaseUrl: '',
     upstreamProbeEnabled: false,
@@ -242,6 +247,7 @@ export function createAdminSiteSettings() {
     form.registerPromoText = typeof d.register_promo_text === 'string' ? d.register_promo_text : ''
     registerPromoTextYaml.value = typeof d.register_promo_text_file === 'string' ? d.register_promo_text_file : ''
     registerPromoTextDbOverride.value = Boolean(d.register_promo_text_db_set)
+    form.beianFooterText = typeof d.beian_footer_text === 'string' ? d.beian_footer_text : ''
     const noBillList = Array.isArray(d.no_bill_models)
       ? d.no_bill_models.filter((x): x is string => typeof x === 'string' && x.trim())
       : []
@@ -642,6 +648,11 @@ export function createAdminSiteSettings() {
         key: 'site.public_contact',
         value: JSON.stringify(contactPayload),
         description: t('adminSystem.descPublicContact'),
+      },
+      {
+        key: 'site.beian_footer_text',
+        value: form.beianFooterText.trim(),
+        description: t('adminSystem.descBeianFooter'),
       },
       {
         key: 'upstream_model_probe.enabled',

@@ -8,6 +8,7 @@ import axios from 'axios'
 import { useAuthStore, apiErrorMessage, type LoginCaptchaResponse } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import AuthFeatureAside from '../components/AuthFeatureAside.vue'
+import SiteBeianFooter from '../components/SiteBeianFooter.vue'
 import ThPasswordInput from '../components/ui/ThPasswordInput.vue'
 import { sanitizeAppRedirect } from '../utils/safeRedirect'
 
@@ -270,8 +271,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="th-page-shell th-auth-canvas flex min-h-screen flex-col justify-center px-4 py-12 lg:px-8 lg:py-16">
-    <div class="relative z-[1] mx-auto flex w-full max-w-5xl flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
+  <div class="th-page-shell th-auth-canvas flex min-h-screen flex-col px-4 py-12 lg:px-8 lg:py-16">
+    <div class="relative z-[1] mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
       <AuthFeatureAside class="hidden lg:block lg:flex-1" />
       <div class="relative z-[1] w-full shrink-0 lg:w-[min(100%,26rem)]">
       <div class="th-glass th-auth-card-reveal relative overflow-hidden p-8 md:p-10">
@@ -518,5 +519,6 @@ async function submit() {
         </div>
       </div>
     </Teleport>
+    <SiteBeianFooter class="relative z-[1] mt-auto shrink-0 pb-2" />
   </div>
 </template>

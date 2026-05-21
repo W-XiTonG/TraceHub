@@ -789,6 +789,11 @@ export default {
     descRoutingSticky: 'gateway.routing.sticky_enabled_default',
     descRoutingAutoHealth: 'gateway.routing.auto_health_from_probe',
     descRoutingProbeThreshold: 'gateway.routing.probe_fail_threshold',
+    secBeianFooter: 'Site-wide footer filing text',
+    secBeianFooterHint:
+      'Plain text with one line per row, shown at the bottom of every page; leave empty to hide. A line that is only an http(s) URL becomes a clickable link (e.g. MIIT verification). Stored in site.beian_footer_text and published via /api/pub/site-meta.',
+    lblBeianFooterText: 'Filing text (multi-line)',
+    phBeianFooterText: '京ICP备xxxxxxxx号\nhttps://beian.miit.gov.cn/',
     secContact: 'Marketing site “Contact us”',
     secContactHint:
       'Shown above the footer on the public home page: optional heading, multiple QR images (upload locally or use same-origin paths), and multiple support emails. Stored as JSON in site.public_contact and published via /api/pub/site-meta to anonymous visitors.',
@@ -845,6 +850,7 @@ export default {
     hintNoBillModelsDb: 'Database override is active; “Reset defaults” restores the YAML list.',
     descApiPublicBaseUrl: 'Public OpenAI-compatible base URL (site.api.public_base_url)',
     descPublicContact: 'Marketing footer contact JSON (site.public_contact)',
+    descBeianFooter: 'Site-wide footer filing lines (site.beian_footer_text)',
     descUpstreamProbeEnabled: 'Periodic upstream /v1/models probe toggle',
     descUpstreamProbeInterval: 'Periodic probe interval (minutes)',
   },

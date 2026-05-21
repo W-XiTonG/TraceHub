@@ -90,6 +90,8 @@ type SiteConfig struct {
 	BrandUploadDir string `mapstructure:"brand_upload_dir"`
 	// RegisterPromoText 注册页与官网展示的推广说明（纯文本，可含换行）；空则不展示。
 	RegisterPromoText string `mapstructure:"register_promo_text"`
+	// BeianFooterText 全站页脚备案等多行文案（\n 分行）；空则不展示。
+	BeianFooterText string `mapstructure:"beian_footer_text"`
 	// NoBillModels 全局不计费模型 ID 列表（逻辑模型名）；分组 model_rates.billable 可覆盖。
 	NoBillModels []string `mapstructure:"no_bill_models"`
 }

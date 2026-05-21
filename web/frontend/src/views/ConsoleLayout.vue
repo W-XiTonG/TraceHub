@@ -9,6 +9,7 @@ import AnnouncementBell from '../components/AnnouncementBell.vue'
 import FeedbackModal from '../components/FeedbackModal.vue'
 import ConsoleSidebarNav from '../components/shell/ConsoleSidebarNav.vue'
 import ShellNavDrawer from '../components/shell/ShellNavDrawer.vue'
+import SiteBeianFooter from '../components/SiteBeianFooter.vue'
 import { useShellNavDrawer } from '../composables/useShellNavDrawer'
 
 const { t } = useI18n()
@@ -176,6 +177,7 @@ function dismissAdminDenied() {
           </RouterView>
         </div>
       </main>
+      <SiteBeianFooter variant="shell" />
     </div>
   </div>
 </template>

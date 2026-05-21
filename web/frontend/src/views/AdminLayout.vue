@@ -7,6 +7,7 @@ import UserAccountMenu from '../components/UserAccountMenu.vue'
 import AnnouncementBell from '../components/AnnouncementBell.vue'
 import AdminSidebarNav from '../components/shell/AdminSidebarNav.vue'
 import ShellNavDrawer from '../components/shell/ShellNavDrawer.vue'
+import SiteBeianFooter from '../components/SiteBeianFooter.vue'
 import { useShellNavDrawer } from '../composables/useShellNavDrawer'
 
 const route = useRoute()
@@ -90,6 +91,7 @@ onMounted(() => void siteMeta.ensureLoaded())
           </RouterView>
         </div>
       </main>
+      <SiteBeianFooter variant="shell" />
     </div>
   </div>
 </template>

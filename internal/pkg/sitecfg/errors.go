@@ -11,6 +11,8 @@ var (
 	errBrandIconURL            = errors.New("site.brand.icon_url 须为以 / 开头的路径或 http(s) URL")
 	errOperatorTooLong         = errors.New("site.operator_display_name 长度不能超过 200 个字符")
 	errRegisterPromoTooLong    = errors.New("site.register_promo_text 长度不能超过 1000 个字符")
+	errBeianFooterTooLong      = errors.New("site.beian_footer_text 长度不能超过 500 个字符")
+	errBeianFooterInvalid      = errors.New("site.beian_footer_text 不能包含除换行与 Tab 外的控制字符")
 	errNoBillModelsJSON        = errors.New("site.no_bill_models 须为 JSON 字符串数组")
 	errNoBillModelsEmptyID     = errors.New("site.no_bill_models 数组元素不能为空")
 

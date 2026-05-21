@@ -33,6 +33,9 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config, payStore *payment.Confi
 		if api := sitecfg.EffectiveAPIPublicBaseURL(ctx, client); api != "" {
 			out["api_public_base_url"] = api
 		}
+		if lines := sitecfg.EffectiveBeianFooterLines(ctx, client, cfg); sitecfg.BeianFooterHasVisibleContent(lines) {
+			out["beian_footer_lines"] = lines
+		}
 		if pc := sitecfg.EffectivePublicContactData(ctx, client); sitecfg.PublicContactHasVisibleContent(pc) {
 			qr := make([]gin.H, 0, len(pc.QRItems))
 			for _, it := range pc.QRItems {

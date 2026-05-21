@@ -28,6 +28,23 @@ const s = inject(adminSiteSettingsKey)!
     </section>
 
     <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+      <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secBeianFooter') }}</h2>
+      <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secBeianFooterHint') }}</p>
+      <div class="mt-4 max-w-xl">
+        <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+          t('adminSystem.lblBeianFooterText')
+        }}</label>
+        <textarea
+          v-model="s.form.beianFooterText"
+          rows="4"
+          class="th-input w-full resize-y font-mono text-sm"
+          :placeholder="t('adminSystem.phBeianFooterText')"
+          autocomplete="off"
+        />
+      </div>
+    </section>
+
+    <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
       <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secContact') }}</h2>
       <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secContactHint') }}</p>
       <div class="mt-4 max-w-xl space-y-3">

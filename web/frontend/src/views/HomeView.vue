@@ -10,6 +10,7 @@ import UserAccountMenu from '../components/UserAccountMenu.vue'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 import RegisterPromoDropdown from '../components/RegisterPromoDropdown.vue'
 import SiteMobileNav from '../components/shell/SiteMobileNav.vue'
+import SiteBeianFooter from '../components/SiteBeianFooter.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -966,6 +967,7 @@ curl -sS <span class="th-home-code-str text-emerald-400/90">"$BASE/v1/chat/compl
       <p class="mx-auto mt-2 max-w-6xl px-5 text-center text-[11px] tracking-wide text-slate-500">
         {{ t('home.companyCredit') }}
       </p>
+      <SiteBeianFooter class="mx-auto mt-3 max-w-6xl px-5 pb-2" />
     </footer>
 
     <Teleport to="body">

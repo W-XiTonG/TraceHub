@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
+import SiteBeianFooter from '../components/SiteBeianFooter.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -550,6 +551,7 @@ onUnmounted(() => {
     <footer class="docs-chrome-border-t py-10 text-center">
       <RouterLink to="/" class="text-sm text-slate-500 transition hover:text-slate-400">{{ t('docs.footerHome') }}</RouterLink>
       <p class="mt-3 text-[11px] text-slate-600">{{ t('docs.footerCompany') }}</p>
+      <SiteBeianFooter class="mt-4" />
     </footer>
   </div>
 </template>

@@ -26,6 +26,8 @@ type PubSiteMeta = {
   declared_model_count_badge?: string
   /** 在线支付总开关 */
   online_payment_enabled?: boolean
+  /** 全站页脚备案等多行文案 */
+  beian_footer_lines?: string[]
 }
 
 function normalizePublicContact(raw: unknown): PublicContactPayload | null {
@@ -49,6 +51,18 @@ function normalizePublicContact(raw: unknown): PublicContactPayload | null {
   }
   if (!title && qr_items.length === 0 && emails.length === 0) return null
   return { title, qr_items, emails }
+}
+
+function normalizeBeianFooterLines(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const x of raw) {
+    if (typeof x === 'string') {
+      const s = x.trim()
+      if (s) out.push(s)
+    }
+  }
+  return out
 }
 
 /** 与后端 sitecfg 默认一致；接口返回该值时存为空串表示「无自定义」 */
@@ -77,6 +91,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   /** 全站渠道声明模型数展示文案（如 300+），来自 /api/pub/site-meta */
   const declaredModelCountBadge = ref('')
   const onlinePaymentEnabled = ref(false)
+  /** 全站页脚备案等多行文案 */
+  const beianFooterLines = ref<string[]>([])
   const loaded = ref(false)
   let inflight: Promise<void> | null = null
 
@@ -120,6 +136,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   })
 
   const hasPublicContact = computed(() => publicContact.value != null)
+  const hasBeianFooter = computed(() => beianFooterLines.value.length > 0)
 
   async function pullPubSiteMeta(): Promise<void> {
     try {
@@ -152,6 +169,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
           registerPromoText.value = ''
         }
         publicContact.value = normalizePublicContact(data.data.public_contact)
+        beianFooterLines.value = normalizeBeianFooterLines(data.data.beian_footer_lines)
         if (typeof data.data.declared_model_count_badge === 'string') {
           declaredModelCountBadge.value = data.data.declared_model_count_badge.trim()
         } else {
@@ -194,6 +212,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     apiPublicBaseUrl.value = ''
     registerPromoText.value = ''
     publicContact.value = null
+    beianFooterLines.value = []
     declaredModelCountBadge.value = ''
     onlinePaymentEnabled.value = false
     inflight = (async () => {
@@ -220,6 +239,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     declaredModelCountBadge,
     onlinePaymentEnabled,
     hasPublicContact,
+    beianFooterLines,
+    hasBeianFooter,
     loaded,
     displayName,
     displayIconUrl,

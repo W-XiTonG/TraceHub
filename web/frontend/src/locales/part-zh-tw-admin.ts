@@ -781,6 +781,11 @@ export default {
     descRoutingSticky: 'gateway.routing.sticky_enabled_default',
     descRoutingAutoHealth: 'gateway.routing.auto_health_from_probe',
     descRoutingProbeThreshold: 'gateway.routing.probe_fail_threshold',
+    secBeianFooter: '全站頁尾備案資訊',
+    secBeianFooterHint:
+      '多行純文字，按行展示在全站各頁面最底部；留空則不顯示。單獨一行為 http(s) URL 時將渲染為可點擊連結（如工信部核驗地址）。寫入 site.beian_footer_text，經 /api/pub/site-meta 下發。',
+    lblBeianFooterText: '備案文案（多行）',
+    phBeianFooterText: '京ICP备xxxxxxxx号\nhttps://beian.miit.gov.cn/',
     secContact: '官網聯絡我們',
     secContactHint:
       '設定後顯示在官網首頁頁尾上方：可選區塊標題、多張 QR 圖（建議本地上傳或同源路徑）與多個聯絡信箱。寫入 site.public_contact（JSON），並經 /api/pub/site-meta 下發給未登入訪客。',
@@ -834,6 +839,7 @@ export default {
     hintNoBillModelsDb: '目前列表已由資料庫覆寫；「恢復預設」將回退為設定檔中的列表。',
     descApiPublicBaseUrl: '對外 OpenAI 相容 Base URL（site.api.public_base_url）',
     descPublicContact: '官網頁尾聯絡我們 JSON（site.public_contact）',
+    descBeianFooter: '全站頁尾備案多行文案（site.beian_footer_text）',
     descUpstreamProbeEnabled: '背景週期性上游 /v1/models 偵測開關',
     descUpstreamProbeInterval: '背景偵測間隔（分鐘）',
   },

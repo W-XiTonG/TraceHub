@@ -32,6 +32,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateAPIPublicBaseURL(value)
 	case SystemConfigKeyRegisterPromoText:
 		return ValidateRegisterPromoText(value)
+	case SystemConfigKeyBeianFooterText:
+		return ValidateBeianFooterText(value)
 	case SystemConfigKeyNoBillModels:
 		return ValidateNoBillModelsJSON(value)
 	case SystemConfigKeyPublicContactJSON:

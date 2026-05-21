@@ -781,6 +781,11 @@ export default {
     secOps: '运维与探测',
     secOpsHint: '写入 /health、/ready 返回的 operator 字段；空则回退到配置文件 site.operator_display_name。',
     lblOperator: '运营方展示名（operator）',
+    secBeianFooter: '全站页脚备案信息',
+    secBeianFooterHint:
+      '多行纯文本，按行展示在全站各页面最底部；留空则不显示。单独一行为 http(s) URL 时将渲染为可点击链接（如工信部核验地址）。写入 site.beian_footer_text，经 /api/pub/site-meta 下发。',
+    lblBeianFooterText: '备案文案（多行）',
+    phBeianFooterText: '京ICP备xxxxxxxx号\nhttps://beian.miit.gov.cn/',
     secContact: '官网联系我们',
     secContactHint:
       '配置后展示在官网首页页脚上方：可选区块标题、多张二维码图片（建议本地上传或同源路径）与多个联系邮箱。数据写入 site.public_contact（JSON），并随 /api/pub/site-meta 下发给未登录访客。',
@@ -831,6 +836,7 @@ export default {
     hintNoBillModelsDb: '当前列表已由数据库覆盖；「恢复默认」将回退为配置文件中的列表。',
     descApiPublicBaseUrl: '对外 OpenAI 兼容 Base URL（site.api.public_base_url）',
     descPublicContact: '官网页脚联系我们 JSON（site.public_contact）',
+    descBeianFooter: '全站页脚备案多行文案（site.beian_footer_text）',
     descUpstreamProbeEnabled: '后台周期性上游模型列表探测开关',
     descUpstreamProbeInterval: '后台探测周期间隔（分钟）',
   },

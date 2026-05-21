@@ -1618,6 +1618,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		dbSetMarkup, dbValMarkup := sitecfg.DefaultPricingMarkupPercentDBMeta(ctx, client)
 		cp := sitecfg.EffectiveCurrencyPricing(ctx, client, cfg)
 		dbSetPromo, dbValPromo := sitecfg.RegisterPromoTextDBMeta(ctx, client)
+		dbSetBeian, dbValBeian := sitecfg.BeianFooterTextDBMeta(ctx, client)
 		dbSetNoBill, dbValNoBill := sitecfg.NoBillModelsDBMeta(ctx, client)
 		probeEnSet, probeEnVal, probeIntSet, probeIntVal, probeMetaErr := sitecfg.UpstreamModelProbeDBMeta(ctx, client)
 		if probeMetaErr != nil {
@@ -1659,6 +1660,10 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"register_promo_text_file":               strings.TrimSpace(cfg.Site.RegisterPromoText),
 			"register_promo_text_db_set":             dbSetPromo,
 			"register_promo_text_db_value":           strings.TrimSpace(dbValPromo),
+			"beian_footer_text":                      sitecfg.EffectiveBeianFooterText(ctx, client, cfg),
+			"beian_footer_text_file":                 strings.TrimSpace(cfg.Site.BeianFooterText),
+			"beian_footer_text_db_set":               dbSetBeian,
+			"beian_footer_text_db_value":             strings.TrimSpace(dbValBeian),
 			"no_bill_models":                         sitecfg.EffectiveNoBillModels(ctx, client, cfg),
 			"no_bill_models_file":                    cfg.Site.NoBillModels,
 			"no_bill_models_db_set":                  dbSetNoBill,
@@ -1745,6 +1750,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyNoBillModels,
 			sitecfg.SystemConfigKeyAPIPublicBaseURL,
 			sitecfg.SystemConfigKeyPublicContactJSON,
+			sitecfg.SystemConfigKeyBeianFooterText,
 			sitecfg.SystemConfigKeyRoutingStrategyDefault,
 			sitecfg.SystemConfigKeyRoutingFailoverEnabledDefault,
 			sitecfg.SystemConfigKeyRoutingFailoverMaxAttempts,
