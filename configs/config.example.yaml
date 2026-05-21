@@ -65,6 +65,13 @@ site:
   #   deny_prefixes: []
   #   patch_model_in_json: true
   #
+  # 可灵原生 API 透传：/v1/kling/{官方路径} → api-beijing.klingai.com/v1/{官方路径}
+  # kling_native:
+  #   enabled: true
+  #   extra_allow_prefixes: []
+  #   deny_prefixes: []
+  #   patch_model_in_json: true
+  #
   # 可选：非空时写入 /health、/ready JSON 的 operator 字段，便于监控或对外展示运营方
   operator_display_name: "循迹未来"
   # 登录页图形验证码（防脚本撞库、刷发登录邮件）。开启后依赖 Redis；本地无 Redis 时请改为 enabled: false

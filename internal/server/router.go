@@ -16,6 +16,7 @@ import (
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/cryptokey"
+	"tracehub/internal/pkg/klingvideo"
 	"tracehub/internal/pkg/sitecfg"
 	webhookhandler "tracehub/internal/handler/webhook"
 	"tracehub/internal/service/balancealert"
@@ -119,6 +120,14 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 			DenyPrefixes:     opt.Config.Site.OpenAIPassthrough.DenyPrefixes,
 			PatchModelInJSON: opt.Config.Site.OpenAIPassthrough.PatchModelInJSON,
 		},
+		KlingNative: gatewayhandler.KlingNativeSettings{
+			Enabled: opt.Config.Site.KlingNative.Enabled,
+			Allowlist: klingvideo.AllowlistConfig{
+				ExtraAllowPrefixes: opt.Config.Site.KlingNative.ExtraAllowPrefixes,
+				DenyPrefixes:       opt.Config.Site.KlingNative.DenyPrefixes,
+			},
+			PatchModelInJSON: opt.Config.Site.KlingNative.PatchModelInJSON,
+		},
 	}
 
 	gate.POST("/chat/completions", gatewayhandler.ChatCompletions(gwBase))
@@ -220,6 +229,9 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	gate.POST("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresModify(respDeps))
 	gate.DELETE("/vector_stores/:vector_store_id", gatewayhandler.OpenAIVectorStoresDelete(respDeps))
 
+	if opt.Config.Site.KlingNative.Enabled {
+		gate.Any("/kling/*klingPath", gatewayhandler.KlingV1Passthrough(gwBase))
+	}
 	if opt.Config.Site.OpenAIPassthrough.Enabled {
 		gate.Any("/*gwOpenAICatchAll", gatewayhandler.OpenAIV1Passthrough(gwBase))
 	}

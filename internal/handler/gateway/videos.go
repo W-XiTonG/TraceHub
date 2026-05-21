@@ -386,7 +386,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 				var ferr error
 				ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
 				if isKlingVideoChannel(ctSel) {
-					resp, ferr = relay.ForwardKlingVideoContent(ctx, baseURL, secret, id, klingKindForVideo(c.Request.Context(), d.RDB, int64(u.ID), id), openAIPassthroughHeaders(c))
+					resp, ferr = relay.ForwardKlingVideoContent(ctx, baseURL, secret, id, klingKindForVideo(c.Request.Context(), d.RDB, int64(u.ID), id), klingPathForVideo(c.Request.Context(), d.RDB, int64(u.ID), id), openAIPassthroughHeaders(c))
 				} else if isVolcengineVideoChannel(ctSel) {
 					resp, ferr = relay.ForwardVolcVideoContent(ctx, baseURL, secret, id, openAIPassthroughHeaders(c))
 				} else {
@@ -485,7 +485,7 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 			var ferr error
 			ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
 			if isKlingVideoChannel(ctSel) {
-				resp, ferr = relay.ForwardKlingVideoTaskHTTP(ctx, baseURL, secret, method, id, klingKindForVideo(ctx, d.RDB, int64(u.ID), id), rawQuery, openAIPassthroughHeaders(c))
+				resp, ferr = relay.ForwardKlingVideoTaskHTTP(ctx, baseURL, secret, method, id, klingKindForVideo(ctx, d.RDB, int64(u.ID), id), klingPathForVideo(ctx, d.RDB, int64(u.ID), id), rawQuery, openAIPassthroughHeaders(c))
 			} else if isVolcengineVideoChannel(ctSel) {
 				taskID := id
 				if mode == "list" {

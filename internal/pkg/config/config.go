@@ -83,6 +83,7 @@ type SiteConfig struct {
 	// OpenAIAccountAdminDenyPrefixes：在 block 开启时，相对 /v1/ 的额外拒绝前缀（不含前导 /）。
 	OpenAIAccountAdminDenyPrefixes []string                `mapstructure:"openai_account_admin_deny_prefixes"`
 	OpenAIPassthrough              OpenAIPassthroughConfig `mapstructure:"openai_passthrough"`
+	KlingNative                    KlingNativeConfig       `mapstructure:"kling_native"`
 	// LoginCaptcha：登录页图形验证码；开启后密码登录与「发送邮箱登录验证码」需携带 captcha_id / captcha_answer，依赖 Redis。
 	LoginCaptcha SiteLoginCaptchaConfig `mapstructure:"login_captcha"`
 	// BrandUploadDir 管理后台本地上传品牌图标的磁盘目录（可写）；空则默认 data/site_brand。对外固定通过 /uploads/site-brand/ 访问。
@@ -106,6 +107,14 @@ type OpenAIPassthroughConfig struct {
 	AllowPrefixes    []string `mapstructure:"allow_prefixes"`
 	DenyPrefixes     []string `mapstructure:"deny_prefixes"`
 	PatchModelInJSON bool     `mapstructure:"patch_model_in_json"`
+}
+
+// KlingNativeConfig 可灵原生 API 透传 /v1/kling/*。
+type KlingNativeConfig struct {
+	Enabled              bool     `mapstructure:"enabled"`
+	ExtraAllowPrefixes   []string `mapstructure:"extra_allow_prefixes"`
+	DenyPrefixes         []string `mapstructure:"deny_prefixes"`
+	PatchModelInJSON     bool     `mapstructure:"patch_model_in_json"`
 }
 
 type BootstrapConfig struct {
@@ -142,6 +151,8 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("site.block_openai_account_admin_paths", true)
 	v.SetDefault("site.openai_passthrough.enabled", false)
 	v.SetDefault("site.openai_passthrough.patch_model_in_json", true)
+	v.SetDefault("site.kling_native.enabled", true)
+	v.SetDefault("site.kling_native.patch_model_in_json", true)
 	v.SetDefault("site.login_captcha.enabled", true)
 	v.SetDefault("site.login_captcha.ttl_seconds", 300)
 	v.SetDefault("site.register_promo_text", "新用户注册即送 5000 额度（约合 ¥0.5），注册成功后自动到账。")

@@ -29,7 +29,8 @@ type videoJobMeta struct {
 	Size      string `json:"size"`
 	Cost      int64  `json:"cost"`
 	ChannelID int    `json:"channel_id,omitempty"`
-	KlingKind string `json:"kling_kind,omitempty"` // text2video | image2video
+	KlingKind string `json:"kling_kind,omitempty"` // text2video | image2video | extend | ...
+	KlingPath string `json:"kling_path,omitempty"` // 创建时的相对路径，如 videos/effects
 }
 
 // videoSettleOutcome 精调结果；Adjust>0 补扣，Adjust<0 退还。
@@ -55,18 +56,28 @@ func videoMetaRedisKey(userID int64, videoID string) string {
 }
 
 func klingKindForVideo(ctx context.Context, rdb *redis.Client, userID int64, videoID string) klingvideo.CreateKind {
+	meta := loadVideoJobMeta(ctx, rdb, userID, videoID)
+	return klingvideo.CreateKind(strings.TrimSpace(meta.KlingKind))
+}
+
+func klingPathForVideo(ctx context.Context, rdb *redis.Client, userID int64, videoID string) string {
+	meta := loadVideoJobMeta(ctx, rdb, userID, videoID)
+	return strings.TrimSpace(meta.KlingPath)
+}
+
+func loadVideoJobMeta(ctx context.Context, rdb *redis.Client, userID int64, videoID string) videoJobMeta {
 	if rdb == nil || videoID == "" {
-		return ""
+		return videoJobMeta{}
 	}
 	raw, err := rdb.Get(ctx, videoMetaRedisKey(userID, videoID)).Bytes()
 	if err != nil || len(raw) == 0 {
-		return ""
+		return videoJobMeta{}
 	}
 	var meta videoJobMeta
 	if json.Unmarshal(raw, &meta) != nil {
-		return ""
+		return videoJobMeta{}
 	}
-	return klingvideo.CreateKind(strings.TrimSpace(meta.KlingKind))
+	return meta
 }
 
 func storeVideoJobBillingMeta(ctx context.Context, rdb *redis.Client, userID int64, videoID string, meta videoJobMeta) {

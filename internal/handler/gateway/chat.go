@@ -42,6 +42,7 @@ type ChatDeps struct {
 	// OpenAICompatExtras 为除 openai/deepseek 外、仍走 OpenAI 兼容 relay 的渠道类型名（见配置 site.openai_compat_channel_types）。
 	OpenAICompatExtras []string
 	Passthrough        OpenAIPassthroughSettings
+	KlingNative        KlingNativeSettings
 }
 
 func ChatCompletions(d ChatDeps) gin.HandlerFunc {
