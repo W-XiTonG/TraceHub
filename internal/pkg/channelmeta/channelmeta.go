@@ -26,6 +26,15 @@ type Meta struct {
 	AdminHints     []string `json:"admin_hints"`
 }
 
+var klingPresetModels = []string{
+	"kling-v3-omni",
+	"kling-v3",
+	"kling-v2.6-pro",
+	"kling-v2.6-std",
+	"kling-v2.5-turbo",
+	"kling-video-o1",
+}
+
 var volcenginePresetModels = []string{
 	"doubao-seedance-2-0-260128",
 	"doubao-seedance-2-0-fast-260128",
@@ -90,6 +99,20 @@ var registry = []Meta{
 			"Realtime、Responses 等依赖方舟是否开通；未开通时由上游返回 4xx。",
 			"图生视频建议 JSON + 公网 image_url；multipart input_reference 仅部分 3D 模型支持。",
 			"模型 ID 请使用方舟 Model ID，必要时配置 model_alias → ep- 接入点。",
+		},
+	},
+	{
+		ChannelType:    "kling",
+		DisplayName:    "可灵 Kling",
+		DefaultBaseURL: "https://api-beijing.klingai.com",
+		Capabilities:   []string{"video"},
+		VideoProtocol:  VideoProtocolKlingNative,
+		PresetModels:   append([]string(nil), klingPresetModels...),
+		AdminHints: []string{
+			"仅视频能力；网关将 OpenAI /v1/videos 转为可灵 text2video / image2video。",
+			"api_key 填写 AccessKey:SecretKey（英文冒号分隔），网关自动签发 JWT。",
+			"api_base_url 留空使用官方北京域名；模型 ID 写入 models，可用 model_alias 映射上游 model_name。",
+			"图生视频请提供 image_url 或 multipart input_reference；复杂能力（特效/Omni/对口型等）首期不转换。",
 		},
 	},
 }
@@ -157,6 +180,8 @@ func ModelMatchesChannelType(modelID, channelType string) bool {
 		return strings.HasPrefix(m, "doubao-") || strings.HasPrefix(m, "skylark") ||
 			strings.Contains(m, "seedance") || strings.Contains(m, "doubao-seedance") ||
 			strings.HasPrefix(m, "seedance")
+	case "kling":
+		return strings.HasPrefix(m, "kling-") || strings.HasPrefix(m, "kling/")
 	default:
 		return true
 	}
@@ -179,4 +204,9 @@ func BuiltInPresetModels(channelType string) []string {
 // IsVolcengineChannelType 是否为火山方舟渠道类型（供探测等管理端逻辑使用）。
 func IsVolcengineChannelType(channelType string) bool {
 	return strings.EqualFold(strings.TrimSpace(channelType), "volcengine")
+}
+
+// IsKlingChannelType 是否为可灵渠道类型。
+func IsKlingChannelType(channelType string) bool {
+	return strings.EqualFold(strings.TrimSpace(channelType), "kling")
 }

@@ -32,6 +32,7 @@ func ProbeChannelCapabilities(ctx context.Context, client *ent.Client, aesKey []
 		baseURL = channelmeta.DefaultBaseURL(ch.ChannelType)
 	}
 	volc := channelmeta.IsVolcengineChannelType(ch.ChannelType)
+	kling := channelmeta.IsKlingChannelType(ch.ChannelType)
 	localKeys := collectLocalModelKeys(ch.Models, ch.ModelAlias)
 	cutoff := time.Now().Add(-24 * time.Hour)
 	var picked []string
@@ -77,6 +78,8 @@ func ProbeChannelCapabilities(ctx context.Context, client *ent.Client, aesKey []
 				continue
 			}
 			resp, ferr = relay.ForwardVolcVideoCreate(ctx, baseURL, bearer, arkBody)
+		} else if kling {
+			resp, _, ferr = relay.ForwardKlingVideoCreate(ctx, baseURL, bearer, body)
 		} else {
 			resp, ferr = relay.ForwardOpenAIVideoCreate(ctx, baseURL, bearer, body)
 		}

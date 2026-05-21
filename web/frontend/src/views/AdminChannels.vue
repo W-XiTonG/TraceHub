@@ -507,6 +507,7 @@ function typeBadgeClass(ty: string): string {
     claude: 'bg-orange-500/15 text-orange-400 ring-orange-500/30',
     gemini: 'bg-blue-500/15 text-blue-400 ring-blue-500/30',
     volcengine: 'bg-violet-500/15 text-violet-300 ring-violet-500/30',
+    kling: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
   }
   return m[ty?.toLowerCase()] ?? 'bg-slate-500/15 text-slate-400 ring-slate-500/30'
 }
@@ -644,6 +645,7 @@ async function probeChannelNow(ch: Ch) {
                     { channel_type: 'claude' },
                     { channel_type: 'gemini' },
                     { channel_type: 'volcengine' },
+                    { channel_type: 'kling' },
                   ]"
                   :key="tm.channel_type"
                   :value="tm.channel_type"

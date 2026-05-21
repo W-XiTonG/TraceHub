@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"tracehub/internal/pkg/klingvideo"
 	"tracehub/internal/pkg/volcvideo"
 
 	"tracehub/internal/ent"
@@ -123,7 +124,31 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 	start := time.Now()
 
 	var resp *http.Response
-	if isVolcengineVideoChannel(ct) {
+	var klingCreateKind klingvideo.CreateKind
+	if isKlingVideoChannel(ct) {
+		oaiBody := map[string]any{
+			"model":   sel.UpstreamModel,
+			"prompt":  parsed.PromptText,
+			"seconds": parsed.Seconds,
+			"size":    parsed.Size,
+		}
+		if hasInputRef {
+			imgBytes, mime, got, rerr := readMultipartInputReference(form)
+			if rerr != nil {
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法读取 input_reference 文件")
+				return
+			}
+			if !got || len(imgBytes) == 0 {
+				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "图生视频需要参考图（input_reference）")
+				return
+			}
+			oaiBody["image"] = klingvideo.ImageDataFromBytes(mime, imgBytes)
+		}
+		oai, _ := json.Marshal(oaiBody)
+		var kerr error
+		resp, klingCreateKind, kerr = relay.ForwardKlingVideoCreate(c.Request.Context(), baseURL, secret, oai)
+		err = kerr
+	} else if isVolcengineVideoChannel(ct) {
 		oaiBody := map[string]any{
 			"model":   sel.UpstreamModel,
 			"prompt":  parsed.PromptText,
@@ -182,9 +207,13 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 	}
 	vid := parseVideoIDFromJSON(raw)
 	if vid != "" {
-		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, videoJobMeta{
+		meta := videoJobMeta{
 			Model: parsed.Model, Seconds: vParams.Seconds, Size: vParams.Size, Cost: costPre, ChannelID: ch.ID,
-		})
+		}
+		if isKlingVideoChannel(ct) && klingCreateKind != "" {
+			meta.KlingKind = string(klingCreateKind)
+		}
+		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, meta)
 	}
 	metrics.GatewayRequests.WithLabelValues(parsed.Model, ct, "200").Inc()
 	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, parsed.Model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
@@ -230,6 +259,8 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	start := time.Now()
 	routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 	volc := isVolcengineVideoChannel(ct)
+	kling := isKlingVideoChannel(ct)
+	var klingCreateKind klingvideo.CreateKind
 
 	sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body,
 		func(b []byte, upstream string) ([]byte, error) {
@@ -240,9 +271,12 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 			if !ok {
 				return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
 			}
+			ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
 			var resp *http.Response
 			var ferr error
-			if isVolcengineVideoChannel(strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))) {
+			if isKlingVideoChannel(ctSel) {
+				resp, klingCreateKind, ferr = relay.ForwardKlingVideoCreate(ctx, baseURL, secret, patched)
+			} else if isVolcengineVideoChannel(ctSel) {
 				resp, ferr = relay.ForwardVolcVideoCreate(ctx, baseURL, secret, patched)
 			} else {
 				resp, ferr = relay.ForwardOpenAIVideoCreate(ctx, baseURL, secret, patched)
@@ -279,9 +313,13 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	}
 	vid := parseVideoIDFromJSON(outBody)
 	if vid != "" {
-		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, videoJobMeta{
+		meta := videoJobMeta{
 			Model: model, Seconds: vParams.Seconds, Size: vParams.Size, Cost: costPre, ChannelID: ch.ID,
-		})
+		}
+		if kling && klingCreateKind != "" {
+			meta.KlingKind = string(klingCreateKind)
+		}
+		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, meta)
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityVideo, res.StatusCode, nil, upstreamprobe.CapSourceRuntime)
@@ -346,7 +384,10 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 				}
 				var resp *http.Response
 				var ferr error
-				if isVolcengineVideoChannel(strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))) {
+				ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
+				if isKlingVideoChannel(ctSel) {
+					resp, ferr = relay.ForwardKlingVideoContent(ctx, baseURL, secret, id, klingKindForVideo(c.Request.Context(), d.RDB, int64(u.ID), id), openAIPassthroughHeaders(c))
+				} else if isVolcengineVideoChannel(ctSel) {
 					resp, ferr = relay.ForwardVolcVideoContent(ctx, baseURL, secret, id, openAIPassthroughHeaders(c))
 				} else {
 					resp, ferr = relay.ForwardOpenAIVideoContent(ctx, baseURL, secret, id, openAIPassthroughHeaders(c))
@@ -423,6 +464,10 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "当前渠道类型不支持视频接口")
 		return
 	}
+	if isKlingVideoChannel(ctPreview) && mode == "list" {
+		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "可灵渠道不支持视频列表接口")
+		return
+	}
 
 	reqID, _ := c.Get("request_id")
 	rid, _ := reqID.(string)
@@ -438,7 +483,10 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 			}
 			var resp *http.Response
 			var ferr error
-			if isVolcengineVideoChannel(strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))) {
+			ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
+			if isKlingVideoChannel(ctSel) {
+				resp, ferr = relay.ForwardKlingVideoTaskHTTP(ctx, baseURL, secret, method, id, klingKindForVideo(ctx, d.RDB, int64(u.ID), id), rawQuery, openAIPassthroughHeaders(c))
+			} else if isVolcengineVideoChannel(ctSel) {
 				taskID := id
 				if mode == "list" {
 					taskID = ""

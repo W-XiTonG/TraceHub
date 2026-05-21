@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/gateway/router"
+	"tracehub/internal/pkg/klingvideo"
 	"tracehub/internal/pkg/volcvideo"
 	"tracehub/internal/service/billing"
 
@@ -27,6 +29,7 @@ type videoJobMeta struct {
 	Size      string `json:"size"`
 	Cost      int64  `json:"cost"`
 	ChannelID int    `json:"channel_id,omitempty"`
+	KlingKind string `json:"kling_kind,omitempty"` // text2video | image2video
 }
 
 // videoSettleOutcome 精调结果；Adjust>0 补扣，Adjust<0 退还。
@@ -49,6 +52,21 @@ func videoJobRedisKey(userID int64, videoID string) string {
 
 func videoMetaRedisKey(userID int64, videoID string) string {
 	return videoJobMetaKeyPrefix + strconv.FormatInt(userID, 10) + ":" + videoID
+}
+
+func klingKindForVideo(ctx context.Context, rdb *redis.Client, userID int64, videoID string) klingvideo.CreateKind {
+	if rdb == nil || videoID == "" {
+		return ""
+	}
+	raw, err := rdb.Get(ctx, videoMetaRedisKey(userID, videoID)).Bytes()
+	if err != nil || len(raw) == 0 {
+		return ""
+	}
+	var meta videoJobMeta
+	if json.Unmarshal(raw, &meta) != nil {
+		return ""
+	}
+	return klingvideo.CreateKind(strings.TrimSpace(meta.KlingKind))
 }
 
 func storeVideoJobBillingMeta(ctx context.Context, rdb *redis.Client, userID int64, videoID string, meta videoJobMeta) {
@@ -162,6 +180,9 @@ func patchVideoCreateBody(body []byte, upstream string, volc bool) ([]byte, erro
 func normalizeVideoUpstreamBody(ct string, body []byte) []byte {
 	if isVolcengineVideoChannel(ct) {
 		return volcvideo.NormalizeResponseBody(body)
+	}
+	if isKlingVideoChannel(ct) {
+		return klingvideo.NormalizeResponseBody(body)
 	}
 	return body
 }
