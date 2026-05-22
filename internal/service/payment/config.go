@@ -236,18 +236,25 @@ func MergeUpdate(cur RuntimeConfig, patch map[string]any) RuntimeConfig {
 			cur.EnabledProviders = ps
 		}
 	}
-	setBool := func(key string, dst *bool, src bool) {
+	patchBool := func(key string, dst *bool, fallback bool) {
+		if v, ok := patch[key]; ok {
+			if b, ok := v.(bool); ok {
+				*dst = b
+				return
+			}
+		}
+		// 兼容仅通过 struct 反序列化传入的布尔字段
 		if _, ok := patch[key]; ok {
-			*dst = src
+			*dst = fallback
 		}
 	}
-	setBool("online_enabled", &cur.OnlineEnabled, p.OnlineEnabled)
-	setBool("mock_enabled", &cur.MockEnabled, p.MockEnabled)
-	setBool("alipay_enabled", &cur.AlipayEnabled, p.AlipayEnabled)
-	setBool("wxpay_enabled", &cur.WxpayEnabled, p.WxpayEnabled)
-	setBool("stripe_enabled", &cur.StripeEnabled, p.StripeEnabled)
-	setBool("easypay_enabled", &cur.EasyPayEnabled, p.EasyPayEnabled)
-	setBool("alipay_sandbox", &cur.AlipaySandbox, p.AlipaySandbox)
+	patchBool("online_enabled", &cur.OnlineEnabled, p.OnlineEnabled)
+	patchBool("mock_enabled", &cur.MockEnabled, p.MockEnabled)
+	patchBool("alipay_enabled", &cur.AlipayEnabled, p.AlipayEnabled)
+	patchBool("wxpay_enabled", &cur.WxpayEnabled, p.WxpayEnabled)
+	patchBool("stripe_enabled", &cur.StripeEnabled, p.StripeEnabled)
+	patchBool("easypay_enabled", &cur.EasyPayEnabled, p.EasyPayEnabled)
+	patchBool("alipay_sandbox", &cur.AlipaySandbox, p.AlipaySandbox)
 	if s := strings.TrimSpace(p.AlipayAppID); s != "" {
 		cur.AlipayAppID = s
 	}
@@ -308,6 +315,9 @@ func MergeUpdate(cur RuntimeConfig, patch map[string]any) RuntimeConfig {
 
 // ValidateRuntimeConfig 保存前校验运行时配置。
 func ValidateRuntimeConfig(cfg RuntimeConfig) error {
+	if !cfg.OnlineEnabled {
+		return nil
+	}
 	if cfg.EasyPayEnabled {
 		if strings.TrimSpace(cfg.EasyPayPID) == "" ||
 			strings.TrimSpace(cfg.EasyPayKey) == "" ||

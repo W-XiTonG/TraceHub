@@ -441,6 +441,7 @@ export default {
     sync: '同步支付狀態',
     save: '儲存',
     saved: '已儲存',
+    saveOfflineHint: '關閉線上支付後仍可儲存；用戶端將隱藏充值下單。',
     thOrder: '訂單',
     thUser: '用戶',
     thProvider: '渠道',

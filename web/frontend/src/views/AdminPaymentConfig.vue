@@ -36,7 +36,15 @@ async function save() {
   saving.value = true
   msg.value = ''
   try {
-    const payload = { ...cfg.value }
+    const payload: Record<string, unknown> = {
+      ...cfg.value,
+      online_enabled: cfg.value.online_enabled === true,
+      mock_enabled: cfg.value.mock_enabled === true,
+      alipay_enabled: cfg.value.alipay_enabled === true,
+      wxpay_enabled: cfg.value.wxpay_enabled === true,
+      stripe_enabled: cfg.value.stripe_enabled === true,
+      easypay_enabled: cfg.value.easypay_enabled === true,
+    }
     if (easypayKey.value.trim()) {
       payload.easypay_key = easypayKey.value.trim()
     }
@@ -75,7 +83,11 @@ onMounted(() => void load())
       </label>
       <p class="text-xs text-slate-500">{{ t('adminPayment.onlineEnabledHint') }}</p>
     </div>
-    <div class="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-6" :class="{ 'opacity-50 pointer-events-none': !cfg.online_enabled }">
+    <div
+      class="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-6"
+      :class="{ 'opacity-50 pointer-events-none': !cfg.online_enabled }"
+      :aria-disabled="!cfg.online_enabled"
+    >
       <label class="flex items-center gap-2 text-sm">
         <input v-model="cfg.mock_enabled" type="checkbox" />
         Mock
@@ -116,10 +128,14 @@ onMounted(() => void load())
       </div>
 
       <input v-model="cfg.site_base_url" class="th-input w-full" :placeholder="t('adminPayment.siteBase')" />
-      <button type="button" class="th-btn-primary disabled:cursor-not-allowed disabled:opacity-50" :disabled="saving" @click="save">
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <button type="button" class="th-btn-primary w-full max-w-xs disabled:cursor-not-allowed disabled:opacity-50" :disabled="saving" @click="save">
         {{ saving ? t('adminCommon.saving') : t('adminPayment.save') }}
       </button>
       <p v-if="msg" class="text-sm" :class="msg.includes('失败') || msg.toLowerCase().includes('fail') ? 'text-red-400' : 'text-emerald-400'">{{ msg }}</p>
+      <p v-if="!cfg.online_enabled" class="text-xs text-slate-500">{{ t('adminPayment.saveOfflineHint') }}</p>
     </div>
     </template>
   </div>

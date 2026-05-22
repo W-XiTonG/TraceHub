@@ -443,6 +443,7 @@ export default {
     sync: 'Sync payment',
     save: 'Save',
     saved: 'Saved',
+    saveOfflineHint: 'You can save with online payments off; checkout is hidden, redeem and admin balance adjust still work.',
     thOrder: 'Order',
     thUser: 'User',
     thProvider: 'Provider',

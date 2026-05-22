@@ -444,6 +444,7 @@ export default {
     sync: '同步支付状态',
     save: '保存配置',
     saved: '已保存',
+    saveOfflineHint: '关闭在线支付后仍可保存；用户端将隐藏充值下单，兑换码与后台调账不受影响。',
     thOrder: '订单号',
     thUser: '用户',
     thProvider: '渠道',
