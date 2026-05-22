@@ -16,6 +16,7 @@ import {
   upstreamPriceFromQuotaPer1K,
 } from '../utils/upstreamQuotaDerive'
 import { channelRefLabel, type AdminModelChannelRef } from '../utils/adminModelChannelMap'
+import { modelLooksVideo } from '../lib/usageLedgerDetail'
 
 const { t } = useI18n()
 
@@ -1333,6 +1334,21 @@ function rowUsesTokenQuota(r: DraftRow) {
   return r.billing_mode === 'token' || r.billing_mode === 'hybrid_floor'
 }
 
+function rowQuotaBillingCellKey(r: DraftRow, side: 'in' | 'out'): string {
+  if (side === 'in' && modelLooksVideo(r.model_name)) return 'adminGlobalPricing.quotaBillingCellVideo'
+  return 'adminGlobalPricing.quotaBillingCell'
+}
+
+function rowPricingUnitHint(r: DraftRow): string {
+  if (!rowUsesTokenQuota(r)) {
+    if (r.billing_mode === 'per_request') return t('adminGlobalPricing.priceUnitHintPerRequest')
+    if (r.billing_mode === 'hybrid_floor') return t('adminGlobalPricing.priceUnitHintHybrid')
+    return ''
+  }
+  if (modelLooksVideo(r.model_name)) return t('adminGlobalPricing.priceUnitHintVideo')
+  return t('adminGlobalPricing.priceUnitHintToken')
+}
+
 /** 仅桌面端压缩列宽；手机/平板用宽表 + 横向滚动，避免表头与数据列错位 */
 const PRICING_TABLE_FIT_MQ = '(min-width: 1024px)'
 const pricingTableFit = ref(false)
@@ -2125,6 +2141,12 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         class="th-input th-input--table-cell w-full font-mono"
                         :placeholder="t('adminGlobalPricing.phQuotaPerRequest')"
                       />
+                      <p
+                        v-if="rowPricingUnitHint(r) && !rowUsesTokenQuota(r)"
+                        class="text-[10px] leading-snug text-slate-500"
+                      >
+                        {{ rowPricingUnitHint(r) }}
+                      </p>
                     </div>
                   </td>
                   <td
@@ -2132,55 +2154,60 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                     :class="{ 'opacity-45': !rowUsesTokenQuota(r) }"
                     :data-label="t('adminGlobalPricing.thTokenQuota')"
                   >
-                    <div v-if="rowUsesTokenQuota(r)" class="th-admin-pricing-pair-grid th-admin-pricing-pair-grid--token">
-                      <span class="th-admin-pricing-pair-lbl" :title="quotaInHeaderTitle">{{
-                        t('adminGlobalPricing.thQuotaColIn')
-                      }}</span>
-                      <span class="th-admin-pricing-pair-lbl" :title="quotaOutHeaderTitle">{{
-                        t('adminGlobalPricing.thQuotaColOut')
-                      }}</span>
-                      <input
-                        :value="quotaInputDisplay(r, idx, 'in')"
-                        type="text"
-                        :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                        class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
-                        :placeholder="quotaInPlaceholder"
-                        :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
-                        autocomplete="off"
-                        @focus="onQuotaFocus(r, idx, 'in')"
-                        @input="onQuotaInput(idx, 'in', $event)"
-                        @blur="commitQuotaBlur(r, idx, 'in')"
-                      />
-                      <input
-                        :value="quotaInputDisplay(r, idx, 'out')"
-                        type="text"
-                        :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
-                        class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
-                        :placeholder="quotaOutPlaceholder"
-                        :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
-                        autocomplete="off"
-                        @focus="onQuotaFocus(r, idx, 'out')"
-                        @input="onQuotaInput(idx, 'out', $event)"
-                        @blur="commitQuotaBlur(r, idx, 'out')"
-                      />
-                      <span
-                        v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
-                        class="th-admin-pricing-pair-preview"
-                      >{{
-                        t('adminGlobalPricing.quotaBillingCell', {
-                          q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
-                        })
-                      }}</span>
-                      <span v-else class="th-admin-pricing-pair-preview th-admin-pricing-pair-preview--spacer" aria-hidden="true" />
-                      <span
-                        v-if="r.quota_out_per_1k.trim() && billingChargePreview(r.quota_out_per_1k, r.markup_percent)"
-                        class="th-admin-pricing-pair-preview"
-                      >{{
-                        t('adminGlobalPricing.quotaBillingCell', {
-                          q: billingChargePreview(r.quota_out_per_1k, r.markup_percent),
-                        })
-                      }}</span>
-                      <span v-else class="th-admin-pricing-pair-preview th-admin-pricing-pair-preview--spacer" aria-hidden="true" />
+                    <div v-if="rowUsesTokenQuota(r)" class="flex flex-col gap-1">
+                      <div class="th-admin-pricing-pair-grid th-admin-pricing-pair-grid--token">
+                        <span class="th-admin-pricing-pair-lbl" :title="quotaInHeaderTitle">{{
+                          t('adminGlobalPricing.thQuotaColIn')
+                        }}</span>
+                        <span class="th-admin-pricing-pair-lbl" :title="quotaOutHeaderTitle">{{
+                          t('adminGlobalPricing.thQuotaColOut')
+                        }}</span>
+                        <input
+                          :value="quotaInputDisplay(r, idx, 'in')"
+                          type="text"
+                          :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                          class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
+                          :placeholder="quotaInPlaceholder"
+                          :title="!codeRefShowQuotaOnly && r.quota_in_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_in_per_1k }) : undefined"
+                          autocomplete="off"
+                          @focus="onQuotaFocus(r, idx, 'in')"
+                          @input="onQuotaInput(idx, 'in', $event)"
+                          @blur="commitQuotaBlur(r, idx, 'in')"
+                        />
+                        <input
+                          :value="quotaInputDisplay(r, idx, 'out')"
+                          type="text"
+                          :inputmode="codeRefShowQuotaOnly ? 'numeric' : 'decimal'"
+                          class="th-input th-input--table-cell th-admin-pricing-pair-input font-mono"
+                          :placeholder="quotaOutPlaceholder"
+                          :title="!codeRefShowQuotaOnly && r.quota_out_per_1k.trim() ? t('adminGlobalPricing.quotaStoredHint', { q: r.quota_out_per_1k }) : undefined"
+                          autocomplete="off"
+                          @focus="onQuotaFocus(r, idx, 'out')"
+                          @input="onQuotaInput(idx, 'out', $event)"
+                          @blur="commitQuotaBlur(r, idx, 'out')"
+                        />
+                        <span
+                          v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
+                          class="th-admin-pricing-pair-preview"
+                        >{{
+                          t(rowQuotaBillingCellKey(r, 'in'), {
+                            q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
+                          })
+                        }}</span>
+                        <span v-else class="th-admin-pricing-pair-preview th-admin-pricing-pair-preview--spacer" aria-hidden="true" />
+                        <span
+                          v-if="r.quota_out_per_1k.trim() && billingChargePreview(r.quota_out_per_1k, r.markup_percent)"
+                          class="th-admin-pricing-pair-preview"
+                        >{{
+                          t(rowQuotaBillingCellKey(r, 'out'), {
+                            q: billingChargePreview(r.quota_out_per_1k, r.markup_percent),
+                          })
+                        }}</span>
+                        <span v-else class="th-admin-pricing-pair-preview th-admin-pricing-pair-preview--spacer" aria-hidden="true" />
+                      </div>
+                      <p v-if="rowPricingUnitHint(r)" class="text-[10px] leading-snug text-slate-500">
+                        {{ rowPricingUnitHint(r) }}
+                      </p>
                     </div>
                     <span v-else class="block py-2 text-center text-slate-600">—</span>
                   </td>
@@ -2524,10 +2551,13 @@ async function onCsvFileChange(ev: Event, mode: CsvImportMode) {
                         v-if="r.quota_in_per_1k.trim() && billingChargePreview(r.quota_in_per_1k, r.markup_percent)"
                         class="font-mono text-[10px] tabular-nums text-slate-500"
                       >{{
-                        t('adminGlobalPricing.quotaBillingCell', {
+                        t(rowQuotaBillingCellKey(r, 'in'), {
                           q: billingChargePreview(r.quota_in_per_1k, r.markup_percent),
                         })
                       }}</span>
+                      <span v-if="rowPricingUnitHint(r)" class="text-[10px] leading-snug text-slate-500">
+                        {{ rowPricingUnitHint(r) }}
+                      </span>
                     </div>
                   </td>
                   <td class="px-2 py-2 align-middle">

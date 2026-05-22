@@ -93,13 +93,19 @@ const pricingLabels = computed(() => ({
   out: t('modelsPage.priceOut'),
   unified: t('modelsPage.priceUnified'),
   perMillion: t('modelsPage.pricePerMillion'),
+  perSecond: t('modelsPage.pricePerSecond'),
   quotaPer1k: t('modelsPage.priceQuotaPer1k'),
+  quotaPerSec: t('modelsPage.priceQuotaPerSec'),
   quotaUnit: t('modelsPage.priceQuotaUnit'),
   quotaPerRequest: t('modelsPage.priceQuotaPerRequest'),
   perRequest: t('modelsPage.pricePerRequest'),
   hybridFloor: t('modelsPage.priceHybridFloor'),
   symbolUsd: '$',
   symbolCny: '¥',
+  unitHintToken: t('modelsPage.priceUnitHintToken'),
+  unitHintVideo: t('modelsPage.priceUnitHintVideo'),
+  unitHintPerRequest: t('modelsPage.priceUnitHintPerRequest'),
+  unitHintHybrid: t('modelsPage.priceUnitHintHybrid'),
 }))
 
 function setPriceCurrency(c: PriceCurrency) {
@@ -112,7 +118,10 @@ function setPriceCurrency(c: PriceCurrency) {
 }
 
 function modelPricingCell(m: ModelItem) {
-  return formatModelPricingDisplay(m.pricing, priceCurrency.value, currencyFactors.value, pricingLabels.value)
+  return formatModelPricingDisplay(m.pricing, priceCurrency.value, currencyFactors.value, pricingLabels.value, {
+    labels: m.labels,
+    modelId: m.id,
+  })
 }
 
 function upstreamStatusKey(m: ModelItem): FilterUpstream {
@@ -364,8 +373,8 @@ function modelSourceLabel(m: ModelItem): string {
 function exportPriceDisplay(m: ModelItem): string {
   const price = modelPricingCell(m)
   if (price.free || !price.fiatPrimary) return price.fiatPrimary
-  if (price.quotaSecondary) return `${price.fiatPrimary} · ${price.quotaSecondary}`
-  return price.fiatPrimary
+  const parts = [price.fiatPrimary, price.quotaSecondary, price.unitHint].filter(Boolean)
+  return parts.join(' · ')
 }
 
 type ExportRow = {
@@ -507,6 +516,7 @@ onMounted(load)
       {{ t('modelsPage.mid2') }}<span class="text-slate-400">{{ t('modelsPage.cat') }}</span>{{ t('modelsPage.after') }}
     </p>
     <p class="mt-2 max-w-2xl shrink-0 text-xs leading-relaxed text-slate-500">{{ t('modelsPage.routingAvailabilityHint') }}</p>
+    <p class="mt-1 max-w-2xl shrink-0 text-xs leading-relaxed text-slate-500">{{ t('modelsPage.priceHint') }}</p>
 
     <p v-if="err" class="mt-4 shrink-0 rounded-lg border border-red-500/20 bg-red-950/30 px-3 py-2 text-sm text-red-300">{{ err }}</p>
 
@@ -702,6 +712,9 @@ onMounted(load)
                       <p v-if="price.quotaSecondary" class="mt-0.5 text-xs tabular-nums text-slate-500">
                         {{ price.quotaSecondary }}
                       </p>
+                      <p v-if="price.unitHint" class="mt-0.5 text-[10px] leading-snug text-slate-500">
+                        {{ price.unitHint }}
+                      </p>
                     </template>
                     <span v-else class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
                   </template>
@@ -774,6 +787,7 @@ onMounted(load)
                 <template v-else-if="price.fiatPrimary">
                   <p class="text-sm tabular-nums text-amber-100/90">{{ price.fiatPrimary }}</p>
                   <p v-if="price.quotaSecondary" class="mt-0.5 text-xs tabular-nums text-slate-500">{{ price.quotaSecondary }}</p>
+                  <p v-if="price.unitHint" class="mt-0.5 text-[10px] leading-snug text-slate-500">{{ price.unitHint }}</p>
                 </template>
                 <span v-else class="text-xs text-slate-600">{{ t('modelsPage.dash') }}</span>
               </template>
