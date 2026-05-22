@@ -98,13 +98,13 @@ type ProviderInfo struct {
 }
 
 type CreateOrderOutput struct {
-	OrderNo string
-	Status  string
-	PayURL  string
-	QRCode  string
-	ExpireAt time.Time
-	AmountCents int64
-	QuotaAmount int64
+	OrderNo     string    `json:"order_no"`
+	Status      string    `json:"status"`
+	PayURL      string    `json:"pay_url,omitempty"`
+	QRCode      string    `json:"qr_code,omitempty"`
+	ExpireAt    time.Time `json:"expire_at"`
+	AmountCents int64     `json:"amount_cents"`
+	QuotaAmount int64     `json:"quota_amount"`
 }
 
 func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (*CreateOrderOutput, error) {

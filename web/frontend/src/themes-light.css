@@ -556,6 +556,13 @@ html[data-th-theme="paper"] .th-billing-pay-panel {
     0 14px 36px -22px rgba(15, 23, 42, 0.1);
 }
 
+html[data-th-theme="dawn"] .th-billing-qr-box,
+html[data-th-theme="paper"] .th-billing-qr-box {
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
 html[data-th-theme="dawn"] .th-console-top-icon-btn--amber:hover,
 html[data-th-theme="paper"] .th-console-top-icon-btn--amber:hover {
   border-color: rgba(245, 158, 11, 0.38);

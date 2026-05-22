@@ -70,7 +70,9 @@ func (easypayProvider) CreatePayment(ctx context.Context, cfg RuntimeConfig, ord
 		TradeNo string `json:"trade_no"`
 	}
 	if json.Unmarshal(body, &out) == nil && out.Code == 1 {
-		return &CreateResult{PayURL: out.PayURL, QRCode: out.QRCode, ProviderTxnID: out.TradeNo}, nil
+		return normalizeEasyPayCreateResult(&CreateResult{
+			PayURL: out.PayURL, QRCode: out.QRCode, ProviderTxnID: out.TradeNo,
+		}), nil
 	}
 	if out.Msg != "" {
 		return nil, fmt.Errorf("easypay create: %s", out.Msg)
@@ -181,6 +183,39 @@ func (easypayProvider) Refund(ctx context.Context, cfg RuntimeConfig, order Orde
 		return nil, fmt.Errorf("easypay refund failed: %s", msg)
 	}
 	return &RefundResult{ProviderRefundID: refundNo, Success: true}, nil
+}
+
+// normalizeEasyPayCreateResult：易支付 qrcode 常为收银台链接而非图片，统一落到 PayURL。
+func normalizeEasyPayCreateResult(res *CreateResult) *CreateResult {
+	if res == nil {
+		return res
+	}
+	pay := strings.TrimSpace(res.PayURL)
+	qr := strings.TrimSpace(res.QRCode)
+	switch {
+	case pay == "" && qr != "":
+		res.PayURL = qr
+		res.QRCode = ""
+	case qr != "" && (qr == pay || !easypayIsImageURL(qr)):
+		res.QRCode = ""
+	case qr != "" && easypayIsImageURL(qr):
+		// 保留图片型 qrcode 供前端展示
+	}
+	return res
+}
+
+func easypayIsImageURL(u string) bool {
+	u = strings.ToLower(strings.TrimSpace(u))
+	if strings.HasPrefix(u, "data:image/") {
+		return true
+	}
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"} {
+		if strings.Contains(u, ext) {
+			return true
+		}
+	}
+	return strings.Contains(u, "format=png") || strings.Contains(u, "format=jpg") ||
+		strings.Contains(u, "/qr/") || strings.Contains(u, "qrcode=")
 }
 
 func easypaySign(params map[string]string, key string) string {

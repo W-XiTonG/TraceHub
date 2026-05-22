@@ -455,6 +455,19 @@
   line-height: 1.25;
   color: var(--th-billing-muted-fg);
 }
+.th-billing-qr-box {
+  border-radius: 0.75rem;
+  border: 1px solid var(--th-billing-package-border);
+  background: #fff;
+  padding: 1rem;
+  text-align: center;
+}
+.th-billing-qr-img {
+  max-height: 14rem;
+  width: auto;
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
 
 /* 页面背景：极弱环境光 + 底向深的纵向渐变；子层叠在纹理之上 */
 .th-page-shell {

@@ -6,6 +6,7 @@ import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
 import contactCardImg from '../assets/xunji-contact-card.png'
 import { useSiteMetaStore } from '../stores/siteMeta'
+import { checkoutQrImageSrc, paymentCheckoutUrl } from '../utils/paymentCheckout'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -53,6 +54,17 @@ const activeOrder = ref<OrderResult | null>(null)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const showEasypayType = computed(() => provider.value === 'easypay')
+
+const payCheckoutUrl = computed(() => paymentCheckoutUrl(activeOrder.value))
+
+const payQrImageSrc = computed(() => checkoutQrImageSrc(payCheckoutUrl.value))
+
+const qrImgFailed = ref(false)
+
+function openCheckout() {
+  const url = payCheckoutUrl.value
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
+}
 
 const easypayTypeOptions = computed(() => {
   const p = providers.value.find((x) => x.id === 'easypay')
@@ -157,10 +169,23 @@ async function createOrder() {
       msg.value = apiErrorMessage(data) || t('billingPage.orderFail')
       return
     }
-    activeOrder.value = data.data
+    const order = data.data
+    if (!order.pay_url && !order.qr_code) {
+      msgTone.value = 'error'
+      msg.value = t('billingPage.noPayLink')
+      return
+    }
+    activeOrder.value = order
+    qrImgFailed.value = false
     msgTone.value = 'success'
-    msg.value = t('billingPage.orderCreated')
-    startPoll(data.data.order_no)
+    const checkout = paymentCheckoutUrl(order)
+    if (checkout) {
+      msg.value = t('billingPage.orderCreatedOpenPay')
+      window.open(checkout, '_blank', 'noopener,noreferrer')
+    } else {
+      msg.value = t('billingPage.orderCreated')
+    }
+    startPoll(order.order_no)
   } catch (e: unknown) {
     msgTone.value = 'error'
     msg.value = apiErrorMessage(e) || t('billingPage.orderFail')
@@ -366,14 +391,26 @@ onUnmounted(() => stopPoll())
         <h2 class="th-billing-pay-panel__title">{{ t('billingPage.payTitle') }}</h2>
         <p class="th-billing-pay-panel__meta">{{ t('billingPage.orderNo') }}: {{ activeOrder.order_no }}</p>
         <p class="th-billing-pay-panel__meta">¥{{ fmtYuan(activeOrder.amount_cents) }} → {{ activeOrder.quota_amount }} {{ t('billingPage.quotaUnit') }}</p>
-        <a
-          v-if="activeOrder.pay_url"
-          :href="activeOrder.pay_url"
-          target="_blank"
-          rel="noopener"
-          class="th-link-accent mt-3 inline-block text-sm hover:underline"
-        >{{ t('billingPage.openPay') }}</a>
-        <p v-if="activeOrder.qr_code" class="mt-2 break-all text-xs th-billing-panel__hint">{{ activeOrder.qr_code }}</p>
+        <button
+          v-if="payCheckoutUrl"
+          type="button"
+          class="th-btn-primary mt-4 text-sm"
+          @click="openCheckout"
+        >
+          {{ t('billingPage.openPay') }}
+        </button>
+        <div v-if="payQrImageSrc && !qrImgFailed" class="th-billing-qr-box mt-4">
+          <p class="mb-3 text-center text-xs th-billing-panel__hint">{{ t('billingPage.scanQr') }}</p>
+          <img
+            :src="payQrImageSrc"
+            alt=""
+            class="th-billing-qr-img mx-auto block"
+            @error="qrImgFailed = true"
+          />
+        </div>
+        <p v-else-if="payCheckoutUrl && qrImgFailed" class="mt-3 text-xs th-billing-panel__hint">
+          {{ t('billingPage.qrLoadFail') }}
+        </p>
         <button v-if="provider === 'mock'" type="button" class="th-btn-secondary mt-4 text-sm" @click="mockPay">
           {{ t('billingPage.mockPayBtn') }}
         </button>
