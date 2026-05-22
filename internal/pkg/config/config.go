@@ -41,12 +41,13 @@ type ServerConfig struct {
 	TLS  ServerTLSConfig   `mapstructure:"tls"`
 }
 
-// ServerTLSConfig 应用进程内置 TLS 监听（证书路径仅配置文件，不写入 system_configs）。
+// ServerTLSConfig 应用进程内置 TLS 监听；cert/key 路径可由 YAML 或管理后台上传写入 system_configs。
 type ServerTLSConfig struct {
-	Enabled  bool   `mapstructure:"enabled"`
-	Addr     string `mapstructure:"addr"`
-	CertFile string `mapstructure:"cert_file"`
-	KeyFile  string `mapstructure:"key_file"`
+	Enabled        bool   `mapstructure:"enabled"`
+	Addr           string `mapstructure:"addr"`
+	CertFile       string `mapstructure:"cert_file"`
+	KeyFile        string `mapstructure:"key_file"`
+	TLSUploadDir   string `mapstructure:"tls_upload_dir"`
 }
 
 type DatabaseConfig struct {

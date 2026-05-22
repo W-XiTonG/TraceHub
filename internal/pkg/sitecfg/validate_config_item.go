@@ -76,6 +76,10 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateHTTPSHSTSMaxAge(value)
 	case SystemConfigKeyTLSEnabled:
 		return ValidateTLSEnabled(value)
+	case SystemConfigKeyTLSCertFile:
+		return ValidateTLSCertFilePath(value)
+	case SystemConfigKeyTLSKeyFile:
+		return ValidateTLSKeyFilePath(value)
 	default:
 		return nil
 	}

@@ -52,15 +52,41 @@ const s = inject(adminSiteSettingsKey)!
             </div>
             <div class="flex flex-wrap gap-x-2">
               <dt class="text-slate-500">{{ t('adminSystem.lblTLSCertFile') }}</dt>
-              <dd class="font-mono text-slate-300">{{ s.tlsCertFile || '—' }}</dd>
+              <dd class="font-mono text-slate-300 break-all">{{ s.tlsCertFile || '—' }}</dd>
               <span v-if="s.tlsCertFile && !s.tlsCertPresent" class="text-amber-200/90">{{ t('adminSystem.tlsCertMissing') }}</span>
             </div>
             <div class="flex flex-wrap gap-x-2">
               <dt class="text-slate-500">{{ t('adminSystem.lblTLSKeyFile') }}</dt>
-              <dd class="font-mono text-slate-300">{{ s.tlsKeyFile || '—' }}</dd>
+              <dd class="font-mono text-slate-300 break-all">{{ s.tlsKeyFile || '—' }}</dd>
               <span v-if="s.tlsKeyFile && !s.tlsKeyPresent" class="text-amber-200/90">{{ t('adminSystem.tlsKeyMissing') }}</span>
             </div>
           </dl>
+          <p v-if="s.tlsCertDbOverride || s.tlsKeyDbOverride" class="mt-2 text-[11px] text-amber-100/80">
+            {{ t('adminSystem.hintTLSUploadDb') }}
+          </p>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <label class="th-btn-secondary cursor-pointer px-3 py-2 text-xs">
+              <input
+                type="file"
+                class="hidden"
+                accept=".pem,.crt,.cer,application/x-pem-file,text/plain"
+                :disabled="s.uploadingTlsCert || s.saving"
+                @change="s.uploadTlsCert"
+              />
+              {{ s.uploadingTlsCert ? t('adminSystem.tlsCertUploading') : t('adminSystem.btnUploadTLSCert') }}
+            </label>
+            <label class="th-btn-secondary cursor-pointer px-3 py-2 text-xs">
+              <input
+                type="file"
+                class="hidden"
+                accept=".pem,.key,application/x-pem-file,text/plain"
+                :disabled="s.uploadingTlsKey || s.saving"
+                @change="s.uploadTlsKey"
+              />
+              {{ s.uploadingTlsKey ? t('adminSystem.tlsKeyUploading') : t('adminSystem.btnUploadTLSKey') }}
+            </label>
+          </div>
+          <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintTLSUpload') }}</p>
         </div>
       </div>
     </section>

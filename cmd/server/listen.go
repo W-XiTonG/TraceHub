@@ -39,8 +39,9 @@ func runServers(ctx context.Context, cfg *config.Config, client *ent.Client, han
 		return nil
 	}
 
-	certFile := strings.TrimSpace(cfg.Server.TLS.CertFile)
-	keyFile := strings.TrimSpace(cfg.Server.TLS.KeyFile)
+	paths := sitecfg.EffectiveTLSCertKeyPaths(ctx, client, cfg)
+	certFile := strings.TrimSpace(paths.CertFile)
+	keyFile := strings.TrimSpace(paths.KeyFile)
 	if certFile == "" || keyFile == "" {
 		log.Fatal("server.tls.enabled 为 true 时须配置 server.tls.cert_file 与 server.tls.key_file")
 	}

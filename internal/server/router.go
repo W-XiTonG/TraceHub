@@ -368,6 +368,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/site-upload/brand-og-image", adminhandler.PostBrandOGImageUpload(opt.Client, opt.Config))
 	a.POST("/site-upload/contact-card", adminhandler.PostContactCardUpload(opt.Client, opt.Config))
 	a.POST("/site-upload/contact-qr", adminhandler.PostContactQRUpload(opt.Client, opt.Config))
+	a.POST("/site-upload/tls-cert", adminhandler.PostTLSCertUpload(opt.Client, opt.Config))
+	a.POST("/site-upload/tls-key", adminhandler.PostTLSKeyUpload(opt.Client, opt.Config))
 	a.PUT("/config", adminhandler.PutSystemConfig(opt.Client))
 	a.POST("/config/reload", adminhandler.ReloadSystemConfig())
 	a.GET("/model-catalog/sources", adminhandler.ListModelCatalogSources(opt.Client))

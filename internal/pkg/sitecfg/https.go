@@ -17,7 +17,15 @@ const (
 	SystemConfigKeyHTTPSHSTSEnabled     = "site.https.hsts_enabled"
 	SystemConfigKeyHTTPSHSTSMaxAge      = "site.https.hsts_max_age_seconds"
 	SystemConfigKeyTLSEnabled           = "server.tls.enabled"
+	SystemConfigKeyTLSCertFile          = "server.tls.cert_file"
+	SystemConfigKeyTLSKeyFile           = "server.tls.key_file"
 )
+
+// TLSCertKeyPaths 内置 TLS 证书与私钥的生效路径（DB 覆盖 YAML）。
+type TLSCertKeyPaths struct {
+	CertFile string
+	KeyFile  string
+}
 
 const httpsPolicyCacheTTL = 10 * time.Second
 
@@ -142,6 +150,33 @@ func HTTPSHSTSMaxAgeDBMeta(ctx context.Context, client *ent.Client) (hasRow bool
 
 func TLSEnabledDBMeta(ctx context.Context, client *ent.Client) (hasRow bool, raw string) {
 	return configRowMeta(ctx, client, SystemConfigKeyTLSEnabled)
+}
+
+func TLSCertFileDBMeta(ctx context.Context, client *ent.Client) (hasRow bool, raw string) {
+	return configRowMeta(ctx, client, SystemConfigKeyTLSCertFile)
+}
+
+func TLSKeyFileDBMeta(ctx context.Context, client *ent.Client) (hasRow bool, raw string) {
+	return configRowMeta(ctx, client, SystemConfigKeyTLSKeyFile)
+}
+
+// EffectiveTLSCertKeyPaths 返回生效的证书/私钥路径（库中非空路径覆盖 YAML）。
+func EffectiveTLSCertKeyPaths(ctx context.Context, client *ent.Client, cfg *config.Config) TLSCertKeyPaths {
+	out := TLSCertKeyPaths{}
+	if cfg != nil {
+		out.CertFile = strings.TrimSpace(cfg.Server.TLS.CertFile)
+		out.KeyFile = strings.TrimSpace(cfg.Server.TLS.KeyFile)
+	}
+	if client == nil {
+		return out
+	}
+	if v, ok, err := stringFromConfigRow(ctx, client, SystemConfigKeyTLSCertFile); err == nil && ok && strings.TrimSpace(v) != "" {
+		out.CertFile = strings.TrimSpace(v)
+	}
+	if v, ok, err := stringFromConfigRow(ctx, client, SystemConfigKeyTLSKeyFile); err == nil && ok && strings.TrimSpace(v) != "" {
+		out.KeyFile = strings.TrimSpace(v)
+	}
+	return out
 }
 
 func configRowMeta(ctx context.Context, client *ent.Client, key string) (hasRow bool, raw string) {

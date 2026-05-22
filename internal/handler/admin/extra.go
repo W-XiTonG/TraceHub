@@ -1625,8 +1625,11 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		dbSetHTTPSHSTS, dbValHTTPSHSTS := sitecfg.HTTPSHSTSEnabledDBMeta(ctx, client)
 		dbSetHTTPSMax, dbValHTTPSMax := sitecfg.HTTPSHSTSMaxAgeDBMeta(ctx, client)
 		dbSetTLS, dbValTLS := sitecfg.TLSEnabledDBMeta(ctx, client)
-		tlsCert := strings.TrimSpace(cfg.Server.TLS.CertFile)
-		tlsKey := strings.TrimSpace(cfg.Server.TLS.KeyFile)
+		dbSetTLSCert, dbValTLSCert := sitecfg.TLSCertFileDBMeta(ctx, client)
+		dbSetTLSKey, dbValTLSKey := sitecfg.TLSKeyFileDBMeta(ctx, client)
+		tlsPaths := sitecfg.EffectiveTLSCertKeyPaths(ctx, client, cfg)
+		tlsCert := tlsPaths.CertFile
+		tlsKey := tlsPaths.KeyFile
 		tlsAddr := strings.TrimSpace(cfg.Server.TLS.Addr)
 		if tlsAddr == "" {
 			tlsAddr = ":443"
@@ -1737,7 +1740,13 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"tls_enabled_db_set":                      dbSetTLS,
 			"tls_enabled_db_value":                    strings.TrimSpace(dbValTLS),
 			"tls_cert_file":                           tlsCert,
+			"tls_cert_file_yaml":                      strings.TrimSpace(cfg.Server.TLS.CertFile),
+			"tls_cert_file_db_set":                    dbSetTLSCert,
+			"tls_cert_file_db_value":                  strings.TrimSpace(dbValTLSCert),
 			"tls_key_file":                            tlsKey,
+			"tls_key_file_yaml":                       strings.TrimSpace(cfg.Server.TLS.KeyFile),
+			"tls_key_file_db_set":                     dbSetTLSKey,
+			"tls_key_file_db_value":                   strings.TrimSpace(dbValTLSKey),
 			"tls_addr":                                tlsAddr,
 			"tls_cert_present":                        tlsCert != "" && certErr == nil,
 			"tls_key_present":                         tlsKey != "" && keyErr == nil,
@@ -1798,6 +1807,8 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyHTTPSHSTSEnabled,
 			sitecfg.SystemConfigKeyHTTPSHSTSMaxAge,
 			sitecfg.SystemConfigKeyTLSEnabled,
+			sitecfg.SystemConfigKeyTLSCertFile,
+			sitecfg.SystemConfigKeyTLSKeyFile,
 			sitecfg.SystemConfigKeyCurrencyQuotaPerYuan,
 			sitecfg.SystemConfigKeyCurrencyQuotaPerUsd,
 			sitecfg.SystemConfigKeyPricingCnyPerUsd,
@@ -1835,6 +1846,7 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 		invalidateDefaultMarkup := false
 		invalidateHTTPSPolicy := false
 		tlsEnabledTouched := false
+		tlsMaterialTouched := false
 		for _, it := range req.Items {
 			k := strings.TrimSpace(it.Key)
 			if k == "" {
@@ -1856,6 +1868,8 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 				invalidateHTTPSPolicy = true
 			case sitecfg.SystemConfigKeyTLSEnabled:
 				tlsEnabledTouched = true
+			case sitecfg.SystemConfigKeyTLSCertFile, sitecfg.SystemConfigKeyTLSKeyFile:
+				tlsMaterialTouched = true
 			}
 			if err := sitecfg.ValidateSystemConfigPut(k, it.Value); err != nil {
 				httpx.BadRequest(c, err.Error())
@@ -1919,8 +1933,8 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			sitecfg.InvalidateHTTPSPolicyCache()
 		}
 		msg := "已保存"
-		if tlsEnabledTouched {
-			msg = "已保存；内置 TLS 开关需重启 TraceHub 服务后生效"
+		if tlsEnabledTouched || tlsMaterialTouched {
+			msg = "已保存；内置 TLS 或证书路径变更需重启 TraceHub 服务后生效"
 		}
 		auditLog(client, adm.ID, "config.update", "system_config", "", map[string]any{"count": len(req.Items)}, c)
 		httpx.OKMsg(c, msg, nil)

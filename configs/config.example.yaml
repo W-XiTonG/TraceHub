@@ -8,6 +8,7 @@ server:
   #   addr: ":443"
   #   cert_file: /etc/tracehub/ssl/fullchain.pem
   #   key_file: /etc/tracehub/ssl/privkey.pem
+  #   tls_upload_dir: ./data/tls  # 管理后台上传 PEM 的目录（默认 data/tls）
 
 database:
   dsn: "postgres://tracehub:tracehub@localhost:5432/tracehub?sslmode=disable"

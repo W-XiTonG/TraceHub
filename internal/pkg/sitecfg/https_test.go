@@ -23,3 +23,15 @@ func TestFileHTTPSPolicy_defaults(t *testing.T) {
 		t.Fatalf("got %d", p.HSTSMaxAgeSeconds)
 	}
 }
+
+func TestValidateTLSCertFilePath(t *testing.T) {
+	if err := ValidateTLSCertFilePath(""); err == nil {
+		t.Fatal("expected empty error")
+	}
+	if err := ValidateTLSCertFilePath("/etc/ssl/../bad.pem"); err == nil {
+		t.Fatal("expected .. error")
+	}
+	if err := ValidateTLSCertFilePath("relative.pem"); err == nil {
+		t.Fatal("expected non-abs error")
+	}
+}

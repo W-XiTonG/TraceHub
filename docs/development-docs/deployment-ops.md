@@ -358,7 +358,7 @@ server {
 | 能力 | 配置 | 管理后台 | 生效 |
 |:---|:---|:---|:---|
 | 强制 HTTP→HTTPS、HSTS | `site.https.*` 或 `system_configs` | 系统配置 → 访问安全 | 保存后约 10s（内存缓存），**无需重启** |
-| 内置 TLS 监听 | `server.tls.cert_file` / `key_file`（仅 YAML） | 访问安全 →「启用内置 TLS」 | **须重启**进程 |
+| 内置 TLS 监听 | `server.tls.cert_file` / `key_file`（YAML 或管理后台上传 PEM） | 访问安全 → 上传证书/私钥 +「启用内置 TLS」 | **须重启**进程 |
 
 **推荐生产（高 QPS）**：Nginx/Caddy 监听 443 并设置 `proxy_set_header X-Forwarded-Proto $scheme;`，TraceHub 保持 `server.tls.enabled: false`，在管理后台开启「强制 HTTP 跳转 HTTPS」即可（或由 Nginx `return 301` 承担跳转）。
 

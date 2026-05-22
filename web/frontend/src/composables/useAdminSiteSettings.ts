@@ -81,6 +81,8 @@ export type SiteSettingsPayload = {
   tls_addr?: string
   tls_cert_present?: boolean
   tls_key_present?: boolean
+  tls_cert_file_db_set?: boolean
+  tls_key_file_db_set?: boolean
   /** 以下三项来自运行配置 YAML，供全站计价换算等只读展示 */
   currency_quota_per_yuan?: number
   currency_quota_per_usd?: number
@@ -125,6 +127,10 @@ export function createAdminSiteSettings() {
   const tlsAddr = ref(':443')
   const tlsCertPresent = ref(false)
   const tlsKeyPresent = ref(false)
+  const tlsCertDbOverride = ref(false)
+  const tlsKeyDbOverride = ref(false)
+  const uploadingTlsCert = ref(false)
+  const uploadingTlsKey = ref(false)
 
   const contactTitle = ref('')
   const contactEmailsText = ref('')
@@ -309,6 +315,8 @@ export function createAdminSiteSettings() {
     tlsAddr.value = typeof d.tls_addr === 'string' && d.tls_addr.trim() ? d.tls_addr : ':443'
     tlsCertPresent.value = Boolean(d.tls_cert_present)
     tlsKeyPresent.value = Boolean(d.tls_key_present)
+    tlsCertDbOverride.value = Boolean(d.tls_cert_file_db_set)
+    tlsKeyDbOverride.value = Boolean(d.tls_key_file_db_set)
     const pc = d.public_contact
     if (pc && typeof pc === 'object') {
       contactTitle.value = typeof pc.title === 'string' ? pc.title.trim() : ''
@@ -611,6 +619,48 @@ export function createAdminSiteSettings() {
     )
   }
 
+  async function uploadTlsFile(ev: Event, endpoint: string, failKey: string, successKey: string, busy: typeof uploadingTlsCert) {
+    const input = ev.target as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    busy.value = true
+    err.value = ''
+    msg.value = ''
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const { data } = await http.post<Envelope<{ path?: string; pair_ok?: boolean }>>(endpoint, fd)
+      if (!isEnvelopeSuccess(data)) throw new Error(data.message || t(failKey))
+      await refresh()
+      msg.value = typeof data.message === 'string' && data.message.trim() ? data.message : t(successKey)
+    } catch (e: unknown) {
+      err.value = httpErr(e)
+    } finally {
+      busy.value = false
+    }
+  }
+
+  function uploadTlsCert(ev: Event) {
+    return uploadTlsFile(
+      ev,
+      '/api/admin/site-upload/tls-cert',
+      'adminSystem.tlsCertUploadFail',
+      'adminSystem.tlsCertUploaded',
+      uploadingTlsCert,
+    )
+  }
+
+  function uploadTlsKey(ev: Event) {
+    return uploadTlsFile(
+      ev,
+      '/api/admin/site-upload/tls-key',
+      'adminSystem.tlsKeyUploadFail',
+      'adminSystem.tlsKeyUploaded',
+      uploadingTlsKey,
+    )
+  }
+
   async function save() {
     saving.value = true
     err.value = ''
@@ -823,6 +873,12 @@ export function createAdminSiteSettings() {
     tlsAddr,
     tlsCertPresent,
     tlsKeyPresent,
+    tlsCertDbOverride,
+    tlsKeyDbOverride,
+    uploadingTlsCert,
+    uploadingTlsKey,
+    uploadTlsCert,
+    uploadTlsKey,
     gatewayIpBlacklistRows,
     addGatewayIpBlacklistRow,
     removeGatewayIpBlacklistRow,
