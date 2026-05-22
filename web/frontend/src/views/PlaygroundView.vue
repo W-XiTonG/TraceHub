@@ -113,9 +113,24 @@ function toggleModelPicker() {
 }
 
 function pickModel(id: string) {
+  const row = models.value.find((r) => r.id === id)
+  if (row?.callable === false) return
   model.value = id
   closeModelPicker()
 }
+
+function isPlaygroundModelCallable(m: { callable?: boolean }): boolean {
+  return m.callable !== false
+}
+
+const hasCatalogOnlyPlaygroundModels = computed(() =>
+  models.value.some((r) => r.catalogOnly || r.callable === false),
+)
+
+const showCatalogOnlyModelHint = computed(() => {
+  const row = selectedModelRow.value
+  return !!row && row.callable === false
+})
 
 function onDocMousedown(ev: MouseEvent) {
   if (!modelPickerOpen.value) return
@@ -734,16 +749,17 @@ async function refreshModels() {
   }
   modelsErr.value = ''
   await runModelsLoad(async () => {
-    const [rows, reg] = await Promise.all([
+    const [rows, avail] = await Promise.all([
       pgw.fetchPlaygroundModels(k, stickySession.value),
-      pgw.fetchPlaygroundRegistryMap(),
+      pgw.fetchPlaygroundAvailItems(),
     ])
-    playgroundRegistryMerged.value = reg !== null
-    playgroundRegistryIds.value = reg ? new Set(reg.keys()) : null
-    models.value = pgw.mergePlaygroundRegistry(rows, reg)
-    const ids = models.value.map((r) => r.id)
-    if (!model.value && ids.length) model.value = ids[0]
-    if (model.value && !ids.includes(model.value) && ids.length) model.value = ids[0]
+    playgroundRegistryMerged.value = avail !== null
+    playgroundRegistryIds.value = avail ? new Set(avail.map((it) => it.id)) : null
+    models.value = pgw.buildPlaygroundModelList(rows, avail)
+    const callable = models.value.filter((r) => r.callable !== false)
+    const pickIds = callable.length ? callable.map((r) => r.id) : models.value.map((r) => r.id)
+    if (!model.value && pickIds.length) model.value = pickIds[0]
+    if (model.value && !pickIds.includes(model.value) && pickIds.length) model.value = pickIds[0]
     syncPlaygroundMediaParamsToModel()
     void restorePersistedVideoMedia()
   }).catch((e: unknown) => {
@@ -2037,6 +2053,9 @@ function fmtNum(n: number) {
             <p v-if="playgroundRegistryMerged" class="mt-0.5 text-[10px] leading-snug th-pg-muted">
               {{ t('playground.registryHint') }}
             </p>
+            <p v-if="hasCatalogOnlyPlaygroundModels" class="mt-0.5 text-[10px] leading-snug text-amber-400/90">
+              {{ t('playground.catalogOnlyListHint') }}
+            </p>
             <div ref="modelPickerWrap" class="th-pg-model-picker mt-1">
               <button
                 id="pg-model-picker-trigger"
@@ -2148,12 +2167,24 @@ function fmtNum(n: number) {
                     type="button"
                     role="option"
                     :aria-selected="model === m.id"
+                    :aria-disabled="!isPlaygroundModelCallable(m)"
+                    :disabled="!isPlaygroundModelCallable(m)"
                     class="th-pg-model-picker__option"
-                    :class="{ 'th-pg-model-picker__option--active': model === m.id }"
+                    :class="{
+                      'th-pg-model-picker__option--active': model === m.id,
+                      'th-pg-model-picker__option--disabled': !isPlaygroundModelCallable(m),
+                    }"
+                    :title="!isPlaygroundModelCallable(m) ? t('playground.catalogOnlyOptionTitle') : undefined"
                     @click="pickModel(m.id)"
                   >
                     <span class="th-pg-model-picker__opt-id">{{ m.id }}</span>
                     <div class="th-pg-model-picker__opt-aside">
+                      <span
+                        v-if="!isPlaygroundModelCallable(m)"
+                        class="th-pg-model-picker__meta-pill border border-amber-500/35 bg-amber-500/10 text-amber-200/90"
+                      >
+                        {{ t('playground.catalogOnlyBadge') }}
+                      </span>
                       <span
                         v-for="lab in m.labels ?? []"
                         :key="`${m.id}-k-${lab}`"
@@ -2211,7 +2242,10 @@ function fmtNum(n: number) {
                 </div>
               </div>
             </Teleport>
-            <p v-if="showVideoModelHint" class="mt-1.5 text-[11px] text-amber-400/95">{{ t('playground.videoModelHint') }}</p>
+            <p v-if="showCatalogOnlyModelHint" class="mt-1.5 text-[11px] text-amber-400/95">
+              {{ t('playground.catalogOnlySelectedHint') }}
+            </p>
+            <p v-else-if="showVideoModelHint" class="mt-1.5 text-[11px] text-amber-400/95">{{ t('playground.videoModelHint') }}</p>
           </div>
 
           <div v-if="playMode === 'image'" class="th-pg-card space-y-3 p-3">

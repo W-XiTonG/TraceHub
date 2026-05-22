@@ -24,6 +24,17 @@ const (
 	billingPhasePostSettle = "post_settle"
 )
 
+func balancePrecheckInsufficientMessageVideo(balance, costPre int64, seconds int) string {
+	shortfall := costPre - balance
+	if shortfall < 0 {
+		shortfall = 0
+	}
+	return fmt.Sprintf(
+		"余额不足（预检）：当前余额 %d，本次预检需 %d（还差 %d）。估算：视频时长约 %d 秒（按秒计费，非 Token）。创建成功后将按实际时长扣费；不足时请充值。",
+		balance, costPre, shortfall, seconds,
+	)
+}
+
 func balancePrecheckInsufficientMessage(balance, costPre int64, promptToks, compAssumed int) string {
 	shortfall := costPre - balance
 	if shortfall < 0 {
@@ -84,6 +95,14 @@ func WriteInsufficientBalance402Precheck(c *gin.Context, balance, costPre int64,
 	noteUsageErrorFromContext(c, msg)
 	middleware.WriteOpenAIErrorWithHeaders(c, 402, "insufficient_balance_error", msg, precheck402Headers(balance, costPre, promptToks, compAssumed))
 }
+
+// WriteInsufficientBalance402PrecheckVideo 视频任务预检（promptToks 参数为秒数）。
+func WriteInsufficientBalance402PrecheckVideo(c *gin.Context, balance, costPre int64, seconds int) {
+	msg := balancePrecheckInsufficientMessageVideo(balance, costPre, seconds)
+	noteUsageErrorFromContext(c, msg)
+	middleware.WriteOpenAIErrorWithHeaders(c, 402, "insufficient_balance_error", msg, precheck402Headers(balance, costPre, seconds, 0))
+}
+
 
 // WriteInsufficientBalance402PostDebit 上游已成功但本地扣费失败（402）。
 func WriteInsufficientBalance402PostDebit(c *gin.Context, balance, cost int64) {

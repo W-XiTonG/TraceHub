@@ -105,7 +105,7 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, parsed.Model, ch.ID)
 	costPre := br.VideoJobCost(parsed.Model, vParams)
 	if u.Balance < costPre {
-		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, vParams.Seconds, 0)
+		WriteInsufficientBalance402PrecheckVideo(c, u.Balance, costPre, vParams.Seconds)
 		return
 	}
 
@@ -250,7 +250,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 	costPre := br.VideoJobCost(model, vParams)
 	if u.Balance < costPre {
-		WriteInsufficientBalance402Precheck(c, u.Balance, costPre, vParams.Seconds, 0)
+		WriteInsufficientBalance402PrecheckVideo(c, u.Balance, costPre, vParams.Seconds)
 		return
 	}
 
@@ -361,7 +361,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少用于选路的 model：请使用 Query 参数 model=…，或设置请求头 X-TraceHub-Model")
 			return
 		}
-		u, k, gid, sticky, previewSel, err := loadVideoGatewayUser(c, d, model)
+		u, _, gid, sticky, previewSel, err := loadVideoGatewayUser(c, d, model)
 		if err != nil {
 			return
 		}
@@ -371,8 +371,6 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		reqID, _ := c.Get("request_id")
-		rid, _ := reqID.(string)
 		start := time.Now()
 		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
@@ -420,7 +418,6 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 			}
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, 0, 0, 0, 0, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 		WriteClientProxy(c, res.StatusCode, outCT, res.Body)
 	}
 }
@@ -525,8 +522,6 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 		}
 		em := tag + ":" + id
 		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, settle.Seconds, 0, 0, adjCost, c.ClientIP(), res.StatusCode, &em, time.Since(start))
-	} else {
-		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, 0, 0, 0, 0, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 	}
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }
@@ -547,11 +542,21 @@ func stickySessionHeader(c *gin.Context) string {
 	return sticky
 }
 
+func noteGatewayModelForUsage(c *gin.Context, model string) {
+	if rec := UsageRecorderFrom(c); rec != nil {
+		if m := strings.TrimSpace(model); m != "" {
+			rec.SetModel(m)
+		}
+	}
+}
+
 func loadVideoGatewayUser(c *gin.Context, d ChatDeps, model string) (*ent.User, *ent.APIKey, int, string, *router.Selected, error) {
 	uAny, _ := c.Get(middleware.CtxGateUserKey)
 	kAny, _ := c.Get(middleware.CtxGateAPIKeyKey)
 	u := uAny.(*ent.User)
 	k := kAny.(*ent.APIKey)
+	model = strings.TrimSpace(model)
+	noteGatewayModelForUsage(c, model)
 
 	fresh, err := d.Client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(c.Request.Context())
 	if err != nil {
@@ -565,7 +570,6 @@ func loadVideoGatewayUser(c *gin.Context, d ChatDeps, model string) (*ent.User, 
 		middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
 		return nil, nil, 0, "", nil, err
 	}
-	model = strings.TrimSpace(model)
 	if model == "" {
 		middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model")
 		return nil, nil, 0, "", nil, errors.New("missing model")

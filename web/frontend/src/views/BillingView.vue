@@ -33,6 +33,7 @@ type OrderResult = {
 }
 
 const packages = ref<Package[]>([])
+const quotaPerYuan = ref(10000)
 const selectedPkg = ref<number | null>(null)
 const provider = ref('mock')
 const customYuan = ref('')
@@ -53,6 +54,27 @@ const providers = [
 
 function fmtYuan(cents: number) {
   return (cents / 100).toFixed(2)
+}
+
+const quotaExample100 = computed(() => Math.round((100 * 100 * quotaPerYuan.value) / 100))
+
+const customQuotaEstimate = computed(() => {
+  if (!useCustom.value) return null
+  const yuan = parseFloat(customYuan.value)
+  if (!Number.isFinite(yuan) || yuan <= 0) return null
+  const cents = Math.round(yuan * 100)
+  return Math.round((cents * quotaPerYuan.value) / 100)
+})
+
+async function loadQuotaPerYuan() {
+  try {
+    const { data } = await http.get<Envelope<{ currency_quota_per_yuan?: number }>>('/api/user/me')
+    if (data.code === 0 && typeof data.data?.currency_quota_per_yuan === 'number' && data.data.currency_quota_per_yuan > 0) {
+      quotaPerYuan.value = data.data.currency_quota_per_yuan
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function loadPackages() {
@@ -147,6 +169,7 @@ async function mockPay() {
 
 onMounted(async () => {
   await siteMeta.ensureLoaded()
+  void loadQuotaPerYuan()
   if (onlinePay.value) {
     void loadPackages()
     if (route.query.paid === '1') {
@@ -229,6 +252,9 @@ onUnmounted(() => stopPoll())
     <template v-else>
       <section class="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-6">
         <h2 class="mb-4 text-base font-semibold text-slate-200">{{ t('billingPage.packagesTitle') }}</h2>
+        <p class="mb-4 text-xs leading-relaxed text-slate-500">
+          {{ t('billingPage.quotaPerYuanHint', { perYuan: quotaPerYuan, example: quotaExample100 }) }}
+        </p>
         <div v-if="packages.length" class="grid gap-3 sm:grid-cols-2">
           <label
             v-for="p in packages"
@@ -258,6 +284,9 @@ onUnmounted(() => stopPoll())
             class="th-input w-32"
             :placeholder="t('billingPage.yuanPh')"
           />
+          <p v-if="useCustom && customQuotaEstimate != null" class="w-full text-xs text-cyan-400/90">
+            {{ t('billingPage.customQuotaEstimate', { n: customQuotaEstimate }) }}
+          </p>
         </div>
 
         <div class="mt-4">

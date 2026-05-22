@@ -377,6 +377,8 @@ export default {
     quotaLabel: 'Quota {n}',
     quotaUnit: 'quota',
     customAmount: 'Custom amount (CNY)',
+    quotaPerYuanHint: 'Site rule: ¥1 ≈ {perYuan} quota; ¥100 ≈ {example} quota (custom orders use checkout result).',
+    customQuotaEstimate: 'Est. ~{n} quota',
     yuanPh: 'e.g. 10',
     provider: 'Payment method',
     submit: 'Create order',
@@ -460,6 +462,8 @@ export default {
     billingVideo: 'Video · per sec',
     billingToken: 'Token',
     usageVideoSeconds: '{seconds}s',
+    usageVideoNoCharge: 'No charge (poll/query)',
+    usageRouteFailed: 'Routing failed (see model column)',
     usageTokenInOut: 'in {in} / out {out}',
     usageTokenTotal: 'in {in} / out {out} (total {total})',
   },
@@ -655,6 +659,11 @@ export default {
       'From channel health in your group (same as gateway routing): Routable means a healthy channel can serve the model; Channel down means only unhealthy channels list it; Catalog only means it comes from the catalog/defaults, not from your channels.',
     registryHint:
       '"Service registry" matches the Available models page and refreshes when you reload the list or return to this tab. If the pasted API key is not for the account you are logged into, badges may not match that key’s routing.',
+    catalogOnlyListHint:
+      'Aligned with Available models: entries marked Catalog only are not on your group’s channels and cannot be used here; others come from GET /v1/models (including temporarily unavailable).',
+    catalogOnlyBadge: 'Catalog only',
+    catalogOnlyOptionTitle: 'Not configured on group channels — cannot run in Playground',
+    catalogOnlySelectedHint: 'This model is catalog-only. Ask an admin to bind channels for your group, or pick a routable model.',
     routerHealth: {
       healthy: 'Routable',
       unhealthy: 'Channel down',

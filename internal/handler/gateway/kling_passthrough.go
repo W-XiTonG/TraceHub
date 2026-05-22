@@ -113,7 +113,7 @@ func KlingV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
 			costPre = br.VideoJobCost(model, vParams)
 			if u.Balance < costPre {
-				WriteInsufficientBalance402Precheck(c, u.Balance, costPre, vParams.Seconds, 0)
+				WriteInsufficientBalance402PrecheckVideo(c, u.Balance, costPre, vParams.Seconds)
 				return
 			}
 		}

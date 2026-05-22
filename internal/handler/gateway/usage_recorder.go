@@ -234,6 +234,9 @@ func (r *UsageRecorder) persist(pt, ct, cachedPrompt int, cost int64, status int
 }
 
 func fallbackModel(c *gin.Context) string {
+	if m := routingModelForStatelessResource(c); m != "" {
+		return m
+	}
 	if p := strings.TrimSpace(c.FullPath()); p != "" {
 		return "route:" + p
 	}

@@ -63,11 +63,23 @@ export function usageBillingBadgeKey(mode: 'video_duration' | 'token'): string {
 /** 调用日志表格：用量单元格文案 */
 export function formatUsageLogUsageLine(
   t: (key: string, params?: Record<string, unknown>) => string,
-  row: UsageLogBillingRow,
+  row: UsageLogBillingRow & { total_cost?: number },
 ): string {
+  const modelStr = String(row.model ?? '')
+  if (modelStr.startsWith('route:')) {
+    return t('usageLog.usageRouteFailed')
+  }
   const mode = resolveUsageBillingMode(row)
   if (mode === 'video_duration') {
-    return t('usageLog.usageVideoSeconds', { seconds: numTok(row.prompt_tokens) })
+    const sec = numTok(row.prompt_tokens)
+    const cost = numTok(row.total_cost)
+    if (cost === 0 && sec === 0) {
+      return t('usageLog.usageVideoNoCharge')
+    }
+    if (cost === 0 && sec > 0) {
+      return t('usageLog.usageVideoSeconds', { seconds: sec }) + ' · ' + t('usageLog.usageVideoNoCharge')
+    }
+    return t('usageLog.usageVideoSeconds', { seconds: sec })
   }
   const pt = numTok(row.prompt_tokens)
   const ct = numTok(row.completion_tokens)

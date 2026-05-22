@@ -22,6 +22,10 @@ export type PlaygroundModelRow = {
   routerHealth?: PlaygroundRouterHealth
   serviceStatus?: PlaygroundServiceStatus
   labels?: string[]
+  /** 仅模型市场目录、分组渠道未配置；展示但不可在试玩中调用 */
+  catalogOnly?: boolean
+  /** 是否可在试玩中发起 API 请求（默认可调用） */
+  callable?: boolean
 } & PlaygroundRegistryMeta
 
 function parseRouterHealth(v: unknown): PlaygroundRouterHealth | undefined {
@@ -45,7 +49,7 @@ function parseTracehubLabels(v: unknown): string[] | undefined {
 
 /** GET /v1/models，带路由健康扩展字段（与网关选路 health_status 一致，非实时探测上游）。 */
 export async function fetchPlaygroundModels(apiKey: string, sticky: string): Promise<PlaygroundModelRow[]> {
-  const res = await fetch('/v1/models?tracehub_include_router_health=1', {
+  const res = await fetch('/v1/models?tracehub_include_router_health=1&tracehub_include_unavailable=1', {
     headers: {
       Authorization: `Bearer ${apiKey.trim()}`,
       [STICKY_HDR]: sticky,
@@ -77,45 +81,122 @@ export async function fetchPlaygroundModels(apiKey: string, sticky: string): Pro
       routerHealth: parseRouterHealth(m.tracehub?.router_health),
       serviceStatus: parseServiceStatus(m.tracehub?.service_status),
       labels: parseTracehubLabels(m.tracehub?.labels),
+      callable: true,
+      catalogOnly: false,
     })
   }
   rows.sort((a, b) => a.id.localeCompare(b.id))
   return rows
 }
 
-type AvailModelItem = {
+export type AvailModelItem = {
   id: string
   upstream_list_status?: string
   upstream_list_checked_at?: string
   in_gateway?: boolean
   labels?: string[]
   service_status?: string
+  owned_by?: string
 }
 
 /**
- * 拉取当前登录账户在「可用模型」页的登记元数据，用于与试玩 GET /v1/models 结果按 id 合并。
- * 未登录、无令牌或请求失败时返回 null（不影响网关模型列表）。
+ * 与控制台「可用模型」同源；用于补全试玩下拉里 GET /v1/models 未返回的目录项。
  */
-export async function fetchPlaygroundRegistryMap(): Promise<Map<string, PlaygroundRegistryMeta> | null> {
+export async function fetchPlaygroundAvailItems(): Promise<AvailModelItem[] | null> {
   try {
     const { data } = await http.get<Envelope<{ items: AvailModelItem[] }>>('/api/user/available-models')
     if (data.code !== 0 || !data.data?.items) return null
-    const map = new Map<string, PlaygroundRegistryMeta>()
+    const out: AvailModelItem[] = []
     for (const it of data.data.items) {
       const id = typeof it.id === 'string' ? it.id.trim() : ''
       if (!id) continue
-      map.set(id, {
+      out.push({
+        id,
         upstream_list_status: it.upstream_list_status,
         upstream_list_checked_at: it.upstream_list_checked_at,
         in_gateway: it.in_gateway,
         labels: it.labels,
         service_status: it.service_status,
+        owned_by: typeof it.owned_by === 'string' ? it.owned_by : undefined,
       })
     }
-    return map
+    return out
   } catch {
     return null
   }
+}
+
+/** @deprecated 使用 fetchPlaygroundAvailItems + availItemsToRegistryMap */
+export async function fetchPlaygroundRegistryMap(): Promise<Map<string, PlaygroundRegistryMeta> | null> {
+  const items = await fetchPlaygroundAvailItems()
+  return items ? availItemsToRegistryMap(items) : null
+}
+
+export function availItemsToRegistryMap(items: AvailModelItem[]): Map<string, PlaygroundRegistryMeta> {
+  const map = new Map<string, PlaygroundRegistryMeta>()
+  for (const it of items) {
+    map.set(it.id, {
+      upstream_list_status: it.upstream_list_status,
+      upstream_list_checked_at: it.upstream_list_checked_at,
+      in_gateway: it.in_gateway,
+      labels: it.labels,
+      service_status: it.service_status,
+    })
+  }
+  return map
+}
+
+function rowFromAvailItem(it: AvailModelItem, opts: { catalogOnly: boolean; callable: boolean }): PlaygroundModelRow {
+  const ownedBy = typeof it.owned_by === 'string' ? it.owned_by.trim() : ''
+  return {
+    id: it.id,
+    ownedBy: ownedBy || undefined,
+    upstream_list_status: it.upstream_list_status,
+    upstream_list_checked_at: it.upstream_list_checked_at,
+    in_gateway: it.in_gateway,
+    labels: it.labels,
+    serviceStatus: parseServiceStatus(it.service_status),
+    routerHealth: it.in_gateway === false ? 'catalog_only' : undefined,
+    catalogOnly: opts.catalogOnly,
+    callable: opts.callable,
+  }
+}
+
+/**
+ * 将「可用模型」中试玩 GET /v1/models 未包含的项并入下拉（仅目录 / 网关侧被状态过滤的 in_gateway 项）。
+ */
+export function appendPlaygroundAvailGap(
+  gatewayRows: PlaygroundModelRow[],
+  availItems: AvailModelItem[] | null,
+): PlaygroundModelRow[] {
+  if (!availItems?.length) return gatewayRows
+  const byKey = new Map<string, PlaygroundModelRow>()
+  for (const r of gatewayRows) {
+    byKey.set(r.id.toLowerCase(), { ...r, callable: r.callable !== false, catalogOnly: !!r.catalogOnly })
+  }
+  for (const it of availItems) {
+    const id = it.id.trim()
+    if (!id) continue
+    const key = id.toLowerCase()
+    const existing = byKey.get(key)
+    if (existing) {
+      byKey.set(key, {
+        ...existing,
+        upstream_list_status: it.upstream_list_status ?? existing.upstream_list_status,
+        upstream_list_checked_at: it.upstream_list_checked_at ?? existing.upstream_list_checked_at,
+        in_gateway: it.in_gateway ?? existing.in_gateway,
+        labels: it.labels?.length ? it.labels : existing.labels,
+        serviceStatus: parseServiceStatus(it.service_status) ?? existing.serviceStatus,
+      })
+      continue
+    }
+    if (it.in_gateway === false) {
+      byKey.set(key, rowFromAvailItem(it, { catalogOnly: true, callable: false }))
+      continue
+    }
+    byKey.set(key, rowFromAvailItem(it, { catalogOnly: false, callable: true }))
+  }
+  return [...byKey.values()].sort((a, b) => a.id.localeCompare(b.id))
 }
 
 export function mergePlaygroundRegistry(
@@ -135,6 +216,15 @@ export function mergePlaygroundRegistry(
       serviceStatus: parseServiceStatus(m.service_status) ?? r.serviceStatus,
     }
   })
+}
+
+/** 网关列表 + 登记元数据 + 可用模型页补全 */
+export function buildPlaygroundModelList(
+  gatewayRows: PlaygroundModelRow[],
+  availItems: AvailModelItem[] | null,
+): PlaygroundModelRow[] {
+  const reg = availItems ? availItemsToRegistryMap(availItems) : null
+  return appendPlaygroundAvailGap(mergePlaygroundRegistry(gatewayRows, reg), availItems)
 }
 
 function parseOpenAIError(text: string): string {

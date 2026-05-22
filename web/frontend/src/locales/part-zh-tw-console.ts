@@ -378,6 +378,8 @@ export default {
     quotaLabel: '額度 {n}',
     quotaUnit: '額度',
     customAmount: '自訂金額',
+    quotaPerYuanHint: '按站點規則：¥1 ≈ {perYuan} 額度；充 ¥100 約到帳 {example} 額度（自訂金額以下單結果為準）。',
+    customQuotaEstimate: '預估到帳約 {n} 額度',
     yuanPh: '10',
     provider: '支付方式',
     submit: '建立訂單',
@@ -458,6 +460,8 @@ export default {
     billingVideo: '影片·按秒',
     billingToken: 'Token',
     usageVideoSeconds: '{seconds} 秒',
+    usageVideoNoCharge: '無扣費（輪詢/查詢）',
+    usageRouteFailed: '路由失敗（見模型列）',
     usageTokenInOut: '入 {in} / 出 {out}',
     usageTokenTotal: '入 {in} / 出 {out}（合計 {total}）',
   },
@@ -652,6 +656,11 @@ export default {
       '狀態來自分組內渠道健康位（與閘道選路一致）：可路由表示有可派單的健康渠道；渠道異常表示僅有異常渠道聲明；僅目錄表示來自市場／預設列表，分組渠道未聲明。',
     registryHint:
       '「服務登記」與可用模型頁一致：重新整理清單或從其他分頁返回時會再拉取。若貼上的 API Key 不屬於目前登入帳戶分組，角標可能與該 Key 實際路由不一致。',
+    catalogOnlyListHint:
+      '已與「可用模型」對齊：標有「僅目錄」的型號在分組渠道未配置，無法在試玩中呼叫；其餘來自 GET /v1/models（含暫不可用）。',
+    catalogOnlyBadge: '僅目錄',
+    catalogOnlyOptionTitle: '該模型未在分組渠道中配置，無法在試玩中呼叫',
+    catalogOnlySelectedHint: '目前模型為「僅目錄」登記，分組未配置渠道。請在管理後台為分組綁定渠道，或改用可路由模型。',
     routerHealth: {
       healthy: '可路由',
       unhealthy: '渠道異常',

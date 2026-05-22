@@ -17,6 +17,18 @@ func TestBalancePrecheckInsufficientMessage_includesFigures(t *testing.T) {
 	}
 }
 
+func TestBalancePrecheckInsufficientMessageVideo_seconds(t *testing.T) {
+	s := balancePrecheckInsufficientMessageVideo(659, 4000, 8)
+	for _, sub := range []string{"659", "4000", "8 秒", "按秒计费"} {
+		if !strings.Contains(s, sub) {
+			t.Fatalf("want substring %q in %q", sub, s)
+		}
+	}
+	if strings.Contains(s, "token") {
+		t.Fatalf("video precheck should not mention token: %q", s)
+	}
+}
+
 func TestBalancePrecheckInsufficientMessage_zeroCompletionPhrase(t *testing.T) {
 	s := balancePrecheckInsufficientMessage(1, 2, 3, 0)
 	if !strings.Contains(s, "0 token") {

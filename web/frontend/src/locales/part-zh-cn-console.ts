@@ -368,6 +368,8 @@ export default {
     quotaLabel: '到账额度 {n}',
     quotaUnit: '额度',
     customAmount: '自定义金额（元）',
+    quotaPerYuanHint: '按站点规则：¥1 ≈ {perYuan} 额度；充 ¥100 约到账 {example} 额度（自定义金额以下单结果为准）。',
+    customQuotaEstimate: '预估到账约 {n} 额度',
     yuanPh: '例如 10',
     provider: '支付方式',
     submit: '创建订单并支付',
@@ -461,6 +463,8 @@ export default {
     billingVideo: '视频·按秒',
     billingToken: 'Token',
     usageVideoSeconds: '{seconds} 秒',
+    usageVideoNoCharge: '无扣费（轮询/查询）',
+    usageRouteFailed: '路由失败（见模型列）',
     usageTokenInOut: '入 {in} / 出 {out}',
     usageTokenTotal: '入 {in} / 出 {out}（合计 {total}）',
   },
@@ -655,6 +659,11 @@ export default {
       '状态来自分组内渠道健康位（与网关选路一致）：可路由表示存在可派单的健康渠道；渠道异常表示仅有异常渠道声明；仅目录表示来自市场/默认列表，分组渠道未声明。',
     registryHint:
       '「服务登记」与可用模型页一致：刷新列表或从其他标签页返回时会重新拉取。若粘贴的 API Key 不属于当前登录账户分组，登记角标可能与该 Key 实际路由不一致。',
+    catalogOnlyListHint:
+      '已与「可用模型」列表对齐：标有「仅目录」的型号在分组渠道未配置，无法在试玩中调用；其余项来自 GET /v1/models（含暂不可用）。',
+    catalogOnlyBadge: '仅目录',
+    catalogOnlyOptionTitle: '该模型未在分组渠道中配置，无法在试玩中调用',
+    catalogOnlySelectedHint: '当前模型为「仅目录」登记，分组未配置渠道。请在管理后台为分组绑定渠道，或改用可路由模型。',
     routerHealth: {
       healthy: '可路由',
       unhealthy: '渠道异常',
