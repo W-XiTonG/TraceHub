@@ -18,6 +18,7 @@ import (
 	"tracehub/internal/pkg/sitecfg"
 	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/pkg/usagelogfilter"
+	"tracehub/internal/pkg/usagelogpublic"
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/service/availmodels"
 	"tracehub/internal/service/billing"
@@ -121,7 +122,7 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 				"request_time":      l.RequestTime,
 				"response_time_ms":  l.ResponseTimeMs,
 				"status_code":       l.StatusCode,
-				"error_message":     l.ErrorMessage,
+				"error_message":     usagelogpublic.UserFacingFields(l.ErrorMessage, l.StatusCode),
 				"ip_address":        l.IPAddress,
 				"is_cached":         l.IsCached,
 			})

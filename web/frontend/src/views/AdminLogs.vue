@@ -92,17 +92,19 @@ function httpErr(e: unknown): string {
   return e instanceof Error ? e.message : t('adminCommon.requestFail')
 }
 
-function fmtTime(iso: string) {
+/** 表格展示用；完整内容放 title */
+function fmtLogTime(iso: string): string {
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString()
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
   } catch {
     return iso
   }
 }
 
-function userCell(l: Log): string {
+function userCellTitle(l: Log): string {
   const id = l.user_id
   const em = (l.user_email ?? '').trim()
   if (id != null && id > 0) {
@@ -111,17 +113,52 @@ function userCell(l: Log): string {
   return em || '—'
 }
 
-function apiKeyCell(l: Log): string {
+function userCellParts(l: Log): { primary: string; secondary: string } | null {
+  const id = l.user_id
+  const em = (l.user_email ?? '').trim()
+  if (id != null && id > 0 && em) {
+    return { primary: `#${id}`, secondary: em }
+  }
+  if (id != null && id > 0) {
+    return { primary: `#${id}`, secondary: '' }
+  }
+  if (em) {
+    return { primary: '', secondary: em }
+  }
+  return null
+}
+
+function apiKeyCellTitle(l: Log): string {
   const name = (l.api_key_name ?? '').trim()
   const pre = (l.api_key_prefix ?? '').trim()
   const id = l.api_key_id
-  if (name) return pre ? `${name} (${pre}…)` : name
+  if (name && pre) return `${name} · ${pre}…`
+  if (name) return name
   if (pre) return `${pre}…`
   if (id != null && id > 0) return `#${id}`
   return '—'
 }
 
-function channelCell(l: Log): string {
+function apiKeyCellParts(l: Log): { primary: string; secondary: string } | null {
+  const name = (l.api_key_name ?? '').trim()
+  const pre = (l.api_key_prefix ?? '').trim()
+  const id = l.api_key_id
+  if (name && pre) {
+    return { primary: name, secondary: `${pre}…` }
+  }
+  if (name) {
+    return { primary: name, secondary: '' }
+  }
+  if (pre) {
+    return { primary: `${pre}…`, secondary: '' }
+  }
+  if (id != null && id > 0) {
+    return { primary: `#${id}`, secondary: '' }
+  }
+  return null
+}
+
+function channelCellTitle(l: Log): string {
   const id = l.channel_id
   const idPart = id != null && id > 0 ? `#${id}` : ''
   const n = (l.channel_name ?? '').trim()
@@ -131,6 +168,23 @@ function channelCell(l: Log): string {
   if (idPart) return idPart
   if (meta) return meta
   return '—'
+}
+
+function channelCellParts(l: Log): { primary: string; secondary: string } | null {
+  const id = l.channel_id
+  const n = (l.channel_name ?? '').trim()
+  const ty = (l.channel_type ?? '').trim()
+  const meta = [n, ty].filter(Boolean).join(' · ')
+  if (id != null && id > 0 && meta) {
+    return { primary: `#${id}`, secondary: meta }
+  }
+  if (id != null && id > 0) {
+    return { primary: `#${id}`, secondary: '' }
+  }
+  if (meta) {
+    return { primary: '', secondary: meta }
+  }
+  return null
 }
 
 function ridShort(rid: string | undefined): string {
@@ -295,23 +349,23 @@ onMounted(() => void load())
 
     <div class="th-admin-logs-table-scroll th-usage-logs-table-wrap thin-scrollbar relative hidden rounded-lg border border-white/[0.06] lg:block">
       <ThLoadingState v-if="loadingUi && items.length > 0" variant="overlay" />
-      <table class="w-full min-w-[88rem] text-left text-xs text-slate-300">
-        <thead class="sticky top-0 z-[1] border-b border-white/[0.06] bg-slate-950 text-[10px] uppercase tracking-wide text-slate-500 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
+      <table class="th-admin-logs-table w-full min-w-[80rem] text-left text-xs">
+        <thead class="th-admin-logs-thead sticky top-0 z-[1] border-b text-[10px] uppercase tracking-wide">
           <tr>
-            <th class="px-3 py-2">{{ t('adminLogs.thTime') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thUser') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thApiKey') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thChannel') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thRequestId') }}</th>
+            <th class="th-admin-logs-col-time px-2 py-2">{{ t('adminLogs.thTime') }}</th>
+            <th class="th-admin-logs-col-user px-2 py-2">{{ t('adminLogs.thUser') }}</th>
+            <th class="th-admin-logs-col-key px-2 py-2">{{ t('adminLogs.thApiKey') }}</th>
+            <th class="th-admin-logs-col-channel px-2 py-2">{{ t('adminLogs.thChannel') }}</th>
+            <th class="th-admin-logs-col-rid px-2 py-2">{{ t('adminLogs.thRequestId') }}</th>
             <th class="th-usage-logs-expand-col py-2" aria-hidden="true" />
-            <th class="min-w-[12rem] px-3 py-2">{{ t('adminLogs.thModel') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thUpstreamModel') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thBilling') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thUsage') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thCost') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thIp') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thStatus') }}</th>
-            <th class="max-w-[12rem] px-3 py-2">{{ t('adminLogs.thError') }}</th>
+            <th class="th-admin-logs-col-model px-2 py-2">{{ t('adminLogs.thModel') }}</th>
+            <th class="th-admin-logs-col-upstream px-2 py-2">{{ t('adminLogs.thUpstreamModel') }}</th>
+            <th class="th-admin-logs-col-billing px-2 py-2">{{ t('adminLogs.thBilling') }}</th>
+            <th class="th-admin-logs-col-usage px-2 py-2">{{ t('adminLogs.thUsage') }}</th>
+            <th class="th-admin-logs-col-cost px-2 py-2">{{ t('adminLogs.thCost') }}</th>
+            <th class="th-admin-logs-col-ip px-2 py-2">{{ t('adminLogs.thIp') }}</th>
+            <th class="th-admin-logs-col-status px-2 py-2">{{ t('adminLogs.thStatus') }}</th>
+            <th class="th-admin-logs-col-error px-2 py-2">{{ t('adminLogs.thError') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -324,22 +378,56 @@ onMounted(() => void load())
                   ? `s-${entry.row.id}`
                   : `p-${entry.group.primary.id}`
             "
-            class="border-b border-white/[0.04] align-top last:border-0"
+            class="border-b border-white/[0.04] align-middle last:border-0"
             :class="entry.kind === 'group-child' ? 'th-usage-logs-row--child' : ''"
           >
-            <td class="whitespace-nowrap px-3 py-2 font-mono text-[11px] text-slate-400">
-              {{ fmtTime(rowFromEntry(entry).request_time) }}
-            </td>
-            <td class="max-w-[12rem] px-3 py-2 break-all text-[11px] text-slate-400">{{ userCell(rowFromEntry(entry)) }}</td>
-            <td class="max-w-[10rem] px-3 py-2 break-all text-[11px] text-slate-500">{{ apiKeyCell(rowFromEntry(entry)) }}</td>
-            <td class="max-w-[10rem] px-3 py-2 break-all text-[11px] text-slate-500">{{ channelCell(rowFromEntry(entry)) }}</td>
             <td
-              class="max-w-[8rem] px-3 py-2 font-mono text-[10px] text-slate-500"
-              :title="rowFromEntry(entry).request_id || ''"
+              class="th-admin-logs-col-time th-admin-logs-text-faint whitespace-nowrap px-2 py-1.5 font-mono text-[11px] tabular-nums"
+              :title="rowFromEntry(entry).request_time"
             >
-              {{ ridShort(rowFromEntry(entry).request_id) }}
+              {{ fmtLogTime(rowFromEntry(entry).request_time) }}
             </td>
-            <td class="th-usage-logs-expand-col align-top py-2">
+            <td class="th-admin-logs-col-user px-2 py-1.5" :title="userCellTitle(rowFromEntry(entry))">
+              <div v-if="userCellParts(rowFromEntry(entry))" class="th-admin-logs-compact th-admin-logs-text-muted">
+                <span v-if="userCellParts(rowFromEntry(entry))!.primary" class="th-admin-logs-compact__tag">{{
+                  userCellParts(rowFromEntry(entry))!.primary
+                }}</span>
+                <span v-if="userCellParts(rowFromEntry(entry))!.secondary" class="th-admin-logs-compact__main">{{
+                  userCellParts(rowFromEntry(entry))!.secondary
+                }}</span>
+              </div>
+              <span v-else class="text-slate-500">{{ t('adminCommon.dash') }}</span>
+            </td>
+            <td class="th-admin-logs-col-key px-2 py-1.5" :title="apiKeyCellTitle(rowFromEntry(entry))">
+              <div v-if="apiKeyCellParts(rowFromEntry(entry))" class="th-admin-logs-compact th-admin-logs-text-faint">
+                <span v-if="apiKeyCellParts(rowFromEntry(entry))!.primary" class="th-admin-logs-compact__main">{{
+                  apiKeyCellParts(rowFromEntry(entry))!.primary
+                }}</span>
+                <span
+                  v-if="apiKeyCellParts(rowFromEntry(entry))!.secondary"
+                  class="th-admin-logs-compact__mono"
+                  >{{ apiKeyCellParts(rowFromEntry(entry))!.secondary }}</span
+                >
+              </div>
+              <span v-else class="text-slate-500">{{ t('adminCommon.dash') }}</span>
+            </td>
+            <td class="th-admin-logs-col-channel px-2 py-1.5" :title="channelCellTitle(rowFromEntry(entry))">
+              <div v-if="channelCellParts(rowFromEntry(entry))" class="th-admin-logs-compact th-admin-logs-text-faint">
+                <span v-if="channelCellParts(rowFromEntry(entry))!.primary" class="th-admin-logs-compact__tag">{{
+                  channelCellParts(rowFromEntry(entry))!.primary
+                }}</span>
+                <span v-if="channelCellParts(rowFromEntry(entry))!.secondary" class="th-admin-logs-compact__main">{{
+                  channelCellParts(rowFromEntry(entry))!.secondary
+                }}</span>
+              </div>
+              <span v-else class="text-slate-500">{{ t('adminCommon.dash') }}</span>
+            </td>
+            <td class="th-admin-logs-col-rid px-2 py-1.5" :title="rowFromEntry(entry).request_id || ''">
+              <span class="th-admin-logs-ellipsis th-admin-logs-text-faint font-mono text-[10px]">{{
+                ridShort(rowFromEntry(entry).request_id)
+              }}</span>
+            </td>
+            <td class="th-usage-logs-expand-col align-middle py-1.5">
               <button
                 v-if="entry.kind === 'group-primary' && groupHasChildren(entry.group)"
                 type="button"
@@ -368,47 +456,52 @@ onMounted(() => void load())
                 {{ t('logsPage.videoGroupSubRow') }}
               </span>
             </td>
-            <td class="th-usage-logs-model-cell px-3 py-2">
-              <p class="break-all font-mono text-[11px] leading-snug text-slate-300" :title="rowFromEntry(entry).model">
-                <span v-if="parseModelCell(rowFromEntry(entry).model).route" class="text-slate-500">route:</span>
-                <span :class="parseModelCell(rowFromEntry(entry).model).route ? 'text-slate-400' : ''">{{
-                  parseModelCell(rowFromEntry(entry).model).path
-                }}</span>
-              </p>
+            <td class="th-admin-logs-col-model px-2 py-1.5" :title="rowFromEntry(entry).model">
+              <div class="th-admin-logs-compact th-admin-logs-compact--mono">
+                <span v-if="parseModelCell(rowFromEntry(entry).model).route" class="th-admin-logs-compact__tag">route</span>
+                <span class="th-admin-logs-compact__main">{{ parseModelCell(rowFromEntry(entry).model).path }}</span>
+              </div>
             </td>
-            <td
-              class="max-w-[9rem] truncate px-3 py-2 font-mono text-[10px] text-slate-500"
-              :title="(rowFromEntry(entry).model_upstream ?? '').trim()"
-            >
-              {{ (rowFromEntry(entry).model_upstream ?? '').trim() || '—' }}
+            <td class="th-admin-logs-col-upstream px-2 py-1.5" :title="(rowFromEntry(entry).model_upstream ?? '').trim()">
+              <span class="th-admin-logs-ellipsis th-admin-logs-text-muted font-mono text-[10px]">{{
+                (rowFromEntry(entry).model_upstream ?? '').trim() || '—'
+              }}</span>
             </td>
-            <td class="whitespace-nowrap px-3 py-2">
-              <span :class="billingBadgeClass(rowFromEntry(entry))">
+            <td class="th-admin-logs-col-billing px-2 py-1.5">
+              <span
+                :class="billingBadgeClass(rowFromEntry(entry))"
+                :title="t(usageBillingBadgeKey(resolveUsageBillingMode(rowFromEntry(entry))))"
+              >
                 {{ t(usageBillingBadgeKey(resolveUsageBillingMode(rowFromEntry(entry)))) }}
               </span>
             </td>
-            <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-300">
-              {{ formatUsageLogUsageLine(t, rowFromEntry(entry)) }}
-            </td>
-            <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-300">
-              {{ rowFromEntry(entry).total_cost }}
-            </td>
             <td
-              class="max-w-[9rem] truncate px-3 py-2 font-mono text-[10px] text-slate-500"
-              :title="(rowFromEntry(entry).ip_address ?? '').trim() || undefined"
+              class="th-admin-logs-col-usage px-2 py-1.5"
+              :title="formatUsageLogUsageLine(t, rowFromEntry(entry))"
             >
-              {{ (rowFromEntry(entry).ip_address ?? '').trim() || t('adminCommon.dash') }}
+              <span class="th-admin-logs-ellipsis th-admin-logs-text-strong font-mono tabular-nums">{{
+                formatUsageLogUsageLine(t, rowFromEntry(entry))
+              }}</span>
             </td>
-            <td class="whitespace-nowrap px-3 py-2">
+            <td class="th-admin-logs-col-cost px-2 py-1.5">
+              <span class="th-admin-logs-ellipsis th-admin-logs-text-strong font-mono tabular-nums">{{
+                rowFromEntry(entry).total_cost
+              }}</span>
+            </td>
+            <td class="th-admin-logs-col-ip px-2 py-1.5" :title="(rowFromEntry(entry).ip_address ?? '').trim() || undefined">
+              <span class="th-admin-logs-ellipsis th-admin-logs-text-faint font-mono text-[10px]">{{
+                (rowFromEntry(entry).ip_address ?? '').trim() || t('adminCommon.dash')
+              }}</span>
+            </td>
+            <td class="th-admin-logs-col-status px-2 py-1.5">
               <span :class="statusBadgeClass(rowFromEntry(entry).status_code)">
                 {{ rowFromEntry(entry).status_code ?? '—' }}
               </span>
             </td>
-            <td
-              class="max-w-[12rem] truncate px-3 py-2 text-[11px] text-amber-200/80"
-              :title="rowFromEntry(entry).error_message || ''"
-            >
-              {{ displayError(rowFromEntry(entry).error_message) }}
+            <td class="th-admin-logs-col-error px-2 py-1.5" :title="rowFromEntry(entry).error_message || ''">
+              <span class="th-admin-logs-ellipsis text-[11px] text-amber-200/80">{{
+                displayError(rowFromEntry(entry).error_message)
+              }}</span>
             </td>
           </tr>
           <tr v-if="!loadingUi && items.length === 0">
@@ -435,7 +528,9 @@ onMounted(() => void load())
         :class="entry.kind === 'group-child' ? 'th-usage-logs-card--child' : ''"
       >
         <template #title>
-          <p class="font-mono text-[11px] text-slate-400">{{ fmtTime(rowFromEntry(entry).request_time) }}</p>
+          <p class="font-mono text-[11px] tabular-nums text-slate-400" :title="rowFromEntry(entry).request_time">
+            {{ fmtLogTime(rowFromEntry(entry).request_time) }}
+          </p>
           <div class="mt-0.5 flex flex-wrap items-center gap-2">
             <button
               v-if="entry.kind === 'group-primary' && groupHasChildren(entry.group)"
@@ -459,8 +554,9 @@ onMounted(() => void load())
             </p>
           </div>
         </template>
-        <MobileLabelValueRow :label="t('adminLogs.thUser')">{{ userCell(rowFromEntry(entry)) }}</MobileLabelValueRow>
-        <MobileLabelValueRow :label="t('adminLogs.thChannel')">{{ channelCell(rowFromEntry(entry)) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thUser')">{{ userCellTitle(rowFromEntry(entry)) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thApiKey')">{{ apiKeyCellTitle(rowFromEntry(entry)) }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thChannel')">{{ channelCellTitle(rowFromEntry(entry)) }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('adminLogs.thUpstreamModel')">
           {{ (rowFromEntry(entry).model_upstream ?? '').trim() || t('adminCommon.dash') }}
         </MobileLabelValueRow>

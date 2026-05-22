@@ -1,12 +1,14 @@
 package gateway
 
 import (
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/usagelogpublic"
 
 	"github.com/gin-gonic/gin"
 )
@@ -229,8 +231,43 @@ func (r *UsageRecorder) maybeFlushFailure(c *gin.Context) {
 	if model == "" {
 		model = fallbackModel(c)
 	}
+	if detail := gatewayErrMsgFromContext(c); detail != nil {
+		slog.Info("gateway usage denied",
+			"request_id", r.requestID,
+			"user_id", r.userID,
+			"status", status,
+			"detail", *detail,
+		)
+		wrapped := usagelogpublic.WrapInternal(*detail)
+		em = &wrapped
+	}
 	go saveUsage(r.client, r.userID, r.apiKeyID, channelID, r.requestID, model, upstream,
 		0, 0, 0, 0, r.ip, status, em, time.Since(r.start))
+}
+
+func gatewayErrMsgFromContext(c *gin.Context) *string {
+	v, ok := c.Get(middleware.CtxGatewayErrMsgKey)
+	if !ok {
+		return nil
+	}
+	s, ok := v.(string)
+	if !ok {
+		return nil
+	}
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// noteGatewayLogicalModel 在选路失败等场景写入真实逻辑模型名（避免日志仅显示 route:/v1/...）。
+func noteGatewayLogicalModel(c *gin.Context, model string) {
+	if rec := UsageRecorderFrom(c); rec != nil {
+		if m := strings.TrimSpace(model); m != "" {
+			rec.SetModel(m)
+		}
+	}
 }
 
 func (r *UsageRecorder) persist(pt, ct, cachedPrompt int, cost int64, status int, errMsg *string) {

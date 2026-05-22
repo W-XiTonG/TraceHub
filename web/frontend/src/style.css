@@ -127,6 +127,16 @@
   --th-usage-logs-copy-fg: rgba(34, 211, 238, 0.9);
   --th-usage-logs-copy-hover-bg: rgba(8, 145, 178, 0.12);
   --th-usage-logs-copy-hover-fg: rgb(103, 232, 249);
+  /* 管理端调用日志表格（浅色在 themes-light.css 覆写） */
+  --th-admin-logs-text: #cbd5e1;
+  --th-admin-logs-text-muted: #94a3b8;
+  --th-admin-logs-text-faint: #64748b;
+  --th-admin-logs-model-fg: #e2e8f0;
+  --th-admin-logs-tag-bg: rgba(148, 163, 184, 0.12);
+  --th-admin-logs-tag-fg: #94a3b8;
+  --th-admin-logs-head-bg: rgba(2, 6, 23, 0.92);
+  --th-admin-logs-head-fg: #64748b;
+  --th-admin-logs-mono-muted: #64748b;
   --th-apikey-chip-idle-border: rgba(255, 255, 255, 0.08);
   --th-apikey-chip-idle-bg: rgba(255, 255, 255, 0.04);
   --th-apikey-chip-idle-fg: #94a3b8;
@@ -1952,6 +1962,139 @@
   max-height: min(40rem, calc(100dvh - 14rem));
   overflow: auto;
   overscroll-behavior: contain;
+}
+
+.th-admin-logs-table {
+  table-layout: fixed;
+  color: var(--th-admin-logs-text);
+}
+
+.th-admin-logs-thead {
+  border-bottom-color: var(--th-user-table-line);
+  background: var(--th-admin-logs-head-bg);
+  color: var(--th-admin-logs-head-fg);
+  box-shadow: 0 1px 0 var(--th-user-table-line);
+}
+
+.th-admin-logs-col-time {
+  width: 8.75rem;
+}
+
+.th-admin-logs-col-user {
+  width: 9.25rem;
+}
+
+.th-admin-logs-col-key {
+  width: 8.75rem;
+}
+
+.th-admin-logs-col-channel {
+  width: 9rem;
+}
+
+.th-admin-logs-col-rid {
+  width: 6.75rem;
+}
+
+.th-admin-logs-col-model {
+  width: 10.5rem;
+}
+
+.th-admin-logs-col-upstream {
+  width: 9.5rem;
+}
+
+.th-admin-logs-col-billing {
+  width: 5.75rem;
+}
+
+.th-admin-logs-col-usage {
+  width: 8.25rem;
+}
+
+.th-admin-logs-col-cost {
+  width: 4.25rem;
+}
+
+.th-admin-logs-col-ip {
+  width: 7.25rem;
+}
+
+.th-admin-logs-col-status {
+  width: 3.25rem;
+}
+
+.th-admin-logs-col-error {
+  width: 9.5rem;
+}
+
+.th-admin-logs-table .th-usage-logs-expand-col {
+  vertical-align: middle;
+}
+
+.th-admin-logs-ellipsis {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.th-admin-logs-compact--mono .th-admin-logs-compact__main {
+  font-family: var(--th-font-mono);
+  font-size: 0.6875rem;
+  color: var(--th-admin-logs-model-fg);
+}
+
+.th-admin-logs-compact {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1.25;
+}
+
+.th-admin-logs-compact__tag {
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--th-admin-logs-tag-bg);
+  color: var(--th-admin-logs-tag-fg);
+}
+
+.th-admin-logs-compact__main {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+}
+
+.th-admin-logs-compact__mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--th-font-mono);
+  font-size: 0.625rem;
+  color: var(--th-admin-logs-mono-muted);
+}
+
+.th-admin-logs-table .th-admin-logs-text-muted {
+  color: var(--th-admin-logs-text-muted);
+}
+
+.th-admin-logs-table .th-admin-logs-text-faint {
+  color: var(--th-admin-logs-text-faint);
+}
+
+.th-admin-logs-table .th-admin-logs-text-strong {
+  color: var(--th-admin-logs-model-fg);
 }
 
 /* 全局计价：表格区 + 底栏同屏分栏，底栏不浮动遮挡表格 */

@@ -107,11 +107,13 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 		}
 		gid := u.GroupID
 		if gid <= 0 {
+			noteGatewayLogicalModel(c, model)
 			middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
 			return
 		}
 		sel, err := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, model, sticky)
 		if err != nil {
+			noteGatewayLogicalModel(c, model)
 			middleware.WriteOpenAIError(c, 403, "permission_error", err.Error())
 			return
 		}
@@ -254,11 +256,13 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 
 		gid := u.GroupID
 		if gid <= 0 {
+			noteGatewayLogicalModel(c, model)
 			middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
 			return
 		}
 		sel, err := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, model, sticky)
 		if err != nil {
+			noteGatewayLogicalModel(c, model)
 			middleware.WriteOpenAIError(c, 403, "permission_error", err.Error())
 			return
 		}

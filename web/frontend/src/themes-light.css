@@ -94,6 +94,15 @@ html[data-th-theme="paper"] {
   --th-usage-logs-copy-fg: #0e7490;
   --th-usage-logs-copy-hover-bg: rgba(14, 165, 233, 0.1);
   --th-usage-logs-copy-hover-fg: #0369a1;
+  --th-admin-logs-text: #334155;
+  --th-admin-logs-text-muted: #475569;
+  --th-admin-logs-text-faint: #64748b;
+  --th-admin-logs-model-fg: #0f172a;
+  --th-admin-logs-tag-bg: rgba(15, 23, 42, 0.08);
+  --th-admin-logs-tag-fg: #475569;
+  --th-admin-logs-head-bg: rgba(241, 245, 249, 0.96);
+  --th-admin-logs-head-fg: #64748b;
+  --th-admin-logs-mono-muted: #475569;
   --th-apikey-chip-idle-border: rgba(15, 23, 42, 0.12);
   --th-apikey-chip-idle-bg: rgba(255, 255, 255, 0.72);
   --th-apikey-chip-idle-fg: #64748b;
@@ -428,6 +437,28 @@ html[data-th-theme="paper"] .th-admin-table-body td.text-slate-400 {
 html[data-th-theme="dawn"] .th-admin-table-body .text-slate-300,
 html[data-th-theme="paper"] .th-admin-table-body .text-slate-300 {
   color: #475569;
+}
+
+/* 管理端调用日志：避免 Tailwind slate 与硬编码浅色字在白底上对比不足 */
+html[data-th-theme="dawn"] .th-admin-logs-table .text-slate-300,
+html[data-th-theme="paper"] .th-admin-logs-table .text-slate-300 {
+  color: #1e293b;
+}
+html[data-th-theme="dawn"] .th-admin-logs-table .text-slate-400,
+html[data-th-theme="paper"] .th-admin-logs-table .text-slate-400 {
+  color: #475569;
+}
+html[data-th-theme="dawn"] .th-admin-logs-table .text-slate-500,
+html[data-th-theme="paper"] .th-admin-logs-table .text-slate-500 {
+  color: #64748b;
+}
+html[data-th-theme="dawn"] .th-admin-logs-table-scroll,
+html[data-th-theme="paper"] .th-admin-logs-table-scroll {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+html[data-th-theme="dawn"] .th-admin-logs-table tbody tr,
+html[data-th-theme="paper"] .th-admin-logs-table tbody tr {
+  border-bottom-color: rgba(15, 23, 42, 0.07);
 }
 html[data-th-theme="dawn"] .th-admin-compare-tile--row,
 html[data-th-theme="paper"] .th-admin-compare-tile--row {

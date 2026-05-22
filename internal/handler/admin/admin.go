@@ -22,6 +22,7 @@ import (
 	"tracehub/internal/pkg/jwtx"
 	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/pkg/usagelogfilter"
+	"tracehub/internal/pkg/usagelogpublic"
 	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelhealth"
 
@@ -802,7 +803,7 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 				"response_time_ms":  lg.ResponseTimeMs,
 				"request_time":      lg.RequestTime,
 				"ip_address":        lg.IPAddress,
-				"error_message":     lg.ErrorMessage,
+				"error_message":     usagelogpublic.AdminFacingField(lg.ErrorMessage),
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})

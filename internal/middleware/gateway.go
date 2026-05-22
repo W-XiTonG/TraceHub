@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"strings"
 	"time"
 
@@ -9,13 +10,15 @@ import (
 	"tracehub/internal/pkg/apikeyhash"
 	"tracehub/internal/pkg/ipcheck"
 	"tracehub/internal/pkg/sitecfg"
+	"tracehub/internal/pkg/usagelogpublic"
 
 	"github.com/gin-gonic/gin"
 )
 
 const (
-	CtxGateUserKey   = "tracehub_gate_user"
-	CtxGateAPIKeyKey = "tracehub_gate_apikey"
+	CtxGateUserKey      = "tracehub_gate_user"
+	CtxGateAPIKeyKey    = "tracehub_gate_apikey"
+	CtxGatewayErrMsgKey = "tracehub_gateway_err_msg" // 供 UsageRecorder 写入 usage_logs.error_message
 )
 
 func GatewayAPIKeyAuth(client *ent.Client) gin.HandlerFunc {
@@ -83,6 +86,20 @@ func WriteOpenAIError(c *gin.Context, httpStatus int, code, msg string) {
 
 // WriteOpenAIErrorWithHeaders 与 WriteOpenAIError 相同，并在写 JSON 前设置可选响应头（如网关计费诊断）。
 func WriteOpenAIErrorWithHeaders(c *gin.Context, httpStatus int, code, msg string, headers map[string]string) {
+	clientMsg, internalDetail := usagelogpublic.SanitizeGatewayErrorMessage(httpStatus, msg)
+	if internalDetail != "" {
+		c.Set(CtxGatewayErrMsgKey, internalDetail)
+		slog.Info("gateway openai error response",
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", httpStatus,
+			"error_type", code,
+			"detail", internalDetail,
+		)
+	} else if m := strings.TrimSpace(msg); m != "" {
+		c.Set(CtxGatewayErrMsgKey, m)
+	}
+	msg = clientMsg
 	for k, v := range headers {
 		if k != "" && v != "" {
 			c.Header(k, v)
