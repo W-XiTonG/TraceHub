@@ -81,6 +81,19 @@ html[data-th-theme="paper"] {
   --th-user-table-head-bg: rgba(255, 255, 255, 0.72);
   --th-user-table-row-hover: rgba(15, 23, 42, 0.04);
   --th-user-table-line: rgba(15, 23, 42, 0.1);
+  --th-usage-logs-child-bg: rgba(139, 92, 246, 0.06);
+  --th-usage-logs-child-accent: rgba(124, 58, 237, 0.38);
+  --th-usage-logs-expand-fg: #64748b;
+  --th-usage-logs-expand-hover-bg: rgba(15, 23, 42, 0.06);
+  --th-usage-logs-expand-hover-fg: #334155;
+  --th-usage-logs-sub-badge-bg: rgba(139, 92, 246, 0.1);
+  --th-usage-logs-sub-badge-fg: #5b21b6;
+  --th-usage-logs-group-count-bg: rgba(139, 92, 246, 0.1);
+  --th-usage-logs-group-count-fg: #5b21b6;
+  --th-usage-logs-group-count-ring: rgba(124, 58, 237, 0.22);
+  --th-usage-logs-copy-fg: #0e7490;
+  --th-usage-logs-copy-hover-bg: rgba(14, 165, 233, 0.1);
+  --th-usage-logs-copy-hover-fg: #0369a1;
   --th-apikey-chip-idle-border: rgba(15, 23, 42, 0.12);
   --th-apikey-chip-idle-bg: rgba(255, 255, 255, 0.72);
   --th-apikey-chip-idle-fg: #64748b;
@@ -106,6 +119,12 @@ html[data-th-theme="paper"] {
   --th-badge-http-5xx-fg: #b91c1c;
   --th-badge-http-5xx-bg: #fee2e2;
   --th-badge-http-5xx-border: rgba(220, 38, 38, 0.32);
+  --th-badge-billing-token-fg: #0e7490;
+  --th-badge-billing-token-bg: #e0f2fe;
+  --th-badge-billing-token-border: rgba(14, 165, 233, 0.38);
+  --th-badge-billing-video-fg: #5b21b6;
+  --th-badge-billing-video-bg: #ede9fe;
+  --th-badge-billing-video-border: rgba(124, 58, 237, 0.35);
   /* 管理后台页顶成功/错误条：深字 + 浅底，避免 emerald 标号在浅色下反相后对比崩溃 */
   --th-admin-flash-success-border: rgba(5, 150, 105, 0.38);
   --th-admin-flash-success-bg: #d1fae5;

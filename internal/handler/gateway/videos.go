@@ -216,7 +216,7 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, meta)
 	}
 	metrics.GatewayRequests.WithLabelValues(parsed.Model, ct, "200").Inc()
-	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, parsed.Model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, parsed.Model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, videoJobTraceRef(vid), time.Since(start))
 	WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 }
 
@@ -323,7 +323,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityVideo, res.StatusCode, nil, upstreamprobe.CapSourceRuntime)
-	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, videoJobTraceRef(vid), time.Since(start))
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }
 
@@ -503,6 +503,13 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 
 	outBody := normalizeVideoUpstreamBody(ct, res.Body)
 	if res.StatusCode >= 400 {
+		if id != "" {
+			if rec := UsageRecorderFrom(c); rec != nil {
+				if ref := videoJobTraceRef(id); ref != nil {
+					rec.SetTraceRef(*ref)
+				}
+			}
+		}
 		WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 		return
 	}
@@ -548,6 +555,16 @@ func noteGatewayModelForUsage(c *gin.Context, model string) {
 			rec.SetModel(m)
 		}
 	}
+}
+
+// videoJobTraceRef 写入 usage_logs.error_message，供控制台按 video_id 聚合（非用户可见错误）。
+func videoJobTraceRef(videoID string) *string {
+	id := strings.TrimSpace(videoID)
+	if id == "" {
+		return nil
+	}
+	s := "video_job:" + id
+	return &s
 }
 
 func loadVideoGatewayUser(c *gin.Context, d ChatDeps, model string) (*ent.User, *ent.APIKey, int, string, *router.Selected, error) {

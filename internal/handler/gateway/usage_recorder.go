@@ -39,9 +39,10 @@ type UsageRecorder struct {
 	ip        string
 	start     time.Time
 
-	errMsg string
-	logged bool
-	mu     sync.Mutex
+	errMsg   string
+	traceRef string // 非错误追踪（如 video_job:id），写入 error_message 供前端聚合
+	logged   bool
+	mu       sync.Mutex
 
 	disabled bool
 }
@@ -142,6 +143,29 @@ func (r *UsageRecorder) NoteError(msg string) {
 	}
 }
 
+// SetTraceRef 写入 usage_logs.error_message 的追踪字段（如 video_job:id），供控制台聚合；真实错误优先。
+func (r *UsageRecorder) SetTraceRef(ref string) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if m := strings.TrimSpace(ref); m != "" {
+		r.traceRef = m
+	}
+}
+
+// errorMessageLocked 须在已持有 r.mu 时调用。
+func (r *UsageRecorder) errorMessageLocked() *string {
+	if m := strings.TrimSpace(r.errMsg); m != "" {
+		return &m
+	}
+	if m := strings.TrimSpace(r.traceRef); m != "" {
+		return &m
+	}
+	return nil
+}
+
 func (r *UsageRecorder) MarkLogged() {
 	if r == nil {
 		return
@@ -188,8 +212,8 @@ func (r *UsageRecorder) maybeFlushFailure(c *gin.Context) {
 	}
 	r.mu.Lock()
 	logged := r.logged
-	errMsg := r.errMsg
 	model := r.model
+	em := r.errorMessageLocked()
 	channelID := r.channelID
 	upstream := r.upstream
 	r.mu.Unlock()
@@ -204,10 +228,6 @@ func (r *UsageRecorder) maybeFlushFailure(c *gin.Context) {
 	r.MarkLogged()
 	if model == "" {
 		model = fallbackModel(c)
-	}
-	var em *string
-	if errMsg != "" {
-		em = &errMsg
 	}
 	go saveUsage(r.client, r.userID, r.apiKeyID, channelID, r.requestID, model, upstream,
 		0, 0, 0, 0, r.ip, status, em, time.Since(r.start))

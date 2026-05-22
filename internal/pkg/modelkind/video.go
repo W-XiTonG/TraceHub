@@ -8,6 +8,10 @@ func IsVideoBillingModel(modelID string) bool {
 	if id == "" {
 		return false
 	}
+	if strings.HasPrefix(id, "route:") {
+		path := strings.TrimSpace(strings.TrimPrefix(id, "route:"))
+		return strings.Contains(path, "/videos") || strings.Contains(path, "/video/")
+	}
 	for _, lbl := range inferFromID(id) {
 		if lbl == "video" {
 			return true

@@ -20,8 +20,10 @@ export function modelLooksVideo(model: string): boolean {
     id.includes('t2v') ||
     id.includes('i2v') ||
     id.includes('-video') ||
+    id.includes('/videos') ||
     id.includes('/video') ||
     id.includes('_video') ||
+    (id.startsWith('route:') && (id.includes('/videos') || id.includes('/video/'))) ||
     id.includes('seedance') ||
     id.includes('doubao-seed') ||
     id.includes('seed3d') ||
@@ -56,6 +58,8 @@ export type UsageLogBillingRow = {
 
 export function resolveUsageBillingMode(row: UsageLogBillingRow): 'video_duration' | 'token' {
   if (row.billing_mode === 'video_duration') return 'video_duration'
+  const modelStr = String(row.model ?? '')
+  if (modelLooksVideo(modelStr)) return 'video_duration'
   if (isVideoDurationBilling(row as Record<string, unknown>)) return 'video_duration'
   return 'token'
 }

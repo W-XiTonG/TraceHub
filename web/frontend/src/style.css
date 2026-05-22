@@ -113,6 +113,20 @@
   --th-user-table-head-bg: rgba(2, 6, 23, 0.5);
   --th-user-table-row-hover: rgba(255, 255, 255, 0.03);
   --th-user-table-line: rgba(148, 163, 184, 0.14);
+  /* 调用日志：视频子请求行 / 展开控件（浅色在 themes-light.css 覆写） */
+  --th-usage-logs-child-bg: rgba(139, 92, 246, 0.07);
+  --th-usage-logs-child-accent: rgba(167, 139, 250, 0.45);
+  --th-usage-logs-expand-fg: #94a3b8;
+  --th-usage-logs-expand-hover-bg: rgba(51, 65, 85, 0.35);
+  --th-usage-logs-expand-hover-fg: #cbd5e1;
+  --th-usage-logs-sub-badge-bg: rgba(51, 65, 85, 0.55);
+  --th-usage-logs-sub-badge-fg: #94a3b8;
+  --th-usage-logs-group-count-bg: rgba(139, 92, 246, 0.14);
+  --th-usage-logs-group-count-fg: #c4b5fd;
+  --th-usage-logs-group-count-ring: rgba(139, 92, 246, 0.28);
+  --th-usage-logs-copy-fg: rgba(34, 211, 238, 0.9);
+  --th-usage-logs-copy-hover-bg: rgba(8, 145, 178, 0.12);
+  --th-usage-logs-copy-hover-fg: rgb(103, 232, 249);
   --th-apikey-chip-idle-border: rgba(255, 255, 255, 0.08);
   --th-apikey-chip-idle-bg: rgba(255, 255, 255, 0.04);
   --th-apikey-chip-idle-fg: #94a3b8;
@@ -146,6 +160,13 @@
   --th-badge-http-5xx-fg: #fecaca;
   --th-badge-http-5xx-bg: rgba(239, 68, 68, 0.16);
   --th-badge-http-5xx-border: rgba(248, 113, 113, 0.38);
+  /* 调用日志：计费类型徽标（浅色在 themes-light.css 覆写） */
+  --th-badge-billing-token-fg: #a5f3fc;
+  --th-badge-billing-token-bg: rgba(8, 145, 178, 0.14);
+  --th-badge-billing-token-border: rgba(34, 211, 238, 0.35);
+  --th-badge-billing-video-fg: #d8b4fe;
+  --th-badge-billing-video-bg: rgba(109, 40, 217, 0.16);
+  --th-badge-billing-video-border: rgba(167, 139, 250, 0.38);
   /* 文档中心（DocsView scoped 使用，浅色在 themes-light 覆写） */
   --th-docs-chrome-border: rgba(255, 255, 255, 0.08);
   --th-docs-h2: #f1f5f9;
@@ -1717,6 +1738,133 @@
   border-color: var(--th-badge-disabled-border);
   background: var(--th-badge-disabled-bg);
   color: var(--th-badge-disabled-fg);
+}
+
+/* 调用日志：计费类型徽标 */
+.th-badge-billing {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.th-badge-billing--token {
+  border-color: var(--th-badge-billing-token-border);
+  background: var(--th-badge-billing-token-bg);
+  color: var(--th-badge-billing-token-fg);
+}
+
+.th-badge-billing--video {
+  border-color: var(--th-badge-billing-video-border);
+  background: var(--th-badge-billing-video-bg);
+  color: var(--th-badge-billing-video-fg);
+}
+
+.th-usage-logs-table-wrap {
+  max-height: min(70vh, 52rem);
+}
+
+.th-usage-logs-model-cell {
+  min-width: 12rem;
+  max-width: 22rem;
+  vertical-align: top;
+}
+
+.th-usage-logs-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--th-user-table-head-bg);
+  box-shadow: 0 1px 0 var(--th-user-table-line);
+}
+
+.th-usage-logs-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--th-usage-logs-copy-fg);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.th-usage-logs-copy-btn:hover {
+  background: var(--th-usage-logs-copy-hover-bg);
+  color: var(--th-usage-logs-copy-hover-fg);
+}
+
+.th-usage-logs-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: var(--th-usage-logs-expand-fg);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.th-usage-logs-expand-btn:hover {
+  background: var(--th-usage-logs-expand-hover-bg);
+  color: var(--th-usage-logs-expand-hover-fg);
+}
+
+.th-usage-logs-group-count {
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  line-height: 1.25;
+  background: var(--th-usage-logs-group-count-bg);
+  color: var(--th-usage-logs-group-count-fg);
+  box-shadow: inset 0 0 0 1px var(--th-usage-logs-group-count-ring);
+}
+
+.th-usage-logs-expand-col {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  vertical-align: top;
+}
+
+.th-usage-logs-sub-badge {
+  display: inline-block;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--th-usage-logs-sub-badge-bg);
+  color: var(--th-usage-logs-sub-badge-fg);
+}
+
+.th-usage-logs-row--child td {
+  background: var(--th-usage-logs-child-bg);
+}
+
+.th-user-keys-table-wrap .th-usage-logs-row--child:hover td {
+  background: var(--th-usage-logs-child-bg);
+}
+
+.th-usage-logs-row--child td:first-of-type {
+  box-shadow: inset 3px 0 0 var(--th-usage-logs-child-accent);
+}
+
+.th-usage-logs-card--child {
+  margin-left: 0.75rem;
+  border-left: 2px solid var(--th-usage-logs-child-accent);
+  background: var(--th-usage-logs-child-bg);
 }
 
 .th-dash-http-hint {

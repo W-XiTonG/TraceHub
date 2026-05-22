@@ -8,6 +8,18 @@ func TestUsageBillingMode_videoSeconds(t *testing.T) {
 	}
 }
 
+func TestUsageBillingMode_videoModelZeroSeconds(t *testing.T) {
+	if got := UsageBillingMode("doubao-seedance-1-0-pro-fast-251015", 0, 0); got != UsageBillingVideoDuration {
+		t.Fatalf("got %q want video_duration for failed/zero-second video job", got)
+	}
+}
+
+func TestUsageBillingMode_videoRoutePath(t *testing.T) {
+	if got := UsageBillingMode("route:/v1/videos/:video_id/content", 0, 0); got != UsageBillingVideoDuration {
+		t.Fatalf("got %q want video_duration for videos route", got)
+	}
+}
+
 func TestUsageBillingMode_chatTokens(t *testing.T) {
 	if got := UsageBillingMode("gpt-4o-mini", 100, 50); got != UsageBillingToken {
 		t.Fatalf("got %q want token", got)

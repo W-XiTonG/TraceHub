@@ -216,7 +216,7 @@ func KlingV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			em := tag + ":" + vid
 			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, settle.Seconds, 0, 0, adjCost, c.ClientIP(), resp.StatusCode, &em, time.Since(start))
 		} else {
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, videoJobTraceRef(vid), time.Since(start))
 		}
 
 		oct := resp.Header.Get("Content-Type")

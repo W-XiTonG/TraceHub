@@ -22,3 +22,9 @@ func TestLabelsForModel_seedanceOverridesAdminChat(t *testing.T) {
 		t.Fatalf("got %v want [video]", got)
 	}
 }
+
+func TestIsVideoBillingModel_routeVideos(t *testing.T) {
+	if !IsVideoBillingModel("route:/v1/videos/:video_id/content") {
+		t.Fatal("expected videos route path")
+	}
+}
