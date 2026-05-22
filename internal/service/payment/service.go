@@ -199,14 +199,16 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (*Create
 	if pkgID != nil {
 		cr.SetPackageID(*pkgID)
 	}
-	if res.PayURL != "" {
-		cr.SetPayURL(res.PayURL)
+	payURL := sanitizePostgresText(res.PayURL, 2000)
+	qrCode := sanitizePostgresText(res.QRCode, 4000)
+	if payURL != "" {
+		cr.SetPayURL(payURL)
 	}
-	if res.QRCode != "" {
-		cr.SetQrCode(res.QRCode)
+	if qrCode != "" {
+		cr.SetQrCode(qrCode)
 	}
-	if res.ProviderTxnID != "" {
-		cr.SetNillableProviderTxnID(&res.ProviderTxnID)
+	if txnID := sanitizePostgresText(res.ProviderTxnID, 128); txnID != "" {
+		cr.SetNillableProviderTxnID(&txnID)
 	}
 	if easypayType != "" {
 		cr.SetMetadata(map[string]any{"easypay_type": easypayType})
@@ -217,8 +219,8 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (*Create
 	return &CreateOrderOutput{
 		OrderNo:     orderNo,
 		Status:      StatusPending,
-		PayURL:      res.PayURL,
-		QRCode:      res.QRCode,
+		PayURL:      payURL,
+		QRCode:      qrCode,
 		ExpireAt:    expireAt,
 		AmountCents: amountCents,
 		QuotaAmount: quota,

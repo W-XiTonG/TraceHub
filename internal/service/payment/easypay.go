@@ -71,7 +71,9 @@ func (easypayProvider) CreatePayment(ctx context.Context, cfg RuntimeConfig, ord
 	}
 	if json.Unmarshal(body, &out) == nil && out.Code == 1 {
 		return normalizeEasyPayCreateResult(&CreateResult{
-			PayURL: out.PayURL, QRCode: out.QRCode, ProviderTxnID: out.TradeNo,
+			PayURL:          sanitizePostgresText(out.PayURL, 2000),
+			QRCode:          sanitizePostgresText(out.QRCode, 4000),
+			ProviderTxnID:   sanitizePostgresText(out.TradeNo, 128),
 		}), nil
 	}
 	if out.Msg != "" {
