@@ -22,4 +22,5 @@ type OrderSnapshot struct {
 	QuotaAmount     int64
 	UserID          int
 	ProviderTxnID   string
+	EasyPayType     string // alipay | wxpay，仅 easypay 渠道
 }

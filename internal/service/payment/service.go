@@ -19,9 +19,11 @@ import (
 var (
 	ErrProviderDisabled = errors.New("payment provider disabled")
 	ErrInvalidAmount    = errors.New("invalid payment amount")
+	ErrInvalidPayType   = errors.New("invalid easypay type")
 	ErrOrderNotFound    = errors.New("order not found")
 	ErrOrderNotPending  = errors.New("order not pending")
 	ErrInsufficientBal  = errors.New("insufficient balance for refund")
+	ErrSyncNotSupported = errors.New("order sync not supported for this provider")
 )
 
 // Service 支付主服务。
@@ -72,7 +74,7 @@ func (s *Service) IsProviderEnabled(cfg RuntimeConfig, name string) bool {
 	case ProviderStripe:
 		return cfg.StripeEnabled && cfg.StripeSecretKey != ""
 	case ProviderEasyPay:
-		return cfg.EasyPayEnabled && cfg.EasyPayPID != "" && cfg.EasyPayKey != ""
+		return cfg.EasyPayEnabled && cfg.EasyPayPID != "" && cfg.EasyPayKey != "" && strings.TrimSpace(cfg.EasyPayAPIURL) != ""
 	default:
 		return false
 	}
@@ -81,10 +83,18 @@ func (s *Service) IsProviderEnabled(cfg RuntimeConfig, name string) bool {
 type CreateOrderInput struct {
 	UserID            int
 	Provider          string
+	EasyPayType       string
 	PackageID         *int
 	CustomAmountCents *int64
 	Currency          string
 	InvoiceRequested  bool
+}
+
+// ProviderInfo 用户端可选支付渠道。
+type ProviderInfo struct {
+	ID       string   `json:"id"`
+	Label    string   `json:"label"`
+	PayTypes []string `json:"pay_types,omitempty"`
 }
 
 type CreateOrderOutput struct {
@@ -115,6 +125,16 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (*Create
 	p, ok := s.Provider(provider)
 	if !ok {
 		return nil, fmt.Errorf("unknown provider: %s", provider)
+	}
+
+	easypayType := strings.TrimSpace(in.EasyPayType)
+	if provider == ProviderEasyPay {
+		if easypayType == "" {
+			return nil, ErrInvalidPayType
+		}
+		if easypayType != EasyPayTypeAlipay && easypayType != EasyPayTypeWxpay {
+			return nil, ErrInvalidPayType
+		}
 	}
 
 	var amountCents int64
@@ -159,6 +179,7 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (*Create
 		Currency:    currency,
 		QuotaAmount: quota,
 		UserID:      in.UserID,
+		EasyPayType: easypayType,
 	}
 	res, err := p.CreatePayment(ctx, cfg, snap)
 	if err != nil {
@@ -186,6 +207,9 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (*Create
 	}
 	if res.ProviderTxnID != "" {
 		cr.SetNillableProviderTxnID(&res.ProviderTxnID)
+	}
+	if easypayType != "" {
+		cr.SetMetadata(map[string]any{"easypay_type": easypayType})
 	}
 	if _, err := cr.Save(ctx); err != nil {
 		return nil, err
@@ -318,6 +342,44 @@ func (s *Service) CancelOrder(ctx context.Context, userID int, orderNo string) e
 	return nil
 }
 
+func (s *Service) ReconcilePendingEasyPayOrders(ctx context.Context) (int, error) {
+	if !s.OnlineEnabled(ctx) {
+		return 0, nil
+	}
+	cfg, err := s.RuntimeConfig(ctx)
+	if err != nil || !s.IsProviderEnabled(cfg, ProviderEasyPay) {
+		return 0, err
+	}
+	now := time.Now()
+	deadline := now.Add(5 * time.Minute)
+	list, err := s.Client.PaymentOrder.Query().
+		Where(
+			paymentorder.StatusEQ(StatusPending),
+			paymentorder.ProviderEQ(ProviderEasyPay),
+			paymentorder.ExpireAtLTE(deadline),
+		).
+		All(ctx)
+	if err != nil {
+		return 0, err
+	}
+	p, ok := s.Provider(ProviderEasyPay)
+	if !ok {
+		return 0, nil
+	}
+	settled := 0
+	for _, o := range list {
+		snap := s.OrderSnapshotFromEnt(o)
+		paid, txnID, qerr := p.QueryPayment(ctx, cfg, snap)
+		if qerr != nil || !paid {
+			continue
+		}
+		if err := s.SettleOrder(ctx, o.OrderNo, txnID, o.AmountCents); err == nil {
+			settled++
+		}
+	}
+	return settled, nil
+}
+
 func (s *Service) ExpirePendingOrders(ctx context.Context) (int, error) {
 	now := time.Now()
 	aff, err := s.Client.PaymentOrder.Update().
@@ -339,10 +401,89 @@ func (s *Service) StartExpiryWorker(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_, _ = s.ExpirePendingOrders(context.Background())
+				bg := context.Background()
+				_, _ = s.ReconcilePendingEasyPayOrders(bg)
+				_, _ = s.ExpirePendingOrders(bg)
 			}
 		}
 	}()
+}
+
+// SyncOrder 向易支付查单并尝试入账（管理端补单）。
+func (s *Service) SyncOrder(ctx context.Context, orderID int) (*ent.PaymentOrder, error) {
+	o, err := s.Client.PaymentOrder.Get(ctx, orderID)
+	if err != nil {
+		return nil, ErrOrderNotFound
+	}
+	if o.Provider != ProviderEasyPay {
+		return nil, ErrSyncNotSupported
+	}
+	if o.Status == StatusPaid {
+		return o, nil
+	}
+	if o.Status != StatusPending {
+		return nil, ErrOrderNotPending
+	}
+	cfg, err := s.RuntimeConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p, ok := s.Provider(o.Provider)
+	if !ok {
+		return nil, fmt.Errorf("unknown provider")
+	}
+	paid, txnID, err := p.QueryPayment(ctx, cfg, s.OrderSnapshotFromEnt(o))
+	if err != nil {
+		return nil, err
+	}
+	if paid {
+		if err := s.SettleOrder(ctx, o.OrderNo, txnID, o.AmountCents); err != nil {
+			return nil, err
+		}
+	}
+	return s.Client.PaymentOrder.Get(ctx, orderID)
+}
+
+// ListEnabledProviders 返回当前可用的支付渠道（用户端）。
+func (s *Service) ListEnabledProviders(ctx context.Context) ([]ProviderInfo, error) {
+	cfg, err := s.RuntimeConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !cfg.OnlineEnabled {
+		return nil, nil
+	}
+	var out []ProviderInfo
+	labels := map[string]string{
+		ProviderMock:    "Mock（开发）",
+		ProviderAlipay:  "支付宝",
+		ProviderWxpay:   "微信支付",
+		ProviderStripe:  "Stripe",
+		ProviderEasyPay: "易支付",
+	}
+	order := []string{ProviderEasyPay, ProviderAlipay, ProviderWxpay, ProviderStripe, ProviderMock}
+	for _, id := range order {
+		if !s.IsProviderEnabled(cfg, id) {
+			continue
+		}
+		info := ProviderInfo{ID: id, Label: labels[id]}
+		if id == ProviderEasyPay {
+			info.PayTypes = []string{EasyPayTypeAlipay, EasyPayTypeWxpay}
+		}
+		out = append(out, info)
+	}
+	return out, nil
+}
+
+func easypayTypeFromMetadata(meta map[string]any) string {
+	if meta == nil {
+		return ""
+	}
+	v, ok := meta["easypay_type"].(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(v)
 }
 
 func (s *Service) OrderSnapshotFromEnt(o *ent.PaymentOrder) OrderSnapshot {
@@ -357,6 +498,7 @@ func (s *Service) OrderSnapshotFromEnt(o *ent.PaymentOrder) OrderSnapshot {
 		QuotaAmount:   o.QuotaAmount,
 		UserID:        o.UserID,
 		ProviderTxnID: txn,
+		EasyPayType:   easypayTypeFromMetadata(o.Metadata),
 	}
 }
 

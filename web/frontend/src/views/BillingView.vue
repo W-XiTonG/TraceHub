@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
@@ -22,6 +22,12 @@ type Package = {
   currency: string
 }
 
+type PaymentProvider = {
+  id: string
+  label: string
+  pay_types?: string[]
+}
+
 type OrderResult = {
   order_no: string
   status: string
@@ -33,9 +39,11 @@ type OrderResult = {
 }
 
 const packages = ref<Package[]>([])
+const providers = ref<PaymentProvider[]>([])
 const quotaPerYuan = ref(10000)
 const selectedPkg = ref<number | null>(null)
-const provider = ref('mock')
+const provider = ref('')
+const easypayType = ref('alipay')
 const customYuan = ref('')
 const useCustom = ref(false)
 const loading = ref(false)
@@ -44,13 +52,16 @@ const msgTone = ref<'success' | 'error'>('success')
 const activeOrder = ref<OrderResult | null>(null)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
-const providers = [
-  { id: 'mock', label: 'Mock（开发）' },
-  { id: 'alipay', label: '支付宝' },
-  { id: 'wxpay', label: '微信支付' },
-  { id: 'stripe', label: 'Stripe' },
-  { id: 'easypay', label: 'EasyPay' },
-]
+const showEasypayType = computed(() => provider.value === 'easypay')
+
+const easypayTypeOptions = computed(() => {
+  const p = providers.value.find((x) => x.id === 'easypay')
+  const types = p?.pay_types?.length ? p.pay_types : ['alipay', 'wxpay']
+  return types.map((id) => ({
+    id,
+    label: id === 'wxpay' ? t('billingPage.wxpay') : t('billingPage.alipay'),
+  }))
+})
 
 function fmtYuan(cents: number) {
   return (cents / 100).toFixed(2)
@@ -77,6 +88,24 @@ async function loadQuotaPerYuan() {
   }
 }
 
+async function loadProviders() {
+  try {
+    const { data } = await http.get<Envelope<{ providers: PaymentProvider[] }>>('/api/user/payment/providers')
+    if (data.code === 0 && data.data?.providers) {
+      providers.value = data.data.providers
+      if (providers.value.length && !providers.value.some((p) => p.id === provider.value)) {
+        provider.value = providers.value[0].id
+      }
+      const ep = providers.value.find((p) => p.id === 'easypay')
+      if (ep?.pay_types?.length && !ep.pay_types.includes(easypayType.value)) {
+        easypayType.value = ep.pay_types[0]
+      }
+    }
+  } catch {
+    providers.value = []
+  }
+}
+
 async function loadPackages() {
   if (!onlinePay.value) return
   try {
@@ -97,7 +126,15 @@ async function createOrder() {
   loading.value = true
   activeOrder.value = null
   try {
+    if (!provider.value) {
+      msgTone.value = 'error'
+      msg.value = t('billingPage.pickProvider')
+      return
+    }
     const body: Record<string, unknown> = { provider: provider.value }
+    if (provider.value === 'easypay') {
+      body.easypay_type = easypayType.value
+    }
     if (useCustom.value) {
       const yuan = parseFloat(customYuan.value)
       if (!Number.isFinite(yuan) || yuan <= 0) {
@@ -167,10 +204,20 @@ async function mockPay() {
   }
 }
 
+watch(provider, (id) => {
+  if (id === 'easypay') {
+    const ep = providers.value.find((p) => p.id === 'easypay')
+    if (ep?.pay_types?.length && !ep.pay_types.includes(easypayType.value)) {
+      easypayType.value = ep.pay_types[0]
+    }
+  }
+})
+
 onMounted(async () => {
   await siteMeta.ensureLoaded()
   void loadQuotaPerYuan()
   if (onlinePay.value) {
+    await loadProviders()
     void loadPackages()
     if (route.query.paid === '1') {
       msgTone.value = 'success'
@@ -185,7 +232,7 @@ onUnmounted(() => stopPoll())
 <template>
   <div class="max-w-2xl min-w-0">
     <h1 class="mb-2 text-2xl font-bold">{{ t('billingPage.title') }}</h1>
-    <p class="mb-6 text-sm text-slate-500">
+    <p class="th-billing-panel__hint mb-6">
       {{ onlinePay ? t('billingPage.descOnline') : t('billingPage.desc') }}
     </p>
 
@@ -225,7 +272,7 @@ onUnmounted(() => stopPoll())
         </div>
       </section>
 
-      <div class="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-6">
+      <div class="th-console-panel space-y-4 p-6">
         <div class="flex items-start gap-3">
           <span class="mt-0.5 text-cyan-400">①</span>
           <div>
@@ -250,28 +297,28 @@ onUnmounted(() => stopPoll())
 
     <!-- 在线支付开启 -->
     <template v-else>
-      <section class="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-        <h2 class="mb-4 text-base font-semibold text-slate-200">{{ t('billingPage.packagesTitle') }}</h2>
-        <p class="mb-4 text-xs leading-relaxed text-slate-500">
+      <section class="th-console-panel mb-8 p-6">
+        <h2 class="th-billing-panel__title">{{ t('billingPage.packagesTitle') }}</h2>
+        <p class="th-billing-panel__hint">
           {{ t('billingPage.quotaPerYuanHint', { perYuan: quotaPerYuan, example: quotaExample100 }) }}
         </p>
         <div v-if="packages.length" class="grid gap-3 sm:grid-cols-2">
           <label
             v-for="p in packages"
             :key="p.id"
-            class="cursor-pointer rounded-lg border p-4 transition"
-            :class="!useCustom && selectedPkg === p.id ? 'border-cyan-500/60 bg-cyan-950/30' : 'border-slate-700 hover:border-slate-600'"
+            class="th-billing-package"
+            :class="{ 'th-billing-package--selected': !useCustom && selectedPkg === p.id }"
           >
             <input v-model="selectedPkg" type="radio" class="sr-only" :value="p.id" @change="useCustom = false" />
-            <p class="font-medium text-slate-100">{{ p.name }}</p>
-            <p class="mt-1 text-sm text-cyan-400">¥{{ fmtYuan(p.amount_cents) }}</p>
-            <p class="mt-1 text-xs text-slate-500">{{ t('billingPage.quotaLabel', { n: p.quota_amount + (p.bonus_quota || 0) }) }}</p>
+            <p class="th-billing-package__name">{{ p.name }}</p>
+            <p class="th-billing-package__price">¥{{ fmtYuan(p.amount_cents) }}</p>
+            <p class="th-billing-package__quota">{{ t('billingPage.quotaLabel', { n: p.quota_amount + (p.bonus_quota || 0) }) }}</p>
           </label>
         </div>
-        <p v-else class="text-sm text-slate-500">{{ t('billingPage.noPackages') }}</p>
+        <p v-else class="th-billing-panel__hint text-sm">{{ t('billingPage.noPackages') }}</p>
 
-        <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
-          <label class="flex items-center gap-2 text-sm text-slate-300">
+        <div class="th-billing-divider flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 text-sm th-billing-package__name">
             <input v-model="useCustom" type="checkbox" class="rounded" />
             {{ t('billingPage.customAmount') }}
           </label>
@@ -284,46 +331,59 @@ onUnmounted(() => stopPoll())
             class="th-input w-32"
             :placeholder="t('billingPage.yuanPh')"
           />
-          <p v-if="useCustom && customQuotaEstimate != null" class="w-full text-xs text-cyan-400/90">
+          <p v-if="useCustom && customQuotaEstimate != null" class="w-full text-xs th-billing-package__price">
             {{ t('billingPage.customQuotaEstimate', { n: customQuotaEstimate }) }}
           </p>
         </div>
 
-        <div class="mt-4">
-          <label class="mb-1 block text-xs text-slate-500">{{ t('billingPage.provider') }}</label>
+        <div v-if="providers.length" class="mt-4">
+          <label class="mb-1 block text-xs th-billing-panel__hint">{{ t('billingPage.provider') }}</label>
           <select v-model="provider" class="th-input w-full max-w-xs">
             <option v-for="pr in providers" :key="pr.id" :value="pr.id">{{ pr.label }}</option>
           </select>
         </div>
+        <p v-else class="mt-4 text-sm text-amber-600">{{ t('billingPage.noProviders') }}</p>
 
-        <button type="button" class="th-btn-primary mt-4" :disabled="loading" @click="createOrder">
+        <div v-if="showEasypayType" class="mt-3">
+          <label class="mb-1 block text-xs th-billing-panel__hint">{{ t('billingPage.easypayType') }}</label>
+          <select v-model="easypayType" class="th-input w-full max-w-xs">
+            <option v-for="opt in easypayTypeOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <button
+          type="button"
+          class="th-btn-primary mt-4 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="loading || !providers.length"
+          @click="createOrder"
+        >
           {{ loading ? t('billingPage.submitting') : t('billingPage.submit') }}
         </button>
         <p v-if="msg" class="mt-3 text-sm" :class="msgTone === 'error' ? 'text-red-400' : 'text-emerald-400'">{{ msg }}</p>
       </section>
 
-      <section v-if="activeOrder" class="mb-8 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-6">
-        <h2 class="text-base font-semibold text-cyan-100">{{ t('billingPage.payTitle') }}</h2>
-        <p class="mt-1 text-sm text-slate-400">{{ t('billingPage.orderNo') }}: {{ activeOrder.order_no }}</p>
-        <p class="text-sm text-slate-400">¥{{ fmtYuan(activeOrder.amount_cents) }} → {{ activeOrder.quota_amount }} {{ t('billingPage.quotaUnit') }}</p>
+      <section v-if="activeOrder" class="th-billing-pay-panel">
+        <h2 class="th-billing-pay-panel__title">{{ t('billingPage.payTitle') }}</h2>
+        <p class="th-billing-pay-panel__meta">{{ t('billingPage.orderNo') }}: {{ activeOrder.order_no }}</p>
+        <p class="th-billing-pay-panel__meta">¥{{ fmtYuan(activeOrder.amount_cents) }} → {{ activeOrder.quota_amount }} {{ t('billingPage.quotaUnit') }}</p>
         <a
           v-if="activeOrder.pay_url"
           :href="activeOrder.pay_url"
           target="_blank"
           rel="noopener"
-          class="mt-3 inline-block text-sm text-cyan-400 hover:underline"
+          class="th-link-accent mt-3 inline-block text-sm hover:underline"
         >{{ t('billingPage.openPay') }}</a>
-        <p v-if="activeOrder.qr_code" class="mt-2 break-all text-xs text-slate-500">{{ activeOrder.qr_code }}</p>
+        <p v-if="activeOrder.qr_code" class="mt-2 break-all text-xs th-billing-panel__hint">{{ activeOrder.qr_code }}</p>
         <button v-if="provider === 'mock'" type="button" class="th-btn-secondary mt-4 text-sm" @click="mockPay">
           {{ t('billingPage.mockPayBtn') }}
         </button>
-        <RouterLink to="/console/payment-orders" class="mt-3 block text-sm text-slate-500 hover:text-cyan-400">{{ t('billingPage.viewOrders') }}</RouterLink>
+        <RouterLink to="/console/payment-orders" class="th-link-accent mt-3 block text-sm hover:underline">{{ t('billingPage.viewOrders') }}</RouterLink>
       </section>
 
-      <section class="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
-        <h2 class="text-sm font-medium text-slate-300">{{ t('billingPage.redeemTitle') }}</h2>
-        <p class="mt-1 text-sm text-slate-500">{{ t('billingPage.redeemDesc') }}</p>
-        <RouterLink to="/console/redeem" class="mt-2 inline-block text-sm text-cyan-400 hover:underline">{{ t('billingPage.redeemLink') }}</RouterLink>
+      <section class="th-console-panel rounded-2xl p-6">
+        <h2 class="text-sm font-medium th-billing-package__name">{{ t('billingPage.redeemTitle') }}</h2>
+        <p class="mt-1 text-sm th-billing-panel__hint">{{ t('billingPage.redeemDesc') }}</p>
+        <RouterLink to="/console/redeem" class="th-link-accent mt-2 inline-block text-sm hover:underline">{{ t('billingPage.redeemLink') }}</RouterLink>
       </section>
     </template>
   </div>

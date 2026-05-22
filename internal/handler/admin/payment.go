@@ -45,6 +45,10 @@ func PutPaymentConfig(d PaymentAdminDeps) gin.HandlerFunc {
 			return
 		}
 		merged := payment.MergeUpdate(cur, patch)
+		if err := payment.ValidateRuntimeConfig(merged); err != nil {
+			httpx.BadRequest(c, err.Error())
+			return
+		}
 		if err := d.Svc.ConfigStore.Save(c.Request.Context(), merged, true); err != nil {
 			httpx.ServerError(c, "保存失败")
 			return
@@ -102,6 +106,38 @@ func ListPaymentOrders(client *ent.Client) gin.HandlerFunc {
 			})
 		}
 		httpx.OK(c, gin.H{"items": items, "total": total, "page": page, "page_size": ps})
+	}
+}
+
+func SyncPaymentOrder(d PaymentAdminDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			httpx.BadRequest(c, "无效 id")
+			return
+		}
+		o, err := d.Svc.SyncOrder(c.Request.Context(), id)
+		if err != nil {
+			switch err {
+			case payment.ErrOrderNotFound:
+				httpx.BadRequest(c, "订单不存在")
+			case payment.ErrSyncNotSupported:
+				httpx.BadRequest(c, "仅易支付待支付订单可同步")
+			case payment.ErrOrderNotPending:
+				httpx.BadRequest(c, "订单状态不可同步")
+			default:
+				httpx.ServerError(c, err.Error())
+			}
+			return
+		}
+		auditLog(d.Svc.Client, adm.ID, "payment.order.sync", "payment_order", strconv.Itoa(id), gin.H{"status": o.Status}, c)
+		httpx.OK(c, gin.H{
+			"id":       o.ID,
+			"order_no": o.OrderNo,
+			"status":   o.Status,
+			"paid_at":  o.PaidAt,
+		})
 	}
 }
 

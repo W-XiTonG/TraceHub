@@ -19,6 +19,17 @@ type PaymentDeps struct {
 	Svc *payment.Service
 }
 
+func ListPaymentProviders(d PaymentDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		list, err := d.Svc.ListEnabledProviders(c.Request.Context())
+		if err != nil {
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		httpx.OK(c, gin.H{"providers": list})
+	}
+}
+
 func ListRechargePackages(client *ent.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -50,6 +61,7 @@ func CreatePaymentOrder(d PaymentDeps) gin.HandlerFunc {
 		u := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
 			Provider          string `json:"provider"`
+			EasyPayType       string `json:"easypay_type"`
 			PackageID         *int   `json:"package_id"`
 			CustomAmountCents *int64 `json:"custom_amount_cents"`
 			Currency          string `json:"currency"`
@@ -62,6 +74,7 @@ func CreatePaymentOrder(d PaymentDeps) gin.HandlerFunc {
 		out, err := d.Svc.CreateOrder(c.Request.Context(), payment.CreateOrderInput{
 			UserID:            u.ID,
 			Provider:          req.Provider,
+			EasyPayType:       req.EasyPayType,
 			PackageID:         req.PackageID,
 			CustomAmountCents: req.CustomAmountCents,
 			Currency:          req.Currency,
@@ -75,6 +88,8 @@ func CreatePaymentOrder(d PaymentDeps) gin.HandlerFunc {
 				httpx.BadRequest(c, "该支付渠道未启用")
 			case payment.ErrInvalidAmount:
 				httpx.BadRequest(c, "金额无效")
+			case payment.ErrInvalidPayType:
+				httpx.BadRequest(c, "请选择支付宝或微信支付方式")
 			default:
 				httpx.ServerError(c, err.Error())
 			}

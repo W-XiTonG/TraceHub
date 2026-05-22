@@ -842,11 +842,27 @@ POST /api/admin/redeem-codes
 
 | 端点 | 方法 | 描述 |
 |:---|:---:|:---|
-| `/api/admin/payment/config` | GET | 获取支付配置 |
-| `/api/admin/payment/config` | PUT | 更新支付配置 |
+| `/api/admin/payment/config` | GET | 获取支付配置（敏感字段掩码） |
+| `/api/admin/payment/config` | PUT | 更新支付配置；开启 `easypay_enabled` 时须填写 `easypay_pid`、`easypay_key`、`easypay_api_url` |
 | `/api/admin/payment/orders` | GET | 订单列表 |
+| `/api/admin/payment/orders/:id/sync` | POST | 易支付待支付订单查单补单 |
+| `/api/admin/payment/orders/:id/refund` | POST | 退款 |
 
-> **[sub2api]** 参考 Sub2API 内置支付系统，支持支付宝/微信/Stripe/EasyPay。
+**用户端（需开通在线支付）**
+
+| 端点 | 方法 | 描述 |
+|:---|:---:|:---|
+| `/api/user/payment/providers` | GET | 可用支付渠道列表 |
+| `/api/user/payment/packages` | GET | 充值套餐 |
+| `/api/user/payment/orders` | POST | 创建订单；`provider=easypay` 时须传 `easypay_type`：`alipay` \| `wxpay` |
+
+**Webhook**
+
+| 端点 | 方法 | 描述 |
+|:---|:---:|:---|
+| `/webhook/payment/easypay` | GET/POST | 易支付异步通知（MD5 验签） |
+
+> 易支付（`easypay`）对接标准 `mapi.php` 下单、`api.php?act=order` 查单、`api.php?act=refund` 退款；配置存 DB 键 `payment.runtime`。
 
 ---
 

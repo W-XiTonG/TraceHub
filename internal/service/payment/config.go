@@ -3,6 +3,8 @@ package payment
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -10,6 +12,9 @@ import (
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/pkg/cryptokey"
 )
+
+// ErrInvalidPaymentConfig 支付配置校验失败。
+var ErrInvalidPaymentConfig = errors.New("invalid payment config")
 
 // RuntimeConfig 支付运行时配置（从 system_configs 加载）。
 type RuntimeConfig struct {
@@ -299,4 +304,16 @@ func MergeUpdate(cur RuntimeConfig, patch map[string]any) RuntimeConfig {
 		}
 	}
 	return cur
+}
+
+// ValidateRuntimeConfig 保存前校验运行时配置。
+func ValidateRuntimeConfig(cfg RuntimeConfig) error {
+	if cfg.EasyPayEnabled {
+		if strings.TrimSpace(cfg.EasyPayPID) == "" ||
+			strings.TrimSpace(cfg.EasyPayKey) == "" ||
+			strings.TrimSpace(cfg.EasyPayAPIURL) == "" {
+			return fmt.Errorf("%w: 易支付已开启，请填写商户 ID、密钥与 API 地址", ErrInvalidPaymentConfig)
+		}
+	}
+	return nil
 }

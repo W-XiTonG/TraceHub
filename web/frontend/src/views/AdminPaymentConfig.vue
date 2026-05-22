@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
@@ -11,14 +11,24 @@ const { t } = useI18n()
 const siteMeta = useSiteMetaStore()
 
 const cfg = ref<Record<string, unknown>>({})
+const easypayKey = ref('')
 const { busy: pageLoading, visible: pageLoadingUi, run: runPageLoad } = useSmoothLoading()
 const saving = ref(false)
 const msg = ref('')
 
+const easypayWebhookUrl = computed(() => {
+  const base = String(cfg.value.site_base_url || '').replace(/\/$/, '')
+  if (!base) return ''
+  return `${base}/webhook/payment/easypay`
+})
+
 async function load() {
   await runPageLoad(async () => {
     const { data } = await http.get<Envelope<Record<string, unknown>>>('/api/admin/payment/config')
-    if (data.code === 0 && data.data) cfg.value = { ...data.data }
+    if (data.code === 0 && data.data) {
+      cfg.value = { ...data.data }
+      easypayKey.value = ''
+    }
   })
 }
 
@@ -26,10 +36,17 @@ async function save() {
   saving.value = true
   msg.value = ''
   try {
-    const { data } = await http.put<Envelope<unknown>>('/api/admin/payment/config', cfg.value)
+    const payload = { ...cfg.value }
+    if (easypayKey.value.trim()) {
+      payload.easypay_key = easypayKey.value.trim()
+    }
+    const { data } = await http.put<Envelope<unknown>>('/api/admin/payment/config', payload)
     if (data.code === 0) {
       msg.value = t('adminPayment.saved')
-      if (data.data && typeof data.data === 'object') cfg.value = data.data as Record<string, unknown>
+      if (data.data && typeof data.data === 'object') {
+        cfg.value = data.data as Record<string, unknown>
+        easypayKey.value = ''
+      }
       await siteMeta.refreshFromServer()
     } else {
       msg.value = apiErrorMessage(data)
@@ -79,16 +96,30 @@ onMounted(() => void load())
       </label>
       <input v-model="cfg.stripe_publishable_key" class="th-input w-full" placeholder="Stripe Publishable Key" />
       <input v-model="cfg.stripe_secret_key" class="th-input w-full" placeholder="Stripe Secret Key" type="password" />
-      <label class="flex items-center gap-2 text-sm">
-        <input v-model="cfg.easypay_enabled" type="checkbox" />
-        EasyPay
-      </label>
-      <input v-model="cfg.easypay_pid" class="th-input w-full" placeholder="EasyPay PID" />
+
+      <div class="space-y-3 rounded-lg border border-cyan-500/25 bg-cyan-950/15 p-4">
+        <label class="flex items-center gap-2 text-sm font-medium text-cyan-100">
+          <input v-model="cfg.easypay_enabled" type="checkbox" />
+          {{ t('adminPayment.easypay') }}
+        </label>
+        <input v-model="cfg.easypay_pid" class="th-input w-full" :placeholder="t('adminPayment.easypayPid')" />
+        <input
+          v-model="easypayKey"
+          class="th-input w-full"
+          type="password"
+          :placeholder="cfg.easypay_key_set ? t('adminPayment.easypayKeyKeep') : t('adminPayment.easypayKey')"
+        />
+        <input v-model="cfg.easypay_api_url" class="th-input w-full" :placeholder="t('adminPayment.easypayApiUrl')" />
+        <p v-if="easypayWebhookUrl" class="text-xs text-slate-500">
+          {{ t('adminPayment.easypayWebhookHint', { url: easypayWebhookUrl }) }}
+        </p>
+      </div>
+
       <input v-model="cfg.site_base_url" class="th-input w-full" :placeholder="t('adminPayment.siteBase')" />
       <button type="button" class="th-btn-primary disabled:cursor-not-allowed disabled:opacity-50" :disabled="saving" @click="save">
         {{ saving ? t('adminCommon.saving') : t('adminPayment.save') }}
       </button>
-      <p v-if="msg" class="text-sm text-emerald-400">{{ msg }}</p>
+      <p v-if="msg" class="text-sm" :class="msg.includes('失败') || msg.toLowerCase().includes('fail') ? 'text-red-400' : 'text-emerald-400'">{{ msg }}</p>
     </div>
     </template>
   </div>

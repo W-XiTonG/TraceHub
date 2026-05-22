@@ -144,6 +144,23 @@ html[data-th-theme="paper"] {
   --th-redeem-quota-fg: #047857;
   --th-redeem-result-border: var(--th-admin-flash-success-border);
   --th-redeem-result-bg: var(--th-admin-flash-success-bg);
+  --th-billing-title-fg: #0f172a;
+  --th-billing-muted-fg: #64748b;
+  --th-billing-divider: rgba(15, 23, 42, 0.08);
+  --th-billing-package-bg: rgba(255, 255, 255, 0.94);
+  --th-billing-package-border: rgba(15, 23, 42, 0.1);
+  --th-billing-package-hover-border: rgba(14, 165, 233, 0.38);
+  --th-billing-package-selected-bg: linear-gradient(
+    155deg,
+    rgba(224, 242, 254, 0.98) 0%,
+    rgba(240, 253, 250, 0.92) 55%,
+    rgba(255, 255, 255, 0.98) 100%
+  );
+  --th-billing-package-selected-border: rgba(6, 182, 212, 0.55);
+  --th-billing-price-fg: #0369a1;
+  --th-billing-pay-bg: linear-gradient(165deg, #e0f2fe 0%, #f0fdfa 45%, #f8fafc 100%);
+  --th-billing-pay-border: rgba(8, 145, 178, 0.38);
+  --th-billing-pay-title-fg: #0e7490;
   /* 文档中心：正文/代码/目录随浅色玻璃底可读 */
   --th-docs-chrome-border: rgba(15, 23, 42, 0.1);
   --th-docs-h2: #0f172a;
@@ -523,6 +540,20 @@ html[data-th-theme="paper"] .th-billing-wecom {
 html[data-th-theme="dawn"] .th-billing-wecom h2,
 html[data-th-theme="paper"] .th-billing-wecom h2 {
   color: #0e7490;
+}
+
+html[data-th-theme="dawn"] .th-billing-package--selected,
+html[data-th-theme="paper"] .th-billing-package--selected {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.85) inset,
+    0 8px 20px -14px rgba(14, 165, 233, 0.28);
+}
+
+html[data-th-theme="dawn"] .th-billing-pay-panel,
+html[data-th-theme="paper"] .th-billing-pay-panel {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.88) inset,
+    0 14px 36px -22px rgba(15, 23, 42, 0.1);
 }
 
 html[data-th-theme="dawn"] .th-console-top-icon-btn--amber:hover,

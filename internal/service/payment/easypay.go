@@ -5,12 +5,19 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
+	"time"
+)
+
+var (
+	errEasyPayNotConfigured = errors.New("easypay api url not configured")
+	easypayHTTPClient       = &http.Client{Timeout: 10 * time.Second}
 )
 
 type easypayProvider struct{}
@@ -18,13 +25,20 @@ type easypayProvider struct{}
 func (easypayProvider) Name() string { return ProviderEasyPay }
 
 func (easypayProvider) CreatePayment(ctx context.Context, cfg RuntimeConfig, order OrderSnapshot) (*CreateResult, error) {
-	apiURL := strings.TrimSpace(cfg.EasyPayAPIURL)
-	if apiURL == "" {
-		apiURL = "https://api.pay.example.com/mapi.php"
+	apiURL, err := easypayMapiURL(cfg)
+	if err != nil {
+		return nil, err
+	}
+	payType := strings.TrimSpace(order.EasyPayType)
+	if payType == "" {
+		payType = EasyPayTypeAlipay
+	}
+	if payType != EasyPayTypeAlipay && payType != EasyPayTypeWxpay {
+		return nil, ErrInvalidPayType
 	}
 	params := map[string]string{
 		"pid":          cfg.EasyPayPID,
-		"type":         "alipay",
+		"type":         payType,
 		"out_trade_no": order.OrderNo,
 		"notify_url":   webhookURL(cfg, "easypay"),
 		"return_url":   successURL(cfg, order.OrderNo),
@@ -42,7 +56,7 @@ func (easypayProvider) CreatePayment(ctx context.Context, cfg RuntimeConfig, ord
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := easypayHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -58,13 +72,49 @@ func (easypayProvider) CreatePayment(ctx context.Context, cfg RuntimeConfig, ord
 	if json.Unmarshal(body, &out) == nil && out.Code == 1 {
 		return &CreateResult{PayURL: out.PayURL, QRCode: out.QRCode, ProviderTxnID: out.TradeNo}, nil
 	}
-	// fallback: redirect style pay url built locally
-	payURL := apiURL + "?" + form.Encode()
-	return &CreateResult{PayURL: payURL, QRCode: payURL}, nil
+	if out.Msg != "" {
+		return nil, fmt.Errorf("easypay create: %s", out.Msg)
+	}
+	return nil, fmt.Errorf("easypay create failed: %s", strings.TrimSpace(string(body)))
 }
 
 func (easypayProvider) QueryPayment(ctx context.Context, cfg RuntimeConfig, order OrderSnapshot) (bool, string, error) {
-	return false, "", nil
+	apiURL, err := easypayAPIURL(cfg)
+	if err != nil {
+		return false, "", err
+	}
+	q := url.Values{}
+	q.Set("act", "order")
+	q.Set("pid", cfg.EasyPayPID)
+	q.Set("key", cfg.EasyPayKey)
+	q.Set("out_trade_no", order.OrderNo)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL+"?"+q.Encode(), nil)
+	if err != nil {
+		return false, "", err
+	}
+	resp, err := easypayHTTPClient.Do(req)
+	if err != nil {
+		return false, "", err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var out struct {
+		Code    int    `json:"code"`
+		Msg     string `json:"msg"`
+		Status  int    `json:"status"`
+		TradeNo string `json:"trade_no"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return false, "", fmt.Errorf("easypay query parse: %w", err)
+	}
+	if out.Code != 1 {
+		if out.Msg != "" {
+			return false, "", fmt.Errorf("easypay query: %s", out.Msg)
+		}
+		return false, "", nil
+	}
+	paid := out.Status == 1
+	return paid, out.TradeNo, nil
 }
 
 func (easypayProvider) ParseNotify(ctx context.Context, cfg RuntimeConfig, r *http.Request) (*NotifyResult, error) {
@@ -94,7 +144,43 @@ func (easypayProvider) ParseNotify(ctx context.Context, cfg RuntimeConfig, r *ht
 }
 
 func (easypayProvider) Refund(ctx context.Context, cfg RuntimeConfig, order OrderSnapshot, refundNo string, amountCents int64, _ string) (*RefundResult, error) {
-	return &RefundResult{ProviderRefundID: "ep-" + refundNo, Success: true}, nil
+	apiURL, err := easypayAPIURL(cfg)
+	if err != nil {
+		return nil, err
+	}
+	q := url.Values{}
+	q.Set("act", "refund")
+	q.Set("pid", cfg.EasyPayPID)
+	q.Set("key", cfg.EasyPayKey)
+	q.Set("out_trade_no", order.OrderNo)
+	q.Set("money", fmt.Sprintf("%.2f", float64(amountCents)/100))
+	q.Set("out_refund_no", refundNo)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(q.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := easypayHTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var out struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, fmt.Errorf("easypay refund parse: %w", err)
+	}
+	if out.Code != 1 {
+		msg := strings.TrimSpace(out.Msg)
+		if msg == "" {
+			msg = strings.TrimSpace(string(body))
+		}
+		return nil, fmt.Errorf("easypay refund failed: %s", msg)
+	}
+	return &RefundResult{ProviderRefundID: refundNo, Success: true}, nil
 }
 
 func easypaySign(params map[string]string, key string) string {
@@ -118,6 +204,39 @@ func easypaySign(params map[string]string, key string) string {
 	buf.WriteString(key)
 	sum := md5.Sum([]byte(buf.String()))
 	return hex.EncodeToString(sum[:])
+}
+
+func easypayMapiURL(cfg RuntimeConfig) (string, error) {
+	u := strings.TrimSpace(cfg.EasyPayAPIURL)
+	if u == "" {
+		return "", errEasyPayNotConfigured
+	}
+	return u, nil
+}
+
+func easypayAPIURL(cfg RuntimeConfig) (string, error) {
+	mapi, err := easypayMapiURL(cfg)
+	if err != nil {
+		return "", err
+	}
+	parsed, err := url.Parse(mapi)
+	if err != nil {
+		return "", fmt.Errorf("invalid easypay api url: %w", err)
+	}
+	path := parsed.Path
+	if strings.HasSuffix(strings.ToLower(path), "mapi.php") {
+		path = path[:len(path)-len("mapi.php")] + "api.php"
+	} else if !strings.HasSuffix(strings.ToLower(path), "api.php") {
+		if strings.HasSuffix(path, "/") {
+			path += "api.php"
+		} else {
+			path = strings.TrimSuffix(path, "/") + "/api.php"
+		}
+	}
+	parsed.Path = path
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String(), nil
 }
 
 func webhookURL(cfg RuntimeConfig, provider string) string {

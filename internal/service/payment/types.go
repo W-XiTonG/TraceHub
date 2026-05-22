@@ -7,6 +7,9 @@ const (
 	ProviderStripe  = "stripe"
 	ProviderEasyPay = "easypay"
 
+	EasyPayTypeAlipay = "alipay"
+	EasyPayTypeWxpay  = "wxpay"
+
 	StatusPending        = "pending"
 	StatusPaid           = "paid"
 	StatusExpired        = "expired"

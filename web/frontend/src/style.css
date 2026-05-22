@@ -230,6 +230,19 @@
   --th-redeem-quota-fg: #a7f3d0;
   --th-redeem-result-border: rgba(52, 211, 153, 0.22);
   --th-redeem-result-bg: rgba(6, 78, 59, 0.28);
+  /* 充值中心：套餐卡 / 支付中面板（浅色在 themes-light.css 覆写） */
+  --th-billing-title-fg: #e2e8f0;
+  --th-billing-muted-fg: var(--th-text-muted);
+  --th-billing-divider: rgba(148, 163, 184, 0.12);
+  --th-billing-package-bg: rgba(15, 23, 42, 0.35);
+  --th-billing-package-border: rgba(148, 163, 184, 0.14);
+  --th-billing-package-hover-border: rgba(148, 163, 184, 0.24);
+  --th-billing-package-selected-bg: rgba(8, 145, 178, 0.2);
+  --th-billing-package-selected-border: rgba(56, 189, 248, 0.5);
+  --th-billing-price-fg: #38bdf8;
+  --th-billing-pay-bg: rgba(6, 78, 59, 0.22);
+  --th-billing-pay-border: rgba(56, 189, 248, 0.28);
+  --th-billing-pay-title-fg: #a5f3fc;
 }
 
 @layer base {
@@ -365,6 +378,82 @@
 }
 .th-redeem-result__label {
   color: var(--th-text-muted);
+}
+
+/* 充值中心 · 在线支付区块 */
+.th-billing-panel__title {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--th-billing-title-fg);
+}
+.th-billing-panel__hint {
+  font-size: 0.75rem;
+  line-height: 1.625;
+  color: var(--th-billing-muted-fg);
+}
+.th-billing-panel__title + .th-billing-panel__hint {
+  margin-bottom: 1rem;
+}
+.th-billing-divider {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--th-billing-divider);
+}
+.th-billing-package {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  border: 1px solid var(--th-billing-package-border);
+  background: var(--th-billing-package-bg);
+  padding: 1rem;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.th-billing-package:hover:not(.th-billing-package--selected) {
+  border-color: var(--th-billing-package-hover-border);
+}
+.th-billing-package--selected {
+  border-color: var(--th-billing-package-selected-border);
+  background: var(--th-billing-package-selected-bg);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--th-billing-package-selected-border) 35%, transparent);
+}
+.th-billing-package__name {
+  font-weight: 500;
+  color: var(--th-billing-title-fg);
+}
+.th-billing-package__price {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--th-billing-price-fg);
+}
+.th-billing-package__quota {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: var(--th-billing-muted-fg);
+}
+.th-billing-pay-panel {
+  margin-bottom: 2rem;
+  border-radius: var(--th-radius-xl);
+  border: 1px solid var(--th-billing-pay-border);
+  background: var(--th-billing-pay-bg);
+  padding: 1.5rem;
+}
+.th-billing-pay-panel__title {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--th-billing-pay-title-fg);
+}
+.th-billing-pay-panel__meta {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--th-billing-muted-fg);
 }
 
 /* 页面背景：极弱环境光 + 底向深的纵向渐变；子层叠在纹理之上 */
