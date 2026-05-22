@@ -337,7 +337,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $scheme;  # 应用内「强制 HTTPS」依赖此头
         
         # WebSocket 支持（SSE 流式响应）
         proxy_http_version 1.1;
@@ -351,7 +351,36 @@ server {
 }
 ```
 
-### 5.2 Cloudflare / CDN 前置场景
+### 5.2 TraceHub 应用内 HTTPS（可选）
+
+除 Nginx 终结 TLS 外，TraceHub 支持两种互补能力：
+
+| 能力 | 配置 | 管理后台 | 生效 |
+|:---|:---|:---|:---|
+| 强制 HTTP→HTTPS、HSTS | `site.https.*` 或 `system_configs` | 系统配置 → 访问安全 | 保存后约 10s（内存缓存），**无需重启** |
+| 内置 TLS 监听 | `server.tls.cert_file` / `key_file`（仅 YAML） | 访问安全 →「启用内置 TLS」 | **须重启**进程 |
+
+**推荐生产（高 QPS）**：Nginx/Caddy 监听 443 并设置 `proxy_set_header X-Forwarded-Proto $scheme;`，TraceHub 保持 `server.tls.enabled: false`，在管理后台开启「强制 HTTP 跳转 HTTPS」即可（或由 Nginx `return 301` 承担跳转）。
+
+**单机无反代**：在 `config.yaml` 配置证书路径并 `server.tls.enabled: true`，重启后进程监听 `:443`；若 `server.addr` 为 `:80` 将并行提供 HTTP→HTTPS 重定向。
+
+```yaml
+server:
+  addr: ":80"
+  tls:
+    enabled: true
+    addr: ":443"
+    cert_file: /etc/tracehub/ssl/fullchain.pem
+    key_file: /etc/tracehub/ssl/privkey.pem
+site:
+  https:
+    force_redirect: true
+    hsts_enabled: true
+```
+
+开启 HTTPS 后请将 `site.cors_origins` 改为 `https://` 源地址。
+
+### 5.3 Cloudflare / CDN 前置场景
 
 若使用 Cloudflare 等 CDN 作为第一层防护：
 

@@ -68,6 +68,14 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidatePricingCnyPerUsd(value)
 	case SystemConfigKeyDefaultPricingMarkupPercent:
 		return ValidateDefaultPricingMarkupPercent(value)
+	case SystemConfigKeyHTTPSForceRedirect:
+		return ValidateHTTPSForceRedirect(value)
+	case SystemConfigKeyHTTPSHSTSEnabled:
+		return ValidateHTTPSHSTSEnabled(value)
+	case SystemConfigKeyHTTPSHSTSMaxAge:
+		return ValidateHTTPSHSTSMaxAge(value)
+	case SystemConfigKeyTLSEnabled:
+		return ValidateTLSEnabled(value)
 	default:
 		return nil
 	}

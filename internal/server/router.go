@@ -64,6 +64,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	r.Use(middleware.RequestID())
 	r.Use(middleware.ZapLogger(opt.Log))
 	r.Use(middleware.CORS(opt.Config.Site.CORSOrigins))
+	r.Use(middleware.HTTPSPolicy(opt.Client, opt.Config))
 
 	payStore := payment.NewConfigStore(opt.Client, aesKey)
 	payCfg, _ := payStore.Load(context.Background())

@@ -10,6 +10,62 @@ const s = inject(adminSiteSettingsKey)!
 <template>
   <div class="space-y-8">
     <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+      <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secHTTPS') }}</h2>
+      <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secHTTPSHint') }}</p>
+      <div class="mt-5 max-w-2xl space-y-4">
+        <label class="flex cursor-pointer items-start gap-3">
+          <input v-model="s.form.httpsForceRedirect" type="checkbox" class="mt-1" />
+          <span class="block text-xs text-slate-300">
+            {{ t('adminSystem.chkHTTPSForceRedirect') }}
+            <span class="mt-0.5 block text-[11px] text-slate-500">{{ t('adminSystem.hintHTTPSForceRedirect') }}</span>
+          </span>
+        </label>
+        <label class="flex cursor-pointer items-start gap-3">
+          <input v-model="s.form.httpsHstsEnabled" type="checkbox" class="mt-1" />
+          <span class="block text-xs text-slate-300">{{ t('adminSystem.chkHTTPSHSTS') }}</span>
+        </label>
+        <div v-if="s.form.httpsHstsEnabled">
+          <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+            t('adminSystem.lblHTTPSHSTSMaxAge')
+          }}</label>
+          <input
+            v-model.number="s.form.httpsHstsMaxAgeSeconds"
+            type="number"
+            min="0"
+            max="63072000"
+            class="th-input max-w-xs text-sm"
+          />
+          <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintHTTPSHSTSMaxAge') }}</p>
+        </div>
+        <div class="th-admin-divider-t pt-5">
+          <label class="flex cursor-pointer items-start gap-3">
+            <input v-model="s.form.tlsEnabled" type="checkbox" class="mt-1" />
+            <span class="block text-xs text-slate-300">
+              {{ t('adminSystem.chkTLSEnabled') }}
+              <span class="mt-0.5 block text-[11px] text-amber-100/80">{{ t('adminSystem.hintTLSERestart') }}</span>
+            </span>
+          </label>
+          <dl class="mt-4 space-y-2 text-xs text-slate-400">
+            <div class="flex flex-wrap gap-x-2">
+              <dt class="text-slate-500">{{ t('adminSystem.lblTLSAddr') }}</dt>
+              <dd class="font-mono text-slate-300">{{ s.tlsAddr || '—' }}</dd>
+            </div>
+            <div class="flex flex-wrap gap-x-2">
+              <dt class="text-slate-500">{{ t('adminSystem.lblTLSCertFile') }}</dt>
+              <dd class="font-mono text-slate-300">{{ s.tlsCertFile || '—' }}</dd>
+              <span v-if="s.tlsCertFile && !s.tlsCertPresent" class="text-amber-200/90">{{ t('adminSystem.tlsCertMissing') }}</span>
+            </div>
+            <div class="flex flex-wrap gap-x-2">
+              <dt class="text-slate-500">{{ t('adminSystem.lblTLSKeyFile') }}</dt>
+              <dd class="font-mono text-slate-300">{{ s.tlsKeyFile || '—' }}</dd>
+              <span v-if="s.tlsKeyFile && !s.tlsKeyPresent" class="text-amber-200/90">{{ t('adminSystem.tlsKeyMissing') }}</span>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
       <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secSecurity') }}</h2>
       <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secSecurityHint') }}</p>
       <label class="mt-4 flex cursor-pointer items-center gap-2.5 text-sm text-slate-200 select-none">

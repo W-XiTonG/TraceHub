@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1619,6 +1620,19 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		cp := sitecfg.EffectiveCurrencyPricing(ctx, client, cfg)
 		dbSetPromo, dbValPromo := sitecfg.RegisterPromoTextDBMeta(ctx, client)
 		dbSetBeian, dbValBeian := sitecfg.BeianFooterTextDBMeta(ctx, client)
+		httpsPolicy := sitecfg.CachedHTTPSPolicy(ctx, client, cfg)
+		dbSetHTTPSFR, dbValHTTPSFR := sitecfg.HTTPSForceRedirectDBMeta(ctx, client)
+		dbSetHTTPSHSTS, dbValHTTPSHSTS := sitecfg.HTTPSHSTSEnabledDBMeta(ctx, client)
+		dbSetHTTPSMax, dbValHTTPSMax := sitecfg.HTTPSHSTSMaxAgeDBMeta(ctx, client)
+		dbSetTLS, dbValTLS := sitecfg.TLSEnabledDBMeta(ctx, client)
+		tlsCert := strings.TrimSpace(cfg.Server.TLS.CertFile)
+		tlsKey := strings.TrimSpace(cfg.Server.TLS.KeyFile)
+		tlsAddr := strings.TrimSpace(cfg.Server.TLS.Addr)
+		if tlsAddr == "" {
+			tlsAddr = ":443"
+		}
+		_, certErr := os.Stat(tlsCert)
+		_, keyErr := os.Stat(tlsKey)
 		dbSetNoBill, dbValNoBill := sitecfg.NoBillModelsDBMeta(ctx, client)
 		probeEnSet, probeEnVal, probeIntSet, probeIntVal, probeMetaErr := sitecfg.UpstreamModelProbeDBMeta(ctx, client)
 		if probeMetaErr != nil {
@@ -1706,6 +1720,27 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"default_pricing_markup_percent_file":  cfg.Site.DefaultPricingMarkupPercent,
 			"default_pricing_markup_percent_db_set":   dbSetMarkup,
 			"default_pricing_markup_percent_db_value": strings.TrimSpace(dbValMarkup),
+			"https_force_redirect":                    httpsPolicy.ForceRedirect,
+			"https_force_redirect_file":               cfg.Site.HTTPS.ForceRedirect,
+			"https_force_redirect_db_set":             dbSetHTTPSFR,
+			"https_force_redirect_db_value":           strings.TrimSpace(dbValHTTPSFR),
+			"https_hsts_enabled":                      httpsPolicy.HSTSEnabled,
+			"https_hsts_enabled_file":                 cfg.Site.HTTPS.HSTSEnabled,
+			"https_hsts_enabled_db_set":               dbSetHTTPSHSTS,
+			"https_hsts_enabled_db_value":             strings.TrimSpace(dbValHTTPSHSTS),
+			"https_hsts_max_age_seconds":              httpsPolicy.HSTSMaxAgeSeconds,
+			"https_hsts_max_age_seconds_file":         cfg.Site.HTTPS.HSTSMaxAgeSeconds,
+			"https_hsts_max_age_seconds_db_set":       dbSetHTTPSMax,
+			"https_hsts_max_age_seconds_db_value":     strings.TrimSpace(dbValHTTPSMax),
+			"tls_enabled":                             sitecfg.TLSEnabledAtStartup(ctx, client, cfg),
+			"tls_enabled_file":                        cfg.Server.TLS.Enabled,
+			"tls_enabled_db_set":                      dbSetTLS,
+			"tls_enabled_db_value":                    strings.TrimSpace(dbValTLS),
+			"tls_cert_file":                           tlsCert,
+			"tls_key_file":                            tlsKey,
+			"tls_addr":                                tlsAddr,
+			"tls_cert_present":                        tlsCert != "" && certErr == nil,
+			"tls_key_present":                         tlsKey != "" && keyErr == nil,
 		})
 	}
 }
@@ -1759,6 +1794,10 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyRoutingProbeFailThreshold,
 			sitecfg.SystemConfigKeyGatewayIPBlacklist,
 			sitecfg.SystemConfigKeyGatewayIPWhitelist,
+			sitecfg.SystemConfigKeyHTTPSForceRedirect,
+			sitecfg.SystemConfigKeyHTTPSHSTSEnabled,
+			sitecfg.SystemConfigKeyHTTPSHSTSMaxAge,
+			sitecfg.SystemConfigKeyTLSEnabled,
 			sitecfg.SystemConfigKeyCurrencyQuotaPerYuan,
 			sitecfg.SystemConfigKeyCurrencyQuotaPerUsd,
 			sitecfg.SystemConfigKeyPricingCnyPerUsd,
@@ -1769,6 +1808,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		sitecfg.InvalidateGatewayIPBlacklistCache()
+		sitecfg.InvalidateHTTPSPolicyCache()
 		billing.InvalidateNoBillModelsCacheAdmin()
 		auditLog(client, adm.ID, "site.settings_reset_defaults", "system_config", "", map[string]any{"deleted_rows": n}, c)
 		httpx.OK(c, gin.H{"deleted_rows": n})
@@ -1793,6 +1833,8 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 		invalidateNoBill := false
 		invalidateGatewayBlacklist := false
 		invalidateDefaultMarkup := false
+		invalidateHTTPSPolicy := false
+		tlsEnabledTouched := false
 		for _, it := range req.Items {
 			k := strings.TrimSpace(it.Key)
 			if k == "" {
@@ -1806,6 +1848,14 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			}
 			if k == sitecfg.SystemConfigKeyDefaultPricingMarkupPercent {
 				invalidateDefaultMarkup = true
+			}
+			switch k {
+			case sitecfg.SystemConfigKeyHTTPSForceRedirect,
+				sitecfg.SystemConfigKeyHTTPSHSTSEnabled,
+				sitecfg.SystemConfigKeyHTTPSHSTSMaxAge:
+				invalidateHTTPSPolicy = true
+			case sitecfg.SystemConfigKeyTLSEnabled:
+				tlsEnabledTouched = true
 			}
 			if err := sitecfg.ValidateSystemConfigPut(k, it.Value); err != nil {
 				httpx.BadRequest(c, err.Error())
@@ -1865,8 +1915,15 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 		if invalidateDefaultMarkup {
 			billing.InvalidateDefaultPricingMarkupCacheAdmin()
 		}
+		if invalidateHTTPSPolicy {
+			sitecfg.InvalidateHTTPSPolicyCache()
+		}
+		msg := "已保存"
+		if tlsEnabledTouched {
+			msg = "已保存；内置 TLS 开关需重启 TraceHub 服务后生效"
+		}
 		auditLog(client, adm.ID, "config.update", "system_config", "", map[string]any{"count": len(req.Items)}, c)
-		httpx.OKMsg(c, "已保存", nil)
+		httpx.OKMsg(c, msg, nil)
 	}
 }
 

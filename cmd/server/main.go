@@ -4,9 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"net/http"
 	"path/filepath"
-	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
 	"tracehub/internal/bootstrap"
@@ -106,18 +104,7 @@ func main() {
 		zlog.Fatal("router init failed", zap.Error(err))
 	}
 
-	addr := cfg.Server.Addr
-	if addr == "" {
-		addr = ":8080"
-	}
-	srv := &http.Server{
-		Addr:         addr,
-		Handler:      r,
-		ReadTimeout:  120 * time.Second,
-		WriteTimeout: 120 * time.Second,
-	}
-	zlog.Info("TraceHub gateway listening", zap.String("addr", addr))
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := runServers(ctx, cfg, client, r, zlog); err != nil {
 		zlog.Fatal("HTTP server exited with error", zap.Error(err))
 	}
 }

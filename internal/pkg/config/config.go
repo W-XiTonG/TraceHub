@@ -36,8 +36,17 @@ type EmailConfig struct {
 }
 
 type ServerConfig struct {
-	Addr string `mapstructure:"addr"`
-	Mode string `mapstructure:"mode"`
+	Addr string            `mapstructure:"addr"`
+	Mode string            `mapstructure:"mode"`
+	TLS  ServerTLSConfig   `mapstructure:"tls"`
+}
+
+// ServerTLSConfig 应用进程内置 TLS 监听（证书路径仅配置文件，不写入 system_configs）。
+type ServerTLSConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Addr     string `mapstructure:"addr"`
+	CertFile string `mapstructure:"cert_file"`
+	KeyFile  string `mapstructure:"key_file"`
 }
 
 type DatabaseConfig struct {
@@ -86,6 +95,8 @@ type SiteConfig struct {
 	KlingNative                    KlingNativeConfig       `mapstructure:"kling_native"`
 	// LoginCaptcha：登录页图形验证码；开启后密码登录与「发送邮箱登录验证码」需携带 captcha_id / captcha_answer，依赖 Redis。
 	LoginCaptcha SiteLoginCaptchaConfig `mapstructure:"login_captcha"`
+	// HTTPS 强制跳转与 HSTS（可被 system_configs 覆盖）；内置 TLS 见 server.tls。
+	HTTPS SiteHTTPSConfig `mapstructure:"https"`
 	// BrandUploadDir 管理后台本地上传品牌图标的磁盘目录（可写）；空则默认 data/site_brand。对外固定通过 /uploads/site-brand/ 访问。
 	BrandUploadDir string `mapstructure:"brand_upload_dir"`
 	// RegisterPromoText 注册页与官网展示的推广说明（纯文本，可含换行）；空则不展示。
@@ -94,6 +105,13 @@ type SiteConfig struct {
 	BeianFooterText string `mapstructure:"beian_footer_text"`
 	// NoBillModels 全局不计费模型 ID 列表（逻辑模型名）；分组 model_rates.billable 可覆盖。
 	NoBillModels []string `mapstructure:"no_bill_models"`
+}
+
+// SiteHTTPSConfig 全站 HTTPS 策略（反代或内置 TLS 均可配合使用）。
+type SiteHTTPSConfig struct {
+	ForceRedirect     bool `mapstructure:"force_redirect"`
+	HSTSEnabled       bool `mapstructure:"hsts_enabled"`
+	HSTSMaxAgeSeconds int  `mapstructure:"hsts_max_age_seconds"`
 }
 
 // SiteLoginCaptchaConfig 控制台登录人机校验（图形验证码）。
@@ -140,6 +158,11 @@ func Load(path string) (*Config, error) {
 
 	v.SetDefault("server.addr", ":8080")
 	v.SetDefault("server.mode", "release")
+	v.SetDefault("server.tls.enabled", false)
+	v.SetDefault("server.tls.addr", ":443")
+	v.SetDefault("site.https.force_redirect", false)
+	v.SetDefault("site.https.hsts_enabled", true)
+	v.SetDefault("site.https.hsts_max_age_seconds", 31536000)
 	v.SetDefault("site.app_version", "1.0.0")
 	v.SetDefault("site.api_key_prefix", "sk-th-")
 	v.SetDefault("site.currency_quota_per_yuan", 10000)
@@ -186,6 +209,21 @@ func Load(path string) (*Config, error) {
 	c.Site.LoginCaptcha.Enabled = v.GetBool("site.login_captcha.enabled")
 	if ts := v.GetInt("site.login_captcha.ttl_seconds"); ts > 0 {
 		c.Site.LoginCaptcha.TTLSeconds = ts
+	}
+	c.Site.HTTPS.ForceRedirect = v.GetBool("site.https.force_redirect")
+	c.Site.HTTPS.HSTSEnabled = v.GetBool("site.https.hsts_enabled")
+	if ma := v.GetInt("site.https.hsts_max_age_seconds"); ma > 0 {
+		c.Site.HTTPS.HSTSMaxAgeSeconds = ma
+	}
+	c.Server.TLS.Enabled = v.GetBool("server.tls.enabled")
+	if ta := strings.TrimSpace(v.GetString("server.tls.addr")); ta != "" {
+		c.Server.TLS.Addr = ta
+	}
+	if cf := strings.TrimSpace(v.GetString("server.tls.cert_file")); cf != "" {
+		c.Server.TLS.CertFile = cf
+	}
+	if kf := strings.TrimSpace(v.GetString("server.tls.key_file")); kf != "" {
+		c.Server.TLS.KeyFile = kf
 	}
 	return &c, nil
 }

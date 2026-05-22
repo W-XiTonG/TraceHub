@@ -72,6 +72,15 @@ export type SiteSettingsPayload = {
   routing_probe_fail_threshold?: number
   gateway_ip_blacklist?: string[]
   gateway_ip_blacklist_db_set?: boolean
+  https_force_redirect?: boolean
+  https_hsts_enabled?: boolean
+  https_hsts_max_age_seconds?: number
+  tls_enabled?: boolean
+  tls_cert_file?: string
+  tls_key_file?: string
+  tls_addr?: string
+  tls_cert_present?: boolean
+  tls_key_present?: boolean
   /** 以下三项来自运行配置 YAML，供全站计价换算等只读展示 */
   currency_quota_per_yuan?: number
   currency_quota_per_usd?: number
@@ -105,7 +114,17 @@ export function createAdminSiteSettings() {
     routingStickyEnabled: true,
     routingAutoHealthFromProbe: false,
     routingProbeFailThreshold: 3,
+    httpsForceRedirect: false,
+    httpsHstsEnabled: true,
+    httpsHstsMaxAgeSeconds: 31536000,
+    tlsEnabled: false,
   })
+
+  const tlsCertFile = ref('')
+  const tlsKeyFile = ref('')
+  const tlsAddr = ref(':443')
+  const tlsCertPresent = ref(false)
+  const tlsKeyPresent = ref(false)
 
   const contactTitle = ref('')
   const contactEmailsText = ref('')
@@ -280,6 +299,16 @@ export function createAdminSiteSettings() {
       : []
     gatewayIpBlacklistRows.value = gwList.map((ip) => ({ value: ip }))
     gatewayIpBlacklistDbOverride.value = Boolean(d.gateway_ip_blacklist_db_set)
+    form.httpsForceRedirect = Boolean(d.https_force_redirect)
+    form.httpsHstsEnabled = d.https_hsts_enabled !== false
+    const hstsAge = pickInt64ish(d.https_hsts_max_age_seconds)
+    form.httpsHstsMaxAgeSeconds = hstsAge > 0 ? Math.min(63072000, hstsAge) : 31536000
+    form.tlsEnabled = Boolean(d.tls_enabled)
+    tlsCertFile.value = typeof d.tls_cert_file === 'string' ? d.tls_cert_file : ''
+    tlsKeyFile.value = typeof d.tls_key_file === 'string' ? d.tls_key_file : ''
+    tlsAddr.value = typeof d.tls_addr === 'string' && d.tls_addr.trim() ? d.tls_addr : ':443'
+    tlsCertPresent.value = Boolean(d.tls_cert_present)
+    tlsKeyPresent.value = Boolean(d.tls_key_present)
     const pc = d.public_contact
     if (pc && typeof pc === 'object') {
       contactTitle.value = typeof pc.title === 'string' ? pc.title.trim() : ''
@@ -610,6 +639,26 @@ export function createAdminSiteSettings() {
         description: t('adminSystem.descLoginCaptcha'),
       },
       {
+        key: 'site.https.force_redirect',
+        value: form.httpsForceRedirect ? 'true' : 'false',
+        description: t('adminSystem.chkHTTPSForceRedirect'),
+      },
+      {
+        key: 'site.https.hsts_enabled',
+        value: form.httpsHstsEnabled ? 'true' : 'false',
+        description: t('adminSystem.chkHTTPSHSTS'),
+      },
+      {
+        key: 'site.https.hsts_max_age_seconds',
+        value: String(Math.min(63072000, Math.max(0, Math.trunc(Number(form.httpsHstsMaxAgeSeconds)) || 31536000))),
+        description: t('adminSystem.lblHTTPSHSTSMaxAge'),
+      },
+      {
+        key: 'server.tls.enabled',
+        value: form.tlsEnabled ? 'true' : 'false',
+        description: t('adminSystem.chkTLSEnabled'),
+      },
+      {
         key: 'gateway.ip_blacklist',
         value: JSON.stringify(gatewayIpBlacklistRows.value.map((r) => r.value.trim()).filter(Boolean)),
         description: t('adminSystem.descGatewayIpBlacklist'),
@@ -710,7 +759,7 @@ export function createAdminSiteSettings() {
       if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.saveFail'))
       await refresh()
       await siteMeta.refreshFromServer()
-      msg.value = t('adminSystem.saved')
+      msg.value = typeof data.message === 'string' && data.message.trim() ? data.message : t('adminSystem.saved')
     } catch (e: unknown) {
       err.value = httpErr(e)
     } finally {
@@ -769,6 +818,11 @@ export function createAdminSiteSettings() {
     upstreamProbeEnabledDbOverride,
     upstreamProbeIntervalDbOverride,
     gatewayIpBlacklistDbOverride,
+    tlsCertFile,
+    tlsKeyFile,
+    tlsAddr,
+    tlsCertPresent,
+    tlsKeyPresent,
     gatewayIpBlacklistRows,
     addGatewayIpBlacklistRow,
     removeGatewayIpBlacklistRow,

@@ -61,4 +61,10 @@ var (
 	errRoutingAutoHealthBool         = errors.New("gateway.routing.auto_health_from_probe 须为 true 或 false")
 	errRoutingProbeThreshold         = errors.New("gateway.routing.probe_fail_threshold 须为整数")
 	errRoutingProbeThresholdRange    = errors.New("gateway.routing.probe_fail_threshold 须在 1–20 之间")
+
+	errInvalidHTTPSForceRedirect = errors.New("site.https.force_redirect 须为 true 或 false")
+	errInvalidHTTPSHSTSEnabled   = errors.New("site.https.hsts_enabled 须为 true 或 false")
+	errInvalidHTTPSHSTSMaxAge    = errors.New("site.https.hsts_max_age_seconds 须为整数")
+	errHTTPSHSTSMaxAgeRange      = errors.New("site.https.hsts_max_age_seconds 须在 0–63072000 之间")
+	errInvalidTLSEnabled         = errors.New("server.tls.enabled 须为 true 或 false")
 )
