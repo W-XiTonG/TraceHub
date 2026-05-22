@@ -23,12 +23,17 @@ export function modelLooksVideo(model: string): boolean {
     id.includes('/video') ||
     id.includes('_video') ||
     id.includes('seedance') ||
+    id.includes('doubao-seed') ||
+    id.includes('seed3d') ||
     id.includes('sora') ||
     id.includes('kling') ||
     id.includes('hunyuan-video') ||
     id.includes('hunyuan_video') ||
     id.includes('veo-') ||
-    id.startsWith('veo')
+    id.startsWith('veo') ||
+    id.includes('cogvideox') ||
+    id.includes('wan2.1') ||
+    id.includes('wan-2.1')
   )
 }
 

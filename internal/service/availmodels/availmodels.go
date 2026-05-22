@@ -251,7 +251,7 @@ type ModelPricing struct {
 	QuotaInPer1k    int64  `json:"quota_in_per_1k,omitempty"`
 	QuotaOutPer1k   int64  `json:"quota_out_per_1k,omitempty"`
 	QuotaPerRequest int64  `json:"quota_per_request,omitempty"`
-	PricingUnit     string `json:"pricing_unit"` // per_1k_tokens | per_request
+	PricingUnit     string `json:"pricing_unit"` // per_1k_tokens | per_second | per_request
 	BillingMode     string `json:"billing_mode,omitempty"`
 }
 

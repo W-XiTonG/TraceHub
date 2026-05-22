@@ -166,6 +166,7 @@ export function resolvePricingUnitKind(
   if (pricing.pricing_unit === 'per_request') {
     return pricing.billing_mode === 'hybrid_floor' ? 'hybrid_floor' : 'per_request'
   }
+  if (pricing.pricing_unit === 'per_second') return 'video_second'
   const labels = opts?.labels ?? []
   if (labels.includes('video')) return 'video_second'
   if (modelLooksVideo(opts?.modelId ?? '')) return 'video_second'

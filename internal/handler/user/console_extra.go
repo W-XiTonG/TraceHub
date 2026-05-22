@@ -219,6 +219,11 @@ func AvailableModels(client *ent.Client, eng *billing.Engine, cfg *config.Config
 				if br.IsPerRequest() || br.IsHybridFloor() {
 					mp.PricingUnit = "per_request"
 					mp.QuotaPerRequest = br.RequestCost()
+				} else if modelkind.IsVideoBillingModel(items[i].ID) {
+					in, _ := br.EffectiveQuotaPer1k()
+					mp.QuotaInPer1k = in
+					mp.QuotaOutPer1k = 0
+					mp.PricingUnit = "per_second"
 				} else {
 					in, out := br.EffectiveQuotaPer1k()
 					mp.QuotaInPer1k = in

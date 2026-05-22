@@ -40,6 +40,19 @@ describe('formatModelPricingDisplay', () => {
     expect(quotaPerSecToYuan(800, 10000)).toBeCloseTo(0.08, 5)
   })
 
+  it('per_second pricing_unit from API uses video display', () => {
+    const d = formatModelPricingDisplay(
+      { billable: true, quota_in_per_1k: 900, quota_out_per_1k: 0, pricing_unit: 'per_second' },
+      'cny',
+      factors,
+      labels,
+      { labels: ['chat'], modelId: 'doubao-seedance-1-5-pro-251215' },
+    )
+    expect(d.unitKind).toBe('video_second')
+    expect(d.unitHint).toBe('按秒')
+    expect(d.fiatPrimary).toContain('/ 秒')
+  })
+
   it('chat model keeps per-million token display', () => {
     const d = formatModelPricingDisplay(
       { billable: true, quota_in_per_1k: 50, quota_out_per_1k: 200, pricing_unit: 'per_1k_tokens' },

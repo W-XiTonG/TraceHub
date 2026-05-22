@@ -80,6 +80,13 @@ func LabelsForModel(modelID string, catalogMeta map[string]any, adminLabels []st
 	admin := dedupeKeepOrder(adminLabels)
 	meta := metaLabels(catalogMeta)
 	infer := inferFromID(id)
+	videoModel := false
+	for _, x := range infer {
+		if x == "video" {
+			videoModel = true
+			break
+		}
+	}
 
 	out := make([]string, 0, len(admin)+len(meta)+len(infer))
 	seen := make(map[string]struct{}, len(admin)+len(meta)+len(infer))
@@ -87,6 +94,10 @@ func LabelsForModel(modelID string, catalogMeta map[string]any, adminLabels []st
 	add := func(s string) {
 		s = strings.TrimSpace(strings.ToLower(s))
 		if s == "" {
+			return
+		}
+		// 火山方舟等同步目录常标 kind:chat，但 Seedance/Sora 等实为视频；展示以 video 为准。
+		if videoModel && s == "chat" {
 			return
 		}
 		if _, ok := seen[s]; ok {
@@ -110,8 +121,37 @@ func LabelsForModel(modelID string, catalogMeta map[string]any, adminLabels []st
 		add(x)
 	}
 	if len(out) == 0 {
-		add("chat")
+		if videoModel {
+			add("video")
+		} else {
+			add("chat")
+		}
 	}
+	if videoModel {
+		out = prioritizeLabel(out, "video")
+	}
+	return out
+}
+
+func prioritizeLabel(labels []string, primary string) []string {
+	primary = strings.TrimSpace(strings.ToLower(primary))
+	if primary == "" || len(labels) <= 1 {
+		return labels
+	}
+	idx := -1
+	for i, s := range labels {
+		if s == primary {
+			idx = i
+			break
+		}
+	}
+	if idx <= 0 {
+		return labels
+	}
+	out := make([]string, 0, len(labels))
+	out = append(out, labels[idx])
+	out = append(out, labels[:idx]...)
+	out = append(out, labels[idx+1:]...)
 	return out
 }
 
@@ -167,7 +207,8 @@ func inferFromID(id string) []string {
 		strings.Contains(id, "video-gen") || strings.Contains(id, "t2v") ||
 		strings.Contains(id, "i2v") || strings.Contains(id, "-video") ||
 		strings.Contains(id, "/video") || strings.Contains(id, "_video") ||
-		strings.Contains(id, "seedance") ||
+		strings.Contains(id, "seedance") || strings.Contains(id, "doubao-seed") ||
+		strings.Contains(id, "seed3d") ||
 		strings.Contains(id, "sora") || strings.Contains(id, "kling") ||
 		strings.Contains(id, "hunyuan-video") || strings.Contains(id, "hunyuan_video") ||
 		strings.Contains(id, "veo-") || strings.Contains(id, "/veo") || strings.HasPrefix(id, "veo") {
