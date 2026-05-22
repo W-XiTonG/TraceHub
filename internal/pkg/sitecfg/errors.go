@@ -73,4 +73,7 @@ var (
 	errTLSKeyFileEmpty           = errors.New("server.tls.key_file 不能为空")
 	errTLSKeyFileTooLong         = errors.New("server.tls.key_file 路径过长")
 	errTLSKeyFileInvalid         = errors.New("server.tls.key_file 路径无效")
+	errTLSMaterialNotConfigured  = errors.New("启用内置 TLS 前须配置证书与私钥路径（上传 PEM 或在 config.yaml 填写 server.tls.cert_file 与 key_file）")
+	errTLSMaterialNotReadable    = errors.New("启用内置 TLS 前须确保证书与私钥文件存在且进程可读")
+	errTLSCertKeyPairMismatch    = errors.New("证书与私钥不匹配或无法组成有效 TLS 密钥对")
 )

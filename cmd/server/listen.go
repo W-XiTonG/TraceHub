@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"os"
 	"strings"
@@ -50,6 +51,9 @@ func runServers(ctx context.Context, cfg *config.Config, client *ent.Client, han
 	}
 	if _, err := os.Stat(keyFile); err != nil {
 		log.Fatal("TLS 私钥文件不可读", zap.String("key_file", keyFile), zap.Error(err))
+	}
+	if _, err := tls.LoadX509KeyPair(certFile, keyFile); err != nil {
+		log.Fatal("TLS 证书与私钥无法配对", zap.String("cert_file", certFile), zap.String("key_file", keyFile), zap.Error(err))
 	}
 
 	tlsAddr := strings.TrimSpace(cfg.Server.TLS.Addr)

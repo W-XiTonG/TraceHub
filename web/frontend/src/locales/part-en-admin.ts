@@ -749,6 +749,10 @@ export default {
     hintTLSUpload:
       'PEM only (.pem / .crt / .key), max 512KB per file. You may use a single fullchain file; uploads overwrite data/tls/active-*.pem and store paths in the database.',
     hintTLSUploadDb: 'Cert or key path was set by a local upload (overrides config.yaml).',
+    hintTLSNeedMaterial:
+      'Built-in TLS requires a readable, matching certificate and private key first. Force HTTP→HTTPS redirect alone does not need app certs (use with Nginx TLS termination).',
+    hintTLSEnableBlocked: 'Cannot enable until cert material is ready—upload cert and key first.',
+    errTLSNeedMaterial: 'Cannot enable built-in TLS: upload a matching certificate and private key first.',
     lblTLSAddr: 'TLS listen address',
     tlsCertMissing: 'Certificate file missing or unreadable',
     tlsKeyMissing: 'Private key file missing or unreadable',

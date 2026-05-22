@@ -740,6 +740,10 @@ export default {
     hintTLSUpload:
       '支持 PEM（.pem / .crt / .key），单文件最大 512KB。证书链可合并为单个 fullchain 文件；上传后覆盖 data/tls 内 active-*.pem，并写入数据库路径。',
     hintTLSUploadDb: '证书或私钥路径已由本地上传写入数据库（优先于 config.yaml）。',
+    hintTLSNeedMaterial:
+      '启用内置 TLS 前须先上传或配置有效的证书与私钥（文件可读且二者配对成功）。仅开启「强制 HTTP 跳转 HTTPS」无需证书（适合 Nginx 终结 TLS）。',
+    hintTLSEnableBlocked: '证书材料未就绪时无法开启；请先上传证书与私钥。',
+    errTLSNeedMaterial: '无法开启内置 TLS：请先上传并配对成功的证书与私钥。',
     lblTLSAddr: 'TLS 监听地址',
     tlsCertMissing: '证书文件不存在或不可读',
     tlsKeyMissing: '私钥文件不存在或不可读',

@@ -1634,6 +1634,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		if tlsAddr == "" {
 			tlsAddr = ":443"
 		}
+		tlsMat := sitecfg.EvaluateTLSMaterial(ctx, client, cfg)
 		_, certErr := os.Stat(tlsCert)
 		_, keyErr := os.Stat(tlsKey)
 		dbSetNoBill, dbValNoBill := sitecfg.NoBillModelsDBMeta(ctx, client)
@@ -1750,6 +1751,8 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"tls_addr":                                tlsAddr,
 			"tls_cert_present":                        tlsCert != "" && certErr == nil,
 			"tls_key_present":                         tlsKey != "" && keyErr == nil,
+			"tls_material_ready":                      tlsMat.MaterialReady,
+			"tls_pair_ok":                             tlsMat.PairOK,
 		})
 	}
 }
@@ -1826,7 +1829,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
+func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
@@ -1841,6 +1844,26 @@ func PutSystemConfig(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		ctx := c.Request.Context()
+		pending := make(map[string]string, len(req.Items))
+		for _, it := range req.Items {
+			k := strings.TrimSpace(it.Key)
+			if k == "" {
+				continue
+			}
+			pending[k] = strings.TrimSpace(it.Value)
+		}
+		if v, ok := pending[sitecfg.SystemConfigKeyTLSEnabled]; ok {
+			if b, err := strconv.ParseBool(v); err == nil && b {
+				st := sitecfg.TLSMaterialStatusWithOverrides(ctx, client, cfg,
+					pending[sitecfg.SystemConfigKeyTLSCertFile],
+					pending[sitecfg.SystemConfigKeyTLSKeyFile],
+				)
+				if err := sitecfg.ValidateTLSMaterialStatus(st); err != nil {
+					httpx.BadRequest(c, err.Error())
+					return
+				}
+			}
+		}
 		invalidateNoBill := false
 		invalidateGatewayBlacklist := false
 		invalidateDefaultMarkup := false

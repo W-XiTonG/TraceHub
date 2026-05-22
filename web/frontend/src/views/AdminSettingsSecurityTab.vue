@@ -38,11 +38,26 @@ const s = inject(adminSiteSettingsKey)!
           <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintHTTPSHSTSMaxAge') }}</p>
         </div>
         <div class="th-admin-divider-t pt-5">
-          <label class="flex cursor-pointer items-start gap-3">
-            <input v-model="s.form.tlsEnabled" type="checkbox" class="mt-1" />
+          <p
+            v-if="!s.tlsMaterialReady"
+            class="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-100/90"
+          >
+            {{ t('adminSystem.hintTLSNeedMaterial') }}
+          </p>
+          <label class="flex cursor-pointer items-start gap-3" :class="{ 'opacity-60': !s.tlsMaterialReady && !s.form.tlsEnabled }">
+            <input
+              type="checkbox"
+              class="mt-1"
+              :checked="s.form.tlsEnabled"
+              :disabled="s.saving || (!s.tlsMaterialReady && !s.form.tlsEnabled)"
+              @change="s.onTlsEnabledChange"
+            />
             <span class="block text-xs text-slate-300">
               {{ t('adminSystem.chkTLSEnabled') }}
               <span class="mt-0.5 block text-[11px] text-amber-100/80">{{ t('adminSystem.hintTLSERestart') }}</span>
+              <span v-if="!s.tlsMaterialReady" class="mt-0.5 block text-[11px] text-amber-200/90">{{
+                t('adminSystem.hintTLSEnableBlocked')
+              }}</span>
             </span>
           </label>
           <dl class="mt-4 space-y-2 text-xs text-slate-400">

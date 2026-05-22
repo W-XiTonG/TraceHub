@@ -75,7 +75,11 @@ func ValidateSystemConfigPut(key, value string) error {
 	case SystemConfigKeyHTTPSHSTSMaxAge:
 		return ValidateHTTPSHSTSMaxAge(value)
 	case SystemConfigKeyTLSEnabled:
-		return ValidateTLSEnabled(value)
+		// 布尔语法在 ValidateTLSEnabledConfigValue 中校验；此处无 client 上下文，仅校验字面量。
+		if _, err := strconv.ParseBool(strings.TrimSpace(value)); err != nil {
+			return errInvalidTLSEnabled
+		}
+		return nil
 	case SystemConfigKeyTLSCertFile:
 		return ValidateTLSCertFilePath(value)
 	case SystemConfigKeyTLSKeyFile:

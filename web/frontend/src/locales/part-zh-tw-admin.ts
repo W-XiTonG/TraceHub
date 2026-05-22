@@ -743,6 +743,10 @@ export default {
     hintTLSUpload:
       '支援 PEM（.pem / .crt / .key），單檔最大 512KB。憑證鏈可合併為單一 fullchain；上傳後覆寫 data/tls 內 active-*.pem 並寫入資料庫路徑。',
     hintTLSUploadDb: '憑證或私鑰路徑已由本地上傳寫入資料庫（優先於 config.yaml）。',
+    hintTLSNeedMaterial:
+      '啟用內建 TLS 前須先上傳或設定有效憑證與私鑰（檔案可讀且二者配對成功）。僅開啟「強制 HTTP 跳轉 HTTPS」無需憑證（適合 Nginx 終結 TLS）。',
+    hintTLSEnableBlocked: '憑證材料未就緒時無法開啟；請先上傳憑證與私鑰。',
+    errTLSNeedMaterial: '無法開啟內建 TLS：請先上傳並配對成功的憑證與私鑰。',
     lblTLSAddr: 'TLS 監聽位址',
     tlsCertMissing: '憑證檔不存在或不可讀',
     tlsKeyMissing: '私鑰檔不存在或不可讀',

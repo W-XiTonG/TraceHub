@@ -83,6 +83,8 @@ export type SiteSettingsPayload = {
   tls_key_present?: boolean
   tls_cert_file_db_set?: boolean
   tls_key_file_db_set?: boolean
+  tls_material_ready?: boolean
+  tls_pair_ok?: boolean
   /** 以下三项来自运行配置 YAML，供全站计价换算等只读展示 */
   currency_quota_per_yuan?: number
   currency_quota_per_usd?: number
@@ -131,6 +133,7 @@ export function createAdminSiteSettings() {
   const tlsKeyDbOverride = ref(false)
   const uploadingTlsCert = ref(false)
   const uploadingTlsKey = ref(false)
+  const tlsMaterialReady = ref(false)
 
   const contactTitle = ref('')
   const contactEmailsText = ref('')
@@ -317,6 +320,7 @@ export function createAdminSiteSettings() {
     tlsKeyPresent.value = Boolean(d.tls_key_present)
     tlsCertDbOverride.value = Boolean(d.tls_cert_file_db_set)
     tlsKeyDbOverride.value = Boolean(d.tls_key_file_db_set)
+    tlsMaterialReady.value = Boolean(d.tls_material_ready)
     const pc = d.public_contact
     if (pc && typeof pc === 'object') {
       contactTitle.value = typeof pc.title === 'string' ? pc.title.trim() : ''
@@ -661,10 +665,28 @@ export function createAdminSiteSettings() {
     )
   }
 
+  function onTlsEnabledChange(ev: Event) {
+    const el = ev.target as HTMLInputElement
+    const want = el.checked
+    if (want && !tlsMaterialReady.value) {
+      el.checked = false
+      err.value = t('adminSystem.errTLSNeedMaterial')
+      msg.value = ''
+      return
+    }
+    form.tlsEnabled = want
+    err.value = ''
+  }
+
   async function save() {
     saving.value = true
     err.value = ''
     msg.value = ''
+    if (form.tlsEnabled && !tlsMaterialReady.value) {
+      err.value = t('adminSystem.errTLSNeedMaterial')
+      saving.value = false
+      return
+    }
     const contactPayload = buildPublicContactPayload()
     for (const r of contactPayload.qr_items) {
       if (r.label && !r.image_url) {
@@ -877,6 +899,8 @@ export function createAdminSiteSettings() {
     tlsKeyDbOverride,
     uploadingTlsCert,
     uploadingTlsKey,
+    tlsMaterialReady,
+    onTlsEnabledChange,
     uploadTlsCert,
     uploadTlsKey,
     gatewayIpBlacklistRows,
