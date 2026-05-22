@@ -167,6 +167,7 @@ func inferFromID(id string) []string {
 		strings.Contains(id, "video-gen") || strings.Contains(id, "t2v") ||
 		strings.Contains(id, "i2v") || strings.Contains(id, "-video") ||
 		strings.Contains(id, "/video") || strings.Contains(id, "_video") ||
+		strings.Contains(id, "seedance") ||
 		strings.Contains(id, "sora") || strings.Contains(id, "kling") ||
 		strings.Contains(id, "hunyuan-video") || strings.Contains(id, "hunyuan_video") ||
 		strings.Contains(id, "veo-") || strings.Contains(id, "/veo") || strings.HasPrefix(id, "veo") {

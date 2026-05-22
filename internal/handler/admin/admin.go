@@ -20,6 +20,7 @@ import (
 	"tracehub/internal/pkg/cryptokey"
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
+	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelhealth"
@@ -792,6 +793,7 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 				"request_id":        lg.RequestID,
 				"model":             lg.Model,
 				"model_upstream":    lg.ModelUpstream,
+				"billing_mode":      modelkind.UsageBillingMode(lg.Model, lg.PromptTokens, lg.CompletionTokens),
 				"prompt_tokens":     lg.PromptTokens,
 				"completion_tokens": lg.CompletionTokens,
 				"total_tokens":      lg.TotalTokens,

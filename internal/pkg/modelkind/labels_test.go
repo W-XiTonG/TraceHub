@@ -28,6 +28,7 @@ func TestLabelsForModel_heuristics(t *testing.T) {
 		{"nomic-embed-text-v1.5", []string{"embedding"}},
 		{"google/kling-v1", []string{"video"}},
 		{"openai/sora-2", []string{"video"}},
+		{"doubao-seedance-1-5-pro-251215", []string{"video"}},
 		{"suno-v3.5", []string{"audio"}},
 	}
 	for _, tt := range tests {

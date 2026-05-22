@@ -11,10 +11,16 @@ import ThLoadingState from '../components/ui/ThLoadingState.vue'
 import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
+import {
+  formatUsageLogUsageLine,
+  resolveUsageBillingMode,
+  usageBillingBadgeKey,
+  type UsageLogBillingRow,
+} from '../lib/usageLedgerDetail'
 
 const { t } = useI18n()
 
-type LogRow = {
+type LogRow = UsageLogBillingRow & {
   id: number
   request_id?: string
   model: string
@@ -145,12 +151,14 @@ function statusBadgeClass(code?: number): string {
 }
 
 function rowToTsv(row: LogRow) {
+  const mode = resolveUsageBillingMode(row)
   const cells = [
     row.request_time,
     row.model,
+    t(usageBillingBadgeKey(mode)),
+    formatUsageLogUsageLine(t, row),
     row.request_id || '',
     row.ip_address || '',
-    String(row.total_tokens),
     String(row.total_cost),
     String(row.status_code ?? ''),
     String(row.response_time_ms ?? ''),
@@ -160,7 +168,7 @@ function rowToTsv(row: LogRow) {
 }
 
 const tsvHeader = computed(() =>
-  ['time', 'model', 'request_id', 'client_ip', 'tokens', 'cost', 'status', 'latency_ms', 'error'].join('\t'),
+  ['time', 'model', 'billing', 'usage', 'request_id', 'client_ip', 'cost', 'status', 'latency_ms', 'error'].join('\t'),
 )
 
 async function copyText(text: string) {
@@ -307,7 +315,8 @@ onMounted(() => {
             <th class="whitespace-nowrap px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thTime') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.model') }}</th>
             <th v-if="!compact" class="hidden max-w-[10rem] px-3 py-2.5 font-medium lg:table-cell">{{ t('logsPage.thReqId') }}</th>
-            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thTokCol') }}</th>
+            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thBilling') }}</th>
+            <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thUsage') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thCost') }}</th>
             <th class="px-3 py-2.5 font-medium" :class="compact ? 'py-1.5' : ''">{{ t('logsPage.thStatus') }}</th>
             <th v-if="!compact" class="hidden max-w-[12rem] px-3 py-2.5 font-medium lg:table-cell">{{ t('logsPage.thError') }}</th>
@@ -336,7 +345,17 @@ onMounted(() => {
             >
               {{ row.request_id || t('modelsPage.dash') }}
             </td>
-            <td class="px-3 text-xs" :class="compact ? 'py-1.5' : 'py-2.5'">{{ row.total_tokens }}</td>
+            <td class="px-3 text-xs" :class="compact ? 'py-1.5' : 'py-2.5'">
+              <span
+                class="th-badge-http th-badge-http--neutral inline-block max-w-full truncate"
+                :title="t(usageBillingBadgeKey(resolveUsageBillingMode(row)))"
+              >
+                {{ t(usageBillingBadgeKey(resolveUsageBillingMode(row))) }}
+              </span>
+            </td>
+            <td class="px-3 text-xs tabular-nums text-slate-300" :class="compact ? 'py-1.5' : 'py-2.5'">
+              {{ formatUsageLogUsageLine(t, row) }}
+            </td>
             <td class="px-3 text-xs" :class="compact ? 'py-1.5' : 'py-2.5'">{{ row.total_cost }}</td>
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <span :class="statusBadgeClass(row.status_code)">
@@ -371,10 +390,10 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="items.length && !displayItems.length">
-            <td :colspan="compact ? 9 : 11" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.noClientMatch') }}</td>
+            <td :colspan="compact ? 10 : 12" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.noClientMatch') }}</td>
           </tr>
           <tr v-if="!items.length">
-            <td :colspan="compact ? 9 : 11" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
+            <td :colspan="compact ? 10 : 12" class="px-3 py-8 text-center text-slate-500">{{ t('logsPage.empty') }}</td>
           </tr>
         </tbody>
       </table>
@@ -400,7 +419,10 @@ onMounted(() => {
             </div>
           </div>
         </template>
-        <MobileLabelValueRow :label="t('logsPage.thTokCol')">{{ row.total_tokens }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('logsPage.thBilling')">
+          {{ t(usageBillingBadgeKey(resolveUsageBillingMode(row))) }}
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('logsPage.thUsage')">{{ formatUsageLogUsageLine(t, row) }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('logsPage.thCost')">{{ row.total_cost }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('logsPage.thStatus')">
           <span :class="statusBadgeClass(row.status_code)">{{ row.status_code ?? t('modelsPage.dash') }}</span>

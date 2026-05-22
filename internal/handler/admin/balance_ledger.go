@@ -84,6 +84,23 @@ FROM (
       'model_upstream', ul.model_upstream,
       'prompt_tokens', ul.prompt_tokens,
       'completion_tokens', ul.completion_tokens,
+      'billing_mode', CASE
+        WHEN ul.completion_tokens = 0 AND ul.prompt_tokens > 0 AND ul.prompt_tokens <= 3600 AND (
+          lower(ul.model) LIKE '%seedance%'
+          OR lower(ul.model) LIKE '%sora%'
+          OR lower(ul.model) LIKE '%kling%'
+          OR lower(ul.model) LIKE '%text-to-video%'
+          OR lower(ul.model) LIKE '%image-to-video%'
+          OR lower(ul.model) LIKE '%video-gen%'
+          OR lower(ul.model) LIKE '%hunyuan-video%'
+          OR lower(ul.model) LIKE '%hunyuan_video%'
+          OR lower(ul.model) LIKE '%/video%'
+          OR lower(ul.model) LIKE '%\_video%'
+          OR lower(ul.model) LIKE '%-video%'
+          OR lower(ul.model) LIKE '%veo%'
+        ) THEN 'video_duration'
+        ELSE 'token'
+      END,
       'total_tokens', ul.total_tokens,
       'total_cost', ul.total_cost,
       'request_id', ul.request_id,

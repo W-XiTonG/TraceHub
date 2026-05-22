@@ -8,10 +8,16 @@ import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 import ThLoadingState from '../components/ui/ThLoadingState.vue'
 import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useSmoothLoading } from '../composables/useSmoothLoading'
+import {
+  formatUsageLogUsageLine,
+  resolveUsageBillingMode,
+  usageBillingBadgeKey,
+  type UsageLogBillingRow,
+} from '../lib/usageLedgerDetail'
 
 const { t } = useI18n()
 
-type Log = {
+type Log = UsageLogBillingRow & {
   id: number
   user_id?: number | null
   user_email?: string
@@ -218,7 +224,8 @@ onMounted(() => void load())
             <th class="px-3 py-2">{{ t('adminLogs.thRequestId') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thModel') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thUpstreamModel') }}</th>
-            <th class="px-3 py-2">{{ t('adminLogs.thToken') }}</th>
+            <th class="px-3 py-2">{{ t('adminLogs.thBilling') }}</th>
+            <th class="px-3 py-2">{{ t('adminLogs.thUsage') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thCost') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thIp') }}</th>
             <th class="px-3 py-2">{{ t('adminLogs.thStatus') }}</th>
@@ -236,7 +243,12 @@ onMounted(() => void load())
             <td class="max-w-[9rem] truncate px-3 py-2 font-mono text-[10px] text-slate-500" :title="(l.model_upstream ?? '').trim()">
               {{ (l.model_upstream ?? '').trim() || '—' }}
             </td>
-            <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-400">{{ l.prompt_tokens }} / {{ l.completion_tokens }}</td>
+            <td class="whitespace-nowrap px-3 py-2 text-[11px] text-slate-400">
+              {{ t(usageBillingBadgeKey(resolveUsageBillingMode(l))) }}
+            </td>
+            <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-300">
+              {{ formatUsageLogUsageLine(t, l) }}
+            </td>
             <td class="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-slate-300">{{ l.total_cost }}</td>
             <td
               class="max-w-[9rem] truncate px-3 py-2 font-mono text-[10px] text-slate-500"
@@ -271,7 +283,10 @@ onMounted(() => void load())
         <MobileLabelValueRow :label="t('adminLogs.thUpstreamModel')">
           {{ (l.model_upstream ?? '').trim() || t('adminCommon.dash') }}
         </MobileLabelValueRow>
-        <MobileLabelValueRow :label="t('adminLogs.thToken')">{{ l.prompt_tokens }} / {{ l.completion_tokens }}</MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thBilling')">
+          {{ t(usageBillingBadgeKey(resolveUsageBillingMode(l))) }}
+        </MobileLabelValueRow>
+        <MobileLabelValueRow :label="t('adminLogs.thUsage')">{{ formatUsageLogUsageLine(t, l) }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('adminLogs.thCost')">{{ l.total_cost }}</MobileLabelValueRow>
         <MobileLabelValueRow :label="t('adminLogs.thStatus')">{{ l.status_code ?? '—' }}</MobileLabelValueRow>
         <MobileLabelValueRow v-if="l.error_message?.trim()" :label="t('adminLogs.thError')">

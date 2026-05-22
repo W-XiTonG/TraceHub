@@ -16,6 +16,7 @@ import (
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
+	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/service/availmodels"
@@ -112,6 +113,7 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 				"request_id":        l.RequestID,
 				"model":             l.Model,
 				"api_key_id":        l.APIKeyID,
+				"billing_mode":      modelkind.UsageBillingMode(l.Model, l.PromptTokens, l.CompletionTokens),
 				"prompt_tokens":     l.PromptTokens,
 				"completion_tokens": l.CompletionTokens,
 				"total_tokens":      l.TotalTokens,

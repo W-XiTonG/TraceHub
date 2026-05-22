@@ -10,6 +10,7 @@ import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 import ThLoadingState from '../components/ui/ThLoadingState.vue'
 import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useSmoothLoading } from '../composables/useSmoothLoading'
+import { formatApiUsageLedgerLine } from '../lib/usageLedgerDetail'
 
 const { t } = useI18n()
 
@@ -72,11 +73,9 @@ function numTok(v: unknown): number {
 function formatDetail(row: LedgerRow): string {
   const d = row.detail || {}
   if (row.entry_type === 'api_usage') {
-    return t('ledgerPage.detailApi', {
-      model: String(d.model ?? '—'),
-      inTok: numTok(d.prompt_tokens),
-      outTok: numTok(d.completion_tokens),
-      cost: numTok(d.total_cost),
+    return formatApiUsageLedgerLine(t, d, {
+      detailApi: 'ledgerPage.detailApi',
+      detailApiVideo: 'ledgerPage.detailApiVideo',
     })
   }
   if (row.entry_type === 'redeem') {
