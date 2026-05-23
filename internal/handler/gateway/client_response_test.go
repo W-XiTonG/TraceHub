@@ -45,3 +45,32 @@ func TestSanitizeClientProxyBody_successPassthrough(t *testing.T) {
 		t.Fatalf("expected unchanged success body, got %s", out)
 	}
 }
+
+func TestSanitizeClientProxyBody_upstream401NotUserAPIKey(t *testing.T) {
+	in := []byte(`{"error":{"message":"Incorrect API key provided: sk-***","type":"invalid_request_error","code":"invalid_api_key"}}`)
+	out := SanitizeClientProxyBody(http.StatusUnauthorized, "application/json", in)
+	var m map[string]any
+	if err := json.Unmarshal(out, &m); err != nil {
+		t.Fatal(err)
+	}
+	errObj := m["error"].(map[string]any)
+	msg := errObj["message"].(string)
+	if strings.Contains(msg, "请检查 API Key") && !strings.Contains(msg, "上游") {
+		t.Fatalf("expected upstream channel hint, got %q", msg)
+	}
+	if !strings.Contains(msg, "TraceHub API Key") {
+		t.Fatalf("expected distinction from TraceHub key, got %q", msg)
+	}
+}
+
+func TestMustBuildOpenAIErrorJSON_401UsesUpstreamAuthMsg(t *testing.T) {
+	out := mustBuildOpenAIErrorJSON(http.StatusUnauthorized, 0)
+	var m map[string]any
+	if err := json.Unmarshal(out, &m); err != nil {
+		t.Fatal(err)
+	}
+	msg := m["error"].(map[string]any)["message"].(string)
+	if msg != MsgUpstreamAuthFailed {
+		t.Fatalf("got %q want %q", msg, MsgUpstreamAuthFailed)
+	}
+}

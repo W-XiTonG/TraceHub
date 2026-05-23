@@ -11,10 +11,12 @@ import (
 )
 
 const (
-	MsgServiceUnavailable   = "服务暂时不可用，请稍后重试"
-	MsgRequestFailed        = "请求处理失败，请检查参数后重试"
-	MsgChannelMisconfigured   = "服务配置异常，请联系管理员"
+	MsgServiceUnavailable    = "服务暂时不可用，请稍后重试"
+	MsgRequestFailed         = "请求处理失败，请检查参数后重试"
+	MsgChannelMisconfigured  = "服务配置异常，请联系管理员"
 	MsgCapabilityUnsupported = "当前分组不支持该能力，请联系管理员配置渠道"
+	// MsgUpstreamAuthFailed 上游渠道返回的认证类错误（经 WriteClientProxy 脱敏）；勿与 TraceHub API Key 校验失败混淆。
+	MsgUpstreamAuthFailed = "上游模型服务认证失败（与您的 TraceHub API Key 无关），请联系管理员检查分组渠道的密钥与接口地址。"
 )
 
 var reUpstreamRequestID = regexp.MustCompile(`(?i)(request\s*id|r_id)\s*[:：]\s*[a-zA-Z0-9_-]+`)
@@ -99,7 +101,7 @@ func classifyClientError(raw string, statusCode int, legacyCode int) (errType, m
 		strings.Contains(lower, "余额") || strings.Contains(lower, "balance"):
 		return "insufficient_quota", "账户余额不足，请充值后重试。"
 	case statusCode == http.StatusUnauthorized || strings.Contains(lower, "invalid api key") || strings.Contains(lower, "authentication"):
-		return "authentication_error", "认证失败，请检查 API Key。"
+		return "authentication_error", MsgUpstreamAuthFailed
 	case statusCode == http.StatusForbidden:
 		return "permission_error", "无权访问此资源。"
 	case statusCode == http.StatusNotFound:

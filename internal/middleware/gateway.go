@@ -76,7 +76,8 @@ func GatewayAPIKeyAuth(client *ent.Client) gin.HandlerFunc {
 }
 
 func WriteOpenAIAuthErr(c *gin.Context) {
-	WriteOpenAIError(c, 401, "authentication_error", "无效的 API Key")
+	WriteOpenAIError(c, 401, "authentication_error",
+		"TraceHub API Key 无效或已禁用，请使用控制台「API Key」页的完整密钥（sk-th-...），勿使用登录令牌或列表中的密钥前缀。")
 }
 
 // WriteOpenAIError OpenAI 风格的错误响应。
