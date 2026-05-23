@@ -21,6 +21,7 @@ import (
 	"tracehub/internal/ent/invoiceprofile"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
+	"tracehub/internal/ent/modelpricingsynctarget"
 	"tracehub/internal/ent/paymentledger"
 	"tracehub/internal/ent/paymentorder"
 	"tracehub/internal/ent/paymentrefund"
@@ -94,28 +95,29 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			apikey.Table:               apikey.ValidColumn,
-			adminauditlog.Table:        adminauditlog.ValidColumn,
-			announcement.Table:         announcement.ValidColumn,
-			channel.Table:              channel.ValidColumn,
-			channelmodelpricing.Table:  channelmodelpricing.ValidColumn,
-			dashboardaggregation.Table: dashboardaggregation.ValidColumn,
-			feedback.Table:             feedback.ValidColumn,
-			globalmodelpricing.Table:   globalmodelpricing.ValidColumn,
-			group.Table:                group.ValidColumn,
-			groupmodelrate.Table:       groupmodelrate.ValidColumn,
-			invoiceprofile.Table:       invoiceprofile.ValidColumn,
-			modelcatalogentry.Table:    modelcatalogentry.ValidColumn,
-			modelcatalogsource.Table:   modelcatalogsource.ValidColumn,
-			paymentledger.Table:        paymentledger.ValidColumn,
-			paymentorder.Table:         paymentorder.ValidColumn,
-			paymentrefund.Table:        paymentrefund.ValidColumn,
-			rechargepackage.Table:      rechargepackage.ValidColumn,
-			redeemcode.Table:           redeemcode.ValidColumn,
-			redeemledger.Table:         redeemledger.ValidColumn,
-			systemconfig.Table:         systemconfig.ValidColumn,
-			usagelog.Table:             usagelog.ValidColumn,
-			user.Table:                 user.ValidColumn,
+			apikey.Table:                 apikey.ValidColumn,
+			adminauditlog.Table:          adminauditlog.ValidColumn,
+			announcement.Table:           announcement.ValidColumn,
+			channel.Table:                channel.ValidColumn,
+			channelmodelpricing.Table:    channelmodelpricing.ValidColumn,
+			dashboardaggregation.Table:   dashboardaggregation.ValidColumn,
+			feedback.Table:               feedback.ValidColumn,
+			globalmodelpricing.Table:     globalmodelpricing.ValidColumn,
+			group.Table:                  group.ValidColumn,
+			groupmodelrate.Table:         groupmodelrate.ValidColumn,
+			invoiceprofile.Table:         invoiceprofile.ValidColumn,
+			modelcatalogentry.Table:      modelcatalogentry.ValidColumn,
+			modelcatalogsource.Table:     modelcatalogsource.ValidColumn,
+			modelpricingsynctarget.Table: modelpricingsynctarget.ValidColumn,
+			paymentledger.Table:          paymentledger.ValidColumn,
+			paymentorder.Table:           paymentorder.ValidColumn,
+			paymentrefund.Table:          paymentrefund.ValidColumn,
+			rechargepackage.Table:        rechargepackage.ValidColumn,
+			redeemcode.Table:             redeemcode.ValidColumn,
+			redeemledger.Table:           redeemledger.ValidColumn,
+			systemconfig.Table:           systemconfig.ValidColumn,
+			usagelog.Table:               usagelog.ValidColumn,
+			user.Table:                   user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

@@ -545,6 +545,72 @@ var (
 			},
 		},
 	}
+	// ModelPricingSyncTargetsColumns holds the columns for the "model_pricing_sync_targets" table.
+	ModelPricingSyncTargetsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Size: 120},
+		{Name: "direction", Type: field.TypeEnum, Enums: []string{"pull", "push", "both"}, Default: "both"},
+		{Name: "base_url", Type: field.TypeString, Size: 500},
+		{Name: "pull_path", Type: field.TypeString, Size: 255, Default: "/api/pricing/export"},
+		{Name: "push_path", Type: field.TypeString, Size: 255, Default: "/api/pricing/import"},
+		{Name: "credential_mode", Type: field.TypeEnum, Enums: []string{"none", "static", "channel"}, Default: "static"},
+		{Name: "api_key_encrypted", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "extra_headers", Type: field.TypeJSON, Nullable: true},
+		{Name: "parse_mode", Type: field.TypeEnum, Enums: []string{"tracehub_pricing_v1"}, Default: "tracehub_pricing_v1"},
+		{Name: "scopes", Type: field.TypeJSON},
+		{Name: "channel_filter", Type: field.TypeJSON, Nullable: true},
+		{Name: "group_filter", Type: field.TypeJSON, Nullable: true},
+		{Name: "model_include_mode", Type: field.TypeEnum, Enums: []string{"all", "allowlist", "denylist"}, Default: "all"},
+		{Name: "model_allowlist", Type: field.TypeJSON, Nullable: true},
+		{Name: "model_denylist", Type: field.TypeJSON, Nullable: true},
+		{Name: "model_include_patterns", Type: field.TypeJSON, Nullable: true},
+		{Name: "channel_ref_map", Type: field.TypeJSON, Nullable: true},
+		{Name: "group_ref_map", Type: field.TypeJSON, Nullable: true},
+		{Name: "merge_strategy", Type: field.TypeEnum, Enums: []string{"upsert", "skip_existing", "replace_scoped"}, Default: "upsert"},
+		{Name: "schedule_enabled", Type: field.TypeBool, Default: false},
+		{Name: "schedule_interval_min", Type: field.TypeInt, Default: 60},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "last_pull_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_pull_ok", Type: field.TypeBool, Default: false},
+		{Name: "last_pull_message", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "last_push_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_push_ok", Type: field.TypeBool, Default: false},
+		{Name: "last_push_message", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
+	}
+	// ModelPricingSyncTargetsTable holds the schema information for the "model_pricing_sync_targets" table.
+	ModelPricingSyncTargetsTable = &schema.Table{
+		Name:       "model_pricing_sync_targets",
+		Columns:    ModelPricingSyncTargetsColumns,
+		PrimaryKey: []*schema.Column{ModelPricingSyncTargetsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "model_pricing_sync_targets_channels_model_pricing_sync_targets",
+				Columns:    []*schema.Column{ModelPricingSyncTargetsColumns[31]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "modelpricingsynctarget_enabled",
+				Unique:  false,
+				Columns: []*schema.Column{ModelPricingSyncTargetsColumns[22]},
+			},
+			{
+				Name:    "modelpricingsynctarget_schedule_enabled",
+				Unique:  false,
+				Columns: []*schema.Column{ModelPricingSyncTargetsColumns[20]},
+			},
+			{
+				Name:    "modelpricingsynctarget_channel_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModelPricingSyncTargetsColumns[31]},
+			},
+		},
+	}
 	// PaymentLedgersColumns holds the columns for the "payment_ledgers" table.
 	PaymentLedgersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -940,6 +1006,7 @@ var (
 		InvoiceProfilesTable,
 		ModelCatalogEntriesTable,
 		ModelCatalogSourcesTable,
+		ModelPricingSyncTargetsTable,
 		PaymentLedgersTable,
 		PaymentOrdersTable,
 		PaymentRefundsTable,
@@ -964,6 +1031,7 @@ func init() {
 	InvoiceProfilesTable.ForeignKeys[0].RefTable = UsersTable
 	ModelCatalogEntriesTable.ForeignKeys[0].RefTable = ModelCatalogSourcesTable
 	ModelCatalogSourcesTable.ForeignKeys[0].RefTable = ChannelsTable
+	ModelPricingSyncTargetsTable.ForeignKeys[0].RefTable = ChannelsTable
 	PaymentOrdersTable.ForeignKeys[0].RefTable = UsersTable
 	RedeemCodesTable.ForeignKeys[0].RefTable = UsersTable
 	RedeemCodesTable.ForeignKeys[1].RefTable = UsersTable

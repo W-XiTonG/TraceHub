@@ -17,6 +17,7 @@ import (
 	"tracehub/internal/ent/invoiceprofile"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
+	"tracehub/internal/ent/modelpricingsynctarget"
 	"tracehub/internal/ent/paymentledger"
 	"tracehub/internal/ent/paymentorder"
 	"tracehub/internal/ent/paymentrefund"
@@ -725,6 +726,90 @@ func init() {
 	modelcatalogsource.DefaultUpdatedAt = modelcatalogsourceDescUpdatedAt.Default.(func() time.Time)
 	// modelcatalogsource.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	modelcatalogsource.UpdateDefaultUpdatedAt = modelcatalogsourceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	modelpricingsynctargetFields := schema.ModelPricingSyncTarget{}.Fields()
+	_ = modelpricingsynctargetFields
+	// modelpricingsynctargetDescName is the schema descriptor for name field.
+	modelpricingsynctargetDescName := modelpricingsynctargetFields[0].Descriptor()
+	// modelpricingsynctarget.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	modelpricingsynctarget.NameValidator = func() func(string) error {
+		validators := modelpricingsynctargetDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// modelpricingsynctargetDescBaseURL is the schema descriptor for base_url field.
+	modelpricingsynctargetDescBaseURL := modelpricingsynctargetFields[2].Descriptor()
+	// modelpricingsynctarget.BaseURLValidator is a validator for the "base_url" field. It is called by the builders before save.
+	modelpricingsynctarget.BaseURLValidator = func() func(string) error {
+		validators := modelpricingsynctargetDescBaseURL.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(base_url string) error {
+			for _, fn := range fns {
+				if err := fn(base_url); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// modelpricingsynctargetDescPullPath is the schema descriptor for pull_path field.
+	modelpricingsynctargetDescPullPath := modelpricingsynctargetFields[3].Descriptor()
+	// modelpricingsynctarget.DefaultPullPath holds the default value on creation for the pull_path field.
+	modelpricingsynctarget.DefaultPullPath = modelpricingsynctargetDescPullPath.Default.(string)
+	// modelpricingsynctarget.PullPathValidator is a validator for the "pull_path" field. It is called by the builders before save.
+	modelpricingsynctarget.PullPathValidator = modelpricingsynctargetDescPullPath.Validators[0].(func(string) error)
+	// modelpricingsynctargetDescPushPath is the schema descriptor for push_path field.
+	modelpricingsynctargetDescPushPath := modelpricingsynctargetFields[4].Descriptor()
+	// modelpricingsynctarget.DefaultPushPath holds the default value on creation for the push_path field.
+	modelpricingsynctarget.DefaultPushPath = modelpricingsynctargetDescPushPath.Default.(string)
+	// modelpricingsynctarget.PushPathValidator is a validator for the "push_path" field. It is called by the builders before save.
+	modelpricingsynctarget.PushPathValidator = modelpricingsynctargetDescPushPath.Validators[0].(func(string) error)
+	// modelpricingsynctargetDescScopes is the schema descriptor for scopes field.
+	modelpricingsynctargetDescScopes := modelpricingsynctargetFields[10].Descriptor()
+	// modelpricingsynctarget.DefaultScopes holds the default value on creation for the scopes field.
+	modelpricingsynctarget.DefaultScopes = modelpricingsynctargetDescScopes.Default.([]string)
+	// modelpricingsynctargetDescScheduleEnabled is the schema descriptor for schedule_enabled field.
+	modelpricingsynctargetDescScheduleEnabled := modelpricingsynctargetFields[20].Descriptor()
+	// modelpricingsynctarget.DefaultScheduleEnabled holds the default value on creation for the schedule_enabled field.
+	modelpricingsynctarget.DefaultScheduleEnabled = modelpricingsynctargetDescScheduleEnabled.Default.(bool)
+	// modelpricingsynctargetDescScheduleIntervalMin is the schema descriptor for schedule_interval_min field.
+	modelpricingsynctargetDescScheduleIntervalMin := modelpricingsynctargetFields[21].Descriptor()
+	// modelpricingsynctarget.DefaultScheduleIntervalMin holds the default value on creation for the schedule_interval_min field.
+	modelpricingsynctarget.DefaultScheduleIntervalMin = modelpricingsynctargetDescScheduleIntervalMin.Default.(int)
+	// modelpricingsynctargetDescEnabled is the schema descriptor for enabled field.
+	modelpricingsynctargetDescEnabled := modelpricingsynctargetFields[22].Descriptor()
+	// modelpricingsynctarget.DefaultEnabled holds the default value on creation for the enabled field.
+	modelpricingsynctarget.DefaultEnabled = modelpricingsynctargetDescEnabled.Default.(bool)
+	// modelpricingsynctargetDescLastPullOk is the schema descriptor for last_pull_ok field.
+	modelpricingsynctargetDescLastPullOk := modelpricingsynctargetFields[24].Descriptor()
+	// modelpricingsynctarget.DefaultLastPullOk holds the default value on creation for the last_pull_ok field.
+	modelpricingsynctarget.DefaultLastPullOk = modelpricingsynctargetDescLastPullOk.Default.(bool)
+	// modelpricingsynctargetDescLastPushOk is the schema descriptor for last_push_ok field.
+	modelpricingsynctargetDescLastPushOk := modelpricingsynctargetFields[27].Descriptor()
+	// modelpricingsynctarget.DefaultLastPushOk holds the default value on creation for the last_push_ok field.
+	modelpricingsynctarget.DefaultLastPushOk = modelpricingsynctargetDescLastPushOk.Default.(bool)
+	// modelpricingsynctargetDescCreatedAt is the schema descriptor for created_at field.
+	modelpricingsynctargetDescCreatedAt := modelpricingsynctargetFields[29].Descriptor()
+	// modelpricingsynctarget.DefaultCreatedAt holds the default value on creation for the created_at field.
+	modelpricingsynctarget.DefaultCreatedAt = modelpricingsynctargetDescCreatedAt.Default.(func() time.Time)
+	// modelpricingsynctargetDescUpdatedAt is the schema descriptor for updated_at field.
+	modelpricingsynctargetDescUpdatedAt := modelpricingsynctargetFields[30].Descriptor()
+	// modelpricingsynctarget.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	modelpricingsynctarget.DefaultUpdatedAt = modelpricingsynctargetDescUpdatedAt.Default.(func() time.Time)
+	// modelpricingsynctarget.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	modelpricingsynctarget.UpdateDefaultUpdatedAt = modelpricingsynctargetDescUpdatedAt.UpdateDefault.(func() time.Time)
 	paymentledgerFields := schema.PaymentLedger{}.Fields()
 	_ = paymentledgerFields
 	// paymentledgerDescEntryType is the schema descriptor for entry_type field.

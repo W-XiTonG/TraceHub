@@ -2,7 +2,6 @@ package adminhandler
 
 import (
 	"context"
-	"math"
 	"strconv"
 	"strings"
 
@@ -16,138 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type channelPricingUpsertItem struct {
-	ChannelID       int
-	ModelName       string
-	Enabled         bool
-	QuotaInPer1k    *int64
-	QuotaOutPer1k   *int64
-	InputRate       float64
-	OutputRate      float64
-	MarkupPercent   *float64
-	BillingMode     *string
-	QuotaPerRequest *int64
-}
+type channelPricingUpsertItem = billing.ChannelPricingUpsertItem
 
 func upsertChannelModelPricingBatch(ctx context.Context, client *ent.Client, items []channelPricingUpsertItem) (badRequest string, err error) {
-	for _, it := range items {
-		if it.ChannelID <= 0 {
-			return "channel_id 无效", nil
-		}
-		name := strings.TrimSpace(it.ModelName)
-		if name == "" {
-			return "model_name 不能为空", nil
-		}
-		if _, err := client.Channel.Get(ctx, it.ChannelID); err != nil {
-			if ent.IsNotFound(err) {
-				return "渠道不存在", nil
-			}
-			return "", err
-		}
-		if it.QuotaInPer1k != nil && *it.QuotaInPer1k < 0 {
-			return "quota_in_per_1k 不能为负", nil
-		}
-		if it.QuotaOutPer1k != nil && *it.QuotaOutPer1k < 0 {
-			return "quota_out_per_1k 不能为负", nil
-		}
-		inR, outR := it.InputRate, it.OutputRate
-		if inR <= 0 || math.IsNaN(inR) || math.IsInf(inR, 0) {
-			return "input_rate 须大于 0", nil
-		}
-		if outR <= 0 || math.IsNaN(outR) || math.IsInf(outR, 0) {
-			return "output_rate 须大于 0", nil
-		}
-		if it.MarkupPercent != nil && !billing.ValidMarkupPercent(*it.MarkupPercent) {
-			return "markup_percent 须为大于 -100 的有效数字", nil
-		}
-		if it.BillingMode != nil {
-			bm := strings.TrimSpace(*it.BillingMode)
-			if bm != "" {
-				switch bm {
-				case billing.BillingModeToken, billing.BillingModePerRequest, billing.BillingModeHybridFloor, billing.BillingModeHybridSettle:
-				default:
-					return "billing_mode 无效（token|per_request|hybrid_floor|hybrid_settle）", nil
-				}
-			}
-		}
-		if it.QuotaPerRequest != nil && *it.QuotaPerRequest < 0 {
-			return "quota_per_request 不能为负", nil
-		}
-		existing, qerr := client.ChannelModelPricing.Query().
-			Where(
-				channelmodelpricing.ChannelIDEQ(it.ChannelID),
-				channelmodelpricing.ModelNameEQ(name),
-			).
-			Only(ctx)
-		if ent.IsNotFound(qerr) {
-			cr := client.ChannelModelPricing.Create().
-				SetChannelID(it.ChannelID).
-				SetModelName(name).
-				SetEnabled(it.Enabled).
-				SetInputRate(inR).
-				SetOutputRate(outR)
-			if it.QuotaInPer1k != nil {
-				cr.SetQuotaInPer1k(*it.QuotaInPer1k)
-			}
-			if it.QuotaOutPer1k != nil {
-				cr.SetQuotaOutPer1k(*it.QuotaOutPer1k)
-			}
-			if it.MarkupPercent != nil {
-				cr.SetMarkupPercent(*it.MarkupPercent)
-			}
-			if it.BillingMode != nil {
-				bm := strings.TrimSpace(*it.BillingMode)
-				if bm != "" {
-					cr.SetBillingMode(bm)
-				}
-			}
-			if it.QuotaPerRequest != nil {
-				cr.SetQuotaPerRequest(*it.QuotaPerRequest)
-			}
-			if _, err := cr.Save(ctx); err != nil {
-				return "", err
-			}
-		} else if qerr == nil {
-			up := client.ChannelModelPricing.UpdateOne(existing).
-				SetEnabled(it.Enabled).
-				SetInputRate(inR).
-				SetOutputRate(outR)
-			if it.QuotaInPer1k != nil {
-				up.SetQuotaInPer1k(*it.QuotaInPer1k)
-			} else {
-				up.ClearQuotaInPer1k()
-			}
-			if it.QuotaOutPer1k != nil {
-				up.SetQuotaOutPer1k(*it.QuotaOutPer1k)
-			} else {
-				up.ClearQuotaOutPer1k()
-			}
-			if it.MarkupPercent != nil {
-				up.SetMarkupPercent(*it.MarkupPercent)
-			} else {
-				up.ClearMarkupPercent()
-			}
-			if it.BillingMode != nil {
-				bm := strings.TrimSpace(*it.BillingMode)
-				if bm != "" {
-					up.SetBillingMode(bm)
-				} else {
-					up.ClearBillingMode()
-				}
-			}
-			if it.QuotaPerRequest != nil {
-				up.SetQuotaPerRequest(*it.QuotaPerRequest)
-			} else {
-				up.ClearQuotaPerRequest()
-			}
-			if err := up.Exec(ctx); err != nil {
-				return "", err
-			}
-		} else {
-			return "", qerr
-		}
-	}
-	return "", nil
+	return billing.UpsertChannelModelPricingBatch(ctx, client, items)
 }
 
 // GetChannelModelPricingWorkspace GET /api/admin/channel-model-pricing/workspace

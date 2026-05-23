@@ -38,6 +38,8 @@ type Tx struct {
 	ModelCatalogEntry *ModelCatalogEntryClient
 	// ModelCatalogSource is the client for interacting with the ModelCatalogSource builders.
 	ModelCatalogSource *ModelCatalogSourceClient
+	// ModelPricingSyncTarget is the client for interacting with the ModelPricingSyncTarget builders.
+	ModelPricingSyncTarget *ModelPricingSyncTargetClient
 	// PaymentLedger is the client for interacting with the PaymentLedger builders.
 	PaymentLedger *PaymentLedgerClient
 	// PaymentOrder is the client for interacting with the PaymentOrder builders.
@@ -200,6 +202,7 @@ func (tx *Tx) init() {
 	tx.InvoiceProfile = NewInvoiceProfileClient(tx.config)
 	tx.ModelCatalogEntry = NewModelCatalogEntryClient(tx.config)
 	tx.ModelCatalogSource = NewModelCatalogSourceClient(tx.config)
+	tx.ModelPricingSyncTarget = NewModelPricingSyncTargetClient(tx.config)
 	tx.PaymentLedger = NewPaymentLedgerClient(tx.config)
 	tx.PaymentOrder = NewPaymentOrderClient(tx.config)
 	tx.PaymentRefund = NewPaymentRefundClient(tx.config)

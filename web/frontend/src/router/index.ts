@@ -67,6 +67,11 @@ const router = createRouter({
               name: 'admin-billing-no-bill',
               component: () => import('../views/AdminSettingsNoBillTab.vue'),
             },
+            {
+              path: 'pricing-sync',
+              name: 'admin-billing-pricing-sync',
+              component: () => import('../views/AdminSettingsPricingSyncTab.vue'),
+            },
           ],
         },
         {

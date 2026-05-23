@@ -75,6 +75,8 @@ const (
 	EdgeUsageLogs = "usage_logs"
 	// EdgeModelCatalogSources holds the string denoting the model_catalog_sources edge name in mutations.
 	EdgeModelCatalogSources = "model_catalog_sources"
+	// EdgeModelPricingSyncTargets holds the string denoting the model_pricing_sync_targets edge name in mutations.
+	EdgeModelPricingSyncTargets = "model_pricing_sync_targets"
 	// EdgeChannelModelPricings holds the string denoting the channel_model_pricings edge name in mutations.
 	EdgeChannelModelPricings = "channel_model_pricings"
 	// Table holds the table name of the channel in the database.
@@ -100,6 +102,13 @@ const (
 	ModelCatalogSourcesInverseTable = "model_catalog_sources"
 	// ModelCatalogSourcesColumn is the table column denoting the model_catalog_sources relation/edge.
 	ModelCatalogSourcesColumn = "channel_id"
+	// ModelPricingSyncTargetsTable is the table that holds the model_pricing_sync_targets relation/edge.
+	ModelPricingSyncTargetsTable = "model_pricing_sync_targets"
+	// ModelPricingSyncTargetsInverseTable is the table name for the ModelPricingSyncTarget entity.
+	// It exists in this package in order to avoid circular dependency with the "modelpricingsynctarget" package.
+	ModelPricingSyncTargetsInverseTable = "model_pricing_sync_targets"
+	// ModelPricingSyncTargetsColumn is the table column denoting the model_pricing_sync_targets relation/edge.
+	ModelPricingSyncTargetsColumn = "channel_id"
 	// ChannelModelPricingsTable is the table that holds the channel_model_pricings relation/edge.
 	ChannelModelPricingsTable = "channel_model_pricings"
 	// ChannelModelPricingsInverseTable is the table name for the ChannelModelPricing entity.
@@ -380,6 +389,20 @@ func ByModelCatalogSources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 	}
 }
 
+// ByModelPricingSyncTargetsCount orders the results by model_pricing_sync_targets count.
+func ByModelPricingSyncTargetsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newModelPricingSyncTargetsStep(), opts...)
+	}
+}
+
+// ByModelPricingSyncTargets orders the results by model_pricing_sync_targets terms.
+func ByModelPricingSyncTargets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newModelPricingSyncTargetsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByChannelModelPricingsCount orders the results by channel_model_pricings count.
 func ByChannelModelPricingsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -412,6 +435,13 @@ func newModelCatalogSourcesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ModelCatalogSourcesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ModelCatalogSourcesTable, ModelCatalogSourcesColumn),
+	)
+}
+func newModelPricingSyncTargetsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ModelPricingSyncTargetsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ModelPricingSyncTargetsTable, ModelPricingSyncTargetsColumn),
 	)
 }
 func newChannelModelPricingsStep() *sqlgraph.Step {

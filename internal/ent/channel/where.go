@@ -1419,6 +1419,29 @@ func HasModelCatalogSourcesWith(preds ...predicate.ModelCatalogSource) predicate
 	})
 }
 
+// HasModelPricingSyncTargets applies the HasEdge predicate on the "model_pricing_sync_targets" edge.
+func HasModelPricingSyncTargets() predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ModelPricingSyncTargetsTable, ModelPricingSyncTargetsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasModelPricingSyncTargetsWith applies the HasEdge predicate on the "model_pricing_sync_targets" edge with a given conditions (other predicates).
+func HasModelPricingSyncTargetsWith(preds ...predicate.ModelPricingSyncTarget) predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := newModelPricingSyncTargetsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasChannelModelPricings applies the HasEdge predicate on the "channel_model_pricings" edge.
 func HasChannelModelPricings() predicate.Channel {
 	return predicate.Channel(func(s *sql.Selector) {

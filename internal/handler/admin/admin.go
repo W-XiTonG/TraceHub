@@ -12,7 +12,6 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/group"
-	"tracehub/internal/ent/groupmodelrate"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/middleware"
@@ -667,35 +666,23 @@ func PutGroupModelRates(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		ctx := c.Request.Context()
+		rates := make([]billing.GroupModelRateUpsertItem, 0, len(req.Rates))
 		for _, r := range req.Rates {
-			existing, err := client.GroupModelRate.Query().
-				Where(groupmodelrate.GroupIDEQ(gid), groupmodelrate.ModelNameEQ(r.ModelName)).
-				Only(ctx)
 			billable := true
 			if r.Billable != nil {
 				billable = *r.Billable
 			}
-			if ent.IsNotFound(err) {
-				_, err = client.GroupModelRate.Create().
-					SetGroupID(gid).
-					SetModelName(r.ModelName).
-					SetInputRate(r.InputRate).
-					SetOutputRate(r.OutputRate).
-					SetEnabled(r.Enabled).
-					SetBillable(billable).
-					Save(ctx)
-			} else if err == nil {
-				up := client.GroupModelRate.UpdateOne(existing).
-					SetInputRate(r.InputRate).
-					SetOutputRate(r.OutputRate).
-					SetEnabled(r.Enabled).
-					SetBillable(billable)
-				err = up.Exec(ctx)
-			}
-			if err != nil {
-				httpx.ServerError(c, "保存倍率失败")
-				return
-			}
+			rates = append(rates, billing.GroupModelRateUpsertItem{
+				ModelName:  r.ModelName,
+				InputRate:  r.InputRate,
+				OutputRate: r.OutputRate,
+				Enabled:    r.Enabled,
+				Billable:   billable,
+			})
+		}
+		if err := billing.UpsertGroupModelRatesBatch(ctx, client, gid, rates); err != nil {
+			httpx.ServerError(c, "保存倍率失败")
+			return
 		}
 		billing.InvalidateGroupModelRateCacheAdmin(gid)
 		auditLog(client, adm.ID, "group.model_rates", "group", strconv.Itoa(gid), map[string]any{"count": len(req.Rates)}, c)

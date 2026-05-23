@@ -11,6 +11,7 @@ import (
 	"tracehub/internal/ent"
 	adminhandler "tracehub/internal/handler/admin"
 	gatewayhandler "tracehub/internal/handler/gateway"
+	pricingsynchandler "tracehub/internal/handler/pricingsync"
 	"tracehub/internal/handler/health"
 	userhandler "tracehub/internal/handler/user"
 	"tracehub/internal/middleware"
@@ -22,6 +23,7 @@ import (
 	"tracehub/internal/service/balancealert"
 	"tracehub/internal/service/billing"
 	"tracehub/internal/service/payment"
+	"tracehub/internal/service/pricingsync"
 	"tracehub/internal/service/upstreamprobe"
 
 	"github.com/gin-gonic/gin"
@@ -87,6 +89,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 		health.Readiness(opt.Client, opt.Redis, op)(c)
 	})
 	r.GET("/api/pub/site-meta", userhandler.PubSiteMeta(opt.Client, opt.Config, payStore))
+	psPub := pricingsynchandler.PublicDeps{Client: opt.Client}
+	r.GET("/api/pricing/sync/export", pricingsynchandler.ExportInbound(psPub))
 	uploadRoot := adminhandler.BrandUploadDir(opt.Config)
 	if mkErr := os.MkdirAll(uploadRoot, 0o755); mkErr != nil {
 		opt.Log.Warn("brand_upload_dir mkdir failed", zap.String("path", uploadRoot), zap.Error(mkErr))
@@ -296,6 +300,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 
 	chAdmin := adminhandler.ChannelDeps{Client: opt.Client, AESKey: aesKey}
 	mcAdmin := adminhandler.ModelCatalogDeps{Client: opt.Client, AESKey: aesKey}
+	psAdmin := adminhandler.PricingSyncDeps{Client: opt.Client, AESKey: aesKey, Config: opt.Config}
 
 	a := r.Group("/api/admin")
 	a.Use(middleware.JWTAuth(jwtSecret, opt.Client))
@@ -351,6 +356,17 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.POST("/channel-model-pricing/import/batch", adminhandler.ImportChannelModelPricingBatchCSV(opt.Client, opt.Config))
 	a.PUT("/channel-model-pricing", adminhandler.PutChannelModelPricing(opt.Client))
 	a.DELETE("/channel-model-pricing", adminhandler.DeleteChannelModelPricing(opt.Client))
+	a.GET("/pricing-sync/targets", adminhandler.ListPricingSyncTargets(opt.Client))
+	a.POST("/pricing-sync/targets", adminhandler.CreatePricingSyncTarget(psAdmin))
+	a.PUT("/pricing-sync/targets/:id", adminhandler.UpdatePricingSyncTarget(psAdmin))
+	a.DELETE("/pricing-sync/targets/:id", adminhandler.DeletePricingSyncTarget(opt.Client))
+	a.POST("/pricing-sync/targets/:id/test-connection", adminhandler.TestPricingSyncConnection(psAdmin))
+	a.POST("/pricing-sync/targets/:id/sync/preview", adminhandler.PreviewPricingSync(psAdmin))
+	a.POST("/pricing-sync/targets/:id/sync", adminhandler.ConfirmPricingSync(psAdmin))
+	a.GET("/pricing-sync/export/local", adminhandler.ExportLocalPricing(psAdmin))
+	a.GET("/pricing-sync/inbound-info", adminhandler.GetPricingSyncInboundInfo(opt.Client))
+	a.POST("/pricing-sync/inbound-token/regenerate", adminhandler.RegeneratePricingSyncInboundToken(opt.Client))
+	a.POST("/pricing-sync/generate-outbound-key", adminhandler.GeneratePricingSyncOutboundKey())
 	a.GET("/logs/export", adminhandler.ExportLogs(opt.Client))
 	a.GET("/logs/stats", adminhandler.LogStats(opt.Client))
 	a.GET("/logs", adminhandler.ListLogs(opt.Client))
@@ -403,6 +419,11 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	aPay.DELETE("/packages/:id", adminhandler.DeleteRechargePackage(opt.Client))
 
 	upstreamprobe.StartWorker(context.Background(), opt.Log, opt.Client, aesKey)
+	pricingsync.StartWorker(context.Background(), opt.Log, pricingsync.ServiceOpts{
+		Client:            opt.Client,
+		AESKey:            aesKey,
+		AllowInsecureHTTP: true,
+	})
 	upstreamprobe.StartCapabilityRuntime(context.Background(), upstreamprobe.CapabilityRuntimeOpts{
 		Client:               opt.Client,
 		RDB:                  opt.Redis,

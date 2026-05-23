@@ -164,6 +164,18 @@ func (f ModelCatalogSourceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModelCatalogSourceMutation", m)
 }
 
+// The ModelPricingSyncTargetFunc type is an adapter to allow the use of ordinary
+// function as ModelPricingSyncTarget mutator.
+type ModelPricingSyncTargetFunc func(context.Context, *ent.ModelPricingSyncTargetMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ModelPricingSyncTargetFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ModelPricingSyncTargetMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModelPricingSyncTargetMutation", m)
+}
+
 // The PaymentLedgerFunc type is an adapter to allow the use of ordinary
 // function as PaymentLedger mutator.
 type PaymentLedgerFunc func(context.Context, *ent.PaymentLedgerMutation) (ent.Value, error)

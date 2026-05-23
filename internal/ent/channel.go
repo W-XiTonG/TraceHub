@@ -87,11 +87,13 @@ type ChannelEdges struct {
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// ModelCatalogSources holds the value of the model_catalog_sources edge.
 	ModelCatalogSources []*ModelCatalogSource `json:"model_catalog_sources,omitempty"`
+	// ModelPricingSyncTargets holds the value of the model_pricing_sync_targets edge.
+	ModelPricingSyncTargets []*ModelPricingSyncTarget `json:"model_pricing_sync_targets,omitempty"`
 	// ChannelModelPricings holds the value of the channel_model_pricings edge.
 	ChannelModelPricings []*ChannelModelPricing `json:"channel_model_pricings,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -123,10 +125,19 @@ func (e ChannelEdges) ModelCatalogSourcesOrErr() ([]*ModelCatalogSource, error) 
 	return nil, &NotLoadedError{edge: "model_catalog_sources"}
 }
 
+// ModelPricingSyncTargetsOrErr returns the ModelPricingSyncTargets value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChannelEdges) ModelPricingSyncTargetsOrErr() ([]*ModelPricingSyncTarget, error) {
+	if e.loadedTypes[3] {
+		return e.ModelPricingSyncTargets, nil
+	}
+	return nil, &NotLoadedError{edge: "model_pricing_sync_targets"}
+}
+
 // ChannelModelPricingsOrErr returns the ChannelModelPricings value or an error if the edge
 // was not loaded in eager-loading.
 func (e ChannelEdges) ChannelModelPricingsOrErr() ([]*ChannelModelPricing, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.ChannelModelPricings, nil
 	}
 	return nil, &NotLoadedError{edge: "channel_model_pricings"}
@@ -364,6 +375,11 @@ func (_m *Channel) QueryUsageLogs() *UsageLogQuery {
 // QueryModelCatalogSources queries the "model_catalog_sources" edge of the Channel entity.
 func (_m *Channel) QueryModelCatalogSources() *ModelCatalogSourceQuery {
 	return NewChannelClient(_m.config).QueryModelCatalogSources(_m)
+}
+
+// QueryModelPricingSyncTargets queries the "model_pricing_sync_targets" edge of the Channel entity.
+func (_m *Channel) QueryModelPricingSyncTargets() *ModelPricingSyncTargetQuery {
+	return NewChannelClient(_m.config).QueryModelPricingSyncTargets(_m)
 }
 
 // QueryChannelModelPricings queries the "channel_model_pricings" edge of the Channel entity.

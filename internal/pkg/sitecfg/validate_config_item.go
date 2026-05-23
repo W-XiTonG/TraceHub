@@ -84,6 +84,14 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateTLSCertFilePath(value)
 	case SystemConfigKeyTLSKeyFile:
 		return ValidateTLSKeyFilePath(value)
+	case SystemConfigKeyPricingSyncEnabled, SystemConfigKeyPricingSyncWorkerEnabled, SystemConfigKeyPricingSyncRequireSuperadmin:
+		return ValidatePricingSyncBool(value)
+	case SystemConfigKeyPricingSyncMaxRowsPerSync:
+		return ValidatePricingSyncMaxRows(value)
+	case SystemConfigKeyPricingSyncManualCooldownSec:
+		return ValidatePricingSyncManualCooldown(value)
+	case SystemConfigKeyPricingSyncInboundTokenSHA256, SystemConfigKeyPricingSyncInboundTokenAt:
+		return nil
 	default:
 		return nil
 	}

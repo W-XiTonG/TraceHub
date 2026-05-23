@@ -55,6 +55,7 @@ func (Channel) Edges() []ent.Edge {
 			Unique(),
 		edge.To("usage_logs", UsageLog.Type),
 		edge.To("model_catalog_sources", ModelCatalogSource.Type),
+		edge.To("model_pricing_sync_targets", ModelPricingSyncTarget.Type),
 		edge.To("channel_model_pricings", ChannelModelPricing.Type),
 	}
 }

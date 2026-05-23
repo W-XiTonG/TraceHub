@@ -76,4 +76,8 @@ var (
 	errTLSMaterialNotConfigured  = errors.New("启用内置 TLS 前须配置证书与私钥路径（上传 PEM 或在 config.yaml 填写 server.tls.cert_file 与 key_file）")
 	errTLSMaterialNotReadable    = errors.New("启用内置 TLS 前须确保证书与私钥文件存在且进程可读")
 	errTLSCertKeyPairMismatch    = errors.New("证书与私钥不匹配或无法组成有效 TLS 密钥对")
+
+	errInvalidPricingSyncBool     = errors.New("site.pricing_sync 布尔配置须为 true 或 false")
+	errInvalidPricingSyncMaxRows  = errors.New("site.pricing_sync.max_rows_per_sync 须为 1–5000 的整数")
+	errInvalidPricingSyncCooldown = errors.New("site.pricing_sync.manual_cooldown_sec 须为 0–3600 的整数")
 )

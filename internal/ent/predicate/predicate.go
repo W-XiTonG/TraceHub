@@ -45,6 +45,9 @@ type ModelCatalogEntry func(*sql.Selector)
 // ModelCatalogSource is the predicate function for modelcatalogsource builders.
 type ModelCatalogSource func(*sql.Selector)
 
+// ModelPricingSyncTarget is the predicate function for modelpricingsynctarget builders.
+type ModelPricingSyncTarget func(*sql.Selector)
+
 // PaymentLedger is the predicate function for paymentledger builders.
 type PaymentLedger func(*sql.Selector)
 

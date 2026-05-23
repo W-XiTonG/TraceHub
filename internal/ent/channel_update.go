@@ -11,6 +11,7 @@ import (
 	"tracehub/internal/ent/channelmodelpricing"
 	"tracehub/internal/ent/group"
 	"tracehub/internal/ent/modelcatalogsource"
+	"tracehub/internal/ent/modelpricingsynctarget"
 	"tracehub/internal/ent/predicate"
 	"tracehub/internal/ent/usagelog"
 
@@ -534,6 +535,21 @@ func (_u *ChannelUpdate) AddModelCatalogSources(v ...*ModelCatalogSource) *Chann
 	return _u.AddModelCatalogSourceIDs(ids...)
 }
 
+// AddModelPricingSyncTargetIDs adds the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity by IDs.
+func (_u *ChannelUpdate) AddModelPricingSyncTargetIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.AddModelPricingSyncTargetIDs(ids...)
+	return _u
+}
+
+// AddModelPricingSyncTargets adds the "model_pricing_sync_targets" edges to the ModelPricingSyncTarget entity.
+func (_u *ChannelUpdate) AddModelPricingSyncTargets(v ...*ModelPricingSyncTarget) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddModelPricingSyncTargetIDs(ids...)
+}
+
 // AddChannelModelPricingIDs adds the "channel_model_pricings" edge to the ChannelModelPricing entity by IDs.
 func (_u *ChannelUpdate) AddChannelModelPricingIDs(ids ...int) *ChannelUpdate {
 	_u.mutation.AddChannelModelPricingIDs(ids...)
@@ -600,6 +616,27 @@ func (_u *ChannelUpdate) RemoveModelCatalogSources(v ...*ModelCatalogSource) *Ch
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveModelCatalogSourceIDs(ids...)
+}
+
+// ClearModelPricingSyncTargets clears all "model_pricing_sync_targets" edges to the ModelPricingSyncTarget entity.
+func (_u *ChannelUpdate) ClearModelPricingSyncTargets() *ChannelUpdate {
+	_u.mutation.ClearModelPricingSyncTargets()
+	return _u
+}
+
+// RemoveModelPricingSyncTargetIDs removes the "model_pricing_sync_targets" edge to ModelPricingSyncTarget entities by IDs.
+func (_u *ChannelUpdate) RemoveModelPricingSyncTargetIDs(ids ...int) *ChannelUpdate {
+	_u.mutation.RemoveModelPricingSyncTargetIDs(ids...)
+	return _u
+}
+
+// RemoveModelPricingSyncTargets removes "model_pricing_sync_targets" edges to ModelPricingSyncTarget entities.
+func (_u *ChannelUpdate) RemoveModelPricingSyncTargets(v ...*ModelPricingSyncTarget) *ChannelUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveModelPricingSyncTargetIDs(ids...)
 }
 
 // ClearChannelModelPricings clears all "channel_model_pricings" edges to the ChannelModelPricing entity.
@@ -945,6 +982,51 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ModelPricingSyncTargetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelPricingSyncTargetsTable,
+			Columns: []string{channel.ModelPricingSyncTargetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelpricingsynctarget.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedModelPricingSyncTargetsIDs(); len(nodes) > 0 && !_u.mutation.ModelPricingSyncTargetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelPricingSyncTargetsTable,
+			Columns: []string{channel.ModelPricingSyncTargetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelpricingsynctarget.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ModelPricingSyncTargetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelPricingSyncTargetsTable,
+			Columns: []string{channel.ModelPricingSyncTargetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelpricingsynctarget.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1518,6 +1600,21 @@ func (_u *ChannelUpdateOne) AddModelCatalogSources(v ...*ModelCatalogSource) *Ch
 	return _u.AddModelCatalogSourceIDs(ids...)
 }
 
+// AddModelPricingSyncTargetIDs adds the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity by IDs.
+func (_u *ChannelUpdateOne) AddModelPricingSyncTargetIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.AddModelPricingSyncTargetIDs(ids...)
+	return _u
+}
+
+// AddModelPricingSyncTargets adds the "model_pricing_sync_targets" edges to the ModelPricingSyncTarget entity.
+func (_u *ChannelUpdateOne) AddModelPricingSyncTargets(v ...*ModelPricingSyncTarget) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddModelPricingSyncTargetIDs(ids...)
+}
+
 // AddChannelModelPricingIDs adds the "channel_model_pricings" edge to the ChannelModelPricing entity by IDs.
 func (_u *ChannelUpdateOne) AddChannelModelPricingIDs(ids ...int) *ChannelUpdateOne {
 	_u.mutation.AddChannelModelPricingIDs(ids...)
@@ -1584,6 +1681,27 @@ func (_u *ChannelUpdateOne) RemoveModelCatalogSources(v ...*ModelCatalogSource) 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveModelCatalogSourceIDs(ids...)
+}
+
+// ClearModelPricingSyncTargets clears all "model_pricing_sync_targets" edges to the ModelPricingSyncTarget entity.
+func (_u *ChannelUpdateOne) ClearModelPricingSyncTargets() *ChannelUpdateOne {
+	_u.mutation.ClearModelPricingSyncTargets()
+	return _u
+}
+
+// RemoveModelPricingSyncTargetIDs removes the "model_pricing_sync_targets" edge to ModelPricingSyncTarget entities by IDs.
+func (_u *ChannelUpdateOne) RemoveModelPricingSyncTargetIDs(ids ...int) *ChannelUpdateOne {
+	_u.mutation.RemoveModelPricingSyncTargetIDs(ids...)
+	return _u
+}
+
+// RemoveModelPricingSyncTargets removes "model_pricing_sync_targets" edges to ModelPricingSyncTarget entities.
+func (_u *ChannelUpdateOne) RemoveModelPricingSyncTargets(v ...*ModelPricingSyncTarget) *ChannelUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveModelPricingSyncTargetIDs(ids...)
 }
 
 // ClearChannelModelPricings clears all "channel_model_pricings" edges to the ChannelModelPricing entity.
@@ -1959,6 +2077,51 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(modelcatalogsource.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ModelPricingSyncTargetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelPricingSyncTargetsTable,
+			Columns: []string{channel.ModelPricingSyncTargetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelpricingsynctarget.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedModelPricingSyncTargetsIDs(); len(nodes) > 0 && !_u.mutation.ModelPricingSyncTargetsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelPricingSyncTargetsTable,
+			Columns: []string{channel.ModelPricingSyncTargetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelpricingsynctarget.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ModelPricingSyncTargetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ModelPricingSyncTargetsTable,
+			Columns: []string{channel.ModelPricingSyncTargetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(modelpricingsynctarget.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

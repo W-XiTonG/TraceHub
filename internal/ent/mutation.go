@@ -21,6 +21,7 @@ import (
 	"tracehub/internal/ent/invoiceprofile"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
+	"tracehub/internal/ent/modelpricingsynctarget"
 	"tracehub/internal/ent/paymentledger"
 	"tracehub/internal/ent/paymentorder"
 	"tracehub/internal/ent/paymentrefund"
@@ -46,28 +47,29 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAPIKey               = "APIKey"
-	TypeAdminAuditLog        = "AdminAuditLog"
-	TypeAnnouncement         = "Announcement"
-	TypeChannel              = "Channel"
-	TypeChannelModelPricing  = "ChannelModelPricing"
-	TypeDashboardAggregation = "DashboardAggregation"
-	TypeFeedback             = "Feedback"
-	TypeGlobalModelPricing   = "GlobalModelPricing"
-	TypeGroup                = "Group"
-	TypeGroupModelRate       = "GroupModelRate"
-	TypeInvoiceProfile       = "InvoiceProfile"
-	TypeModelCatalogEntry    = "ModelCatalogEntry"
-	TypeModelCatalogSource   = "ModelCatalogSource"
-	TypePaymentLedger        = "PaymentLedger"
-	TypePaymentOrder         = "PaymentOrder"
-	TypePaymentRefund        = "PaymentRefund"
-	TypeRechargePackage      = "RechargePackage"
-	TypeRedeemCode           = "RedeemCode"
-	TypeRedeemLedger         = "RedeemLedger"
-	TypeSystemConfig         = "SystemConfig"
-	TypeUsageLog             = "UsageLog"
-	TypeUser                 = "User"
+	TypeAPIKey                 = "APIKey"
+	TypeAdminAuditLog          = "AdminAuditLog"
+	TypeAnnouncement           = "Announcement"
+	TypeChannel                = "Channel"
+	TypeChannelModelPricing    = "ChannelModelPricing"
+	TypeDashboardAggregation   = "DashboardAggregation"
+	TypeFeedback               = "Feedback"
+	TypeGlobalModelPricing     = "GlobalModelPricing"
+	TypeGroup                  = "Group"
+	TypeGroupModelRate         = "GroupModelRate"
+	TypeInvoiceProfile         = "InvoiceProfile"
+	TypeModelCatalogEntry      = "ModelCatalogEntry"
+	TypeModelCatalogSource     = "ModelCatalogSource"
+	TypeModelPricingSyncTarget = "ModelPricingSyncTarget"
+	TypePaymentLedger          = "PaymentLedger"
+	TypePaymentOrder           = "PaymentOrder"
+	TypePaymentRefund          = "PaymentRefund"
+	TypeRechargePackage        = "RechargePackage"
+	TypeRedeemCode             = "RedeemCode"
+	TypeRedeemLedger           = "RedeemLedger"
+	TypeSystemConfig           = "SystemConfig"
+	TypeUsageLog               = "UsageLog"
+	TypeUser                   = "User"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -4061,59 +4063,62 @@ func (m *AnnouncementMutation) ResetEdge(name string) error {
 // ChannelMutation represents an operation that mutates the Channel nodes in the graph.
 type ChannelMutation struct {
 	config
-	op                            Op
-	typ                           string
-	id                            *int
-	channel_type                  *string
-	channel_name                  *string
-	auth_type                     *channel.AuthType
-	api_key                       *string
-	oauth_token                   *string
-	oauth_refresh_token           *string
-	oauth_expires_at              *time.Time
-	setup_token                   *string
-	api_base_url                  *string
-	models                        *[]string
-	appendmodels                  []string
-	priority                      *int
-	addpriority                   *int
-	weight                        *int
-	addweight                     *int
-	concurrency                   *int
-	addconcurrency                *int
-	load_factor                   *float64
-	addload_factor                *float64
-	schedulable                   *bool
-	enabled                       *bool
-	health_status                 *int
-	addhealth_status              *int
-	error_count                   *int
-	adderror_count                *int
-	last_health_check             *time.Time
-	last_error_msg                *string
-	quota_used                    *int64
-	addquota_used                 *int64
-	quota_total                   *int64
-	addquota_total                *int64
-	model_alias                   *map[string]string
-	model_upstream_probe          *map[string]interface{}
-	created_at                    *time.Time
-	updated_at                    *time.Time
-	clearedFields                 map[string]struct{}
-	group                         *int
-	clearedgroup                  bool
-	usage_logs                    map[int]struct{}
-	removedusage_logs             map[int]struct{}
-	clearedusage_logs             bool
-	model_catalog_sources         map[int]struct{}
-	removedmodel_catalog_sources  map[int]struct{}
-	clearedmodel_catalog_sources  bool
-	channel_model_pricings        map[int]struct{}
-	removedchannel_model_pricings map[int]struct{}
-	clearedchannel_model_pricings bool
-	done                          bool
-	oldValue                      func(context.Context) (*Channel, error)
-	predicates                    []predicate.Channel
+	op                                Op
+	typ                               string
+	id                                *int
+	channel_type                      *string
+	channel_name                      *string
+	auth_type                         *channel.AuthType
+	api_key                           *string
+	oauth_token                       *string
+	oauth_refresh_token               *string
+	oauth_expires_at                  *time.Time
+	setup_token                       *string
+	api_base_url                      *string
+	models                            *[]string
+	appendmodels                      []string
+	priority                          *int
+	addpriority                       *int
+	weight                            *int
+	addweight                         *int
+	concurrency                       *int
+	addconcurrency                    *int
+	load_factor                       *float64
+	addload_factor                    *float64
+	schedulable                       *bool
+	enabled                           *bool
+	health_status                     *int
+	addhealth_status                  *int
+	error_count                       *int
+	adderror_count                    *int
+	last_health_check                 *time.Time
+	last_error_msg                    *string
+	quota_used                        *int64
+	addquota_used                     *int64
+	quota_total                       *int64
+	addquota_total                    *int64
+	model_alias                       *map[string]string
+	model_upstream_probe              *map[string]interface{}
+	created_at                        *time.Time
+	updated_at                        *time.Time
+	clearedFields                     map[string]struct{}
+	group                             *int
+	clearedgroup                      bool
+	usage_logs                        map[int]struct{}
+	removedusage_logs                 map[int]struct{}
+	clearedusage_logs                 bool
+	model_catalog_sources             map[int]struct{}
+	removedmodel_catalog_sources      map[int]struct{}
+	clearedmodel_catalog_sources      bool
+	model_pricing_sync_targets        map[int]struct{}
+	removedmodel_pricing_sync_targets map[int]struct{}
+	clearedmodel_pricing_sync_targets bool
+	channel_model_pricings            map[int]struct{}
+	removedchannel_model_pricings     map[int]struct{}
+	clearedchannel_model_pricings     bool
+	done                              bool
+	oldValue                          func(context.Context) (*Channel, error)
+	predicates                        []predicate.Channel
 }
 
 var _ ent.Mutation = (*ChannelMutation)(nil)
@@ -5652,6 +5657,60 @@ func (m *ChannelMutation) ResetModelCatalogSources() {
 	m.removedmodel_catalog_sources = nil
 }
 
+// AddModelPricingSyncTargetIDs adds the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity by ids.
+func (m *ChannelMutation) AddModelPricingSyncTargetIDs(ids ...int) {
+	if m.model_pricing_sync_targets == nil {
+		m.model_pricing_sync_targets = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.model_pricing_sync_targets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearModelPricingSyncTargets clears the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity.
+func (m *ChannelMutation) ClearModelPricingSyncTargets() {
+	m.clearedmodel_pricing_sync_targets = true
+}
+
+// ModelPricingSyncTargetsCleared reports if the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity was cleared.
+func (m *ChannelMutation) ModelPricingSyncTargetsCleared() bool {
+	return m.clearedmodel_pricing_sync_targets
+}
+
+// RemoveModelPricingSyncTargetIDs removes the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity by IDs.
+func (m *ChannelMutation) RemoveModelPricingSyncTargetIDs(ids ...int) {
+	if m.removedmodel_pricing_sync_targets == nil {
+		m.removedmodel_pricing_sync_targets = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.model_pricing_sync_targets, ids[i])
+		m.removedmodel_pricing_sync_targets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedModelPricingSyncTargets returns the removed IDs of the "model_pricing_sync_targets" edge to the ModelPricingSyncTarget entity.
+func (m *ChannelMutation) RemovedModelPricingSyncTargetsIDs() (ids []int) {
+	for id := range m.removedmodel_pricing_sync_targets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ModelPricingSyncTargetsIDs returns the "model_pricing_sync_targets" edge IDs in the mutation.
+func (m *ChannelMutation) ModelPricingSyncTargetsIDs() (ids []int) {
+	for id := range m.model_pricing_sync_targets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetModelPricingSyncTargets resets all changes to the "model_pricing_sync_targets" edge.
+func (m *ChannelMutation) ResetModelPricingSyncTargets() {
+	m.model_pricing_sync_targets = nil
+	m.clearedmodel_pricing_sync_targets = false
+	m.removedmodel_pricing_sync_targets = nil
+}
+
 // AddChannelModelPricingIDs adds the "channel_model_pricings" edge to the ChannelModelPricing entity by ids.
 func (m *ChannelMutation) AddChannelModelPricingIDs(ids ...int) {
 	if m.channel_model_pricings == nil {
@@ -6455,7 +6514,7 @@ func (m *ChannelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ChannelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.group != nil {
 		edges = append(edges, channel.EdgeGroup)
 	}
@@ -6464,6 +6523,9 @@ func (m *ChannelMutation) AddedEdges() []string {
 	}
 	if m.model_catalog_sources != nil {
 		edges = append(edges, channel.EdgeModelCatalogSources)
+	}
+	if m.model_pricing_sync_targets != nil {
+		edges = append(edges, channel.EdgeModelPricingSyncTargets)
 	}
 	if m.channel_model_pricings != nil {
 		edges = append(edges, channel.EdgeChannelModelPricings)
@@ -6491,6 +6553,12 @@ func (m *ChannelMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeModelPricingSyncTargets:
+		ids := make([]ent.Value, 0, len(m.model_pricing_sync_targets))
+		for id := range m.model_pricing_sync_targets {
+			ids = append(ids, id)
+		}
+		return ids
 	case channel.EdgeChannelModelPricings:
 		ids := make([]ent.Value, 0, len(m.channel_model_pricings))
 		for id := range m.channel_model_pricings {
@@ -6503,12 +6571,15 @@ func (m *ChannelMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ChannelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.removedusage_logs != nil {
 		edges = append(edges, channel.EdgeUsageLogs)
 	}
 	if m.removedmodel_catalog_sources != nil {
 		edges = append(edges, channel.EdgeModelCatalogSources)
+	}
+	if m.removedmodel_pricing_sync_targets != nil {
+		edges = append(edges, channel.EdgeModelPricingSyncTargets)
 	}
 	if m.removedchannel_model_pricings != nil {
 		edges = append(edges, channel.EdgeChannelModelPricings)
@@ -6532,6 +6603,12 @@ func (m *ChannelMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeModelPricingSyncTargets:
+		ids := make([]ent.Value, 0, len(m.removedmodel_pricing_sync_targets))
+		for id := range m.removedmodel_pricing_sync_targets {
+			ids = append(ids, id)
+		}
+		return ids
 	case channel.EdgeChannelModelPricings:
 		ids := make([]ent.Value, 0, len(m.removedchannel_model_pricings))
 		for id := range m.removedchannel_model_pricings {
@@ -6544,7 +6621,7 @@ func (m *ChannelMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ChannelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.clearedgroup {
 		edges = append(edges, channel.EdgeGroup)
 	}
@@ -6553,6 +6630,9 @@ func (m *ChannelMutation) ClearedEdges() []string {
 	}
 	if m.clearedmodel_catalog_sources {
 		edges = append(edges, channel.EdgeModelCatalogSources)
+	}
+	if m.clearedmodel_pricing_sync_targets {
+		edges = append(edges, channel.EdgeModelPricingSyncTargets)
 	}
 	if m.clearedchannel_model_pricings {
 		edges = append(edges, channel.EdgeChannelModelPricings)
@@ -6570,6 +6650,8 @@ func (m *ChannelMutation) EdgeCleared(name string) bool {
 		return m.clearedusage_logs
 	case channel.EdgeModelCatalogSources:
 		return m.clearedmodel_catalog_sources
+	case channel.EdgeModelPricingSyncTargets:
+		return m.clearedmodel_pricing_sync_targets
 	case channel.EdgeChannelModelPricings:
 		return m.clearedchannel_model_pricings
 	}
@@ -6599,6 +6681,9 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 		return nil
 	case channel.EdgeModelCatalogSources:
 		m.ResetModelCatalogSources()
+		return nil
+	case channel.EdgeModelPricingSyncTargets:
+		m.ResetModelPricingSyncTargets()
 		return nil
 	case channel.EdgeChannelModelPricings:
 		m.ResetChannelModelPricings()
@@ -16918,6 +17003,2412 @@ func (m *ModelCatalogSourceMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ModelCatalogSource edge %s", name)
+}
+
+// ModelPricingSyncTargetMutation represents an operation that mutates the ModelPricingSyncTarget nodes in the graph.
+type ModelPricingSyncTargetMutation struct {
+	config
+	op                           Op
+	typ                          string
+	id                           *int
+	name                         *string
+	direction                    *modelpricingsynctarget.Direction
+	base_url                     *string
+	pull_path                    *string
+	push_path                    *string
+	credential_mode              *modelpricingsynctarget.CredentialMode
+	api_key_encrypted            *string
+	extra_headers                *map[string]string
+	parse_mode                   *modelpricingsynctarget.ParseMode
+	scopes                       *[]string
+	appendscopes                 []string
+	channel_filter               *[]int
+	appendchannel_filter         []int
+	group_filter                 *[]int
+	appendgroup_filter           []int
+	model_include_mode           *modelpricingsynctarget.ModelIncludeMode
+	model_allowlist              *[]string
+	appendmodel_allowlist        []string
+	model_denylist               *[]string
+	appendmodel_denylist         []string
+	model_include_patterns       *[]string
+	appendmodel_include_patterns []string
+	channel_ref_map              *map[string]int
+	group_ref_map                *map[string]int
+	merge_strategy               *modelpricingsynctarget.MergeStrategy
+	schedule_enabled             *bool
+	schedule_interval_min        *int
+	addschedule_interval_min     *int
+	enabled                      *bool
+	last_pull_at                 *time.Time
+	last_pull_ok                 *bool
+	last_pull_message            *string
+	last_push_at                 *time.Time
+	last_push_ok                 *bool
+	last_push_message            *string
+	created_at                   *time.Time
+	updated_at                   *time.Time
+	clearedFields                map[string]struct{}
+	channel                      *int
+	clearedchannel               bool
+	done                         bool
+	oldValue                     func(context.Context) (*ModelPricingSyncTarget, error)
+	predicates                   []predicate.ModelPricingSyncTarget
+}
+
+var _ ent.Mutation = (*ModelPricingSyncTargetMutation)(nil)
+
+// modelpricingsynctargetOption allows management of the mutation configuration using functional options.
+type modelpricingsynctargetOption func(*ModelPricingSyncTargetMutation)
+
+// newModelPricingSyncTargetMutation creates new mutation for the ModelPricingSyncTarget entity.
+func newModelPricingSyncTargetMutation(c config, op Op, opts ...modelpricingsynctargetOption) *ModelPricingSyncTargetMutation {
+	m := &ModelPricingSyncTargetMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeModelPricingSyncTarget,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withModelPricingSyncTargetID sets the ID field of the mutation.
+func withModelPricingSyncTargetID(id int) modelpricingsynctargetOption {
+	return func(m *ModelPricingSyncTargetMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ModelPricingSyncTarget
+		)
+		m.oldValue = func(ctx context.Context) (*ModelPricingSyncTarget, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ModelPricingSyncTarget.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withModelPricingSyncTarget sets the old ModelPricingSyncTarget of the mutation.
+func withModelPricingSyncTarget(node *ModelPricingSyncTarget) modelpricingsynctargetOption {
+	return func(m *ModelPricingSyncTargetMutation) {
+		m.oldValue = func(context.Context) (*ModelPricingSyncTarget, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ModelPricingSyncTargetMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ModelPricingSyncTargetMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ModelPricingSyncTargetMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ModelPricingSyncTargetMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ModelPricingSyncTarget.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *ModelPricingSyncTargetMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *ModelPricingSyncTargetMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDirection sets the "direction" field.
+func (m *ModelPricingSyncTargetMutation) SetDirection(value modelpricingsynctarget.Direction) {
+	m.direction = &value
+}
+
+// Direction returns the value of the "direction" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) Direction() (r modelpricingsynctarget.Direction, exists bool) {
+	v := m.direction
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDirection returns the old "direction" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldDirection(ctx context.Context) (v modelpricingsynctarget.Direction, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDirection is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDirection requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDirection: %w", err)
+	}
+	return oldValue.Direction, nil
+}
+
+// ResetDirection resets all changes to the "direction" field.
+func (m *ModelPricingSyncTargetMutation) ResetDirection() {
+	m.direction = nil
+}
+
+// SetBaseURL sets the "base_url" field.
+func (m *ModelPricingSyncTargetMutation) SetBaseURL(s string) {
+	m.base_url = &s
+}
+
+// BaseURL returns the value of the "base_url" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) BaseURL() (r string, exists bool) {
+	v := m.base_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBaseURL returns the old "base_url" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldBaseURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBaseURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBaseURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBaseURL: %w", err)
+	}
+	return oldValue.BaseURL, nil
+}
+
+// ResetBaseURL resets all changes to the "base_url" field.
+func (m *ModelPricingSyncTargetMutation) ResetBaseURL() {
+	m.base_url = nil
+}
+
+// SetPullPath sets the "pull_path" field.
+func (m *ModelPricingSyncTargetMutation) SetPullPath(s string) {
+	m.pull_path = &s
+}
+
+// PullPath returns the value of the "pull_path" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) PullPath() (r string, exists bool) {
+	v := m.pull_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPullPath returns the old "pull_path" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldPullPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPullPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPullPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPullPath: %w", err)
+	}
+	return oldValue.PullPath, nil
+}
+
+// ResetPullPath resets all changes to the "pull_path" field.
+func (m *ModelPricingSyncTargetMutation) ResetPullPath() {
+	m.pull_path = nil
+}
+
+// SetPushPath sets the "push_path" field.
+func (m *ModelPricingSyncTargetMutation) SetPushPath(s string) {
+	m.push_path = &s
+}
+
+// PushPath returns the value of the "push_path" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) PushPath() (r string, exists bool) {
+	v := m.push_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPushPath returns the old "push_path" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldPushPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPushPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPushPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPushPath: %w", err)
+	}
+	return oldValue.PushPath, nil
+}
+
+// ResetPushPath resets all changes to the "push_path" field.
+func (m *ModelPricingSyncTargetMutation) ResetPushPath() {
+	m.push_path = nil
+}
+
+// SetCredentialMode sets the "credential_mode" field.
+func (m *ModelPricingSyncTargetMutation) SetCredentialMode(mm modelpricingsynctarget.CredentialMode) {
+	m.credential_mode = &mm
+}
+
+// CredentialMode returns the value of the "credential_mode" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) CredentialMode() (r modelpricingsynctarget.CredentialMode, exists bool) {
+	v := m.credential_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCredentialMode returns the old "credential_mode" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldCredentialMode(ctx context.Context) (v modelpricingsynctarget.CredentialMode, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCredentialMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCredentialMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCredentialMode: %w", err)
+	}
+	return oldValue.CredentialMode, nil
+}
+
+// ResetCredentialMode resets all changes to the "credential_mode" field.
+func (m *ModelPricingSyncTargetMutation) ResetCredentialMode() {
+	m.credential_mode = nil
+}
+
+// SetAPIKeyEncrypted sets the "api_key_encrypted" field.
+func (m *ModelPricingSyncTargetMutation) SetAPIKeyEncrypted(s string) {
+	m.api_key_encrypted = &s
+}
+
+// APIKeyEncrypted returns the value of the "api_key_encrypted" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) APIKeyEncrypted() (r string, exists bool) {
+	v := m.api_key_encrypted
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAPIKeyEncrypted returns the old "api_key_encrypted" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldAPIKeyEncrypted(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAPIKeyEncrypted is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAPIKeyEncrypted requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAPIKeyEncrypted: %w", err)
+	}
+	return oldValue.APIKeyEncrypted, nil
+}
+
+// ClearAPIKeyEncrypted clears the value of the "api_key_encrypted" field.
+func (m *ModelPricingSyncTargetMutation) ClearAPIKeyEncrypted() {
+	m.api_key_encrypted = nil
+	m.clearedFields[modelpricingsynctarget.FieldAPIKeyEncrypted] = struct{}{}
+}
+
+// APIKeyEncryptedCleared returns if the "api_key_encrypted" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) APIKeyEncryptedCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldAPIKeyEncrypted]
+	return ok
+}
+
+// ResetAPIKeyEncrypted resets all changes to the "api_key_encrypted" field.
+func (m *ModelPricingSyncTargetMutation) ResetAPIKeyEncrypted() {
+	m.api_key_encrypted = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldAPIKeyEncrypted)
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *ModelPricingSyncTargetMutation) SetChannelID(i int) {
+	m.channel = &i
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ChannelID() (r int, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (m *ModelPricingSyncTargetMutation) ClearChannelID() {
+	m.channel = nil
+	m.clearedFields[modelpricingsynctarget.FieldChannelID] = struct{}{}
+}
+
+// ChannelIDCleared returns if the "channel_id" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ChannelIDCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldChannelID]
+	return ok
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *ModelPricingSyncTargetMutation) ResetChannelID() {
+	m.channel = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldChannelID)
+}
+
+// SetExtraHeaders sets the "extra_headers" field.
+func (m *ModelPricingSyncTargetMutation) SetExtraHeaders(value map[string]string) {
+	m.extra_headers = &value
+}
+
+// ExtraHeaders returns the value of the "extra_headers" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ExtraHeaders() (r map[string]string, exists bool) {
+	v := m.extra_headers
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExtraHeaders returns the old "extra_headers" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldExtraHeaders(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExtraHeaders is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExtraHeaders requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExtraHeaders: %w", err)
+	}
+	return oldValue.ExtraHeaders, nil
+}
+
+// ClearExtraHeaders clears the value of the "extra_headers" field.
+func (m *ModelPricingSyncTargetMutation) ClearExtraHeaders() {
+	m.extra_headers = nil
+	m.clearedFields[modelpricingsynctarget.FieldExtraHeaders] = struct{}{}
+}
+
+// ExtraHeadersCleared returns if the "extra_headers" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ExtraHeadersCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldExtraHeaders]
+	return ok
+}
+
+// ResetExtraHeaders resets all changes to the "extra_headers" field.
+func (m *ModelPricingSyncTargetMutation) ResetExtraHeaders() {
+	m.extra_headers = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldExtraHeaders)
+}
+
+// SetParseMode sets the "parse_mode" field.
+func (m *ModelPricingSyncTargetMutation) SetParseMode(mm modelpricingsynctarget.ParseMode) {
+	m.parse_mode = &mm
+}
+
+// ParseMode returns the value of the "parse_mode" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ParseMode() (r modelpricingsynctarget.ParseMode, exists bool) {
+	v := m.parse_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldParseMode returns the old "parse_mode" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldParseMode(ctx context.Context) (v modelpricingsynctarget.ParseMode, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldParseMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldParseMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldParseMode: %w", err)
+	}
+	return oldValue.ParseMode, nil
+}
+
+// ResetParseMode resets all changes to the "parse_mode" field.
+func (m *ModelPricingSyncTargetMutation) ResetParseMode() {
+	m.parse_mode = nil
+}
+
+// SetScopes sets the "scopes" field.
+func (m *ModelPricingSyncTargetMutation) SetScopes(s []string) {
+	m.scopes = &s
+	m.appendscopes = nil
+}
+
+// Scopes returns the value of the "scopes" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) Scopes() (r []string, exists bool) {
+	v := m.scopes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScopes returns the old "scopes" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldScopes(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScopes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScopes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScopes: %w", err)
+	}
+	return oldValue.Scopes, nil
+}
+
+// AppendScopes adds s to the "scopes" field.
+func (m *ModelPricingSyncTargetMutation) AppendScopes(s []string) {
+	m.appendscopes = append(m.appendscopes, s...)
+}
+
+// AppendedScopes returns the list of values that were appended to the "scopes" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AppendedScopes() ([]string, bool) {
+	if len(m.appendscopes) == 0 {
+		return nil, false
+	}
+	return m.appendscopes, true
+}
+
+// ResetScopes resets all changes to the "scopes" field.
+func (m *ModelPricingSyncTargetMutation) ResetScopes() {
+	m.scopes = nil
+	m.appendscopes = nil
+}
+
+// SetChannelFilter sets the "channel_filter" field.
+func (m *ModelPricingSyncTargetMutation) SetChannelFilter(i []int) {
+	m.channel_filter = &i
+	m.appendchannel_filter = nil
+}
+
+// ChannelFilter returns the value of the "channel_filter" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ChannelFilter() (r []int, exists bool) {
+	v := m.channel_filter
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelFilter returns the old "channel_filter" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldChannelFilter(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelFilter is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelFilter requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelFilter: %w", err)
+	}
+	return oldValue.ChannelFilter, nil
+}
+
+// AppendChannelFilter adds i to the "channel_filter" field.
+func (m *ModelPricingSyncTargetMutation) AppendChannelFilter(i []int) {
+	m.appendchannel_filter = append(m.appendchannel_filter, i...)
+}
+
+// AppendedChannelFilter returns the list of values that were appended to the "channel_filter" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AppendedChannelFilter() ([]int, bool) {
+	if len(m.appendchannel_filter) == 0 {
+		return nil, false
+	}
+	return m.appendchannel_filter, true
+}
+
+// ClearChannelFilter clears the value of the "channel_filter" field.
+func (m *ModelPricingSyncTargetMutation) ClearChannelFilter() {
+	m.channel_filter = nil
+	m.appendchannel_filter = nil
+	m.clearedFields[modelpricingsynctarget.FieldChannelFilter] = struct{}{}
+}
+
+// ChannelFilterCleared returns if the "channel_filter" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ChannelFilterCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldChannelFilter]
+	return ok
+}
+
+// ResetChannelFilter resets all changes to the "channel_filter" field.
+func (m *ModelPricingSyncTargetMutation) ResetChannelFilter() {
+	m.channel_filter = nil
+	m.appendchannel_filter = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldChannelFilter)
+}
+
+// SetGroupFilter sets the "group_filter" field.
+func (m *ModelPricingSyncTargetMutation) SetGroupFilter(i []int) {
+	m.group_filter = &i
+	m.appendgroup_filter = nil
+}
+
+// GroupFilter returns the value of the "group_filter" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) GroupFilter() (r []int, exists bool) {
+	v := m.group_filter
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGroupFilter returns the old "group_filter" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldGroupFilter(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGroupFilter is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGroupFilter requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGroupFilter: %w", err)
+	}
+	return oldValue.GroupFilter, nil
+}
+
+// AppendGroupFilter adds i to the "group_filter" field.
+func (m *ModelPricingSyncTargetMutation) AppendGroupFilter(i []int) {
+	m.appendgroup_filter = append(m.appendgroup_filter, i...)
+}
+
+// AppendedGroupFilter returns the list of values that were appended to the "group_filter" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AppendedGroupFilter() ([]int, bool) {
+	if len(m.appendgroup_filter) == 0 {
+		return nil, false
+	}
+	return m.appendgroup_filter, true
+}
+
+// ClearGroupFilter clears the value of the "group_filter" field.
+func (m *ModelPricingSyncTargetMutation) ClearGroupFilter() {
+	m.group_filter = nil
+	m.appendgroup_filter = nil
+	m.clearedFields[modelpricingsynctarget.FieldGroupFilter] = struct{}{}
+}
+
+// GroupFilterCleared returns if the "group_filter" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) GroupFilterCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldGroupFilter]
+	return ok
+}
+
+// ResetGroupFilter resets all changes to the "group_filter" field.
+func (m *ModelPricingSyncTargetMutation) ResetGroupFilter() {
+	m.group_filter = nil
+	m.appendgroup_filter = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldGroupFilter)
+}
+
+// SetModelIncludeMode sets the "model_include_mode" field.
+func (m *ModelPricingSyncTargetMutation) SetModelIncludeMode(mim modelpricingsynctarget.ModelIncludeMode) {
+	m.model_include_mode = &mim
+}
+
+// ModelIncludeMode returns the value of the "model_include_mode" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ModelIncludeMode() (r modelpricingsynctarget.ModelIncludeMode, exists bool) {
+	v := m.model_include_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelIncludeMode returns the old "model_include_mode" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldModelIncludeMode(ctx context.Context) (v modelpricingsynctarget.ModelIncludeMode, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelIncludeMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelIncludeMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelIncludeMode: %w", err)
+	}
+	return oldValue.ModelIncludeMode, nil
+}
+
+// ResetModelIncludeMode resets all changes to the "model_include_mode" field.
+func (m *ModelPricingSyncTargetMutation) ResetModelIncludeMode() {
+	m.model_include_mode = nil
+}
+
+// SetModelAllowlist sets the "model_allowlist" field.
+func (m *ModelPricingSyncTargetMutation) SetModelAllowlist(s []string) {
+	m.model_allowlist = &s
+	m.appendmodel_allowlist = nil
+}
+
+// ModelAllowlist returns the value of the "model_allowlist" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ModelAllowlist() (r []string, exists bool) {
+	v := m.model_allowlist
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelAllowlist returns the old "model_allowlist" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldModelAllowlist(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelAllowlist is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelAllowlist requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelAllowlist: %w", err)
+	}
+	return oldValue.ModelAllowlist, nil
+}
+
+// AppendModelAllowlist adds s to the "model_allowlist" field.
+func (m *ModelPricingSyncTargetMutation) AppendModelAllowlist(s []string) {
+	m.appendmodel_allowlist = append(m.appendmodel_allowlist, s...)
+}
+
+// AppendedModelAllowlist returns the list of values that were appended to the "model_allowlist" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AppendedModelAllowlist() ([]string, bool) {
+	if len(m.appendmodel_allowlist) == 0 {
+		return nil, false
+	}
+	return m.appendmodel_allowlist, true
+}
+
+// ClearModelAllowlist clears the value of the "model_allowlist" field.
+func (m *ModelPricingSyncTargetMutation) ClearModelAllowlist() {
+	m.model_allowlist = nil
+	m.appendmodel_allowlist = nil
+	m.clearedFields[modelpricingsynctarget.FieldModelAllowlist] = struct{}{}
+}
+
+// ModelAllowlistCleared returns if the "model_allowlist" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ModelAllowlistCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldModelAllowlist]
+	return ok
+}
+
+// ResetModelAllowlist resets all changes to the "model_allowlist" field.
+func (m *ModelPricingSyncTargetMutation) ResetModelAllowlist() {
+	m.model_allowlist = nil
+	m.appendmodel_allowlist = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldModelAllowlist)
+}
+
+// SetModelDenylist sets the "model_denylist" field.
+func (m *ModelPricingSyncTargetMutation) SetModelDenylist(s []string) {
+	m.model_denylist = &s
+	m.appendmodel_denylist = nil
+}
+
+// ModelDenylist returns the value of the "model_denylist" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ModelDenylist() (r []string, exists bool) {
+	v := m.model_denylist
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelDenylist returns the old "model_denylist" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldModelDenylist(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelDenylist is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelDenylist requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelDenylist: %w", err)
+	}
+	return oldValue.ModelDenylist, nil
+}
+
+// AppendModelDenylist adds s to the "model_denylist" field.
+func (m *ModelPricingSyncTargetMutation) AppendModelDenylist(s []string) {
+	m.appendmodel_denylist = append(m.appendmodel_denylist, s...)
+}
+
+// AppendedModelDenylist returns the list of values that were appended to the "model_denylist" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AppendedModelDenylist() ([]string, bool) {
+	if len(m.appendmodel_denylist) == 0 {
+		return nil, false
+	}
+	return m.appendmodel_denylist, true
+}
+
+// ClearModelDenylist clears the value of the "model_denylist" field.
+func (m *ModelPricingSyncTargetMutation) ClearModelDenylist() {
+	m.model_denylist = nil
+	m.appendmodel_denylist = nil
+	m.clearedFields[modelpricingsynctarget.FieldModelDenylist] = struct{}{}
+}
+
+// ModelDenylistCleared returns if the "model_denylist" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ModelDenylistCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldModelDenylist]
+	return ok
+}
+
+// ResetModelDenylist resets all changes to the "model_denylist" field.
+func (m *ModelPricingSyncTargetMutation) ResetModelDenylist() {
+	m.model_denylist = nil
+	m.appendmodel_denylist = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldModelDenylist)
+}
+
+// SetModelIncludePatterns sets the "model_include_patterns" field.
+func (m *ModelPricingSyncTargetMutation) SetModelIncludePatterns(s []string) {
+	m.model_include_patterns = &s
+	m.appendmodel_include_patterns = nil
+}
+
+// ModelIncludePatterns returns the value of the "model_include_patterns" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ModelIncludePatterns() (r []string, exists bool) {
+	v := m.model_include_patterns
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelIncludePatterns returns the old "model_include_patterns" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldModelIncludePatterns(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelIncludePatterns is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelIncludePatterns requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelIncludePatterns: %w", err)
+	}
+	return oldValue.ModelIncludePatterns, nil
+}
+
+// AppendModelIncludePatterns adds s to the "model_include_patterns" field.
+func (m *ModelPricingSyncTargetMutation) AppendModelIncludePatterns(s []string) {
+	m.appendmodel_include_patterns = append(m.appendmodel_include_patterns, s...)
+}
+
+// AppendedModelIncludePatterns returns the list of values that were appended to the "model_include_patterns" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AppendedModelIncludePatterns() ([]string, bool) {
+	if len(m.appendmodel_include_patterns) == 0 {
+		return nil, false
+	}
+	return m.appendmodel_include_patterns, true
+}
+
+// ClearModelIncludePatterns clears the value of the "model_include_patterns" field.
+func (m *ModelPricingSyncTargetMutation) ClearModelIncludePatterns() {
+	m.model_include_patterns = nil
+	m.appendmodel_include_patterns = nil
+	m.clearedFields[modelpricingsynctarget.FieldModelIncludePatterns] = struct{}{}
+}
+
+// ModelIncludePatternsCleared returns if the "model_include_patterns" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ModelIncludePatternsCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldModelIncludePatterns]
+	return ok
+}
+
+// ResetModelIncludePatterns resets all changes to the "model_include_patterns" field.
+func (m *ModelPricingSyncTargetMutation) ResetModelIncludePatterns() {
+	m.model_include_patterns = nil
+	m.appendmodel_include_patterns = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldModelIncludePatterns)
+}
+
+// SetChannelRefMap sets the "channel_ref_map" field.
+func (m *ModelPricingSyncTargetMutation) SetChannelRefMap(value map[string]int) {
+	m.channel_ref_map = &value
+}
+
+// ChannelRefMap returns the value of the "channel_ref_map" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ChannelRefMap() (r map[string]int, exists bool) {
+	v := m.channel_ref_map
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelRefMap returns the old "channel_ref_map" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldChannelRefMap(ctx context.Context) (v map[string]int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelRefMap is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelRefMap requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelRefMap: %w", err)
+	}
+	return oldValue.ChannelRefMap, nil
+}
+
+// ClearChannelRefMap clears the value of the "channel_ref_map" field.
+func (m *ModelPricingSyncTargetMutation) ClearChannelRefMap() {
+	m.channel_ref_map = nil
+	m.clearedFields[modelpricingsynctarget.FieldChannelRefMap] = struct{}{}
+}
+
+// ChannelRefMapCleared returns if the "channel_ref_map" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ChannelRefMapCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldChannelRefMap]
+	return ok
+}
+
+// ResetChannelRefMap resets all changes to the "channel_ref_map" field.
+func (m *ModelPricingSyncTargetMutation) ResetChannelRefMap() {
+	m.channel_ref_map = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldChannelRefMap)
+}
+
+// SetGroupRefMap sets the "group_ref_map" field.
+func (m *ModelPricingSyncTargetMutation) SetGroupRefMap(value map[string]int) {
+	m.group_ref_map = &value
+}
+
+// GroupRefMap returns the value of the "group_ref_map" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) GroupRefMap() (r map[string]int, exists bool) {
+	v := m.group_ref_map
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGroupRefMap returns the old "group_ref_map" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldGroupRefMap(ctx context.Context) (v map[string]int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGroupRefMap is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGroupRefMap requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGroupRefMap: %w", err)
+	}
+	return oldValue.GroupRefMap, nil
+}
+
+// ClearGroupRefMap clears the value of the "group_ref_map" field.
+func (m *ModelPricingSyncTargetMutation) ClearGroupRefMap() {
+	m.group_ref_map = nil
+	m.clearedFields[modelpricingsynctarget.FieldGroupRefMap] = struct{}{}
+}
+
+// GroupRefMapCleared returns if the "group_ref_map" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) GroupRefMapCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldGroupRefMap]
+	return ok
+}
+
+// ResetGroupRefMap resets all changes to the "group_ref_map" field.
+func (m *ModelPricingSyncTargetMutation) ResetGroupRefMap() {
+	m.group_ref_map = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldGroupRefMap)
+}
+
+// SetMergeStrategy sets the "merge_strategy" field.
+func (m *ModelPricingSyncTargetMutation) SetMergeStrategy(ms modelpricingsynctarget.MergeStrategy) {
+	m.merge_strategy = &ms
+}
+
+// MergeStrategy returns the value of the "merge_strategy" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) MergeStrategy() (r modelpricingsynctarget.MergeStrategy, exists bool) {
+	v := m.merge_strategy
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMergeStrategy returns the old "merge_strategy" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldMergeStrategy(ctx context.Context) (v modelpricingsynctarget.MergeStrategy, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMergeStrategy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMergeStrategy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMergeStrategy: %w", err)
+	}
+	return oldValue.MergeStrategy, nil
+}
+
+// ResetMergeStrategy resets all changes to the "merge_strategy" field.
+func (m *ModelPricingSyncTargetMutation) ResetMergeStrategy() {
+	m.merge_strategy = nil
+}
+
+// SetScheduleEnabled sets the "schedule_enabled" field.
+func (m *ModelPricingSyncTargetMutation) SetScheduleEnabled(b bool) {
+	m.schedule_enabled = &b
+}
+
+// ScheduleEnabled returns the value of the "schedule_enabled" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ScheduleEnabled() (r bool, exists bool) {
+	v := m.schedule_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScheduleEnabled returns the old "schedule_enabled" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldScheduleEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScheduleEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScheduleEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScheduleEnabled: %w", err)
+	}
+	return oldValue.ScheduleEnabled, nil
+}
+
+// ResetScheduleEnabled resets all changes to the "schedule_enabled" field.
+func (m *ModelPricingSyncTargetMutation) ResetScheduleEnabled() {
+	m.schedule_enabled = nil
+}
+
+// SetScheduleIntervalMin sets the "schedule_interval_min" field.
+func (m *ModelPricingSyncTargetMutation) SetScheduleIntervalMin(i int) {
+	m.schedule_interval_min = &i
+	m.addschedule_interval_min = nil
+}
+
+// ScheduleIntervalMin returns the value of the "schedule_interval_min" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) ScheduleIntervalMin() (r int, exists bool) {
+	v := m.schedule_interval_min
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScheduleIntervalMin returns the old "schedule_interval_min" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldScheduleIntervalMin(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScheduleIntervalMin is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScheduleIntervalMin requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScheduleIntervalMin: %w", err)
+	}
+	return oldValue.ScheduleIntervalMin, nil
+}
+
+// AddScheduleIntervalMin adds i to the "schedule_interval_min" field.
+func (m *ModelPricingSyncTargetMutation) AddScheduleIntervalMin(i int) {
+	if m.addschedule_interval_min != nil {
+		*m.addschedule_interval_min += i
+	} else {
+		m.addschedule_interval_min = &i
+	}
+}
+
+// AddedScheduleIntervalMin returns the value that was added to the "schedule_interval_min" field in this mutation.
+func (m *ModelPricingSyncTargetMutation) AddedScheduleIntervalMin() (r int, exists bool) {
+	v := m.addschedule_interval_min
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetScheduleIntervalMin resets all changes to the "schedule_interval_min" field.
+func (m *ModelPricingSyncTargetMutation) ResetScheduleIntervalMin() {
+	m.schedule_interval_min = nil
+	m.addschedule_interval_min = nil
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *ModelPricingSyncTargetMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *ModelPricingSyncTargetMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetLastPullAt sets the "last_pull_at" field.
+func (m *ModelPricingSyncTargetMutation) SetLastPullAt(t time.Time) {
+	m.last_pull_at = &t
+}
+
+// LastPullAt returns the value of the "last_pull_at" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) LastPullAt() (r time.Time, exists bool) {
+	v := m.last_pull_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPullAt returns the old "last_pull_at" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldLastPullAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPullAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPullAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPullAt: %w", err)
+	}
+	return oldValue.LastPullAt, nil
+}
+
+// ClearLastPullAt clears the value of the "last_pull_at" field.
+func (m *ModelPricingSyncTargetMutation) ClearLastPullAt() {
+	m.last_pull_at = nil
+	m.clearedFields[modelpricingsynctarget.FieldLastPullAt] = struct{}{}
+}
+
+// LastPullAtCleared returns if the "last_pull_at" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) LastPullAtCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldLastPullAt]
+	return ok
+}
+
+// ResetLastPullAt resets all changes to the "last_pull_at" field.
+func (m *ModelPricingSyncTargetMutation) ResetLastPullAt() {
+	m.last_pull_at = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldLastPullAt)
+}
+
+// SetLastPullOk sets the "last_pull_ok" field.
+func (m *ModelPricingSyncTargetMutation) SetLastPullOk(b bool) {
+	m.last_pull_ok = &b
+}
+
+// LastPullOk returns the value of the "last_pull_ok" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) LastPullOk() (r bool, exists bool) {
+	v := m.last_pull_ok
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPullOk returns the old "last_pull_ok" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldLastPullOk(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPullOk is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPullOk requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPullOk: %w", err)
+	}
+	return oldValue.LastPullOk, nil
+}
+
+// ResetLastPullOk resets all changes to the "last_pull_ok" field.
+func (m *ModelPricingSyncTargetMutation) ResetLastPullOk() {
+	m.last_pull_ok = nil
+}
+
+// SetLastPullMessage sets the "last_pull_message" field.
+func (m *ModelPricingSyncTargetMutation) SetLastPullMessage(s string) {
+	m.last_pull_message = &s
+}
+
+// LastPullMessage returns the value of the "last_pull_message" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) LastPullMessage() (r string, exists bool) {
+	v := m.last_pull_message
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPullMessage returns the old "last_pull_message" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldLastPullMessage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPullMessage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPullMessage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPullMessage: %w", err)
+	}
+	return oldValue.LastPullMessage, nil
+}
+
+// ClearLastPullMessage clears the value of the "last_pull_message" field.
+func (m *ModelPricingSyncTargetMutation) ClearLastPullMessage() {
+	m.last_pull_message = nil
+	m.clearedFields[modelpricingsynctarget.FieldLastPullMessage] = struct{}{}
+}
+
+// LastPullMessageCleared returns if the "last_pull_message" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) LastPullMessageCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldLastPullMessage]
+	return ok
+}
+
+// ResetLastPullMessage resets all changes to the "last_pull_message" field.
+func (m *ModelPricingSyncTargetMutation) ResetLastPullMessage() {
+	m.last_pull_message = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldLastPullMessage)
+}
+
+// SetLastPushAt sets the "last_push_at" field.
+func (m *ModelPricingSyncTargetMutation) SetLastPushAt(t time.Time) {
+	m.last_push_at = &t
+}
+
+// LastPushAt returns the value of the "last_push_at" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) LastPushAt() (r time.Time, exists bool) {
+	v := m.last_push_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPushAt returns the old "last_push_at" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldLastPushAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPushAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPushAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPushAt: %w", err)
+	}
+	return oldValue.LastPushAt, nil
+}
+
+// ClearLastPushAt clears the value of the "last_push_at" field.
+func (m *ModelPricingSyncTargetMutation) ClearLastPushAt() {
+	m.last_push_at = nil
+	m.clearedFields[modelpricingsynctarget.FieldLastPushAt] = struct{}{}
+}
+
+// LastPushAtCleared returns if the "last_push_at" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) LastPushAtCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldLastPushAt]
+	return ok
+}
+
+// ResetLastPushAt resets all changes to the "last_push_at" field.
+func (m *ModelPricingSyncTargetMutation) ResetLastPushAt() {
+	m.last_push_at = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldLastPushAt)
+}
+
+// SetLastPushOk sets the "last_push_ok" field.
+func (m *ModelPricingSyncTargetMutation) SetLastPushOk(b bool) {
+	m.last_push_ok = &b
+}
+
+// LastPushOk returns the value of the "last_push_ok" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) LastPushOk() (r bool, exists bool) {
+	v := m.last_push_ok
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPushOk returns the old "last_push_ok" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldLastPushOk(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPushOk is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPushOk requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPushOk: %w", err)
+	}
+	return oldValue.LastPushOk, nil
+}
+
+// ResetLastPushOk resets all changes to the "last_push_ok" field.
+func (m *ModelPricingSyncTargetMutation) ResetLastPushOk() {
+	m.last_push_ok = nil
+}
+
+// SetLastPushMessage sets the "last_push_message" field.
+func (m *ModelPricingSyncTargetMutation) SetLastPushMessage(s string) {
+	m.last_push_message = &s
+}
+
+// LastPushMessage returns the value of the "last_push_message" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) LastPushMessage() (r string, exists bool) {
+	v := m.last_push_message
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPushMessage returns the old "last_push_message" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldLastPushMessage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPushMessage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPushMessage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPushMessage: %w", err)
+	}
+	return oldValue.LastPushMessage, nil
+}
+
+// ClearLastPushMessage clears the value of the "last_push_message" field.
+func (m *ModelPricingSyncTargetMutation) ClearLastPushMessage() {
+	m.last_push_message = nil
+	m.clearedFields[modelpricingsynctarget.FieldLastPushMessage] = struct{}{}
+}
+
+// LastPushMessageCleared returns if the "last_push_message" field was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) LastPushMessageCleared() bool {
+	_, ok := m.clearedFields[modelpricingsynctarget.FieldLastPushMessage]
+	return ok
+}
+
+// ResetLastPushMessage resets all changes to the "last_push_message" field.
+func (m *ModelPricingSyncTargetMutation) ResetLastPushMessage() {
+	m.last_push_message = nil
+	delete(m.clearedFields, modelpricingsynctarget.FieldLastPushMessage)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ModelPricingSyncTargetMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ModelPricingSyncTargetMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ModelPricingSyncTargetMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ModelPricingSyncTargetMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ModelPricingSyncTarget entity.
+// If the ModelPricingSyncTarget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModelPricingSyncTargetMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ModelPricingSyncTargetMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (m *ModelPricingSyncTargetMutation) ClearChannel() {
+	m.clearedchannel = true
+	m.clearedFields[modelpricingsynctarget.FieldChannelID] = struct{}{}
+}
+
+// ChannelCleared reports if the "channel" edge to the Channel entity was cleared.
+func (m *ModelPricingSyncTargetMutation) ChannelCleared() bool {
+	return m.ChannelIDCleared() || m.clearedchannel
+}
+
+// ChannelIDs returns the "channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelID instead. It exists only for internal usage by the builders.
+func (m *ModelPricingSyncTargetMutation) ChannelIDs() (ids []int) {
+	if id := m.channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannel resets all changes to the "channel" edge.
+func (m *ModelPricingSyncTargetMutation) ResetChannel() {
+	m.channel = nil
+	m.clearedchannel = false
+}
+
+// Where appends a list predicates to the ModelPricingSyncTargetMutation builder.
+func (m *ModelPricingSyncTargetMutation) Where(ps ...predicate.ModelPricingSyncTarget) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ModelPricingSyncTargetMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ModelPricingSyncTargetMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ModelPricingSyncTarget, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ModelPricingSyncTargetMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ModelPricingSyncTargetMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ModelPricingSyncTarget).
+func (m *ModelPricingSyncTargetMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ModelPricingSyncTargetMutation) Fields() []string {
+	fields := make([]string, 0, 31)
+	if m.name != nil {
+		fields = append(fields, modelpricingsynctarget.FieldName)
+	}
+	if m.direction != nil {
+		fields = append(fields, modelpricingsynctarget.FieldDirection)
+	}
+	if m.base_url != nil {
+		fields = append(fields, modelpricingsynctarget.FieldBaseURL)
+	}
+	if m.pull_path != nil {
+		fields = append(fields, modelpricingsynctarget.FieldPullPath)
+	}
+	if m.push_path != nil {
+		fields = append(fields, modelpricingsynctarget.FieldPushPath)
+	}
+	if m.credential_mode != nil {
+		fields = append(fields, modelpricingsynctarget.FieldCredentialMode)
+	}
+	if m.api_key_encrypted != nil {
+		fields = append(fields, modelpricingsynctarget.FieldAPIKeyEncrypted)
+	}
+	if m.channel != nil {
+		fields = append(fields, modelpricingsynctarget.FieldChannelID)
+	}
+	if m.extra_headers != nil {
+		fields = append(fields, modelpricingsynctarget.FieldExtraHeaders)
+	}
+	if m.parse_mode != nil {
+		fields = append(fields, modelpricingsynctarget.FieldParseMode)
+	}
+	if m.scopes != nil {
+		fields = append(fields, modelpricingsynctarget.FieldScopes)
+	}
+	if m.channel_filter != nil {
+		fields = append(fields, modelpricingsynctarget.FieldChannelFilter)
+	}
+	if m.group_filter != nil {
+		fields = append(fields, modelpricingsynctarget.FieldGroupFilter)
+	}
+	if m.model_include_mode != nil {
+		fields = append(fields, modelpricingsynctarget.FieldModelIncludeMode)
+	}
+	if m.model_allowlist != nil {
+		fields = append(fields, modelpricingsynctarget.FieldModelAllowlist)
+	}
+	if m.model_denylist != nil {
+		fields = append(fields, modelpricingsynctarget.FieldModelDenylist)
+	}
+	if m.model_include_patterns != nil {
+		fields = append(fields, modelpricingsynctarget.FieldModelIncludePatterns)
+	}
+	if m.channel_ref_map != nil {
+		fields = append(fields, modelpricingsynctarget.FieldChannelRefMap)
+	}
+	if m.group_ref_map != nil {
+		fields = append(fields, modelpricingsynctarget.FieldGroupRefMap)
+	}
+	if m.merge_strategy != nil {
+		fields = append(fields, modelpricingsynctarget.FieldMergeStrategy)
+	}
+	if m.schedule_enabled != nil {
+		fields = append(fields, modelpricingsynctarget.FieldScheduleEnabled)
+	}
+	if m.schedule_interval_min != nil {
+		fields = append(fields, modelpricingsynctarget.FieldScheduleIntervalMin)
+	}
+	if m.enabled != nil {
+		fields = append(fields, modelpricingsynctarget.FieldEnabled)
+	}
+	if m.last_pull_at != nil {
+		fields = append(fields, modelpricingsynctarget.FieldLastPullAt)
+	}
+	if m.last_pull_ok != nil {
+		fields = append(fields, modelpricingsynctarget.FieldLastPullOk)
+	}
+	if m.last_pull_message != nil {
+		fields = append(fields, modelpricingsynctarget.FieldLastPullMessage)
+	}
+	if m.last_push_at != nil {
+		fields = append(fields, modelpricingsynctarget.FieldLastPushAt)
+	}
+	if m.last_push_ok != nil {
+		fields = append(fields, modelpricingsynctarget.FieldLastPushOk)
+	}
+	if m.last_push_message != nil {
+		fields = append(fields, modelpricingsynctarget.FieldLastPushMessage)
+	}
+	if m.created_at != nil {
+		fields = append(fields, modelpricingsynctarget.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, modelpricingsynctarget.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ModelPricingSyncTargetMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case modelpricingsynctarget.FieldName:
+		return m.Name()
+	case modelpricingsynctarget.FieldDirection:
+		return m.Direction()
+	case modelpricingsynctarget.FieldBaseURL:
+		return m.BaseURL()
+	case modelpricingsynctarget.FieldPullPath:
+		return m.PullPath()
+	case modelpricingsynctarget.FieldPushPath:
+		return m.PushPath()
+	case modelpricingsynctarget.FieldCredentialMode:
+		return m.CredentialMode()
+	case modelpricingsynctarget.FieldAPIKeyEncrypted:
+		return m.APIKeyEncrypted()
+	case modelpricingsynctarget.FieldChannelID:
+		return m.ChannelID()
+	case modelpricingsynctarget.FieldExtraHeaders:
+		return m.ExtraHeaders()
+	case modelpricingsynctarget.FieldParseMode:
+		return m.ParseMode()
+	case modelpricingsynctarget.FieldScopes:
+		return m.Scopes()
+	case modelpricingsynctarget.FieldChannelFilter:
+		return m.ChannelFilter()
+	case modelpricingsynctarget.FieldGroupFilter:
+		return m.GroupFilter()
+	case modelpricingsynctarget.FieldModelIncludeMode:
+		return m.ModelIncludeMode()
+	case modelpricingsynctarget.FieldModelAllowlist:
+		return m.ModelAllowlist()
+	case modelpricingsynctarget.FieldModelDenylist:
+		return m.ModelDenylist()
+	case modelpricingsynctarget.FieldModelIncludePatterns:
+		return m.ModelIncludePatterns()
+	case modelpricingsynctarget.FieldChannelRefMap:
+		return m.ChannelRefMap()
+	case modelpricingsynctarget.FieldGroupRefMap:
+		return m.GroupRefMap()
+	case modelpricingsynctarget.FieldMergeStrategy:
+		return m.MergeStrategy()
+	case modelpricingsynctarget.FieldScheduleEnabled:
+		return m.ScheduleEnabled()
+	case modelpricingsynctarget.FieldScheduleIntervalMin:
+		return m.ScheduleIntervalMin()
+	case modelpricingsynctarget.FieldEnabled:
+		return m.Enabled()
+	case modelpricingsynctarget.FieldLastPullAt:
+		return m.LastPullAt()
+	case modelpricingsynctarget.FieldLastPullOk:
+		return m.LastPullOk()
+	case modelpricingsynctarget.FieldLastPullMessage:
+		return m.LastPullMessage()
+	case modelpricingsynctarget.FieldLastPushAt:
+		return m.LastPushAt()
+	case modelpricingsynctarget.FieldLastPushOk:
+		return m.LastPushOk()
+	case modelpricingsynctarget.FieldLastPushMessage:
+		return m.LastPushMessage()
+	case modelpricingsynctarget.FieldCreatedAt:
+		return m.CreatedAt()
+	case modelpricingsynctarget.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ModelPricingSyncTargetMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case modelpricingsynctarget.FieldName:
+		return m.OldName(ctx)
+	case modelpricingsynctarget.FieldDirection:
+		return m.OldDirection(ctx)
+	case modelpricingsynctarget.FieldBaseURL:
+		return m.OldBaseURL(ctx)
+	case modelpricingsynctarget.FieldPullPath:
+		return m.OldPullPath(ctx)
+	case modelpricingsynctarget.FieldPushPath:
+		return m.OldPushPath(ctx)
+	case modelpricingsynctarget.FieldCredentialMode:
+		return m.OldCredentialMode(ctx)
+	case modelpricingsynctarget.FieldAPIKeyEncrypted:
+		return m.OldAPIKeyEncrypted(ctx)
+	case modelpricingsynctarget.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case modelpricingsynctarget.FieldExtraHeaders:
+		return m.OldExtraHeaders(ctx)
+	case modelpricingsynctarget.FieldParseMode:
+		return m.OldParseMode(ctx)
+	case modelpricingsynctarget.FieldScopes:
+		return m.OldScopes(ctx)
+	case modelpricingsynctarget.FieldChannelFilter:
+		return m.OldChannelFilter(ctx)
+	case modelpricingsynctarget.FieldGroupFilter:
+		return m.OldGroupFilter(ctx)
+	case modelpricingsynctarget.FieldModelIncludeMode:
+		return m.OldModelIncludeMode(ctx)
+	case modelpricingsynctarget.FieldModelAllowlist:
+		return m.OldModelAllowlist(ctx)
+	case modelpricingsynctarget.FieldModelDenylist:
+		return m.OldModelDenylist(ctx)
+	case modelpricingsynctarget.FieldModelIncludePatterns:
+		return m.OldModelIncludePatterns(ctx)
+	case modelpricingsynctarget.FieldChannelRefMap:
+		return m.OldChannelRefMap(ctx)
+	case modelpricingsynctarget.FieldGroupRefMap:
+		return m.OldGroupRefMap(ctx)
+	case modelpricingsynctarget.FieldMergeStrategy:
+		return m.OldMergeStrategy(ctx)
+	case modelpricingsynctarget.FieldScheduleEnabled:
+		return m.OldScheduleEnabled(ctx)
+	case modelpricingsynctarget.FieldScheduleIntervalMin:
+		return m.OldScheduleIntervalMin(ctx)
+	case modelpricingsynctarget.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case modelpricingsynctarget.FieldLastPullAt:
+		return m.OldLastPullAt(ctx)
+	case modelpricingsynctarget.FieldLastPullOk:
+		return m.OldLastPullOk(ctx)
+	case modelpricingsynctarget.FieldLastPullMessage:
+		return m.OldLastPullMessage(ctx)
+	case modelpricingsynctarget.FieldLastPushAt:
+		return m.OldLastPushAt(ctx)
+	case modelpricingsynctarget.FieldLastPushOk:
+		return m.OldLastPushOk(ctx)
+	case modelpricingsynctarget.FieldLastPushMessage:
+		return m.OldLastPushMessage(ctx)
+	case modelpricingsynctarget.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case modelpricingsynctarget.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ModelPricingSyncTarget field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ModelPricingSyncTargetMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case modelpricingsynctarget.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case modelpricingsynctarget.FieldDirection:
+		v, ok := value.(modelpricingsynctarget.Direction)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDirection(v)
+		return nil
+	case modelpricingsynctarget.FieldBaseURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBaseURL(v)
+		return nil
+	case modelpricingsynctarget.FieldPullPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPullPath(v)
+		return nil
+	case modelpricingsynctarget.FieldPushPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPushPath(v)
+		return nil
+	case modelpricingsynctarget.FieldCredentialMode:
+		v, ok := value.(modelpricingsynctarget.CredentialMode)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCredentialMode(v)
+		return nil
+	case modelpricingsynctarget.FieldAPIKeyEncrypted:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAPIKeyEncrypted(v)
+		return nil
+	case modelpricingsynctarget.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case modelpricingsynctarget.FieldExtraHeaders:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExtraHeaders(v)
+		return nil
+	case modelpricingsynctarget.FieldParseMode:
+		v, ok := value.(modelpricingsynctarget.ParseMode)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetParseMode(v)
+		return nil
+	case modelpricingsynctarget.FieldScopes:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScopes(v)
+		return nil
+	case modelpricingsynctarget.FieldChannelFilter:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelFilter(v)
+		return nil
+	case modelpricingsynctarget.FieldGroupFilter:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupFilter(v)
+		return nil
+	case modelpricingsynctarget.FieldModelIncludeMode:
+		v, ok := value.(modelpricingsynctarget.ModelIncludeMode)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelIncludeMode(v)
+		return nil
+	case modelpricingsynctarget.FieldModelAllowlist:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelAllowlist(v)
+		return nil
+	case modelpricingsynctarget.FieldModelDenylist:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelDenylist(v)
+		return nil
+	case modelpricingsynctarget.FieldModelIncludePatterns:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelIncludePatterns(v)
+		return nil
+	case modelpricingsynctarget.FieldChannelRefMap:
+		v, ok := value.(map[string]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelRefMap(v)
+		return nil
+	case modelpricingsynctarget.FieldGroupRefMap:
+		v, ok := value.(map[string]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupRefMap(v)
+		return nil
+	case modelpricingsynctarget.FieldMergeStrategy:
+		v, ok := value.(modelpricingsynctarget.MergeStrategy)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMergeStrategy(v)
+		return nil
+	case modelpricingsynctarget.FieldScheduleEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScheduleEnabled(v)
+		return nil
+	case modelpricingsynctarget.FieldScheduleIntervalMin:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScheduleIntervalMin(v)
+		return nil
+	case modelpricingsynctarget.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case modelpricingsynctarget.FieldLastPullAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPullAt(v)
+		return nil
+	case modelpricingsynctarget.FieldLastPullOk:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPullOk(v)
+		return nil
+	case modelpricingsynctarget.FieldLastPullMessage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPullMessage(v)
+		return nil
+	case modelpricingsynctarget.FieldLastPushAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPushAt(v)
+		return nil
+	case modelpricingsynctarget.FieldLastPushOk:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPushOk(v)
+		return nil
+	case modelpricingsynctarget.FieldLastPushMessage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPushMessage(v)
+		return nil
+	case modelpricingsynctarget.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case modelpricingsynctarget.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ModelPricingSyncTarget field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ModelPricingSyncTargetMutation) AddedFields() []string {
+	var fields []string
+	if m.addschedule_interval_min != nil {
+		fields = append(fields, modelpricingsynctarget.FieldScheduleIntervalMin)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ModelPricingSyncTargetMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case modelpricingsynctarget.FieldScheduleIntervalMin:
+		return m.AddedScheduleIntervalMin()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ModelPricingSyncTargetMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case modelpricingsynctarget.FieldScheduleIntervalMin:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddScheduleIntervalMin(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ModelPricingSyncTarget numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ModelPricingSyncTargetMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(modelpricingsynctarget.FieldAPIKeyEncrypted) {
+		fields = append(fields, modelpricingsynctarget.FieldAPIKeyEncrypted)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldChannelID) {
+		fields = append(fields, modelpricingsynctarget.FieldChannelID)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldExtraHeaders) {
+		fields = append(fields, modelpricingsynctarget.FieldExtraHeaders)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldChannelFilter) {
+		fields = append(fields, modelpricingsynctarget.FieldChannelFilter)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldGroupFilter) {
+		fields = append(fields, modelpricingsynctarget.FieldGroupFilter)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldModelAllowlist) {
+		fields = append(fields, modelpricingsynctarget.FieldModelAllowlist)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldModelDenylist) {
+		fields = append(fields, modelpricingsynctarget.FieldModelDenylist)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldModelIncludePatterns) {
+		fields = append(fields, modelpricingsynctarget.FieldModelIncludePatterns)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldChannelRefMap) {
+		fields = append(fields, modelpricingsynctarget.FieldChannelRefMap)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldGroupRefMap) {
+		fields = append(fields, modelpricingsynctarget.FieldGroupRefMap)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldLastPullAt) {
+		fields = append(fields, modelpricingsynctarget.FieldLastPullAt)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldLastPullMessage) {
+		fields = append(fields, modelpricingsynctarget.FieldLastPullMessage)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldLastPushAt) {
+		fields = append(fields, modelpricingsynctarget.FieldLastPushAt)
+	}
+	if m.FieldCleared(modelpricingsynctarget.FieldLastPushMessage) {
+		fields = append(fields, modelpricingsynctarget.FieldLastPushMessage)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ModelPricingSyncTargetMutation) ClearField(name string) error {
+	switch name {
+	case modelpricingsynctarget.FieldAPIKeyEncrypted:
+		m.ClearAPIKeyEncrypted()
+		return nil
+	case modelpricingsynctarget.FieldChannelID:
+		m.ClearChannelID()
+		return nil
+	case modelpricingsynctarget.FieldExtraHeaders:
+		m.ClearExtraHeaders()
+		return nil
+	case modelpricingsynctarget.FieldChannelFilter:
+		m.ClearChannelFilter()
+		return nil
+	case modelpricingsynctarget.FieldGroupFilter:
+		m.ClearGroupFilter()
+		return nil
+	case modelpricingsynctarget.FieldModelAllowlist:
+		m.ClearModelAllowlist()
+		return nil
+	case modelpricingsynctarget.FieldModelDenylist:
+		m.ClearModelDenylist()
+		return nil
+	case modelpricingsynctarget.FieldModelIncludePatterns:
+		m.ClearModelIncludePatterns()
+		return nil
+	case modelpricingsynctarget.FieldChannelRefMap:
+		m.ClearChannelRefMap()
+		return nil
+	case modelpricingsynctarget.FieldGroupRefMap:
+		m.ClearGroupRefMap()
+		return nil
+	case modelpricingsynctarget.FieldLastPullAt:
+		m.ClearLastPullAt()
+		return nil
+	case modelpricingsynctarget.FieldLastPullMessage:
+		m.ClearLastPullMessage()
+		return nil
+	case modelpricingsynctarget.FieldLastPushAt:
+		m.ClearLastPushAt()
+		return nil
+	case modelpricingsynctarget.FieldLastPushMessage:
+		m.ClearLastPushMessage()
+		return nil
+	}
+	return fmt.Errorf("unknown ModelPricingSyncTarget nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ModelPricingSyncTargetMutation) ResetField(name string) error {
+	switch name {
+	case modelpricingsynctarget.FieldName:
+		m.ResetName()
+		return nil
+	case modelpricingsynctarget.FieldDirection:
+		m.ResetDirection()
+		return nil
+	case modelpricingsynctarget.FieldBaseURL:
+		m.ResetBaseURL()
+		return nil
+	case modelpricingsynctarget.FieldPullPath:
+		m.ResetPullPath()
+		return nil
+	case modelpricingsynctarget.FieldPushPath:
+		m.ResetPushPath()
+		return nil
+	case modelpricingsynctarget.FieldCredentialMode:
+		m.ResetCredentialMode()
+		return nil
+	case modelpricingsynctarget.FieldAPIKeyEncrypted:
+		m.ResetAPIKeyEncrypted()
+		return nil
+	case modelpricingsynctarget.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case modelpricingsynctarget.FieldExtraHeaders:
+		m.ResetExtraHeaders()
+		return nil
+	case modelpricingsynctarget.FieldParseMode:
+		m.ResetParseMode()
+		return nil
+	case modelpricingsynctarget.FieldScopes:
+		m.ResetScopes()
+		return nil
+	case modelpricingsynctarget.FieldChannelFilter:
+		m.ResetChannelFilter()
+		return nil
+	case modelpricingsynctarget.FieldGroupFilter:
+		m.ResetGroupFilter()
+		return nil
+	case modelpricingsynctarget.FieldModelIncludeMode:
+		m.ResetModelIncludeMode()
+		return nil
+	case modelpricingsynctarget.FieldModelAllowlist:
+		m.ResetModelAllowlist()
+		return nil
+	case modelpricingsynctarget.FieldModelDenylist:
+		m.ResetModelDenylist()
+		return nil
+	case modelpricingsynctarget.FieldModelIncludePatterns:
+		m.ResetModelIncludePatterns()
+		return nil
+	case modelpricingsynctarget.FieldChannelRefMap:
+		m.ResetChannelRefMap()
+		return nil
+	case modelpricingsynctarget.FieldGroupRefMap:
+		m.ResetGroupRefMap()
+		return nil
+	case modelpricingsynctarget.FieldMergeStrategy:
+		m.ResetMergeStrategy()
+		return nil
+	case modelpricingsynctarget.FieldScheduleEnabled:
+		m.ResetScheduleEnabled()
+		return nil
+	case modelpricingsynctarget.FieldScheduleIntervalMin:
+		m.ResetScheduleIntervalMin()
+		return nil
+	case modelpricingsynctarget.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case modelpricingsynctarget.FieldLastPullAt:
+		m.ResetLastPullAt()
+		return nil
+	case modelpricingsynctarget.FieldLastPullOk:
+		m.ResetLastPullOk()
+		return nil
+	case modelpricingsynctarget.FieldLastPullMessage:
+		m.ResetLastPullMessage()
+		return nil
+	case modelpricingsynctarget.FieldLastPushAt:
+		m.ResetLastPushAt()
+		return nil
+	case modelpricingsynctarget.FieldLastPushOk:
+		m.ResetLastPushOk()
+		return nil
+	case modelpricingsynctarget.FieldLastPushMessage:
+		m.ResetLastPushMessage()
+		return nil
+	case modelpricingsynctarget.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case modelpricingsynctarget.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ModelPricingSyncTarget field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ModelPricingSyncTargetMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.channel != nil {
+		edges = append(edges, modelpricingsynctarget.EdgeChannel)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ModelPricingSyncTargetMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case modelpricingsynctarget.EdgeChannel:
+		if id := m.channel; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ModelPricingSyncTargetMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ModelPricingSyncTargetMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedchannel {
+		edges = append(edges, modelpricingsynctarget.EdgeChannel)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ModelPricingSyncTargetMutation) EdgeCleared(name string) bool {
+	switch name {
+	case modelpricingsynctarget.EdgeChannel:
+		return m.clearedchannel
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ModelPricingSyncTargetMutation) ClearEdge(name string) error {
+	switch name {
+	case modelpricingsynctarget.EdgeChannel:
+		m.ClearChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ModelPricingSyncTarget unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ModelPricingSyncTargetMutation) ResetEdge(name string) error {
+	switch name {
+	case modelpricingsynctarget.EdgeChannel:
+		m.ResetChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ModelPricingSyncTarget edge %s", name)
 }
 
 // PaymentLedgerMutation represents an operation that mutates the PaymentLedger nodes in the graph.

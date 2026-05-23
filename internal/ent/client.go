@@ -24,6 +24,7 @@ import (
 	"tracehub/internal/ent/invoiceprofile"
 	"tracehub/internal/ent/modelcatalogentry"
 	"tracehub/internal/ent/modelcatalogsource"
+	"tracehub/internal/ent/modelpricingsynctarget"
 	"tracehub/internal/ent/paymentledger"
 	"tracehub/internal/ent/paymentorder"
 	"tracehub/internal/ent/paymentrefund"
@@ -71,6 +72,8 @@ type Client struct {
 	ModelCatalogEntry *ModelCatalogEntryClient
 	// ModelCatalogSource is the client for interacting with the ModelCatalogSource builders.
 	ModelCatalogSource *ModelCatalogSourceClient
+	// ModelPricingSyncTarget is the client for interacting with the ModelPricingSyncTarget builders.
+	ModelPricingSyncTarget *ModelPricingSyncTargetClient
 	// PaymentLedger is the client for interacting with the PaymentLedger builders.
 	PaymentLedger *PaymentLedgerClient
 	// PaymentOrder is the client for interacting with the PaymentOrder builders.
@@ -113,6 +116,7 @@ func (c *Client) init() {
 	c.InvoiceProfile = NewInvoiceProfileClient(c.config)
 	c.ModelCatalogEntry = NewModelCatalogEntryClient(c.config)
 	c.ModelCatalogSource = NewModelCatalogSourceClient(c.config)
+	c.ModelPricingSyncTarget = NewModelPricingSyncTargetClient(c.config)
 	c.PaymentLedger = NewPaymentLedgerClient(c.config)
 	c.PaymentOrder = NewPaymentOrderClient(c.config)
 	c.PaymentRefund = NewPaymentRefundClient(c.config)
@@ -212,30 +216,31 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:                  ctx,
-		config:               cfg,
-		APIKey:               NewAPIKeyClient(cfg),
-		AdminAuditLog:        NewAdminAuditLogClient(cfg),
-		Announcement:         NewAnnouncementClient(cfg),
-		Channel:              NewChannelClient(cfg),
-		ChannelModelPricing:  NewChannelModelPricingClient(cfg),
-		DashboardAggregation: NewDashboardAggregationClient(cfg),
-		Feedback:             NewFeedbackClient(cfg),
-		GlobalModelPricing:   NewGlobalModelPricingClient(cfg),
-		Group:                NewGroupClient(cfg),
-		GroupModelRate:       NewGroupModelRateClient(cfg),
-		InvoiceProfile:       NewInvoiceProfileClient(cfg),
-		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
-		ModelCatalogSource:   NewModelCatalogSourceClient(cfg),
-		PaymentLedger:        NewPaymentLedgerClient(cfg),
-		PaymentOrder:         NewPaymentOrderClient(cfg),
-		PaymentRefund:        NewPaymentRefundClient(cfg),
-		RechargePackage:      NewRechargePackageClient(cfg),
-		RedeemCode:           NewRedeemCodeClient(cfg),
-		RedeemLedger:         NewRedeemLedgerClient(cfg),
-		SystemConfig:         NewSystemConfigClient(cfg),
-		UsageLog:             NewUsageLogClient(cfg),
-		User:                 NewUserClient(cfg),
+		ctx:                    ctx,
+		config:                 cfg,
+		APIKey:                 NewAPIKeyClient(cfg),
+		AdminAuditLog:          NewAdminAuditLogClient(cfg),
+		Announcement:           NewAnnouncementClient(cfg),
+		Channel:                NewChannelClient(cfg),
+		ChannelModelPricing:    NewChannelModelPricingClient(cfg),
+		DashboardAggregation:   NewDashboardAggregationClient(cfg),
+		Feedback:               NewFeedbackClient(cfg),
+		GlobalModelPricing:     NewGlobalModelPricingClient(cfg),
+		Group:                  NewGroupClient(cfg),
+		GroupModelRate:         NewGroupModelRateClient(cfg),
+		InvoiceProfile:         NewInvoiceProfileClient(cfg),
+		ModelCatalogEntry:      NewModelCatalogEntryClient(cfg),
+		ModelCatalogSource:     NewModelCatalogSourceClient(cfg),
+		ModelPricingSyncTarget: NewModelPricingSyncTargetClient(cfg),
+		PaymentLedger:          NewPaymentLedgerClient(cfg),
+		PaymentOrder:           NewPaymentOrderClient(cfg),
+		PaymentRefund:          NewPaymentRefundClient(cfg),
+		RechargePackage:        NewRechargePackageClient(cfg),
+		RedeemCode:             NewRedeemCodeClient(cfg),
+		RedeemLedger:           NewRedeemLedgerClient(cfg),
+		SystemConfig:           NewSystemConfigClient(cfg),
+		UsageLog:               NewUsageLogClient(cfg),
+		User:                   NewUserClient(cfg),
 	}, nil
 }
 
@@ -253,30 +258,31 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:                  ctx,
-		config:               cfg,
-		APIKey:               NewAPIKeyClient(cfg),
-		AdminAuditLog:        NewAdminAuditLogClient(cfg),
-		Announcement:         NewAnnouncementClient(cfg),
-		Channel:              NewChannelClient(cfg),
-		ChannelModelPricing:  NewChannelModelPricingClient(cfg),
-		DashboardAggregation: NewDashboardAggregationClient(cfg),
-		Feedback:             NewFeedbackClient(cfg),
-		GlobalModelPricing:   NewGlobalModelPricingClient(cfg),
-		Group:                NewGroupClient(cfg),
-		GroupModelRate:       NewGroupModelRateClient(cfg),
-		InvoiceProfile:       NewInvoiceProfileClient(cfg),
-		ModelCatalogEntry:    NewModelCatalogEntryClient(cfg),
-		ModelCatalogSource:   NewModelCatalogSourceClient(cfg),
-		PaymentLedger:        NewPaymentLedgerClient(cfg),
-		PaymentOrder:         NewPaymentOrderClient(cfg),
-		PaymentRefund:        NewPaymentRefundClient(cfg),
-		RechargePackage:      NewRechargePackageClient(cfg),
-		RedeemCode:           NewRedeemCodeClient(cfg),
-		RedeemLedger:         NewRedeemLedgerClient(cfg),
-		SystemConfig:         NewSystemConfigClient(cfg),
-		UsageLog:             NewUsageLogClient(cfg),
-		User:                 NewUserClient(cfg),
+		ctx:                    ctx,
+		config:                 cfg,
+		APIKey:                 NewAPIKeyClient(cfg),
+		AdminAuditLog:          NewAdminAuditLogClient(cfg),
+		Announcement:           NewAnnouncementClient(cfg),
+		Channel:                NewChannelClient(cfg),
+		ChannelModelPricing:    NewChannelModelPricingClient(cfg),
+		DashboardAggregation:   NewDashboardAggregationClient(cfg),
+		Feedback:               NewFeedbackClient(cfg),
+		GlobalModelPricing:     NewGlobalModelPricingClient(cfg),
+		Group:                  NewGroupClient(cfg),
+		GroupModelRate:         NewGroupModelRateClient(cfg),
+		InvoiceProfile:         NewInvoiceProfileClient(cfg),
+		ModelCatalogEntry:      NewModelCatalogEntryClient(cfg),
+		ModelCatalogSource:     NewModelCatalogSourceClient(cfg),
+		ModelPricingSyncTarget: NewModelPricingSyncTargetClient(cfg),
+		PaymentLedger:          NewPaymentLedgerClient(cfg),
+		PaymentOrder:           NewPaymentOrderClient(cfg),
+		PaymentRefund:          NewPaymentRefundClient(cfg),
+		RechargePackage:        NewRechargePackageClient(cfg),
+		RedeemCode:             NewRedeemCodeClient(cfg),
+		RedeemLedger:           NewRedeemLedgerClient(cfg),
+		SystemConfig:           NewSystemConfigClient(cfg),
+		UsageLog:               NewUsageLogClient(cfg),
+		User:                   NewUserClient(cfg),
 	}, nil
 }
 
@@ -309,8 +315,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.ChannelModelPricing,
 		c.DashboardAggregation, c.Feedback, c.GlobalModelPricing, c.Group,
 		c.GroupModelRate, c.InvoiceProfile, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.PaymentLedger, c.PaymentOrder, c.PaymentRefund, c.RechargePackage,
-		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
+		c.ModelPricingSyncTarget, c.PaymentLedger, c.PaymentOrder, c.PaymentRefund,
+		c.RechargePackage, c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog,
+		c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -323,8 +330,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.ChannelModelPricing,
 		c.DashboardAggregation, c.Feedback, c.GlobalModelPricing, c.Group,
 		c.GroupModelRate, c.InvoiceProfile, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.PaymentLedger, c.PaymentOrder, c.PaymentRefund, c.RechargePackage,
-		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
+		c.ModelPricingSyncTarget, c.PaymentLedger, c.PaymentOrder, c.PaymentRefund,
+		c.RechargePackage, c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog,
+		c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -359,6 +367,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ModelCatalogEntry.mutate(ctx, m)
 	case *ModelCatalogSourceMutation:
 		return c.ModelCatalogSource.mutate(ctx, m)
+	case *ModelPricingSyncTargetMutation:
+		return c.ModelPricingSyncTarget.mutate(ctx, m)
 	case *PaymentLedgerMutation:
 		return c.PaymentLedger.mutate(ctx, m)
 	case *PaymentOrderMutation:
@@ -1010,6 +1020,22 @@ func (c *ChannelClient) QueryModelCatalogSources(_m *Channel) *ModelCatalogSourc
 			sqlgraph.From(channel.Table, channel.FieldID, id),
 			sqlgraph.To(modelcatalogsource.Table, modelcatalogsource.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.ModelCatalogSourcesTable, channel.ModelCatalogSourcesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryModelPricingSyncTargets queries the model_pricing_sync_targets edge of a Channel.
+func (c *ChannelClient) QueryModelPricingSyncTargets(_m *Channel) *ModelPricingSyncTargetQuery {
+	query := (&ModelPricingSyncTargetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(modelpricingsynctarget.Table, modelpricingsynctarget.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ModelPricingSyncTargetsTable, channel.ModelPricingSyncTargetsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -2428,6 +2454,155 @@ func (c *ModelCatalogSourceClient) mutate(ctx context.Context, m *ModelCatalogSo
 		return (&ModelCatalogSourceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ModelCatalogSource mutation op: %q", m.Op())
+	}
+}
+
+// ModelPricingSyncTargetClient is a client for the ModelPricingSyncTarget schema.
+type ModelPricingSyncTargetClient struct {
+	config
+}
+
+// NewModelPricingSyncTargetClient returns a client for the ModelPricingSyncTarget from the given config.
+func NewModelPricingSyncTargetClient(c config) *ModelPricingSyncTargetClient {
+	return &ModelPricingSyncTargetClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `modelpricingsynctarget.Hooks(f(g(h())))`.
+func (c *ModelPricingSyncTargetClient) Use(hooks ...Hook) {
+	c.hooks.ModelPricingSyncTarget = append(c.hooks.ModelPricingSyncTarget, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `modelpricingsynctarget.Intercept(f(g(h())))`.
+func (c *ModelPricingSyncTargetClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ModelPricingSyncTarget = append(c.inters.ModelPricingSyncTarget, interceptors...)
+}
+
+// Create returns a builder for creating a ModelPricingSyncTarget entity.
+func (c *ModelPricingSyncTargetClient) Create() *ModelPricingSyncTargetCreate {
+	mutation := newModelPricingSyncTargetMutation(c.config, OpCreate)
+	return &ModelPricingSyncTargetCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ModelPricingSyncTarget entities.
+func (c *ModelPricingSyncTargetClient) CreateBulk(builders ...*ModelPricingSyncTargetCreate) *ModelPricingSyncTargetCreateBulk {
+	return &ModelPricingSyncTargetCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ModelPricingSyncTargetClient) MapCreateBulk(slice any, setFunc func(*ModelPricingSyncTargetCreate, int)) *ModelPricingSyncTargetCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ModelPricingSyncTargetCreateBulk{err: fmt.Errorf("calling to ModelPricingSyncTargetClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ModelPricingSyncTargetCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ModelPricingSyncTargetCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ModelPricingSyncTarget.
+func (c *ModelPricingSyncTargetClient) Update() *ModelPricingSyncTargetUpdate {
+	mutation := newModelPricingSyncTargetMutation(c.config, OpUpdate)
+	return &ModelPricingSyncTargetUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ModelPricingSyncTargetClient) UpdateOne(_m *ModelPricingSyncTarget) *ModelPricingSyncTargetUpdateOne {
+	mutation := newModelPricingSyncTargetMutation(c.config, OpUpdateOne, withModelPricingSyncTarget(_m))
+	return &ModelPricingSyncTargetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ModelPricingSyncTargetClient) UpdateOneID(id int) *ModelPricingSyncTargetUpdateOne {
+	mutation := newModelPricingSyncTargetMutation(c.config, OpUpdateOne, withModelPricingSyncTargetID(id))
+	return &ModelPricingSyncTargetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ModelPricingSyncTarget.
+func (c *ModelPricingSyncTargetClient) Delete() *ModelPricingSyncTargetDelete {
+	mutation := newModelPricingSyncTargetMutation(c.config, OpDelete)
+	return &ModelPricingSyncTargetDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ModelPricingSyncTargetClient) DeleteOne(_m *ModelPricingSyncTarget) *ModelPricingSyncTargetDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ModelPricingSyncTargetClient) DeleteOneID(id int) *ModelPricingSyncTargetDeleteOne {
+	builder := c.Delete().Where(modelpricingsynctarget.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ModelPricingSyncTargetDeleteOne{builder}
+}
+
+// Query returns a query builder for ModelPricingSyncTarget.
+func (c *ModelPricingSyncTargetClient) Query() *ModelPricingSyncTargetQuery {
+	return &ModelPricingSyncTargetQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeModelPricingSyncTarget},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ModelPricingSyncTarget entity by its id.
+func (c *ModelPricingSyncTargetClient) Get(ctx context.Context, id int) (*ModelPricingSyncTarget, error) {
+	return c.Query().Where(modelpricingsynctarget.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ModelPricingSyncTargetClient) GetX(ctx context.Context, id int) *ModelPricingSyncTarget {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChannel queries the channel edge of a ModelPricingSyncTarget.
+func (c *ModelPricingSyncTargetClient) QueryChannel(_m *ModelPricingSyncTarget) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(modelpricingsynctarget.Table, modelpricingsynctarget.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, modelpricingsynctarget.ChannelTable, modelpricingsynctarget.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ModelPricingSyncTargetClient) Hooks() []Hook {
+	return c.hooks.ModelPricingSyncTarget
+}
+
+// Interceptors returns the client interceptors.
+func (c *ModelPricingSyncTargetClient) Interceptors() []Interceptor {
+	return c.inters.ModelPricingSyncTarget
+}
+
+func (c *ModelPricingSyncTargetClient) mutate(ctx context.Context, m *ModelPricingSyncTargetMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ModelPricingSyncTargetCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ModelPricingSyncTargetUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ModelPricingSyncTargetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ModelPricingSyncTargetDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ModelPricingSyncTarget mutation op: %q", m.Op())
 	}
 }
 
@@ -3953,15 +4128,15 @@ type (
 	hooks struct {
 		APIKey, AdminAuditLog, Announcement, Channel, ChannelModelPricing,
 		DashboardAggregation, Feedback, GlobalModelPricing, Group, GroupModelRate,
-		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, PaymentLedger,
-		PaymentOrder, PaymentRefund, RechargePackage, RedeemCode, RedeemLedger,
-		SystemConfig, UsageLog, User []ent.Hook
+		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, ModelPricingSyncTarget,
+		PaymentLedger, PaymentOrder, PaymentRefund, RechargePackage, RedeemCode,
+		RedeemLedger, SystemConfig, UsageLog, User []ent.Hook
 	}
 	inters struct {
 		APIKey, AdminAuditLog, Announcement, Channel, ChannelModelPricing,
 		DashboardAggregation, Feedback, GlobalModelPricing, Group, GroupModelRate,
-		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, PaymentLedger,
-		PaymentOrder, PaymentRefund, RechargePackage, RedeemCode, RedeemLedger,
-		SystemConfig, UsageLog, User []ent.Interceptor
+		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, ModelPricingSyncTarget,
+		PaymentLedger, PaymentOrder, PaymentRefund, RechargePackage, RedeemCode,
+		RedeemLedger, SystemConfig, UsageLog, User []ent.Interceptor
 	}
 )
