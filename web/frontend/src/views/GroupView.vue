@@ -21,6 +21,8 @@ type GroupInfo = {
   routing_strategy?: string
   failover_enabled?: boolean
   failover_max_attempts?: number
+  failover_4xx_mode?: string
+  failover_4xx_codes?: number[]
   sticky_enabled?: boolean
 }
 
@@ -52,6 +54,25 @@ const failoverSummary = computed(() => {
     return t('groupPage.failoverOn', { n })
   }
   return t('groupPage.failoverOff')
+})
+
+const failover4xxSummary = computed(() => {
+  const g = group.value
+  if (!g?.failover_enabled) return ''
+  const mode = (g.failover_4xx_mode || 'off').trim()
+  const modeLabel =
+    mode === 'selective'
+      ? t('groupPage.failover4xxSelective')
+      : mode === 'custom'
+        ? t('groupPage.failover4xxCustom')
+        : mode === 'aggressive'
+          ? t('groupPage.failover4xxAggressive')
+          : t('groupPage.failover4xxOff')
+  const codes = (g.failover_4xx_codes || []).filter((c) => c >= 400 && c < 500)
+  if ((mode === 'selective' || mode === 'custom') && codes.length > 0) {
+    return t('groupPage.failover4xxWithCodes', { mode: modeLabel, codes: codes.join(', ') })
+  }
+  return t('groupPage.failover4xxModeOnly', { mode: modeLabel })
 })
 
 const stickySummary = computed(() => {
@@ -96,6 +117,7 @@ onMounted(async () => {
             <span class="text-slate-500">{{ t('groupPage.routingStrategy') }}：</span>{{ routingStrategyLabel }}
           </li>
           <li>{{ failoverSummary }}</li>
+          <li v-if="failover4xxSummary">{{ failover4xxSummary }}</li>
           <li>{{ stickySummary }}</li>
         </ul>
       </div>

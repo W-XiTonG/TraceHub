@@ -4,19 +4,15 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
 
 	"tracehub/internal/ent"
-	"tracehub/internal/ent/channel"
 	"tracehub/internal/ent/user"
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/middleware"
 	"tracehub/internal/pkg/metrics"
-	"tracehub/internal/pkg/openaicompat"
-	"tracehub/internal/service/channelsecret"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -71,11 +67,27 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
 			return
 		}
-		sel, err := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, model, sticky)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 403, "permission_error", err.Error())
+		pathUnderV1 := strings.TrimPrefix(strings.TrimSuffix(c.Request.URL.Path, "/"), "/v1/")
+		if pathUnderV1 == "" {
+			pathUnderV1 = "realtime"
+		}
+
+		dialer := websocket.Dialer{
+			HandshakeTimeout: 45 * time.Second,
+			Subprotocols:     parseSecWebSocketProtocols(c.GetHeader("Sec-WebSocket-Protocol")),
+		}
+		sel, upConn, dialErr := dialRealtimeUpstreamWithFailover(
+			c.Request.Context(), d, int64(u.ID), gid, model, sticky, pathUnderV1, q, c.Request.Header, dialer)
+		if dialErr != nil {
+			middleware.WriteOpenAIError(c, 503, "api_error", MsgServiceUnavailable)
 			return
 		}
+		if upConn == nil {
+			middleware.WriteOpenAIError(c, 403, "permission_error", "没有可用渠道支持该模型")
+			return
+		}
+		defer upConn.Close()
+
 		ch := sel.Channel
 		if rec := UsageRecorderFrom(c); rec != nil {
 			rec.SetChannel(ch.ID, sel.UpstreamModel)
@@ -99,60 +111,6 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		baseURL := strings.TrimSpace(ch.APIBaseURL)
-		if baseURL == "" {
-			baseURL = router.DefaultBaseURL(ch.ChannelType)
-		} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(baseURL); err == nil {
-			baseURL = nb
-		}
-		var secret string
-		switch ch.AuthType {
-		case channel.AuthTypeAPIKey:
-			secret = channelsecret.Plaintext(d.AESKey, ch.APIKey)
-		case channel.AuthTypeOauth:
-			secret = channelsecret.Plaintext(d.AESKey, ch.OauthToken)
-		case channel.AuthTypeSetupToken:
-			secret = channelsecret.Plaintext(d.AESKey, ch.SetupToken)
-		}
-		if strings.TrimSpace(secret) == "" {
-			WriteGatewayChannelConfigError(c)
-			return
-		}
-
-		pathUnderV1 := strings.TrimPrefix(strings.TrimSuffix(c.Request.URL.Path, "/"), "/v1/")
-		if pathUnderV1 == "" {
-			pathUnderV1 = "realtime"
-		}
-
-		q2 := url.Values{}
-		for k, vals := range q {
-			if strings.EqualFold(k, "model") {
-				continue
-			}
-			for _, v := range vals {
-				q2.Add(k, v)
-			}
-		}
-		q2.Set("model", sel.UpstreamModel)
-
-		wsURL, err := openaicompat.WebSocketURLFromOpenAIRoot(baseURL, pathUnderV1, q2)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法构造上游 WebSocket URL")
-			return
-		}
-
-		dialer := websocket.Dialer{
-			HandshakeTimeout: 45 * time.Second,
-			Subprotocols:     parseSecWebSocketProtocols(c.GetHeader("Sec-WebSocket-Protocol")),
-		}
-		upHdr := http.Header{}
-		upHdr.Set("Authorization", "Bearer "+secret)
-		for _, k := range []string{"OpenAI-Beta", "OpenAI-Organization", "OpenAI-Project", "OpenAI-Safety-Identifier", "User-Agent"} {
-			if v := strings.TrimSpace(c.GetHeader(k)); v != "" {
-				upHdr.Set(k, v)
-			}
-		}
-
 		reqID, _ := c.Get("request_id")
 		rid, _ := reqID.(string)
 		start := time.Now()
@@ -163,27 +121,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 		}
 		defer clientConn.Close()
 
-		upConn, upResp, err := dialer.DialContext(c.Request.Context(), wsURL, upHdr)
-		if err != nil {
-			if upResp != nil && upResp.Body != nil {
-				_ = upResp.Body.Close()
-			}
-			if rec := UsageRecorderFrom(c); rec != nil {
-				rec.SetModel(model)
-				rec.SetChannel(ch.ID, sel.UpstreamModel)
-				rec.SaveFail(http.StatusServiceUnavailable, "upstream WebSocket dial failed", promptToks, compToks, 0)
-			}
-			_ = clientConn.WriteControl(websocket.CloseMessage,
-				websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "service unavailable"),
-				time.Now().Add(5*time.Second))
-			return
-		}
-		if upResp != nil && upResp.Body != nil {
-			_ = upResp.Body.Close()
-		}
-		defer upConn.Close()
-
-		cost := GatewayFinalCost(br,promptToks, compToks, 0)
+		cost := GatewayFinalCost(br, promptToks, compToks, 0)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			slog.Warn("realtime ws deduct failed", "user_id", u.ID, "err", err)
 		}

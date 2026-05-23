@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
@@ -129,10 +128,42 @@ func SelectChannelExcluding(ctx context.Context, rdb *redis.Client, client *ent.
 	chosen := applyStrategy(cfg, candidates, requestedModel, rng)
 
 	if rdb != nil && stickySession != "" {
-		_ = rdb.Set(ctx, stickyKey(userID, stickySession), strconv.Itoa(chosen.ch.ID), time.Hour).Err()
+		UpdateStickySession(ctx, rdb, userID, stickySession, chosen.ch.ID)
 	}
 
 	return &Selected{Channel: chosen.ch, UpstreamModel: chosen.upstream, Config: cfg}, nil
+}
+
+// CountModelCandidates 统计分组内仍支持该模型且未排除的渠道数量。
+func CountModelCandidates(ctx context.Context, client *ent.Client, groupID int, model string, excludeIDs []int) int {
+	if groupID <= 0 || client == nil {
+		return 0
+	}
+	exclude := make(map[int]struct{}, len(excludeIDs))
+	for _, id := range excludeIDs {
+		exclude[id] = struct{}{}
+	}
+	channels, err := client.Channel.Query().
+		Where(
+			channel.Enabled(true),
+			channel.Schedulable(true),
+			channel.HealthStatusEQ(1),
+			channel.HasGroupWith(group.ID(groupID)),
+		).
+		All(ctx)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, ch := range channels {
+		if _, skip := exclude[ch.ID]; skip {
+			continue
+		}
+		if _, ok := modelMatch(ch, model); ok {
+			n++
+		}
+	}
+	return n
 }
 
 // PatchModelInBody 将请求 JSON 中的 model 替换为上游模型名。

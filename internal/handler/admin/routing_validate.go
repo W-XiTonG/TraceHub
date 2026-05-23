@@ -3,6 +3,7 @@ package adminhandler
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/channel"
@@ -64,6 +65,59 @@ func validateGroupRoutingOptions(opts map[string]any) error {
 				return fmt.Errorf("probe_fail_threshold 须在 1–20 之间")
 			}
 		}
+	}
+	if v, ok := opts["failover_first_attempt_timeout_sec"]; ok {
+		if n, ok := routerIntFromAny(v); ok {
+			if n < 5 || n > 120 {
+				return fmt.Errorf("failover_first_attempt_timeout_sec 须在 5–120 之间")
+			}
+		}
+	}
+	if v, ok := opts["failover_retry_attempt_timeout_sec"]; ok {
+		if n, ok := routerIntFromAny(v); ok {
+			if n < 0 || n > 600 {
+				return fmt.Errorf("failover_retry_attempt_timeout_sec 须在 0–600 之间")
+			}
+		}
+	}
+	if v, ok := opts["failover_retry_after_sec"]; ok {
+		if n, ok := routerIntFromAny(v); ok {
+			if n < 1 || n > 300 {
+				return fmt.Errorf("failover_retry_after_sec 须在 1–300 之间")
+			}
+		}
+	}
+	if v, ok := opts["failover_4xx_mode"]; ok {
+		if s, ok := v.(string); ok {
+			if sitecfg.ValidateRoutingFailover4xxMode(s) != nil {
+				return fmt.Errorf("failover_4xx_mode 须为 off、selective、aggressive 或 custom")
+			}
+		}
+	}
+	mode := sitecfg.Failover4xxModeOff
+	if v, ok := opts["failover_4xx_mode"].(string); ok && strings.TrimSpace(v) != "" {
+		mode = sitecfg.NormalizeFailover4xxMode(v)
+	}
+	var codes []int
+	if v, ok := opts["failover_4xx_codes"]; ok {
+		switch t := v.(type) {
+		case []any:
+			for _, item := range t {
+				switch n := item.(type) {
+				case float64:
+					codes = append(codes, int(n))
+				case int:
+					codes = append(codes, n)
+				case int64:
+					codes = append(codes, int(n))
+				}
+			}
+		case []int:
+			codes = append(codes, t...)
+		}
+	}
+	if err := sitecfg.ValidateRoutingFailover4xxCodesForMode(mode, codes); err != nil {
+		return fmt.Errorf("failover_4xx_codes 在 custom 模式下须至少选择一个状态码")
 	}
 	return nil
 }

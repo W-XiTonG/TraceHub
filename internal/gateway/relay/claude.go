@@ -80,6 +80,32 @@ func BuildAnthropicMessagesBody(openAIBody []byte, upstreamModel string, stream 
 	return json.Marshal(payload)
 }
 
+// ForwardClaudeMessages 转发至 Anthropic Messages API，返回原始 HTTP 响应（调用方负责关闭 Body）。
+func ForwardClaudeMessages(ctx context.Context, apiKey, baseURL string, openAIBody []byte, upstreamModel string, stream bool) (*http.Response, error) {
+	base := strings.TrimRight(baseURL, "/")
+	if base == "" {
+		base = "https://api.anthropic.com/v1"
+	}
+	url := base + "/messages"
+
+	body, err := BuildAnthropicMessagesBody(openAIBody, upstreamModel, stream)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("x-api-key", apiKey)
+	httpReq.Header.Set("anthropic-version", "2023-06-01")
+	httpReq.Header.Set("Content-Type", "application/json")
+	if stream {
+		httpReq.Header.Set("Accept", "text/event-stream")
+	}
+	return httpUpstream.Do(httpReq)
+}
+
 // CallClaudeMessages 将 OpenAI Chat Completions 请求转换为 Anthropic Messages API（非流式）。
 // clientModel 为返回给下游的 model 字段（通常与用户请求的 model 一致）。
 func CallClaudeMessages(ctx context.Context, apiKey string, baseURL string, openAIBody []byte, upstreamModel string, clientModel string) ([]byte, int, error) {

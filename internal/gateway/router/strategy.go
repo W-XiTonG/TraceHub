@@ -78,6 +78,7 @@ func pickByPriority(candidates []candidate, rng *rand.Rand) candidate {
 			pool = append(pool, c)
 		}
 	}
+	pool = poolMinErrorCount(pool)
 	if len(pool) == 1 {
 		return pool[0]
 	}

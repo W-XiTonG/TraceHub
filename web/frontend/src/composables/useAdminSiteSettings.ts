@@ -1,9 +1,13 @@
 import axios from 'axios'
 import type { InjectionKey } from 'vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useSmoothLoading } from './useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import {
+  DEFAULT_SELECTIVE_FAILOVER_4XX_CODES,
+  parseFailover4xxCodes,
+} from '../constants/failover4xx'
 import { useSiteMetaStore, type PublicContactPayload } from '../stores/siteMeta'
 import defaultContactCardAsset from '../assets/xunji-contact-card.png'
 
@@ -67,6 +71,11 @@ export type SiteSettingsPayload = {
   routing_strategy_default?: string
   routing_failover_enabled_default?: boolean
   routing_failover_max_attempts_default?: number
+  routing_failover_first_attempt_timeout_sec?: number
+  routing_failover_retry_attempt_timeout_sec?: number
+  routing_failover_retry_after_sec?: number
+  routing_failover_4xx_mode_default?: string
+  routing_failover_4xx_codes_default?: number[] | string
   routing_sticky_enabled_default?: boolean
   routing_auto_health_from_probe?: boolean
   routing_probe_fail_threshold?: number
@@ -115,6 +124,11 @@ export function createAdminSiteSettings() {
     routingStrategy: 'weighted_random',
     routingFailoverEnabled: true,
     routingFailoverMaxAttempts: 2,
+    routingFailoverFirstTimeout: 30,
+    routingFailoverRetryTimeout: 0,
+    routingFailoverRetryAfter: 15,
+    routingFailover4xxMode: 'off',
+    routingFailover4xxCodes: [] as number[],
     routingStickyEnabled: true,
     routingAutoHealthFromProbe: false,
     routingProbeFailThreshold: 3,
@@ -123,6 +137,15 @@ export function createAdminSiteSettings() {
     httpsHstsMaxAgeSeconds: 31536000,
     tlsEnabled: false,
   })
+
+  watch(
+    () => form.routingFailover4xxMode,
+    (mode) => {
+      if (mode === 'selective' && form.routingFailover4xxCodes.length === 0) {
+        form.routingFailover4xxCodes = [...DEFAULT_SELECTIVE_FAILOVER_4XX_CODES]
+      }
+    },
+  )
 
   const tlsCertFile = ref('')
   const tlsKeyFile = ref('')
@@ -300,6 +323,16 @@ export function createAdminSiteSettings() {
         : 'weighted_random'
     form.routingFailoverEnabled = Boolean(d.routing_failover_enabled_default)
     form.routingFailoverMaxAttempts = pickInt64ish(d.routing_failover_max_attempts_default) || 2
+    form.routingFailoverFirstTimeout = pickInt64ish(d.routing_failover_first_attempt_timeout_sec) || 30
+    form.routingFailoverRetryTimeout = pickInt64ish(d.routing_failover_retry_attempt_timeout_sec) ?? 0
+    form.routingFailoverRetryAfter = pickInt64ish(d.routing_failover_retry_after_sec) || 15
+    const m4 = String(d.routing_failover_4xx_mode_default || 'off').trim()
+    form.routingFailover4xxMode =
+      m4 === 'selective' || m4 === 'aggressive' || m4 === 'custom' ? m4 : 'off'
+    form.routingFailover4xxCodes = parseFailover4xxCodes(d.routing_failover_4xx_codes_default)
+    if (form.routingFailover4xxMode === 'selective' && form.routingFailover4xxCodes.length === 0) {
+      form.routingFailover4xxCodes = [...DEFAULT_SELECTIVE_FAILOVER_4XX_CODES]
+    }
     form.routingStickyEnabled = d.routing_sticky_enabled_default !== false
     form.routingAutoHealthFromProbe = Boolean(d.routing_auto_health_from_probe)
     form.routingProbeFailThreshold = pickInt64ish(d.routing_probe_fail_threshold) || 3
@@ -687,6 +720,11 @@ export function createAdminSiteSettings() {
       saving.value = false
       return
     }
+    if (form.routingFailover4xxMode === 'custom' && form.routingFailover4xxCodes.length === 0) {
+      err.value = t('adminGroups.errFailover4xxCodesRequired')
+      saving.value = false
+      return
+    }
     const contactPayload = buildPublicContactPayload()
     for (const r of contactPayload.qr_items) {
       if (r.label && !r.image_url) {
@@ -809,6 +847,34 @@ export function createAdminSiteSettings() {
         key: 'gateway.routing.failover_max_attempts_default',
         value: String(Math.min(5, Math.max(1, Math.trunc(Number(form.routingFailoverMaxAttempts)) || 2))),
         description: t('adminSystem.descRoutingFailoverMax'),
+      },
+      {
+        key: 'gateway.routing.failover_first_attempt_timeout_sec',
+        value: String(Math.min(120, Math.max(5, Math.trunc(Number(form.routingFailoverFirstTimeout)) || 30))),
+        description: t('adminGroups.descFailoverFirstTimeout'),
+      },
+      {
+        key: 'gateway.routing.failover_retry_attempt_timeout_sec',
+        value: String(Math.min(600, Math.max(0, Math.trunc(Number(form.routingFailoverRetryTimeout)) || 0))),
+        description: t('adminGroups.descFailoverRetryTimeout'),
+      },
+      {
+        key: 'gateway.routing.failover_retry_after_sec',
+        value: String(Math.min(300, Math.max(1, Math.trunc(Number(form.routingFailoverRetryAfter)) || 15))),
+        description: t('adminGroups.descFailoverRetryAfter'),
+      },
+      {
+        key: 'gateway.routing.failover_4xx_mode_default',
+        value: form.routingFailover4xxMode,
+        description: t('adminGroups.descFailover4xxMode'),
+      },
+      {
+        key: 'gateway.routing.failover_4xx_codes_default',
+        value:
+          form.routingFailover4xxMode === 'selective' || form.routingFailover4xxMode === 'custom'
+            ? form.routingFailover4xxCodes.join(',')
+            : '',
+        description: t('adminGroups.descFailover4xxCodes'),
       },
       {
         key: 'gateway.routing.sticky_enabled_default',

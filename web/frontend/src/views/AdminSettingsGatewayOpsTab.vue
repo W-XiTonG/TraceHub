@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Failover4xxCodePicker from '../components/admin/Failover4xxCodePicker.vue'
 import { adminSiteSettingsKey } from '../composables/useAdminSiteSettings'
 
 const { t } = useI18n()
@@ -34,9 +35,36 @@ const s = inject(adminSiteSettingsKey)!
           {{ t('adminSystem.hintRoutingFailoverOn') }}
         </p>
         <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintRoutingFailoverOff') }}</p>
-        <div v-if="s.form.routingFailoverEnabled">
-          <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminSystem.lblRoutingFailoverMax') }}</label>
-          <input v-model.number="s.form.routingFailoverMaxAttempts" type="number" min="1" max="5" class="th-input max-w-xs font-mono text-sm" />
+        <div v-if="s.form.routingFailoverEnabled" class="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminSystem.lblRoutingFailoverMax') }}</label>
+            <input v-model.number="s.form.routingFailoverMaxAttempts" type="number" min="1" max="5" class="th-input max-w-xs font-mono text-sm" />
+          </div>
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminGroups.lblFailover4xxMode') }}</label>
+            <select v-model="s.form.routingFailover4xxMode" class="th-input max-w-md text-sm">
+              <option value="off">{{ t('adminGroups.failover4xxModeOff') }}</option>
+              <option value="selective">{{ t('adminGroups.failover4xxModeSelective') }} ({{ t('adminGroups.failover4xxBadgeRecommended') }})</option>
+              <option value="custom">{{ t('adminGroups.failover4xxModeCustom') }}</option>
+              <option value="aggressive">{{ t('adminGroups.failover4xxModeAggressive') }} ({{ t('adminGroups.failover4xxBadgeCaution') }})</option>
+            </select>
+            <p class="mt-1 text-[11px] text-slate-500">{{ t(`adminGroups.hintFailover4xxMode${s.form.routingFailover4xxMode === 'selective' ? 'Selective' : s.form.routingFailover4xxMode === 'aggressive' ? 'Aggressive' : s.form.routingFailover4xxMode === 'custom' ? 'Custom' : 'Off'}`) }}</p>
+            <Failover4xxCodePicker v-model="s.form.routingFailover4xxCodes" :mode="s.form.routingFailover4xxMode" />
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-xs text-slate-500">{{ t('adminGroups.lblFailoverFirstTimeout') }}</label>
+              <input v-model.number="s.form.routingFailoverFirstTimeout" type="number" min="5" max="120" class="th-input font-mono text-sm" />
+            </div>
+            <div>
+              <label class="mb-1 block text-xs text-slate-500">{{ t('adminGroups.lblFailoverRetryAfter') }}</label>
+              <input v-model.number="s.form.routingFailoverRetryAfter" type="number" min="1" max="300" class="th-input font-mono text-sm" />
+            </div>
+          </div>
+          <details class="text-[11px] text-slate-500">
+            <summary class="cursor-pointer text-slate-400">{{ t('adminGroups.failover4xxHelpTitle') }}</summary>
+            <p class="mt-2">{{ t('adminGroups.failover4xxHelpSummary') }}</p>
+          </details>
         </div>
         <label class="flex cursor-pointer items-start gap-3">
           <input v-model="s.form.routingStickyEnabled" type="checkbox" class="mt-1" />

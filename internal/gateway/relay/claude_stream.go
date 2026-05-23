@@ -2,7 +2,6 @@ package relay
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,37 +19,20 @@ var errAnthropicSSEHalt = errors.New("anthropic stream halted with error frame")
 
 // StreamClaudeMessagesAsOpenAIChatSSE 将 OpenAI Chat 请求走 Anthropic Messages 流式接口，并向下游写出 OpenAI chat.completion.chunk SSE。
 func StreamClaudeMessagesAsOpenAIChatSSE(ctx context.Context, apiKey, baseURL string, openAIBody []byte, upstreamModel, clientModel string, w io.Writer, flusher http.Flusher) (promptTok, completionTok int, err error) {
-	base := strings.TrimRight(baseURL, "/")
-	if base == "" {
-		base = "https://api.anthropic.com/v1"
-	}
-	u := base + "/messages"
-
-	body, err := BuildAnthropicMessagesBody(openAIBody, upstreamModel, true)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
-	if err != nil {
-		return 0, 0, err
-	}
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
-
-	resp, err := httpUpstream.Do(req)
+	resp, err := ForwardClaudeMessages(ctx, apiKey, baseURL, openAIBody, upstreamModel, true)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer DrainBody(resp.Body)
-
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		return 0, 0, &UpstreamJSONError{StatusCode: resp.StatusCode, Body: raw}
 	}
+	return StreamClaudeAnthropicBodyAsOpenAI(resp.Body, clientModel, w, flusher)
+}
 
+// StreamClaudeAnthropicBodyAsOpenAI 将 Anthropic SSE 转为 OpenAI chat.completion.chunk SSE（供 failover 复用已建立的流式响应）。
+func StreamClaudeAnthropicBodyAsOpenAI(body io.Reader, clientModel string, w io.Writer, flusher http.Flusher) (promptTok, completionTok int, err error) {
 	created := time.Now().Unix()
 	chatID := "chatcmpl-" + uuid.NewString()
 	roleSent := false
@@ -157,7 +139,7 @@ func StreamClaudeMessagesAsOpenAIChatSSE(ctx context.Context, apiKey, baseURL st
 		return nil
 	}
 
-	br := bufio.NewReader(resp.Body)
+	br := bufio.NewReader(body)
 	var dataLines []string
 	for {
 		line, err := br.ReadString('\n')

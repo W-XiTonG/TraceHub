@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -84,7 +83,19 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 403, "permission_error", "账户未分配分组，请联系管理员")
 			return
 		}
-		sel, err := router.SelectChannel(c.Request.Context(), d.RDB, d.Client, int64(u.ID), gid, model, sticky)
+		var promptToks, compAssumed int
+		if est, err := EstimateChatPromptTokensFromRequestBody(body, model, d.Billing); err != nil {
+			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "messages 无效或无法估算 token")
+			return
+		} else {
+			promptToks = est
+			if promptToks < 1 {
+				promptToks = 1
+			}
+			compAssumed = completionTokensFallback(maxOut)
+		}
+		sel, err := SelectChannelForBillingPrecheck(c.Request.Context(), d.Client, d.RDB, d.Billing, u, gid, model, sticky,
+			BillTokenEst{Prompt: promptToks, Completion: compAssumed})
 		if err != nil {
 			middleware.WriteOpenAIError(c, 403, "permission_error", err.Error())
 			return
@@ -97,9 +108,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		}
 
 		br, _ := d.Billing.ModelBillRates(c.Request.Context(), u, model, ch.ID)
-		var promptToks, compAssumed int
 		if br.NeedsTokenEstimate() {
-			var err error
 			promptToks, err = EstimateChatPromptTokensFromRequestBody(body, sel.UpstreamModel, d.Billing)
 			if err != nil {
 				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "messages 无效或无法估算 token")
@@ -262,122 +271,10 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 
 		case ct == "claude":
-			if stream {
-				c.Writer.Header().Set("Content-Type", "text/event-stream")
-				var flusher http.Flusher
-				if f, ok := c.Writer.(http.Flusher); ok {
-					flusher = f
-				}
-				pt2, ct2, err := relay.StreamClaudeMessagesAsOpenAIChatSSE(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model, c.Writer, flusher)
-				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-				if err != nil {
-					var u *relay.UpstreamJSONError
-					if errors.As(err, &u) {
-						metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(u.StatusCode)).Inc()
-						WriteClientProxy(c, u.StatusCode, "application/json", u.Body)
-						return
-					}
-					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
-					WriteGatewayTransportError(c, err)
-					return
-				}
-				if pt2 == 0 {
-					pt2 = promptToks
-				}
-				if ct2 == 0 {
-					ct2 = completionTokensFallback(maxOut)
-				}
-				cost := GatewayFinalCost(br, pt2, ct2, 0)
-				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
-					em := err.Error()
-					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
-					return
-				}
-				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
-				return
-			}
-			out, status, err := relay.CallClaudeMessages(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
-			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-			if err != nil {
-				metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
-				if status >= 400 {
-					WriteClientProxy(c, status, "application/json", out)
-					return
-				}
-				WriteGatewayTransportError(c, err)
-				return
-			}
-			usage := ParseOpenAIUsageJSON(out)
-			applyPromptFallback(&usage, promptToks)
-			applyCompletionFallback(&usage, maxOut)
-			cost := GatewayFinalCost(br, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
-			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
-				return
-			}
-			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
-			WriteClientProxy(c, status, "application/json", out)
+			runClaudeOrGeminiChat(c, d, u, k, gid, model, sticky, body, stream, maxOut, promptToks, br, sel, ct, start, rid, true)
 
 		case ct == "gemini":
-			if stream {
-				c.Writer.Header().Set("Content-Type", "text/event-stream")
-				var flusher http.Flusher
-				if f, ok := c.Writer.(http.Flusher); ok {
-					flusher = f
-				}
-				pt2, ct2, err := relay.StreamGeminiGenerateContentAsOpenAIChatSSE(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model, c.Writer, flusher)
-				metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-				if err != nil {
-					var u *relay.UpstreamJSONError
-					if errors.As(err, &u) {
-						metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(u.StatusCode)).Inc()
-						WriteClientProxy(c, u.StatusCode, "application/json", u.Body)
-						return
-					}
-					metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
-					WriteGatewayTransportError(c, err)
-					return
-				}
-				if pt2 == 0 {
-					pt2 = promptToks
-				}
-				if ct2 == 0 {
-					ct2 = completionTokensFallback(maxOut)
-				}
-				cost := GatewayFinalCost(br, pt2, ct2, 0)
-				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
-					em := err.Error()
-					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
-					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
-					return
-				}
-				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
-				return
-			}
-			out, status, err := relay.CallGeminiGenerateContent(c.Request.Context(), secret, baseURL, patched, sel.UpstreamModel, model)
-			metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
-			if err != nil {
-				metrics.GatewayRequests.WithLabelValues(model, ct, "upstream_err").Inc()
-				if status >= 400 {
-					WriteClientProxy(c, status, "application/json", out)
-					return
-				}
-				WriteGatewayTransportError(c, err)
-				return
-			}
-			usage := ParseOpenAIUsageJSON(out)
-			applyPromptFallback(&usage, promptToks)
-			applyCompletionFallback(&usage, maxOut)
-			cost := GatewayFinalCost(br, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
-			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
-				return
-			}
-			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), status, nil, time.Since(start))
-			WriteClientProxy(c, status, "application/json", out)
+			runClaudeOrGeminiChat(c, d, u, k, gid, model, sticky, body, stream, maxOut, promptToks, br, sel, ct, start, rid, false)
 
 		default:
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "暂不支持的渠道类型: "+ch.ChannelType)

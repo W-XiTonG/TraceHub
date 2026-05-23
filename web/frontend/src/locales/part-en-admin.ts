@@ -377,6 +377,38 @@ export default {
     hintFailover:
       'For models with multiple channels, connection errors, 5xx, and 429 switch channels automatically; 4xx and in-progress streams do not retry. Leave unchecked to inherit global defaults.',
     lblFailoverMax: 'Max attempts (incl. first)',
+    lblFailover4xxMode: '4xx in failover',
+    descFailover4xxMode: 'gateway.routing.failover_4xx_mode_default',
+    failover4xxModeInherit: 'Inherit global',
+    failover4xxModeOff: 'Off',
+    failover4xxModeSelective: 'Selective',
+    failover4xxModeCustom: 'Custom',
+    failover4xxModeAggressive: 'Aggressive',
+    failover4xxBadgeRecommended: 'Recommended',
+    failover4xxBadgeCaution: 'Caution',
+    hintFailover4xxModeOff:
+      'Same as before: 4xx does not switch channels; only 5xx, 429, and network errors failover.',
+    hintFailover4xxModeSelective:
+      'Retry only when 4xx likely indicates a channel config issue. Pick participating status codes below.',
+    hintFailover4xxModeCustom:
+      'Retry only for checked status codes (no response-body heuristics).',
+    hintFailover4xxModeAggressive:
+      'Retry almost all 4xx except quota/balance blacklist. Higher latency and upstream load.',
+    hintFailover4xxModeInherit: 'Use global 4xx failover mode and status-code list.',
+    lblFailover4xxCodes: 'HTTP status codes in failover',
+    descFailover4xxCodes: 'gateway.routing.failover_4xx_codes_default',
+    hintFailover4xxCodesSelective:
+      'Only checked codes use selective rules; unchecked 4xx will not failover.',
+    hintFailover4xxCodesCustom: 'Only checked codes trigger channel switch (blacklist still applies).',
+    hintFailover4xxCodesAlways: '5xx, 429, and network errors always failover regardless of this list.',
+    errFailover4xxCodesRequired: 'Custom mode requires at least one status code',
+    failover4xxCode400: 'Bad request (params / model mapping)',
+    failover4xxCode401: 'Unauthorized (upstream API key, etc.)',
+    failover4xxCode403: 'Forbidden (channel access)',
+    failover4xxCode404: 'Not found',
+    failover4xxCode408: 'Request timeout',
+    failover4xxCode413: 'Payload too large',
+    failover4xxCode422: 'Unprocessable entity',
     lblSticky: 'Enable sticky session',
     modelRoutingHint: 'Per model, comma-separated channel IDs; multiple IDs define failover order under fixed_order, or a binding whitelist under other strategies',
     phModelId: 'Model ID',

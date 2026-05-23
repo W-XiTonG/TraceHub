@@ -66,6 +66,34 @@ func BuildGeminiGenerateContentBody(openAIBody []byte) ([]byte, error) {
 	return json.Marshal(payload)
 }
 
+// ForwardGeminiGenerateContent 转发至 Gemini generateContent，返回原始 HTTP 响应。
+func ForwardGeminiGenerateContent(ctx context.Context, apiKey, baseURL string, openAIBody []byte, upstreamModel string, stream bool) (*http.Response, error) {
+	base := strings.TrimRight(baseURL, "/")
+	if base == "" {
+		base = "https://generativelanguage.googleapis.com"
+	}
+	m := strings.TrimPrefix(upstreamModel, "models/")
+	action := "generateContent"
+	if stream {
+		action = "streamGenerateContent"
+	}
+	apiURL := fmt.Sprintf("%s/v1beta/models/%s:%s?key=%s", base, url.PathEscape(m), action, url.QueryEscape(apiKey))
+	if stream {
+		apiURL += "&alt=sse"
+	}
+
+	body, err := BuildGeminiGenerateContentBody(openAIBody)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	return httpUpstream.Do(httpReq)
+}
+
 // CallGeminiGenerateContent OpenAI Chat -> Gemini generateContent（非流式）。
 func CallGeminiGenerateContent(ctx context.Context, apiKey string, baseURL string, openAIBody []byte, upstreamModel string, clientModel string) ([]byte, int, error) {
 	base := strings.TrimRight(baseURL, "/")

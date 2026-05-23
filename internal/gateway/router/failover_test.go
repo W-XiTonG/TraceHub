@@ -63,7 +63,7 @@ func TestExecuteWithFailover_retriesOn5xx(t *testing.T) {
 				return &UpstreamResult{StatusCode: http.StatusInternalServerError, Body: []byte(`{"error":"boom"}`)}, nil
 			}
 			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{"ok":true}`)}, nil
-		})
+		}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestExecuteWithFailover_noRetryOn4xx(t *testing.T) {
 		func(ctx context.Context, sel *Selected) (*UpstreamResult, error) {
 			attempts++
 			return &UpstreamResult{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":"bad"}`)}, nil
-		})
+		}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,6 +135,57 @@ func TestExecuteWithFailover_noRetryOn4xx(t *testing.T) {
 	}
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status=%d", res.StatusCode)
+	}
+}
+
+func TestExecuteWithFailover_retriesOn401Selective(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:failover401?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+	ctx := context.Background()
+
+	g, err := client.Group.Create().
+		SetName("failover-401").
+		SetRoutingStrategy(sitecfg.RoutingStrategyPriority).
+		SetRoutingOptions(map[string]any{
+			"failover_enabled":      true,
+			"failover_max_attempts": float64(2),
+			"failover_4xx_mode":     sitecfg.Failover4xxModeSelective,
+		}).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	InvalidateRoutingCache(g.ID)
+
+	chHigh, err := client.Channel.Create().
+		SetGroupID(g.ID).SetChannelType("openai").SetPriority(10).
+		SetModels([]string{"gpt-4o"}).SetEnabled(true).SetSchedulable(true).SetHealthStatus(1).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chLow, err := client.Channel.Create().
+		SetGroupID(g.ID).SetChannelType("openai").SetPriority(1).
+		SetModels([]string{"gpt-4o"}).SetEnabled(true).SetSchedulable(true).SetHealthStatus(1).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attempts := 0
+	sel, res, err := ExecuteWithFailover(ctx, SelectDeps{Client: client}, 1, g.ID, "gpt-4o", "", false, nil,
+		func(ctx context.Context, sel *Selected) (*UpstreamResult, error) {
+			attempts++
+			if sel.Channel.ID == chHigh.ID {
+				return &UpstreamResult{StatusCode: http.StatusUnauthorized, Body: []byte(`{"error":{"message":"invalid api key"}}`)}, nil
+			}
+			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{}`)}, nil
+		}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 2 || sel.Channel.ID != chLow.ID || res.StatusCode != http.StatusOK {
+		t.Fatalf("attempts=%d sel=%d status=%d", attempts, sel.Channel.ID, res.StatusCode)
 	}
 }
 
@@ -178,7 +229,7 @@ func TestExecuteWithFailover_disabledSingleAttempt(t *testing.T) {
 		func(ctx context.Context, sel *Selected) (*UpstreamResult, error) {
 			attempts++
 			return &UpstreamResult{StatusCode: http.StatusInternalServerError}, nil
-		})
+		}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +292,7 @@ func TestExecuteWithFailover_transportErrorRetries(t *testing.T) {
 				return &UpstreamResult{TransportErr: errors.New("dial failed")}, errors.New("dial failed")
 			}
 			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{}`)}, nil
-		})
+		}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,5 +304,44 @@ func TestExecuteWithFailover_transportErrorRetries(t *testing.T) {
 	}
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("status=%d", res.StatusCode)
+	}
+}
+
+func TestExecuteWithFailover_firstAttemptContextDeadline(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:failoverdeadline?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+	ctx := context.Background()
+
+	g, err := client.Group.Create().
+		SetName("failover-deadline").
+		SetRoutingStrategy(sitecfg.RoutingStrategyPriority).
+		SetRoutingOptions(map[string]any{
+			"failover_enabled":                   true,
+			"failover_max_attempts":              float64(2),
+			"failover_first_attempt_timeout_sec": float64(1),
+		}).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	InvalidateRoutingCache(g.ID)
+
+	chHigh, _ := client.Channel.Create().SetGroupID(g.ID).SetChannelType("openai").SetPriority(10).
+		SetModels([]string{"gpt-4o"}).SetEnabled(true).SetSchedulable(true).SetHealthStatus(1).Save(ctx)
+	chLow, _ := client.Channel.Create().SetGroupID(g.ID).SetChannelType("openai").SetPriority(1).
+		SetModels([]string{"gpt-4o"}).SetEnabled(true).SetSchedulable(true).SetHealthStatus(1).Save(ctx)
+
+	attempts := 0
+	sel, _, err := ExecuteWithFailover(ctx, SelectDeps{Client: client}, 1, g.ID, "gpt-4o", "", false, nil,
+		func(attemptCtx context.Context, sel *Selected) (*UpstreamResult, error) {
+			attempts++
+			if sel.Channel.ID == chHigh.ID {
+				<-attemptCtx.Done()
+				return nil, attemptCtx.Err()
+			}
+			return &UpstreamResult{StatusCode: http.StatusOK}, nil
+		}, nil)
+	if err != nil || attempts != 2 || sel.Channel.ID != chLow.ID {
+		t.Fatalf("err=%v attempts=%d sel=%d", err, attempts, sel.Channel.ID)
 	}
 }

@@ -167,6 +167,8 @@ func MyGroup(client *ent.Client) gin.HandlerFunc {
 				"routing_strategy":        routing.Strategy,
 				"failover_enabled":        routing.FailoverEnabled,
 				"failover_max_attempts":   routing.FailoverMaxAttempts,
+				"failover_4xx_mode":       routing.Failover4xxMode,
+				"failover_4xx_codes":      sitecfg.EffectiveFailover4xxCodes(routing.Failover4xxMode, routing.Failover4xxCodes),
 				"sticky_enabled":          routing.StickyEnabled,
 			},
 			"model_rates": rates,

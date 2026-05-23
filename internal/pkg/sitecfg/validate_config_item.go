@@ -58,6 +58,16 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateRoutingAutoHealthFromProbe(value)
 	case SystemConfigKeyRoutingProbeFailThreshold:
 		return ValidateRoutingProbeFailThreshold(value)
+	case SystemConfigKeyRoutingFailoverFirstAttemptTimeoutSec:
+		return ValidateRoutingFailoverFirstAttemptTimeoutSec(value)
+	case SystemConfigKeyRoutingFailoverRetryAttemptTimeoutSec:
+		return ValidateRoutingFailoverRetryAttemptTimeoutSec(value)
+	case SystemConfigKeyRoutingFailoverRetryAfterSec:
+		return ValidateRoutingFailoverRetryAfterSec(value)
+	case SystemConfigKeyRoutingFailover4xxModeDefault:
+		return ValidateRoutingFailover4xxMode(value)
+	case SystemConfigKeyRoutingFailover4xxCodesDefault:
+		return ValidateRoutingFailover4xxCodes(value)
 	case SystemConfigKeyGatewayIPBlacklist:
 		return ValidateGatewayIPBlacklistJSON(value)
 	case SystemConfigKeyCurrencyQuotaPerYuan:

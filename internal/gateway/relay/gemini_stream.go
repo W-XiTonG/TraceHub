@@ -2,13 +2,11 @@ package relay
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -17,35 +15,20 @@ import (
 
 // StreamGeminiGenerateContentAsOpenAIChatSSE OpenAI Chat -> Gemini streamGenerateContent（alt=sse），并写出 OpenAI chat.completion.chunk SSE。
 func StreamGeminiGenerateContentAsOpenAIChatSSE(ctx context.Context, apiKey, baseURL string, openAIBody []byte, upstreamModel, clientModel string, w io.Writer, flusher http.Flusher) (promptTok, completionTok int, err error) {
-	base := strings.TrimRight(baseURL, "/")
-	if base == "" {
-		base = "https://generativelanguage.googleapis.com"
-	}
-	m := strings.TrimPrefix(upstreamModel, "models/")
-	apiURL := fmt.Sprintf("%s/v1beta/models/%s:streamGenerateContent?key=%s&alt=sse", base, url.PathEscape(m), url.QueryEscape(apiKey))
-
-	body, err := BuildGeminiGenerateContentBody(openAIBody)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
-	if err != nil {
-		return 0, 0, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpUpstream.Do(req)
+	resp, err := ForwardGeminiGenerateContent(ctx, apiKey, baseURL, openAIBody, upstreamModel, true)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer DrainBody(resp.Body)
-
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		return 0, 0, &UpstreamJSONError{StatusCode: resp.StatusCode, Body: raw}
 	}
+	return StreamGeminiSSEBodyAsOpenAI(resp.Body, clientModel, w, flusher)
+}
 
+// StreamGeminiSSEBodyAsOpenAI 将 Gemini alt=sse 响应转为 OpenAI chat.completion.chunk SSE。
+func StreamGeminiSSEBodyAsOpenAI(body io.Reader, clientModel string, w io.Writer, flusher http.Flusher) (promptTok, completionTok int, err error) {
 	created := time.Now().Unix()
 	chatID := "chatcmpl-" + uuid.NewString()
 	roleSent := false
@@ -65,7 +48,7 @@ func StreamGeminiGenerateContentAsOpenAIChatSSE(ctx context.Context, apiKey, bas
 		return nil
 	}
 
-	br := bufio.NewReader(resp.Body)
+	br := bufio.NewReader(body)
 	for {
 		line, err := br.ReadString('\n')
 		if err != nil {

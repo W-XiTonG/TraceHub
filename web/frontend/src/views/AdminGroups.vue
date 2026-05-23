@@ -2,6 +2,11 @@
 import axios from 'axios'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import Failover4xxCodePicker from '../components/admin/Failover4xxCodePicker.vue'
+import {
+  DEFAULT_SELECTIVE_FAILOVER_4XX_CODES,
+  parseFailover4xxCodes,
+} from '../constants/failover4xx'
 import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
@@ -379,9 +384,20 @@ const editForm = reactive({
   overrideRoutingOptions: false,
   failoverEnabled: false,
   failoverMaxAttempts: 2,
+  failover4xxMode: '' as string,
+  failover4xxCodes: [] as number[],
   stickyEnabled: true,
   modelRoutingRows: [] as ModelRoutingRow[],
 })
+
+watch(
+  () => editForm.failover4xxMode,
+  (mode) => {
+    if (mode === 'selective' && editForm.failover4xxCodes.length === 0) {
+      editForm.failover4xxCodes = [...DEFAULT_SELECTIVE_FAILOVER_4XX_CODES]
+    }
+  },
+)
 
 const overlaps = ref<ModelOverlapItem[]>([])
 const { busy: overlapsLoading, visible: overlapsLoadingUi, run: runOverlapsLoad } = useSmoothLoading()
@@ -545,6 +561,13 @@ function openEdit(g: GroupRow) {
   editForm.overrideRoutingOptions = Object.keys(opts).length > 0
   editForm.failoverEnabled = Boolean(opts.failover_enabled)
   editForm.failoverMaxAttempts = Number(opts.failover_max_attempts) || 2
+  const m4 = String(opts.failover_4xx_mode || '').trim()
+  editForm.failover4xxMode =
+    m4 === 'off' || m4 === 'selective' || m4 === 'aggressive' || m4 === 'custom' ? m4 : ''
+  editForm.failover4xxCodes = parseFailover4xxCodes(opts.failover_4xx_codes)
+  if (editForm.failover4xxMode === 'selective' && editForm.failover4xxCodes.length === 0) {
+    editForm.failover4xxCodes = [...DEFAULT_SELECTIVE_FAILOVER_4XX_CODES]
+  }
   editForm.stickyEnabled = opts.sticky_enabled !== false
   editForm.modelRoutingRows = []
   showAdvancedModelRouting.value = false
@@ -558,6 +581,10 @@ function addModelRoutingRow() {
 
 async function saveEdit() {
   clearFlash()
+  if (editForm.failover4xxMode === 'custom' && editForm.failover4xxCodes.length === 0) {
+    flashError(t('adminGroups.errFailover4xxCodesRequired'))
+    return
+  }
   try {
     const body: Record<string, unknown> = {
       name: editForm.name.trim(),
@@ -569,11 +596,21 @@ async function saveEdit() {
     }
     body.routing_strategy = editForm.routingStrategy.trim() || ''
     if (editForm.overrideRoutingOptions) {
-      body.routing_options = {
+      const ro: Record<string, unknown> = {
         failover_enabled: editForm.failoverEnabled,
         failover_max_attempts: editForm.failoverMaxAttempts,
         sticky_enabled: editForm.stickyEnabled,
       }
+      if (editForm.failover4xxMode) {
+        ro.failover_4xx_mode = editForm.failover4xxMode
+      }
+      if (
+        editForm.failover4xxMode === 'selective' ||
+        editForm.failover4xxMode === 'custom'
+      ) {
+        ro.failover_4xx_codes = editForm.failover4xxCodes
+      }
+      body.routing_options = ro
     } else {
       body.routing_options = {}
     }
@@ -1074,6 +1111,20 @@ onMounted(load)
                 <label v-if="editForm.failoverEnabled" class="flex flex-col gap-1 text-xs text-slate-400">
                   {{ t('adminGroups.lblFailoverMax') }}
                   <input v-model.number="editForm.failoverMaxAttempts" type="number" min="1" max="5" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono" />
+                </label>
+                <label v-if="editForm.failoverEnabled" class="flex flex-col gap-1 text-xs text-slate-400">
+                  {{ t('adminGroups.lblFailover4xxMode') }}
+                  <select v-model="editForm.failover4xxMode" class="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm">
+                    <option value="">{{ t('adminGroups.failover4xxModeInherit') }}</option>
+                    <option value="off">{{ t('adminGroups.failover4xxModeOff') }}</option>
+                    <option value="selective">{{ t('adminGroups.failover4xxModeSelective') }}</option>
+                    <option value="custom">{{ t('adminGroups.failover4xxModeCustom') }}</option>
+                    <option value="aggressive">{{ t('adminGroups.failover4xxModeAggressive') }}</option>
+                  </select>
+                  <p class="text-[10px] text-slate-600">
+                    {{ t(`adminGroups.hintFailover4xxMode${editForm.failover4xxMode === 'selective' ? 'Selective' : editForm.failover4xxMode === 'aggressive' ? 'Aggressive' : editForm.failover4xxMode === 'custom' ? 'Custom' : editForm.failover4xxMode === 'off' ? 'Off' : 'Inherit'}`) }}
+                  </p>
+                  <Failover4xxCodePicker v-model="editForm.failover4xxCodes" :mode="editForm.failover4xxMode" />
                 </label>
                 <label class="flex items-center gap-2 text-xs text-slate-300">
                   <input v-model="editForm.stickyEnabled" type="checkbox" />
