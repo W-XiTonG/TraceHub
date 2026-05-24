@@ -17,7 +17,7 @@ var httpVideoUpstream = &http.Client{
 func ForwardOpenAIVideoCreate(ctx context.Context, baseURL, apiKey string, body []byte) (*http.Response, error) {
 	base := strings.TrimRight(baseURL, "/")
 	url := base + "/videos"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(LongRunningUpstreamContext(ctx), http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func ForwardOpenAIVideoCreate(ctx context.Context, baseURL, apiKey string, body 
 func ForwardOpenAIVideoMultipart(ctx context.Context, baseURL, apiKey, contentType string, body []byte, passthrough http.Header) (*http.Response, error) {
 	base := strings.TrimRight(baseURL, "/")
 	url := base + "/videos"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(LongRunningUpstreamContext(ctx), http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +46,11 @@ func ForwardOpenAIVideoMultipart(ctx context.Context, baseURL, apiKey, contentTy
 
 // ForwardOpenAIVideoHTTP 视频资源 GET/DELETE（状态查询等），使用长超时。
 func ForwardOpenAIVideoHTTP(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
-	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, apiKey, method, relativePath, body, rawQuery, passthrough)
+	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, apiKey, method, relativePath, body, rawQuery, passthrough, true)
 }
 
 // ForwardOpenAIVideoContent 下载视频内容，使用长超时客户端。
 func ForwardOpenAIVideoContent(ctx context.Context, baseURL, apiKey, videoID string, passthrough http.Header) (*http.Response, error) {
 	rel := "videos/" + strings.Trim(strings.TrimSpace(videoID), "/")
-	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, apiKey, http.MethodGet, rel+"/content", nil, "", passthrough)
+	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, apiKey, http.MethodGet, rel+"/content", nil, "", passthrough, true)
 }

@@ -116,6 +116,14 @@ export const useAuthStore = defineStore('auth', () => {
     return ''
   })
 
+  /** 用于 Gravatar 等：优先本地 user.email，否则 JWT 中的 email */
+  const userEmail = computed(() => {
+    const u = user.value
+    if (u?.email?.trim()) return u.email.trim()
+    const p = token.value ? parseAccessPayload(token.value) : null
+    return p?.email?.trim() || ''
+  })
+
   /** 头像内单字：取展示串中第一个字母、数字或汉字；「用户 #id」用 U，避免无意义首字 */
   const avatarInitial = computed(() => {
     const s = accountDisplay.value.trim()
@@ -290,6 +298,7 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     isLoggedIn,
     accountDisplay,
+    userEmail,
     avatarInitial,
     login,
     fetchLoginCaptcha,

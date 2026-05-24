@@ -241,6 +241,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或请求 JSON 无效")
 			return
 		}
+		noteGatewayLogicalModel(c, model)
 
 		fresh, err := d.Client.User.Query().Where(user.IDEQ(u.ID)).WithGroup().Only(c.Request.Context())
 		if err != nil {
@@ -313,6 +314,11 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			})
 		if err != nil {
 			metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+			if sel != nil && sel.Channel != nil {
+				if rec := UsageRecorderFrom(c); rec != nil {
+					rec.SetChannel(sel.Channel.ID, sel.UpstreamModel)
+				}
+			}
 			WriteGatewayTransportError(c, err)
 			return
 		}

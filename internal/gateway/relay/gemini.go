@@ -86,11 +86,20 @@ func ForwardGeminiGenerateContent(ctx context.Context, apiKey, baseURL string, o
 	if err != nil {
 		return nil, err
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
+	reqCtx := ctx
+	if stream {
+		reqCtx = StreamUpstreamContext(ctx)
+	}
+	httpReq, err := http.NewRequestWithContext(reqCtx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	if stream {
+		httpReq.Header.Set("Accept", "text/event-stream")
+		httpReq.Header.Set("Accept-Encoding", "identity")
+		return httpStreamUpstream.Do(httpReq)
+	}
 	return httpUpstream.Do(httpReq)
 }
 

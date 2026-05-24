@@ -145,15 +145,6 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		patched, err := router.PatchModelInBody(body, sel.UpstreamModel)
-		if err != nil {
-			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
-			return
-		}
-		if stream && router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras) {
-			patched, _ = injectStreamUsageJSON(patched)
-		}
-
 		reqID, _ := c.Get("request_id")
 		rid, _ := reqID.(string)
 
@@ -163,10 +154,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			if stream {
 				routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 				sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, false, sel, body, nil,
-					func(b []byte) []byte {
-						out, _ := injectStreamUsageJSON(b)
-						return out
-					},
+					nil,
 					func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 						secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 						if !ok {
@@ -204,6 +192,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if c.Writer.Header().Get("X-Accel-Buffering") == "" {
 					c.Writer.Header().Set("X-Accel-Buffering", "no")
 				}
+				c.Writer.Header().Set("X-TraceHub-SSE-Passthrough", "v3")
 				c.Writer.WriteHeader(resp.StatusCode)
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
@@ -329,6 +318,47 @@ func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptTe
 		}
 	}
 	return strings.TrimSpace(model), stream, maxOut, b.String(), nil
+}
+
+// effectiveChannelBaseURL 解析渠道实际上游根地址（含留空时用类型默认）。
+func effectiveChannelBaseURL(ch *ent.Channel) string {
+	if ch == nil {
+		return ""
+	}
+	base := strings.TrimSpace(ch.APIBaseURL)
+	if base == "" {
+		base = router.DefaultBaseURL(ch.ChannelType)
+	} else if nb, err := openaicompat.NormalizeOpenAIAPIRoot(base); err == nil {
+		base = nb
+	}
+	return strings.ToLower(base)
+}
+
+// upstreamSupportsOpenAIStreamOptions 是否可安全注入 OpenAI 专有 stream_options.include_usage。
+// 仅官方 OpenAI/Azure 等明确支持该字段的上游需要注入；硅基、DeepSeek、自建反代等第三方兼容网关
+// 往往在 chunk 内自带 usage，注入可能导致 SSE 提前断开（仅 1～2 个 chunk）。
+func upstreamSupportsOpenAIStreamOptions(ch *ent.Channel) bool {
+	base := effectiveChannelBaseURL(ch)
+	if base == "" {
+		return false
+	}
+	for _, host := range []string{"api.openai.com", "openai.azure.com"} {
+		if strings.Contains(base, host) {
+			return true
+		}
+	}
+	return false
+}
+
+func maybeInjectStreamUsageJSON(body []byte, ch *ent.Channel) []byte {
+	if !upstreamSupportsOpenAIStreamOptions(ch) {
+		return body
+	}
+	out, err := injectStreamUsageJSON(body)
+	if err != nil {
+		return body
+	}
+	return out
 }
 
 func injectStreamUsageJSON(body []byte) ([]byte, error) {

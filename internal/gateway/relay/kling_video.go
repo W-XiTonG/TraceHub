@@ -110,5 +110,5 @@ func forwardKlingHTTP(ctx context.Context, baseURL, apiKey, method, relativePath
 	if err != nil {
 		return nil, err
 	}
-	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, bearer, method, relativePath, body, rawQuery, passthrough)
+	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, bearer, method, relativePath, body, rawQuery, passthrough, true)
 }

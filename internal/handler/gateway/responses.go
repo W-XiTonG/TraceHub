@@ -118,7 +118,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 				middleware.WriteOpenAIError(c, 400, "invalid_request_error", "请求 JSON 无效")
 				return
 			}
-			patched, _ = injectStreamUsageJSON(patched)
+			patched = maybeInjectStreamUsageJSON(patched, ch)
 			accept := "text/event-stream"
 			resp, err := relay.ForwardOpenAIPostWithHeaders(c.Request.Context(), baseURL, secret, "responses", patched, openAIPassthroughHeaders(c), accept)
 			if err != nil {

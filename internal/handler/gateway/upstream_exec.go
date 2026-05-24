@@ -154,7 +154,7 @@ func ExecuteModelForward(
 	firstSel *router.Selected,
 	rawBody []byte,
 	patchFn func([]byte, string) ([]byte, error),
-	patchExtra func([]byte) []byte,
+	patchExtra func([]byte, *ent.Channel) []byte,
 	forward func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error),
 ) (*router.Selected, *router.UpstreamResult, error) {
 	patcher := patchFn
@@ -168,7 +168,7 @@ func ExecuteModelForward(
 				return nil, err
 			}
 			if patchExtra != nil {
-				patched = patchExtra(patched)
+				patched = patchExtra(patched, sel.Channel)
 			}
 			return forward(ctx, sel, patched)
 		})

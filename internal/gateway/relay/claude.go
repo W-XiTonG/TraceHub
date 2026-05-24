@@ -93,7 +93,11 @@ func ForwardClaudeMessages(ctx context.Context, apiKey, baseURL string, openAIBo
 		return nil, err
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	reqCtx := ctx
+	if stream {
+		reqCtx = StreamUpstreamContext(ctx)
+	}
+	httpReq, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +106,7 @@ func ForwardClaudeMessages(ctx context.Context, apiKey, baseURL string, openAIBo
 	httpReq.Header.Set("Content-Type", "application/json")
 	if stream {
 		httpReq.Header.Set("Accept", "text/event-stream")
+		return httpStreamUpstream.Do(httpReq)
 	}
 	return httpUpstream.Do(httpReq)
 }

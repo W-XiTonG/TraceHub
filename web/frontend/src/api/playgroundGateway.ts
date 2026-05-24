@@ -262,6 +262,278 @@ export function traceHubGatewayErrorDetails(res: Response): string {
   return out
 }
 
+/** OpenAI 兼容 delta / message 上的文本片段（含 Qwen 等 reasoning_content） */
+export type ChatCompletionTextFields = {
+  content?: string | null
+  reasoning_content?: string | null
+  reasoning?: string | null
+  thinking?: string | null
+}
+
+/** 从流式 delta 或完整 message 取可展示文本：优先 content，否则 reasoning */
+export function textFromChatCompletionFields(fields: ChatCompletionTextFields | undefined | null): string {
+  if (!fields) return ''
+  const content = fields.content
+  if (typeof content === 'string' && content.length > 0) return content
+  const reasoningContent = fields.reasoning_content
+  if (typeof reasoningContent === 'string' && reasoningContent.length > 0) return reasoningContent
+  const reasoning = fields.reasoning
+  if (typeof reasoning === 'string' && reasoning.length > 0) return reasoning
+  const thinking = fields.thinking
+  if (typeof thinking === 'string' && thinking.length > 0) return thinking
+  return ''
+}
+
+/** 流式分片拼接：兼容增量与部分上游的累积式 delta */
+export function appendStreamAcc(acc: string, piece: string): string {
+  if (!piece) return acc
+  if (!acc) return piece
+  if (piece.length >= acc.length && piece.startsWith(acc)) return piece
+  if (acc.endsWith(piece) || acc === piece) return acc
+  if (acc.startsWith(piece)) return acc
+  return acc + piece
+}
+
+/** 从 delta.content 取值（兼容 string 与 parts 数组） */
+function textFromDeltaContent(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  let out = ''
+  for (const part of content) {
+    if (typeof part === 'string') {
+      out += part
+      continue
+    }
+    if (part && typeof part === 'object') {
+      const p = part as { type?: string; text?: string }
+      if (typeof p.text === 'string') out += p.text
+    }
+  }
+  return out
+}
+
+/** 从 choice 对象提取 delta / message 文本 */
+function extractFromChoiceRecord(ch0: Record<string, unknown>): { content: string; reasoning: string } {
+  let content = ''
+  let reasoning = ''
+  const delta = ch0.delta as (ChatCompletionTextFields & { content?: unknown }) | undefined
+  if (delta) {
+    const deltaContent = textFromDeltaContent(delta.content)
+    if (deltaContent) content = deltaContent
+    const r =
+      (typeof delta.reasoning_content === 'string' && delta.reasoning_content) ||
+      (typeof delta.reasoning === 'string' && delta.reasoning) ||
+      (typeof delta.thinking === 'string' && delta.thinking) ||
+      ''
+    if (r) reasoning = r
+  }
+  const message = ch0.message as ChatCompletionTextFields | undefined
+  const fromMsg = message ? textFromChatCompletionFields(message) : ''
+  if (fromMsg) {
+    if (!content) content = fromMsg
+    else if (fromMsg.length >= content.length && fromMsg.startsWith(content)) content = fromMsg
+    else if (fromMsg.length > content.length) content = fromMsg
+  }
+  if (typeof ch0.text === 'string' && ch0.text) content = appendStreamAcc(content, ch0.text)
+  if (typeof ch0.content === 'string' && ch0.content) content = appendStreamAcc(content, ch0.content)
+  return { content, reasoning }
+}
+
+/** 兼容 DashScope 等嵌套 output/data 包裹 */
+function streamChunkRoots(json: unknown): Record<string, unknown>[] {
+  if (!json || typeof json !== 'object') return []
+  const root = json as Record<string, unknown>
+  const out: Record<string, unknown>[] = [root]
+  for (const k of ['output', 'data', 'result']) {
+    const v = root[k]
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.push(v as Record<string, unknown>)
+  }
+  return out
+}
+
+/** 兜底：在未知 JSON 树中收集 delta/message 上的 content / reasoning 片段 */
+function deepExtractStreamTexts(json: unknown): { content: string; reasoning: string } {
+  const contentParts: string[] = []
+  const reasoningParts: string[] = []
+  const seen = new Set<unknown>()
+  const walk = (node: unknown, inDeltaOrMsg: boolean) => {
+    if (!node || typeof node !== 'object') return
+    if (seen.has(node)) return
+    seen.add(node)
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, inDeltaOrMsg)
+      return
+    }
+    const rec = node as Record<string, unknown>
+  const nextInDeltaOrMsg = inDeltaOrMsg || rec.delta != null || rec.message != null
+    for (const [k, v] of Object.entries(rec)) {
+      if (k === 'content') {
+        if (typeof v === 'string' && v) contentParts.push(v)
+        else if (Array.isArray(v) || (v && typeof v === 'object')) {
+          const t = textFromDeltaContent(v)
+          if (t) contentParts.push(t)
+        }
+      } else if (k === 'reasoning_content' || k === 'reasoning' || k === 'thinking') {
+        if (typeof v === 'string' && v) reasoningParts.push(v)
+      } else if (k === 'text' && typeof v === 'string' && v && nextInDeltaOrMsg) {
+        contentParts.push(v)
+      } else if (k === 'output_text' && typeof v === 'string' && v) {
+        contentParts.push(v)
+      } else if (v && typeof v === 'object') {
+        walk(v, nextInDeltaOrMsg)
+      }
+    }
+  }
+  walk(json, false)
+  let content = ''
+  let reasoning = ''
+  for (const p of contentParts) content = appendStreamAcc(content, p)
+  for (const p of reasoningParts) reasoning = appendStreamAcc(reasoning, p)
+  return { content, reasoning }
+}
+
+/** 从单个 chat.completion.chunk（或完整 JSON 体）提取 content / reasoning */
+export function extractTextFromChatCompletionChunk(json: unknown): { content: string; reasoning: string } {
+  let content = ''
+  let reasoning = ''
+  for (const root of streamChunkRoots(json)) {
+    const choices = root.choices
+    if (Array.isArray(choices) && choices.length > 0) {
+      const ch0 = choices[0]
+      if (ch0 && typeof ch0 === 'object') {
+        const extracted = extractFromChoiceRecord(ch0 as Record<string, unknown>)
+        if (extracted.content) content = appendStreamAcc(content, extracted.content)
+        if (extracted.reasoning) reasoning = appendStreamAcc(reasoning, extracted.reasoning)
+      }
+    }
+    const rootMsg = textFromChatCompletionFields(root.message as ChatCompletionTextFields)
+    if (rootMsg) content = appendStreamAcc(content, rootMsg)
+    if (typeof root.text === 'string' && root.text) content = appendStreamAcc(content, root.text)
+    if (typeof root.output_text === 'string' && root.output_text) {
+      content = appendStreamAcc(content, root.output_text)
+    }
+  }
+  if (!content && !reasoning) {
+    const deep = deepExtractStreamTexts(json)
+    content = deep.content
+    reasoning = deep.reasoning
+  }
+  return { content, reasoning }
+}
+
+function applyStreamChunk(
+  accContent: string,
+  accReasoning: string,
+  content: string,
+  reasoning: string,
+): { accContent: string; accReasoning: string; display: string } {
+  let nextContent = accContent
+  let nextReasoning = accReasoning
+  if (content) nextContent = appendStreamAcc(nextContent, content)
+  if (reasoning) nextReasoning = appendStreamAcc(nextReasoning, reasoning)
+  return { accContent: nextContent, accReasoning: nextReasoning, display: nextContent || nextReasoning }
+}
+
+function parseSsePayloadLine(line: string): string | null {
+  const s = line.trim()
+  if (!s || s.startsWith(':')) return null
+  if (s.startsWith('event:')) return null
+  if (s.startsWith('data:')) return s.slice(5).trim()
+  if (s.startsWith('{') || s.startsWith('[')) return s
+  return null
+}
+
+/** 从完整 SSE 文本收集 data 载荷（每条 data 行单独成项，不合并多行 JSON） */
+export function collectSsePayloads(raw: string): string[] {
+  const normalized = raw.replace(/\r\n/g, '\n').trim()
+  if (!normalized) return []
+  if (normalized.startsWith('{')) {
+    try {
+      JSON.parse(normalized)
+      return [normalized]
+    } catch {
+      /* fall through */
+    }
+  }
+  const payloads: string[] = []
+  const seen = new Set<string>()
+  const push = (p: string) => {
+    if (!p || p === '[DONE]' || seen.has(p)) return
+    seen.add(p)
+    payloads.push(p)
+  }
+  for (const line of normalized.split('\n')) {
+    const p = parseSsePayloadLine(line)
+    if (p) push(p)
+  }
+  return payloads
+}
+
+/** 消费 OpenAI 兼容 SSE（或误返回的整段 JSON）流式聊天响应 */
+export async function consumeOpenAIChatCompletionStream(
+  res: Response,
+  onUpdate: (display: string) => void | Promise<void>,
+): Promise<{ content: string; reasoning: string; streamLog: string }> {
+  const acc = { content: '', reasoning: '' }
+  let streamLog = ''
+
+  const emit = async (display: string) => {
+    if (!display) return
+    await onUpdate(display)
+  }
+
+  const ingestPayload = async (payload: string) => {
+    if (!payload || payload === '[DONE]') return
+    try {
+      const json = JSON.parse(payload) as unknown
+      const { content, reasoning } = extractTextFromChatCompletionChunk(json)
+      const next = applyStreamChunk(acc.content, acc.reasoning, content, reasoning)
+      acc.content = next.accContent
+      acc.reasoning = next.accReasoning
+      if (next.display) await emit(next.display)
+    } catch {
+      /* ignore malformed chunk */
+    }
+  }
+
+  const ingestLine = async (line: string) => {
+    streamLog += `${line}\n`
+    const payload = parseSsePayloadLine(line)
+    if (payload) await ingestPayload(payload)
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No body')
+  const dec = new TextDecoder()
+  let buf = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (value) {
+      buf += dec.decode(value, { stream: !done })
+    }
+    buf = buf.replace(/\r\n/g, '\n')
+    const parts = buf.split('\n')
+    buf = parts.pop() || ''
+    for (const line of parts) await ingestLine(line)
+    if (done) {
+      buf += dec.decode()
+      if (buf.trim()) await ingestLine(buf)
+      break
+    }
+    // 让浏览器有机会绘制本批 chunk（即使上游一次推多行）
+    if (parts.length > 0) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    }
+  }
+
+  if (!acc.content && !acc.reasoning && streamLog.trim()) {
+    for (const payload of collectSsePayloads(streamLog)) await ingestPayload(payload)
+  }
+
+  return { content: acc.content, reasoning: acc.reasoning, streamLog }
+}
+
 export async function chatCompletion(
   apiKey: string,
   sticky: string,
@@ -281,10 +553,10 @@ export async function chatCompletion(
     throw new Error((parseOpenAIError(raw) || `${res.status}`) + traceHubGatewayErrorDetails(res))
   }
   const json = JSON.parse(raw) as {
-    choices?: Array<{ message?: { content?: string | null } }>
+    choices?: Array<{ message?: ChatCompletionTextFields }>
   }
-  const content = json.choices?.[0]?.message?.content ?? ''
-  return { content: typeof content === 'string' ? content : '', raw }
+  const content = textFromChatCompletionFields(json.choices?.[0]?.message)
+  return { content, raw }
 }
 
 /** POST /v1/images/generations（非流式；网关可能 chunked 写出，浏览器仍收完整 JSON） */
