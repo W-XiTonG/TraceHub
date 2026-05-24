@@ -3,6 +3,7 @@ import { computed, onMounted, provide } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ThLoadingState from '../components/ui/ThLoadingState.vue'
+import AdminActionBanner from '../components/admin/AdminActionBanner.vue'
 import { adminSiteSettingsKey, createAdminSiteSettings } from '../composables/useAdminSiteSettings'
 
 const ctx = createAdminSiteSettings()
@@ -11,12 +12,12 @@ provide(adminSiteSettingsKey, ctx)
 const { t } = useI18n()
 const route = useRoute()
 
-const   hideGlobalSaveBar = computed(
-    () =>
-      route.name === 'admin-billing-global-pricing' ||
-      route.name === 'admin-billing-pricing-conversion' ||
-      route.name === 'admin-billing-pricing-sync',
-  )
+const hideGlobalSaveBar = computed(
+  () =>
+    route.name === 'admin-billing-global-pricing' ||
+    route.name === 'admin-billing-pricing-conversion' ||
+    route.name === 'admin-billing-pricing-sync',
+)
 
 const billingTabs = [
   { name: 'admin-billing-global-pricing' as const, labelKey: 'adminBilling.tabGlobalPricing' as const },
@@ -50,37 +51,41 @@ onMounted(() => {
       </RouterLink>
     </nav>
 
-    <p v-if="ctx.err" class="th-admin-flash--error mt-4 rounded-lg border px-3 py-2 text-sm">{{ ctx.err }}</p>
-    <p v-if="ctx.msg" class="th-admin-flash--success mt-4 rounded-lg border px-3 py-2 text-sm">{{ ctx.msg }}</p>
-
     <ThLoadingState v-if="ctx.busyUi" class="mt-8" />
 
     <div v-else class="mt-6">
       <RouterView />
     </div>
 
-    <div v-if="!hideGlobalSaveBar && !ctx.busy" class="th-admin-divider-t mt-10 flex flex-wrap gap-3 pt-8">
-      <button type="button" class="th-btn-primary px-5 py-2.5 text-sm" :disabled="ctx.saving" @click="ctx.save">
-        {{ ctx.saving ? t('common.submitting') : t('adminCommon.save') }}
-      </button>
-      <button type="button" class="th-btn-secondary px-5 py-2.5 text-sm" :disabled="ctx.saving || ctx.busy" @click="ctx.refresh">
-        {{ t('adminCommon.refresh') }}
-      </button>
-      <button
-        type="button"
-        class="th-btn-secondary border-amber-500/25 px-5 py-2.5 text-sm text-amber-100/90 hover:border-amber-500/40"
-        :disabled="
-          ctx.saving ||
-          ctx.busy ||
-          ctx.resettingDefaults ||
-          ctx.uploadingIcon ||
-          ctx.deletingBrandFilename !== null ||
-          ctx.contactPickQrIndex !== null
-        "
-        @click="ctx.resetDefaults"
-      >
-        {{ ctx.resettingDefaults ? t('common.loading') : t('adminSystem.resetDefaults') }}
-      </button>
+    <div v-if="!hideGlobalSaveBar && !ctx.busy" class="th-admin-divider-t mt-10 space-y-4 pt-8">
+      <AdminActionBanner
+        :message="ctx.err || ctx.msg"
+        :is-error="!!ctx.err"
+        :loading="ctx.saving || ctx.resettingDefaults"
+      />
+      <div class="flex flex-wrap gap-3">
+        <button type="button" class="th-btn-primary px-5 py-2.5 text-sm" :disabled="ctx.saving" @click="ctx.save">
+          {{ ctx.saving ? t('common.submitting') : t('adminCommon.save') }}
+        </button>
+        <button type="button" class="th-btn-secondary px-5 py-2.5 text-sm" :disabled="ctx.saving || ctx.busy" @click="ctx.refresh">
+          {{ t('adminCommon.refresh') }}
+        </button>
+        <button
+          type="button"
+          class="th-btn-secondary border-amber-500/25 px-5 py-2.5 text-sm text-amber-100/90 hover:border-amber-500/40"
+          :disabled="
+            ctx.saving ||
+            ctx.busy ||
+            ctx.resettingDefaults ||
+            ctx.uploadingIcon ||
+            ctx.deletingBrandFilename !== null ||
+            ctx.contactPickQrIndex !== null
+          "
+          @click="ctx.resetDefaults"
+        >
+          {{ ctx.resettingDefaults ? t('common.loading') : t('adminSystem.resetDefaults') }}
+        </button>
+      </div>
     </div>
   </div>
 </template>

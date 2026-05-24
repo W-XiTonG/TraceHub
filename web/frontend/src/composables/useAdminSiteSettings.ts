@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { InjectionKey } from 'vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useSmoothLoading } from './useSmoothLoading'
+import { adminActionFlashScrollIntoView } from './useAdminActionFeedback'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import {
@@ -228,6 +229,13 @@ export function createAdminSiteSettings() {
   const uploadingImageField = ref<SiteImageFieldId | null>(null)
   const msg = ref('')
   const err = ref('')
+
+  watch([msg, err], ([m, e]) => {
+    if ((m && m.trim()) || (e && e.trim())) {
+      adminActionFlashScrollIntoView()
+    }
+  })
+
   const brandIcons = ref<BrandLibIcon[]>([])
   const deletingBrandFilename = ref<string | null>(null)
   const resettingDefaults = ref(false)
