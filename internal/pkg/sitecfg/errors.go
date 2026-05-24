@@ -71,6 +71,17 @@ var (
 	errRoutingFailover4xxCodes           = errors.New("gateway.routing.failover_4xx_codes_default 格式无效")
 	errRoutingFailover4xxCodesRequired   = errors.New("自定义 4xx 模式须至少选择一个状态码")
 
+	errUpstreamTimeoutStandard      = errors.New("gateway.upstream_timeout.standard_sec 须为整数")
+	errUpstreamTimeoutStandardRange = errors.New("gateway.upstream_timeout.standard_sec 须在 10–600 之间")
+	errUpstreamTimeoutStream        = errors.New("gateway.upstream_timeout.stream_sec 须为整数")
+	errUpstreamTimeoutStreamRange   = errors.New("gateway.upstream_timeout.stream_sec 须在 10–600 之间")
+	errUpstreamTimeoutImage         = errors.New("gateway.upstream_timeout.image_sec 须为整数")
+	errUpstreamTimeoutImageRange    = errors.New("gateway.upstream_timeout.image_sec 须在 30–3600 之间")
+	errUpstreamTimeoutAudio         = errors.New("gateway.upstream_timeout.audio_sec 须为整数")
+	errUpstreamTimeoutAudioRange    = errors.New("gateway.upstream_timeout.audio_sec 须在 30–3600 之间")
+	errUpstreamTimeoutVideo         = errors.New("gateway.upstream_timeout.video_sec 须为整数")
+	errUpstreamTimeoutVideoRange    = errors.New("gateway.upstream_timeout.video_sec 须在 60–7200 之间")
+
 	errInvalidHTTPSForceRedirect = errors.New("site.https.force_redirect 须为 true 或 false")
 	errInvalidHTTPSHSTSEnabled   = errors.New("site.https.hsts_enabled 须为 true 或 false")
 	errInvalidHTTPSHSTSMaxAge    = errors.New("site.https.hsts_max_age_seconds 须为整数")

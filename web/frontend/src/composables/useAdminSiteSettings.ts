@@ -79,6 +79,11 @@ export type SiteSettingsPayload = {
   routing_sticky_enabled_default?: boolean
   routing_auto_health_from_probe?: boolean
   routing_probe_fail_threshold?: number
+  upstream_timeout_standard_sec?: number
+  upstream_timeout_stream_sec?: number
+  upstream_timeout_image_sec?: number
+  upstream_timeout_audio_sec?: number
+  upstream_timeout_video_sec?: number
   gateway_ip_blacklist?: string[]
   gateway_ip_blacklist_db_set?: boolean
   https_force_redirect?: boolean
@@ -163,6 +168,11 @@ export function createAdminSiteSettings() {
     routingStickyEnabled: true,
     routingAutoHealthFromProbe: false,
     routingProbeFailThreshold: 3,
+    upstreamTimeoutStandard: 120,
+    upstreamTimeoutStream: 120,
+    upstreamTimeoutImage: 600,
+    upstreamTimeoutAudio: 600,
+    upstreamTimeoutVideo: 1800,
     httpsForceRedirect: false,
     httpsHstsEnabled: true,
     httpsHstsMaxAgeSeconds: 31536000,
@@ -396,6 +406,16 @@ export function createAdminSiteSettings() {
     form.routingStickyEnabled = d.routing_sticky_enabled_default !== false
     form.routingAutoHealthFromProbe = Boolean(d.routing_auto_health_from_probe)
     form.routingProbeFailThreshold = pickInt64ish(d.routing_probe_fail_threshold) || 3
+    const utStd = pickInt64ish(d.upstream_timeout_standard_sec)
+    form.upstreamTimeoutStandard = utStd >= 10 && utStd <= 600 ? utStd : 120
+    const utStream = pickInt64ish(d.upstream_timeout_stream_sec)
+    form.upstreamTimeoutStream = utStream >= 10 && utStream <= 600 ? utStream : 120
+    const utImg = pickInt64ish(d.upstream_timeout_image_sec)
+    form.upstreamTimeoutImage = utImg >= 30 && utImg <= 3600 ? utImg : 600
+    const utAud = pickInt64ish(d.upstream_timeout_audio_sec)
+    form.upstreamTimeoutAudio = utAud >= 30 && utAud <= 3600 ? utAud : 600
+    const utVid = pickInt64ish(d.upstream_timeout_video_sec)
+    form.upstreamTimeoutVideo = utVid >= 60 && utVid <= 7200 ? utVid : 1800
     const gwList = Array.isArray(d.gateway_ip_blacklist)
       ? d.gateway_ip_blacklist.filter((x): x is string => typeof x === 'string' && x.trim())
       : []
@@ -1029,6 +1049,31 @@ export function createAdminSiteSettings() {
         key: 'gateway.routing.probe_fail_threshold',
         value: String(Math.min(20, Math.max(1, Math.trunc(Number(form.routingProbeFailThreshold)) || 3))),
         description: t('adminSystem.descRoutingProbeThreshold'),
+      },
+      {
+        key: 'gateway.upstream_timeout.standard_sec',
+        value: String(Math.min(600, Math.max(10, Math.trunc(Number(form.upstreamTimeoutStandard)) || 120))),
+        description: t('adminSystem.descUpstreamTimeoutStandard'),
+      },
+      {
+        key: 'gateway.upstream_timeout.stream_sec',
+        value: String(Math.min(600, Math.max(10, Math.trunc(Number(form.upstreamTimeoutStream)) || 120))),
+        description: t('adminSystem.descUpstreamTimeoutStream'),
+      },
+      {
+        key: 'gateway.upstream_timeout.image_sec',
+        value: String(Math.min(3600, Math.max(30, Math.trunc(Number(form.upstreamTimeoutImage)) || 600))),
+        description: t('adminSystem.descUpstreamTimeoutImage'),
+      },
+      {
+        key: 'gateway.upstream_timeout.audio_sec',
+        value: String(Math.min(3600, Math.max(30, Math.trunc(Number(form.upstreamTimeoutAudio)) || 600))),
+        description: t('adminSystem.descUpstreamTimeoutAudio'),
+      },
+      {
+        key: 'gateway.upstream_timeout.video_sec',
+        value: String(Math.min(7200, Math.max(60, Math.trunc(Number(form.upstreamTimeoutVideo)) || 1800))),
+        description: t('adminSystem.descUpstreamTimeoutVideo'),
       },
       {
         key: 'gateway.admin_alert.enabled',

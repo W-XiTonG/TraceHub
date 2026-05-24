@@ -9,6 +9,7 @@ import (
 	"database/sql"
 
 	"tracehub/internal/ent"
+	"tracehub/internal/gateway/relay"
 	adminhandler "tracehub/internal/handler/admin"
 	gatewayhandler "tracehub/internal/handler/gateway"
 	pricingsynchandler "tracehub/internal/handler/pricingsync"
@@ -52,6 +53,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	if len(jwtSecret) < 16 {
 		opt.Log.Warn("jwt_secret 过短，生产环境请使用足够长度随机串")
 	}
+
+	relay.ApplyUpstreamTimeoutsFromDB(context.Background(), opt.Client)
 
 	switch opt.Config.Server.Mode {
 	case "debug":

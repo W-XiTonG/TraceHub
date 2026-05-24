@@ -29,6 +29,7 @@ import (
 	"tracehub/internal/ent/systemconfig"
 	"tracehub/internal/ent/usagelog"
 	"tracehub/internal/ent/user"
+	"tracehub/internal/gateway/relay"
 	"tracehub/internal/gateway/router"
 	"tracehub/internal/handler/health"
 	"tracehub/internal/middleware"
@@ -1554,6 +1555,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		}
 		gwIPSet, gwIPRaw, gwIPList := sitecfg.GatewayIPBlacklistDBMeta(ctx, client)
 		routingDefaults := sitecfg.EffectiveRoutingDefaults(ctx, client)
+		upstreamTimeouts := sitecfg.EffectiveUpstreamTimeouts(ctx, client)
 		gwAlertEn, gwAlertEnSet, gwAlertCfg, gwAlertCfgSet, _, gwAlertSecConfigured := sitecfg.GatewayAdminAlertDBMeta(ctx, client)
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -1609,6 +1611,11 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"routing_failover_retry_after_sec":              routingDefaults.FailoverRetryAfterSec,
 			"routing_failover_4xx_mode_default":             routingDefaults.Failover4xxMode,
 			"routing_failover_4xx_codes_default":              routingDefaults.Failover4xxCodes,
+			"upstream_timeout_standard_sec":                   upstreamTimeouts.StandardSec,
+			"upstream_timeout_stream_sec":                     upstreamTimeouts.StreamSec,
+			"upstream_timeout_image_sec":                      upstreamTimeouts.ImageSec,
+			"upstream_timeout_audio_sec":                      upstreamTimeouts.AudioSec,
+			"upstream_timeout_video_sec":                      upstreamTimeouts.VideoSec,
 			"routing_db_meta":                               routingMeta,
 			"gateway_ip_blacklist":                          gwIPList,
 			"gateway_ip_blacklist_db_set":                   gwIPSet,
@@ -1719,6 +1726,9 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyRoutingStickyEnabledDefault,
 			sitecfg.SystemConfigKeyRoutingAutoHealthFromProbe,
 			sitecfg.SystemConfigKeyRoutingProbeFailThreshold,
+		}
+		keys = append(keys, sitecfg.UpstreamTimeoutConfigKeys()...)
+		keys = append(keys,
 			sitecfg.SystemConfigKeyGatewayIPBlacklist,
 			sitecfg.SystemConfigKeyGatewayIPWhitelist,
 			sitecfg.SystemConfigKeyHTTPSForceRedirect,
@@ -1733,7 +1743,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyGatewayAdminAlertEnabled,
 			sitecfg.SystemConfigKeyGatewayAdminAlertConfig,
 			sitecfg.SystemConfigKeyGatewayAdminAlertSecrets,
-		}
+		)
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
 			httpx.ServerError(c, "清除配置失败")
@@ -1743,6 +1753,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 		sitecfg.InvalidateHTTPSPolicyCache()
 		sitecfg.InvalidateGatewayAdminAlertCache()
 		billing.InvalidateNoBillModelsCacheAdmin()
+		relay.ApplyUpstreamTimeoutsFromDB(ctx, client)
 		auditLog(client, adm.ID, "site.settings_reset_defaults", "system_config", "", map[string]any{"deleted_rows": n}, c)
 		httpx.OK(c, gin.H{"deleted_rows": n})
 	}
@@ -1788,6 +1799,7 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		invalidateDefaultMarkup := false
 		invalidateHTTPSPolicy := false
 		invalidateGatewayAdminAlert := false
+		invalidateUpstreamTimeouts := false
 		tlsEnabledTouched := false
 		tlsMaterialTouched := false
 		for _, it := range req.Items {
@@ -1803,6 +1815,9 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 			}
 			if k == sitecfg.SystemConfigKeyDefaultPricingMarkupPercent {
 				invalidateDefaultMarkup = true
+			}
+			if sitecfg.IsUpstreamTimeoutConfigKey(k) {
+				invalidateUpstreamTimeouts = true
 			}
 			switch k {
 			case sitecfg.SystemConfigKeyGatewayAdminAlertEnabled,
@@ -1899,6 +1914,9 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		}
 		if invalidateGatewayAdminAlert {
 			sitecfg.InvalidateGatewayAdminAlertCache()
+		}
+		if invalidateUpstreamTimeouts {
+			relay.ApplyUpstreamTimeoutsFromDB(ctx, client)
 		}
 		msg := "已保存"
 		if tlsEnabledTouched || tlsMaterialTouched {

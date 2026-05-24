@@ -106,9 +106,9 @@ func ForwardClaudeMessages(ctx context.Context, apiKey, baseURL string, openAIBo
 	httpReq.Header.Set("Content-Type", "application/json")
 	if stream {
 		httpReq.Header.Set("Accept", "text/event-stream")
-		return httpStreamUpstream.Do(httpReq)
+		return httpStreamUpstream().Do(httpReq)
 	}
-	return httpUpstream.Do(httpReq)
+	return httpUpstream().Do(httpReq)
 }
 
 // CallClaudeMessages 将 OpenAI Chat Completions 请求转换为 Anthropic Messages API（非流式）。
@@ -133,7 +133,7 @@ func CallClaudeMessages(ctx context.Context, apiKey string, baseURL string, open
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpUpstream.Do(httpReq)
+	resp, err := httpUpstream().Do(httpReq)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func applyPassthroughHeaders(req *http.Request, passthrough http.Header) {
@@ -24,30 +23,6 @@ func applyPassthroughHeaders(req *http.Request, passthrough http.Header) {
 	}
 }
 
-var httpUpstream = &http.Client{
-	Timeout: 120 * time.Second,
-}
-
-// 流式 SSE 禁用 gzip 自动解压，避免上游分块 gzip 导致 body 提前 EOF（只透传 1～2 个 chunk）。
-var httpStreamUpstream = &http.Client{
-	Timeout: 120 * time.Second,
-	Transport: func() *http.Transport {
-		t := http.DefaultTransport.(*http.Transport).Clone()
-		t.DisableCompression = true
-		return t
-	}(),
-}
-
-// 文生图 / 图生图耗时更长，单独放宽超时。
-var httpImageUpstream = &http.Client{
-	Timeout: 600 * time.Second,
-}
-
-// 音频：大文件转写、长 TTS。
-var httpAudioUpstream = &http.Client{
-	Timeout: 600 * time.Second,
-}
-
 // ForwardOpenAIChat 将 OpenAI 兼容请求转发至上游（OpenAI / DeepSeek 等）。
 func ForwardOpenAIChat(ctx context.Context, baseURL, apiKey string, body []byte, stream bool) (*http.Response, error) {
 	base := strings.TrimRight(baseURL, "/")
@@ -62,11 +37,11 @@ func ForwardOpenAIChat(ctx context.Context, baseURL, apiKey string, body []byte,
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	client := httpUpstream
+	client := httpUpstream()
 	if stream {
 		req.Header.Set("Accept", "text/event-stream")
 		req.Header.Set("Accept-Encoding", "identity")
-		client = httpStreamUpstream
+		client = httpStreamUpstream()
 	}
 	return client.Do(req)
 }
@@ -82,7 +57,7 @@ func ForwardOpenAIImageGenerations(ctx context.Context, baseURL, apiKey string, 
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.ContentLength = int64(len(body))
-	return httpImageUpstream.Do(req)
+	return httpImageUpstream().Do(req)
 }
 
 // ForwardOpenAIPost 向 OpenAI 兼容根路径（…/v1）下子路径发起 POST，例如 embeddings、completions、moderations。
@@ -111,10 +86,10 @@ func ForwardOpenAIPostWithHeaders(ctx context.Context, baseURL, apiKey, relative
 	}
 	req.ContentLength = int64(len(body))
 	applyPassthroughHeaders(req, passthrough)
-	client := httpUpstream
+	client := httpUpstream()
 	if stream {
 		req.Header.Set("Accept-Encoding", "identity")
-		client = httpStreamUpstream
+		client = httpStreamUpstream()
 	}
 	return client.Do(req)
 }
@@ -140,10 +115,10 @@ func ForwardOpenAIMultipart(ctx context.Context, baseURL, apiKey, relativePath, 
 	}
 	req.ContentLength = int64(len(body))
 	applyPassthroughHeaders(req, passthrough)
-	client := httpAudioUpstream
+	client := httpAudioUpstream()
 	if stream {
 		req.Header.Set("Accept-Encoding", "identity")
-		client = httpStreamUpstream
+		client = httpStreamUpstream()
 	}
 	return client.Do(req)
 }
@@ -163,18 +138,18 @@ func ForwardOpenAISpeech(ctx context.Context, baseURL, apiKey string, body []byt
 	}
 	req.ContentLength = int64(len(body))
 	applyPassthroughHeaders(req, passthrough)
-	return httpAudioUpstream.Do(req)
+	return httpAudioUpstream().Do(req)
 }
 
 // ForwardOpenAIHTTP 向 OpenAI 兼容根路径（…/v1）下子路径发起任意方法的请求（如 GET/DELETE 资源、POST cancel）。
 // body 非空时设置 Content-Type: application/json；rawQuery 非空时附加到 URL（不含前导 ?）；passthrough 不覆盖 Authorization。
 func ForwardOpenAIHTTP(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
-	return forwardOpenAIHTTPClient(ctx, httpUpstream, baseURL, apiKey, method, relativePath, body, rawQuery, passthrough, false)
+	return forwardOpenAIHTTPClient(ctx, httpUpstream(), baseURL, apiKey, method, relativePath, body, rawQuery, passthrough, false)
 }
 
 // ForwardOpenAIHTTPLong 与 ForwardOpenAIHTTP 相同，使用较长超时（与音频/大文件一致），适用于 Files 下载、Batch 轮询等。
 func ForwardOpenAIHTTPLong(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
-	return forwardOpenAIHTTPClient(ctx, httpAudioUpstream, baseURL, apiKey, method, relativePath, body, rawQuery, passthrough, true)
+	return forwardOpenAIHTTPClient(ctx, httpAudioUpstream(), baseURL, apiKey, method, relativePath, body, rawQuery, passthrough, true)
 }
 
 func forwardOpenAIHTTPClient(ctx context.Context, hc *http.Client, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header, longRunning bool) (*http.Response, error) {

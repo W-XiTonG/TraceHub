@@ -14,7 +14,7 @@ const volcVideoTasksPath = "contents/generations/tasks"
 
 // ForwardVolcVideoCreate POST …/contents/generations/tasks（火山方舟 Seedance）。
 func ForwardVolcVideoCreate(ctx context.Context, baseURL, apiKey string, body []byte) (*http.Response, error) {
-	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, apiKey, http.MethodPost, volcVideoTasksPath, body, "", nil, true)
+	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream(), baseURL, apiKey, http.MethodPost, volcVideoTasksPath, body, "", nil, true)
 }
 
 // ForwardVolcVideoTaskHTTP GET/DELETE …/contents/generations/tasks/{id}（或列表 GET …/tasks）。
@@ -23,7 +23,7 @@ func ForwardVolcVideoTaskHTTP(ctx context.Context, baseURL, apiKey, method, task
 	if strings.TrimSpace(taskID) != "" {
 		rel = volcVideoTasksPath + "/" + strings.Trim(strings.TrimSpace(taskID), "/")
 	}
-	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, apiKey, method, rel, nil, rawQuery, passthrough, true)
+	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream(), baseURL, apiKey, method, rel, nil, rawQuery, passthrough, true)
 }
 
 // ForwardVolcVideoContent 查询任务完成后从 content.video_url 拉取 MP4。
@@ -49,5 +49,5 @@ func ForwardVolcVideoContent(ctx context.Context, baseURL, apiKey, taskID string
 	if err != nil {
 		return nil, err
 	}
-	return httpVideoUpstream.Do(req)
+	return httpVideoUpstream().Do(req)
 }

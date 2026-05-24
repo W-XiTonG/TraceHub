@@ -75,7 +75,7 @@ func ForwardKlingVideoContent(ctx context.Context, baseURL, apiKey, taskID strin
 	if err != nil {
 		return nil, err
 	}
-	return httpVideoUpstream.Do(req)
+	return httpVideoUpstream().Do(req)
 }
 
 // ForwardKlingNativeHTTP 透传可灵原生 API（相对路径如 v1/videos/text2video）。
@@ -102,7 +102,7 @@ func ForwardKlingNativeMultipart(ctx context.Context, baseURL, apiKey, method, r
 	}
 	req.ContentLength = int64(len(body))
 	applyPassthroughHeaders(req, passthrough)
-	return httpVideoUpstream.Do(req)
+	return httpVideoUpstream().Do(req)
 }
 
 func forwardKlingHTTP(ctx context.Context, baseURL, apiKey, method, relativePath string, body []byte, rawQuery string, passthrough http.Header) (*http.Response, error) {
@@ -110,5 +110,5 @@ func forwardKlingHTTP(ctx context.Context, baseURL, apiKey, method, relativePath
 	if err != nil {
 		return nil, err
 	}
-	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream, baseURL, bearer, method, relativePath, body, rawQuery, passthrough, true)
+	return forwardOpenAIHTTPClient(ctx, httpVideoUpstream(), baseURL, bearer, method, relativePath, body, rawQuery, passthrough, true)
 }

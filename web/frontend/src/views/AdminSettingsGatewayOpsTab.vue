@@ -51,15 +51,10 @@ const s = inject(adminSiteSettingsKey)!
             <p class="mt-1 text-[11px] text-slate-500">{{ t(`adminGroups.hintFailover4xxMode${s.form.routingFailover4xxMode === 'selective' ? 'Selective' : s.form.routingFailover4xxMode === 'aggressive' ? 'Aggressive' : s.form.routingFailover4xxMode === 'custom' ? 'Custom' : 'Off'}`) }}</p>
             <Failover4xxCodePicker v-model="s.form.routingFailover4xxCodes" :mode="s.form.routingFailover4xxMode" />
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-xs text-slate-500">{{ t('adminGroups.lblFailoverFirstTimeout') }}</label>
-              <input v-model.number="s.form.routingFailoverFirstTimeout" type="number" min="5" max="120" class="th-input font-mono text-sm" />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs text-slate-500">{{ t('adminGroups.lblFailoverRetryAfter') }}</label>
-              <input v-model.number="s.form.routingFailoverRetryAfter" type="number" min="1" max="300" class="th-input font-mono text-sm" />
-            </div>
+          <div>
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminGroups.lblFailoverRetryAfter') }}</label>
+            <input v-model.number="s.form.routingFailoverRetryAfter" type="number" min="1" max="300" class="th-input max-w-xs font-mono text-sm" />
+            <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintFailoverRetryAfter') }}</p>
           </div>
           <details class="text-[11px] text-slate-500">
             <summary class="cursor-pointer text-slate-400">{{ t('adminGroups.failover4xxHelpTitle') }}</summary>
@@ -77,6 +72,55 @@ const s = inject(adminSiteSettingsKey)!
         <div v-if="s.form.routingAutoHealthFromProbe">
           <label class="mb-1.5 block text-xs font-medium text-slate-500">{{ t('adminSystem.lblRoutingProbeThreshold') }}</label>
           <input v-model.number="s.form.routingProbeFailThreshold" type="number" min="1" max="20" class="th-input max-w-xs font-mono text-sm" />
+        </div>
+      </div>
+    </section>
+
+    <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+      <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secUpstreamHttpTimeout') }}</h2>
+      <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secUpstreamHttpTimeoutHint') }}</p>
+      <div class="mt-5 grid max-w-2xl gap-3 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblUpstreamTimeoutStandard') }}</label>
+          <input v-model.number="s.form.upstreamTimeoutStandard" type="number" min="10" max="600" class="th-input font-mono text-sm" />
+          <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintUpstreamTimeoutStandard') }}</p>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblUpstreamTimeoutStream') }}</label>
+          <input v-model.number="s.form.upstreamTimeoutStream" type="number" min="10" max="600" class="th-input font-mono text-sm" />
+          <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintUpstreamTimeoutStream') }}</p>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblUpstreamTimeoutImage') }}</label>
+          <input v-model.number="s.form.upstreamTimeoutImage" type="number" min="30" max="3600" class="th-input font-mono text-sm" />
+          <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintUpstreamTimeoutImage') }}</p>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblUpstreamTimeoutAudio') }}</label>
+          <input v-model.number="s.form.upstreamTimeoutAudio" type="number" min="30" max="3600" class="th-input font-mono text-sm" />
+          <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintUpstreamTimeoutAudio') }}</p>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblUpstreamTimeoutVideo') }}</label>
+          <input v-model.number="s.form.upstreamTimeoutVideo" type="number" min="60" max="7200" class="th-input max-w-xs font-mono text-sm" />
+          <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintUpstreamTimeoutVideo') }}</p>
+        </div>
+      </div>
+
+      <div class="mt-8 max-w-2xl border-t border-slate-800 pt-6">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ t('adminSystem.secFailoverAttemptTimeout') }}</h3>
+        <p class="mt-1 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.secFailoverAttemptTimeoutHint') }}</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblFailoverFirstTimeout') }}</label>
+            <input v-model.number="s.form.routingFailoverFirstTimeout" type="number" min="5" max="120" class="th-input font-mono text-sm" />
+            <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintFailoverFirstTimeout') }}</p>
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblFailoverRetryTimeout') }}</label>
+            <input v-model.number="s.form.routingFailoverRetryTimeout" type="number" min="0" max="600" class="th-input font-mono text-sm" />
+            <p class="mt-1 text-[11px] text-slate-500">{{ t('adminSystem.hintFailoverRetryTimeout') }}</p>
+          </div>
         </div>
       </div>
     </section>

@@ -98,9 +98,9 @@ func ForwardGeminiGenerateContent(ctx context.Context, apiKey, baseURL string, o
 	if stream {
 		httpReq.Header.Set("Accept", "text/event-stream")
 		httpReq.Header.Set("Accept-Encoding", "identity")
-		return httpStreamUpstream.Do(httpReq)
+		return httpStreamUpstream().Do(httpReq)
 	}
-	return httpUpstream.Do(httpReq)
+	return httpUpstream().Do(httpReq)
 }
 
 // CallGeminiGenerateContent OpenAI Chat -> Gemini generateContent（非流式）。
@@ -123,7 +123,7 @@ func CallGeminiGenerateContent(ctx context.Context, apiKey string, baseURL strin
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpUpstream.Do(httpReq)
+	resp, err := httpUpstream().Do(httpReq)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -68,6 +68,16 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateRoutingFailover4xxMode(value)
 	case SystemConfigKeyRoutingFailover4xxCodesDefault:
 		return ValidateRoutingFailover4xxCodes(value)
+	case SystemConfigKeyUpstreamTimeoutStandardSec:
+		return ValidateUpstreamTimeoutStandardSec(value)
+	case SystemConfigKeyUpstreamTimeoutStreamSec:
+		return ValidateUpstreamTimeoutStreamSec(value)
+	case SystemConfigKeyUpstreamTimeoutImageSec:
+		return ValidateUpstreamTimeoutImageSec(value)
+	case SystemConfigKeyUpstreamTimeoutAudioSec:
+		return ValidateUpstreamTimeoutAudioSec(value)
+	case SystemConfigKeyUpstreamTimeoutVideoSec:
+		return ValidateUpstreamTimeoutVideoSec(value)
 	case SystemConfigKeyGatewayIPBlacklist:
 		return ValidateGatewayIPBlacklistJSON(value)
 	case SystemConfigKeyCurrencyQuotaPerYuan:
