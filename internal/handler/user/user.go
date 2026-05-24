@@ -28,6 +28,7 @@ import (
 	"tracehub/internal/pkg/httpx"
 	"tracehub/internal/pkg/jwtx"
 	"tracehub/internal/pkg/redeemutil"
+	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/pkg/sitecfg"
 
 	"github.com/gin-gonic/gin"
@@ -284,7 +285,7 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		case "all":
 			since = time.Time{}
 		}
-		q := client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID))
+		q := usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID)))
 		if !since.IsZero() {
 			q = q.Where(usagelog.RequestTimeGTE(since))
 		}
@@ -381,7 +382,7 @@ func Usage(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 			SumTotalCost   *int64 `json:"sum_total_cost"`
 			SumTotalTokens *int64 `json:"sum_total_tokens"`
 		}
-		if scanErr := client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID)).
+		if scanErr := usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID))).
 			Aggregate(
 				ent.As(ent.Count(), "count"),
 				ent.As(ent.Sum(usagelog.FieldTotalCost), "sum_total_cost"),
@@ -489,8 +490,8 @@ func ListAPIKeys(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		since24 := time.Now().Add(-24 * time.Hour)
-		logs24, err := client.UsageLog.Query().
-			Where(usagelog.UserIDEQ(u.ID), usagelog.RequestTimeGTE(since24), usagelog.APIKeyIDNotNil()).
+		logs24, err := usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().
+			Where(usagelog.UserIDEQ(u.ID), usagelog.RequestTimeGTE(since24), usagelog.APIKeyIDNotNil())).
 			All(ctx)
 		if err != nil {
 			httpx.ServerError(c, "查询失败")

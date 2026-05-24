@@ -278,7 +278,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 
 		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 		patchJSON := cfg.PatchModelInJSON
-		sel, res, err := ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, sel,
+		sel, res, err := ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, sel,
 			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 				if !ok {

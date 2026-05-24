@@ -75,6 +75,9 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 		}
 		ctx := c.Request.Context()
 		q := client.UsageLog.Query().Where(usagelog.UserIDEQ(u.ID))
+		if rid := strings.TrimSpace(c.Query("request_id")); rid != "" {
+			q = q.Where(usagelog.RequestIDEQ(rid))
+		}
 		if m := strings.TrimSpace(c.Query("model")); m != "" {
 			q = q.Where(usagelog.ModelEQ(m))
 		}
@@ -112,6 +115,9 @@ func UsageLogs(client *ent.Client) gin.HandlerFunc {
 			items = append(items, gin.H{
 				"id":                l.ID,
 				"request_id":        l.RequestID,
+				"upstream_attempt":  l.UpstreamAttempt,
+				"is_client_outcome": l.IsClientOutcome,
+				"is_failover_attempt": l.IsFailoverAttempt,
 				"model":             l.Model,
 				"api_key_id":        l.APIKeyID,
 				"billing_mode":      modelkind.UsageBillingMode(l.Model, l.PromptTokens, l.CompletionTokens),

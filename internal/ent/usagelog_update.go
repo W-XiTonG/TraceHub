@@ -434,6 +434,55 @@ func (_u *UsageLogUpdate) AddCachedTokens(v int) *UsageLogUpdate {
 	return _u
 }
 
+// SetUpstreamAttempt sets the "upstream_attempt" field.
+func (_u *UsageLogUpdate) SetUpstreamAttempt(v int) *UsageLogUpdate {
+	_u.mutation.ResetUpstreamAttempt()
+	_u.mutation.SetUpstreamAttempt(v)
+	return _u
+}
+
+// SetNillableUpstreamAttempt sets the "upstream_attempt" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableUpstreamAttempt(v *int) *UsageLogUpdate {
+	if v != nil {
+		_u.SetUpstreamAttempt(*v)
+	}
+	return _u
+}
+
+// AddUpstreamAttempt adds value to the "upstream_attempt" field.
+func (_u *UsageLogUpdate) AddUpstreamAttempt(v int) *UsageLogUpdate {
+	_u.mutation.AddUpstreamAttempt(v)
+	return _u
+}
+
+// SetIsClientOutcome sets the "is_client_outcome" field.
+func (_u *UsageLogUpdate) SetIsClientOutcome(v bool) *UsageLogUpdate {
+	_u.mutation.SetIsClientOutcome(v)
+	return _u
+}
+
+// SetNillableIsClientOutcome sets the "is_client_outcome" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableIsClientOutcome(v *bool) *UsageLogUpdate {
+	if v != nil {
+		_u.SetIsClientOutcome(*v)
+	}
+	return _u
+}
+
+// SetIsFailoverAttempt sets the "is_failover_attempt" field.
+func (_u *UsageLogUpdate) SetIsFailoverAttempt(v bool) *UsageLogUpdate {
+	_u.mutation.SetIsFailoverAttempt(v)
+	return _u
+}
+
+// SetNillableIsFailoverAttempt sets the "is_failover_attempt" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableIsFailoverAttempt(v *bool) *UsageLogUpdate {
+	if v != nil {
+		_u.SetIsFailoverAttempt(*v)
+	}
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *UsageLogUpdate) SetUser(v *User) *UsageLogUpdate {
 	return _u.SetUserID(v.ID)
@@ -634,6 +683,18 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldCachedTokens, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.UpstreamAttempt(); ok {
+		_spec.SetField(usagelog.FieldUpstreamAttempt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedUpstreamAttempt(); ok {
+		_spec.AddField(usagelog.FieldUpstreamAttempt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.IsClientOutcome(); ok {
+		_spec.SetField(usagelog.FieldIsClientOutcome, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.IsFailoverAttempt(); ok {
+		_spec.SetField(usagelog.FieldIsFailoverAttempt, field.TypeBool, value)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1145,6 +1206,55 @@ func (_u *UsageLogUpdateOne) AddCachedTokens(v int) *UsageLogUpdateOne {
 	return _u
 }
 
+// SetUpstreamAttempt sets the "upstream_attempt" field.
+func (_u *UsageLogUpdateOne) SetUpstreamAttempt(v int) *UsageLogUpdateOne {
+	_u.mutation.ResetUpstreamAttempt()
+	_u.mutation.SetUpstreamAttempt(v)
+	return _u
+}
+
+// SetNillableUpstreamAttempt sets the "upstream_attempt" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableUpstreamAttempt(v *int) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetUpstreamAttempt(*v)
+	}
+	return _u
+}
+
+// AddUpstreamAttempt adds value to the "upstream_attempt" field.
+func (_u *UsageLogUpdateOne) AddUpstreamAttempt(v int) *UsageLogUpdateOne {
+	_u.mutation.AddUpstreamAttempt(v)
+	return _u
+}
+
+// SetIsClientOutcome sets the "is_client_outcome" field.
+func (_u *UsageLogUpdateOne) SetIsClientOutcome(v bool) *UsageLogUpdateOne {
+	_u.mutation.SetIsClientOutcome(v)
+	return _u
+}
+
+// SetNillableIsClientOutcome sets the "is_client_outcome" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableIsClientOutcome(v *bool) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetIsClientOutcome(*v)
+	}
+	return _u
+}
+
+// SetIsFailoverAttempt sets the "is_failover_attempt" field.
+func (_u *UsageLogUpdateOne) SetIsFailoverAttempt(v bool) *UsageLogUpdateOne {
+	_u.mutation.SetIsFailoverAttempt(v)
+	return _u
+}
+
+// SetNillableIsFailoverAttempt sets the "is_failover_attempt" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableIsFailoverAttempt(v *bool) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetIsFailoverAttempt(*v)
+	}
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *UsageLogUpdateOne) SetUser(v *User) *UsageLogUpdateOne {
 	return _u.SetUserID(v.ID)
@@ -1375,6 +1485,18 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if value, ok := _u.mutation.AddedCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldCachedTokens, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.UpstreamAttempt(); ok {
+		_spec.SetField(usagelog.FieldUpstreamAttempt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedUpstreamAttempt(); ok {
+		_spec.AddField(usagelog.FieldUpstreamAttempt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.IsClientOutcome(); ok {
+		_spec.SetField(usagelog.FieldIsClientOutcome, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.IsFailoverAttempt(); ok {
+		_spec.SetField(usagelog.FieldIsFailoverAttempt, field.TypeBool, value)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

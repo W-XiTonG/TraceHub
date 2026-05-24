@@ -153,7 +153,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 		case router.UsesOpenAICompatRelay(ct, d.OpenAICompatExtras):
 			if stream {
 				routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
-				sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, false, sel, body, nil,
+				sel, res, err := ExecuteModelForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, false, sel, body, nil,
 					nil,
 					func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 						secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
@@ -165,7 +165,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					})
 				if err != nil {
 					metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-					WriteGatewayTransportError(c, err)
+					RecordUsageTransportOutcome(c, sel, res, err)
+					WriteGatewayTransportErrorWithFailover(c, d.Client, gid, FailoverAttemptsFromResult(res), err)
 					return
 				}
 				ch = sel.Channel
@@ -175,7 +176,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 					metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
 					out := SanitizeClientProxyBody(res.StatusCode, "application/json", res.Body)
 					logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, out)
-					WriteClientProxy(c, res.StatusCode, "application/json", out)
+					RecordUsageProxyOutcome(c, d.Client, u.ID, k.ID, sel, res, rid, model, c.ClientIP(), start)
+					WriteClientProxyWithFailover(c, d.Client, gid, res.StatusCode, "application/json", out, res)
 					return
 				}
 				resp := res.StreamResponse
@@ -214,17 +216,19 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+					noteUsageOutcomeFromUpstreamResult(c, res)
 					RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), &em, time.Since(start))
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil, nil)
+				noteUsageOutcomeFromUpstreamResult(c, res)
 				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
 				return
 			}
 
 			routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
-			sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, nil, nil,
+			sel, res, err := ExecuteModelForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, nil, nil,
 				func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 					secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 					if !ok {
@@ -235,7 +239,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				})
 			if err != nil {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
-				WriteGatewayTransportError(c, err)
+				RecordUsageTransportOutcome(c, sel, res, err)
+				WriteGatewayTransportErrorWithFailover(c, d.Client, gid, FailoverAttemptsFromResult(res), err)
 				return
 			}
 			ch = sel.Channel
@@ -245,7 +250,8 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
 				out := SanitizeClientProxyBody(res.StatusCode, "application/json", res.Body)
 				logUpstreamQuotaDeclineIfLikely(c, res.StatusCode, out)
-				WriteClientProxy(c, res.StatusCode, "application/json", out)
+				RecordUsageProxyOutcome(c, d.Client, u.ID, k.ID, sel, res, rid, model, c.ClientIP(), start)
+				WriteClientProxyWithFailover(c, d.Client, gid, res.StatusCode, "application/json", out, res)
 				return
 			}
 			usage := ParseOpenAIUsageJSON(res.Body)
@@ -256,6 +262,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+			noteUsageOutcomeFromUpstreamResult(c, res)
 			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 			WriteClientProxy(c, res.StatusCode, "application/json", res.Body)
 
@@ -406,10 +413,18 @@ func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptToken
 	}
 }
 
-func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration) {
+func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration, meta UsageLogMeta) {
 	cost = usageCostForStatus(status, cost)
+	if !meta.IsClientOutcome {
+		cost = 0
+		pt, ct, cachedPrompt = 0, 0, 0
+	}
 	ctx := context.Background()
 	ms := int(elapsed.Milliseconds())
+	attempt := meta.UpstreamAttempt
+	if attempt < 1 {
+		attempt = 1
+	}
 	creator := client.UsageLog.Create().
 		SetUserID(userID).
 		SetNillableAPIKeyID(&apiKeyID).
@@ -422,7 +437,10 @@ func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, m
 		SetNillableStatusCode(&status).
 		SetNillableIPAddress(&ip).
 		SetIsCached(cachedPrompt > 0).
-		SetCachedTokens(cachedPrompt)
+		SetCachedTokens(cachedPrompt).
+		SetUpstreamAttempt(attempt).
+		SetIsClientOutcome(meta.IsClientOutcome).
+		SetIsFailoverAttempt(meta.IsFailoverAttempt)
 	if channelID > 0 {
 		creator.SetChannelID(channelID)
 	}
@@ -451,6 +469,7 @@ func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, m
 	if requestID != "" {
 		logArgs = append(logArgs, "request_id", requestID)
 	}
+	logArgs = append(logArgs, "upstream_attempt", attempt, "is_client_outcome", meta.IsClientOutcome, "is_failover_attempt", meta.IsFailoverAttempt)
 	if errMsg != nil {
 		logArgs = append(logArgs, "bill_error", *errMsg)
 	}

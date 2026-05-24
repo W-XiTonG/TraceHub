@@ -720,6 +720,9 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 			id, _ := strconv.Atoi(sc)
 			q = q.Where(usagelog.StatusCodeEQ(id))
 		}
+		if rid := strings.TrimSpace(c.Query("request_id")); rid != "" {
+			q = q.Where(usagelog.RequestIDEQ(rid))
+		}
 		q = usagelogfilter.ApplyIPAddress(q, c.Query("ip"))
 		if st := strings.TrimSpace(c.Query("start_time")); st != "" {
 			if t, err := time.Parse(time.RFC3339, st); err == nil {
@@ -779,6 +782,9 @@ func ListLogs(client *ent.Client) gin.HandlerFunc {
 				"channel_name":      chLabel,
 				"channel_type":      chType,
 				"request_id":        lg.RequestID,
+				"upstream_attempt":  lg.UpstreamAttempt,
+				"is_client_outcome": lg.IsClientOutcome,
+				"is_failover_attempt": lg.IsFailoverAttempt,
 				"model":             lg.Model,
 				"model_upstream":    lg.ModelUpstream,
 				"billing_mode":      modelkind.UsageBillingMode(lg.Model, lg.PromptTokens, lg.CompletionTokens),

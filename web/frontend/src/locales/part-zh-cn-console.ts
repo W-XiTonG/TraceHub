@@ -545,6 +545,8 @@ export default {
     videoGroupSubRow: '子请求',
     videoGroupSubCount: '含 {n} 次子请求',
     toolbarGroupedHidden: '已折叠 {k} 条轮询/查询',
+    failoverAttempt: '故障转移 · 尝试 #{n}',
+    failoverResolved: '故障转移 · 共 {n} 次',
   },
   ledgerPage: {
     title: '流水明细',

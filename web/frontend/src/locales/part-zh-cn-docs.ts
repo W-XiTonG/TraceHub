@@ -183,6 +183,7 @@ export default {
     routingFailoverLi2:
       '流式请求在尚未开始向客户端输出时，也会对 5xx、429、连接错误自动换渠道；一旦开始输出则不再切换。已开始向客户端输出的下载、大文件 multipart 上传等路径通常不重试。',
     routingFailoverLi3: 'failover 关闭时，每条请求只选路一次，与未启用该功能时性能一致。',
+    routingFailoverLi4: '开启 failover 时，每次上游尝试会写入调用日志；同一 request_id 可关联整条转移链，中间尝试不计费。',
     routingHealthH3: '健康状态与错误反馈',
     routingHealthP:
       '渠道具备 health_status 与 error_count。调用失败会累积 error_count，成功会清零；选路时倾向健康渠道。',

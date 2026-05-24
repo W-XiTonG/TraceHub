@@ -17,6 +17,8 @@ import {
 import {
   flattenGroupedUsageLogs,
   groupVideoUsageLogs,
+  isFailoverIntermediateRow,
+  isFailoverOutcomeRow,
   isVideoJobTraceMessage,
   type FlatUsageLogEntry,
   type UsageLogGroup,
@@ -45,6 +47,9 @@ type Log = UsageLogBillingRow & {
   request_time: string
   ip_address?: string
   billing_mode?: string
+  upstream_attempt?: number
+  is_client_outcome?: boolean
+  is_failover_attempt?: boolean
 }
 
 const items = ref<Log[]>([])
@@ -461,6 +466,18 @@ onMounted(() => void load())
                 <span v-if="parseModelCell(rowFromEntry(entry).model).route" class="th-admin-logs-compact__tag">route</span>
                 <span class="th-admin-logs-compact__main">{{ parseModelCell(rowFromEntry(entry).model).path }}</span>
               </div>
+              <span
+                v-if="isFailoverIntermediateRow(rowFromEntry(entry))"
+                class="mt-0.5 inline-block rounded bg-slate-800 px-1 py-px text-[9px] text-slate-400"
+              >
+                {{ t('logsPage.failoverAttempt', { n: rowFromEntry(entry).upstream_attempt ?? 1 }) }}
+              </span>
+              <span
+                v-else-if="isFailoverOutcomeRow(rowFromEntry(entry))"
+                class="mt-0.5 inline-block rounded bg-emerald-950/80 px-1 py-px text-[9px] text-emerald-400/90"
+              >
+                {{ t('logsPage.failoverResolved', { n: rowFromEntry(entry).upstream_attempt ?? 1 }) }}
+              </span>
             </td>
             <td class="th-admin-logs-col-upstream px-2 py-1.5" :title="(rowFromEntry(entry).model_upstream ?? '').trim()">
               <span class="th-admin-logs-ellipsis th-admin-logs-text-muted font-mono text-[10px]">{{

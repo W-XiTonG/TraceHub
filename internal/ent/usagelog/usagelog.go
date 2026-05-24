@@ -54,6 +54,12 @@ const (
 	FieldIsCached = "is_cached"
 	// FieldCachedTokens holds the string denoting the cached_tokens field in the database.
 	FieldCachedTokens = "cached_tokens"
+	// FieldUpstreamAttempt holds the string denoting the upstream_attempt field in the database.
+	FieldUpstreamAttempt = "upstream_attempt"
+	// FieldIsClientOutcome holds the string denoting the is_client_outcome field in the database.
+	FieldIsClientOutcome = "is_client_outcome"
+	// FieldIsFailoverAttempt holds the string denoting the is_failover_attempt field in the database.
+	FieldIsFailoverAttempt = "is_failover_attempt"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
@@ -108,6 +114,9 @@ var Columns = []string{
 	FieldUserAgent,
 	FieldIsCached,
 	FieldCachedTokens,
+	FieldUpstreamAttempt,
+	FieldIsClientOutcome,
+	FieldIsFailoverAttempt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -147,6 +156,12 @@ var (
 	DefaultIsCached bool
 	// DefaultCachedTokens holds the default value on creation for the "cached_tokens" field.
 	DefaultCachedTokens int
+	// DefaultUpstreamAttempt holds the default value on creation for the "upstream_attempt" field.
+	DefaultUpstreamAttempt int
+	// DefaultIsClientOutcome holds the default value on creation for the "is_client_outcome" field.
+	DefaultIsClientOutcome bool
+	// DefaultIsFailoverAttempt holds the default value on creation for the "is_failover_attempt" field.
+	DefaultIsFailoverAttempt bool
 )
 
 // OrderOption defines the ordering options for the UsageLog queries.
@@ -255,6 +270,21 @@ func ByIsCached(opts ...sql.OrderTermOption) OrderOption {
 // ByCachedTokens orders the results by the cached_tokens field.
 func ByCachedTokens(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCachedTokens, opts...).ToFunc()
+}
+
+// ByUpstreamAttempt orders the results by the upstream_attempt field.
+func ByUpstreamAttempt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpstreamAttempt, opts...).ToFunc()
+}
+
+// ByIsClientOutcome orders the results by the is_client_outcome field.
+func ByIsClientOutcome(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIsClientOutcome, opts...).ToFunc()
+}
+
+// ByIsFailoverAttempt orders the results by the is_failover_attempt field.
+func ByIsFailoverAttempt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIsFailoverAttempt, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

@@ -60,6 +60,12 @@ type UsageLog struct {
 	IsCached bool `json:"is_cached,omitempty"`
 	// CachedTokens holds the value of the "cached_tokens" field.
 	CachedTokens int `json:"cached_tokens,omitempty"`
+	// UpstreamAttempt holds the value of the "upstream_attempt" field.
+	UpstreamAttempt int `json:"upstream_attempt,omitempty"`
+	// IsClientOutcome holds the value of the "is_client_outcome" field.
+	IsClientOutcome bool `json:"is_client_outcome,omitempty"`
+	// IsFailoverAttempt holds the value of the "is_failover_attempt" field.
+	IsFailoverAttempt bool `json:"is_failover_attempt,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UsageLogQuery when eager-loading is set.
 	Edges        UsageLogEdges `json:"edges"`
@@ -117,9 +123,9 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usagelog.FieldIsCached:
+		case usagelog.FieldIsCached, usagelog.FieldIsClientOutcome, usagelog.FieldIsFailoverAttempt:
 			values[i] = new(sql.NullBool)
-		case usagelog.FieldID, usagelog.FieldUserID, usagelog.FieldAPIKeyID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldInputCost, usagelog.FieldOutputCost, usagelog.FieldTotalCost, usagelog.FieldResponseTimeMs, usagelog.FieldStatusCode, usagelog.FieldCachedTokens:
+		case usagelog.FieldID, usagelog.FieldUserID, usagelog.FieldAPIKeyID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldInputCost, usagelog.FieldOutputCost, usagelog.FieldTotalCost, usagelog.FieldResponseTimeMs, usagelog.FieldStatusCode, usagelog.FieldCachedTokens, usagelog.FieldUpstreamAttempt:
 			values[i] = new(sql.NullInt64)
 		case usagelog.FieldRequestID, usagelog.FieldModel, usagelog.FieldModelUpstream, usagelog.FieldErrorMessage, usagelog.FieldIPAddress, usagelog.FieldUserAgent:
 			values[i] = new(sql.NullString)
@@ -266,6 +272,24 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.CachedTokens = int(value.Int64)
 			}
+		case usagelog.FieldUpstreamAttempt:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field upstream_attempt", values[i])
+			} else if value.Valid {
+				_m.UpstreamAttempt = int(value.Int64)
+			}
+		case usagelog.FieldIsClientOutcome:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field is_client_outcome", values[i])
+			} else if value.Valid {
+				_m.IsClientOutcome = value.Bool
+			}
+		case usagelog.FieldIsFailoverAttempt:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field is_failover_attempt", values[i])
+			} else if value.Valid {
+				_m.IsFailoverAttempt = value.Bool
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -376,6 +400,15 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("cached_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CachedTokens))
+	builder.WriteString(", ")
+	builder.WriteString("upstream_attempt=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UpstreamAttempt))
+	builder.WriteString(", ")
+	builder.WriteString("is_client_outcome=")
+	builder.WriteString(fmt.Sprintf("%v", _m.IsClientOutcome))
+	builder.WriteString(", ")
+	builder.WriteString("is_failover_attempt=")
+	builder.WriteString(fmt.Sprintf("%v", _m.IsFailoverAttempt))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -881,6 +881,9 @@ var (
 		{Name: "user_agent", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "is_cached", Type: field.TypeBool, Default: false},
 		{Name: "cached_tokens", Type: field.TypeInt, Default: 0},
+		{Name: "upstream_attempt", Type: field.TypeInt, Default: 1},
+		{Name: "is_client_outcome", Type: field.TypeBool, Default: true},
+		{Name: "is_failover_attempt", Type: field.TypeBool, Default: false},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt, Nullable: true},
@@ -893,19 +896,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_api_keys_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[18]},
+				Columns:    []*schema.Column{UsageLogsColumns[21]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_channels_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[19]},
+				Columns:    []*schema.Column{UsageLogsColumns[22]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_users_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[20]},
+				Columns:    []*schema.Column{UsageLogsColumns[23]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -914,17 +917,17 @@ var (
 			{
 				Name:    "usagelog_user_id_request_time",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[20], UsageLogsColumns[10]},
+				Columns: []*schema.Column{UsageLogsColumns[23], UsageLogsColumns[10]},
 			},
 			{
 				Name:    "usagelog_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[18]},
+				Columns: []*schema.Column{UsageLogsColumns[21]},
 			},
 			{
 				Name:    "usagelog_channel_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[19]},
+				Columns: []*schema.Column{UsageLogsColumns[22]},
 			},
 			{
 				Name:    "usagelog_model",
@@ -935,6 +938,11 @@ var (
 				Name:    "usagelog_request_time",
 				Unique:  false,
 				Columns: []*schema.Column{UsageLogsColumns[10]},
+			},
+			{
+				Name:    "usagelog_request_id_upstream_attempt",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[1], UsageLogsColumns[18]},
 			},
 		},
 	}

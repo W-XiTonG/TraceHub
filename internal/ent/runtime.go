@@ -1188,6 +1188,18 @@ func init() {
 	usagelogDescCachedTokens := usagelogFields[19].Descriptor()
 	// usagelog.DefaultCachedTokens holds the default value on creation for the cached_tokens field.
 	usagelog.DefaultCachedTokens = usagelogDescCachedTokens.Default.(int)
+	// usagelogDescUpstreamAttempt is the schema descriptor for upstream_attempt field.
+	usagelogDescUpstreamAttempt := usagelogFields[20].Descriptor()
+	// usagelog.DefaultUpstreamAttempt holds the default value on creation for the upstream_attempt field.
+	usagelog.DefaultUpstreamAttempt = usagelogDescUpstreamAttempt.Default.(int)
+	// usagelogDescIsClientOutcome is the schema descriptor for is_client_outcome field.
+	usagelogDescIsClientOutcome := usagelogFields[21].Descriptor()
+	// usagelog.DefaultIsClientOutcome holds the default value on creation for the is_client_outcome field.
+	usagelog.DefaultIsClientOutcome = usagelogDescIsClientOutcome.Default.(bool)
+	// usagelogDescIsFailoverAttempt is the schema descriptor for is_failover_attempt field.
+	usagelogDescIsFailoverAttempt := usagelogFields[22].Descriptor()
+	// usagelog.DefaultIsFailoverAttempt holds the default value on creation for the is_failover_attempt field.
+	usagelog.DefaultIsFailoverAttempt = usagelogDescIsFailoverAttempt.Default.(bool)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.

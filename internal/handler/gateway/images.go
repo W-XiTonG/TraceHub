@@ -303,7 +303,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 			}
 			return patchImageGenUpstreamJSON(patched)
 		}
-		sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, patchImageGen, nil,
+		sel, res, err := ExecuteModelForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, patchImageGen, nil,
 			func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 				if !ok {

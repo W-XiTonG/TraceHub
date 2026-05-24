@@ -35,6 +35,9 @@ func (UsageLog) Fields() []ent.Field {
 		field.Text("user_agent").Optional(),
 		field.Bool("is_cached").Default(false),
 		field.Int("cached_tokens").Default(0),
+		field.Int("upstream_attempt").Default(1),
+		field.Bool("is_client_outcome").Default(true),
+		field.Bool("is_failover_attempt").Default(false),
 	}
 }
 
@@ -62,5 +65,6 @@ func (UsageLog) Indexes() []ent.Index {
 		index.Fields("channel_id"),
 		index.Fields("model"),
 		index.Fields("request_time"),
+		index.Fields("request_id", "upstream_attempt"),
 	}
 }

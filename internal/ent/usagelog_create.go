@@ -295,6 +295,48 @@ func (_c *UsageLogCreate) SetNillableCachedTokens(v *int) *UsageLogCreate {
 	return _c
 }
 
+// SetUpstreamAttempt sets the "upstream_attempt" field.
+func (_c *UsageLogCreate) SetUpstreamAttempt(v int) *UsageLogCreate {
+	_c.mutation.SetUpstreamAttempt(v)
+	return _c
+}
+
+// SetNillableUpstreamAttempt sets the "upstream_attempt" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableUpstreamAttempt(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetUpstreamAttempt(*v)
+	}
+	return _c
+}
+
+// SetIsClientOutcome sets the "is_client_outcome" field.
+func (_c *UsageLogCreate) SetIsClientOutcome(v bool) *UsageLogCreate {
+	_c.mutation.SetIsClientOutcome(v)
+	return _c
+}
+
+// SetNillableIsClientOutcome sets the "is_client_outcome" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableIsClientOutcome(v *bool) *UsageLogCreate {
+	if v != nil {
+		_c.SetIsClientOutcome(*v)
+	}
+	return _c
+}
+
+// SetIsFailoverAttempt sets the "is_failover_attempt" field.
+func (_c *UsageLogCreate) SetIsFailoverAttempt(v bool) *UsageLogCreate {
+	_c.mutation.SetIsFailoverAttempt(v)
+	return _c
+}
+
+// SetNillableIsFailoverAttempt sets the "is_failover_attempt" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableIsFailoverAttempt(v *bool) *UsageLogCreate {
+	if v != nil {
+		_c.SetIsFailoverAttempt(*v)
+	}
+	return _c
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_c *UsageLogCreate) SetUser(v *User) *UsageLogCreate {
 	return _c.SetUserID(v.ID)
@@ -381,6 +423,18 @@ func (_c *UsageLogCreate) defaults() {
 		v := usagelog.DefaultCachedTokens
 		_c.mutation.SetCachedTokens(v)
 	}
+	if _, ok := _c.mutation.UpstreamAttempt(); !ok {
+		v := usagelog.DefaultUpstreamAttempt
+		_c.mutation.SetUpstreamAttempt(v)
+	}
+	if _, ok := _c.mutation.IsClientOutcome(); !ok {
+		v := usagelog.DefaultIsClientOutcome
+		_c.mutation.SetIsClientOutcome(v)
+	}
+	if _, ok := _c.mutation.IsFailoverAttempt(); !ok {
+		v := usagelog.DefaultIsFailoverAttempt
+		_c.mutation.SetIsFailoverAttempt(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -434,6 +488,15 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.CachedTokens(); !ok {
 		return &ValidationError{Name: "cached_tokens", err: errors.New(`ent: missing required field "UsageLog.cached_tokens"`)}
+	}
+	if _, ok := _c.mutation.UpstreamAttempt(); !ok {
+		return &ValidationError{Name: "upstream_attempt", err: errors.New(`ent: missing required field "UsageLog.upstream_attempt"`)}
+	}
+	if _, ok := _c.mutation.IsClientOutcome(); !ok {
+		return &ValidationError{Name: "is_client_outcome", err: errors.New(`ent: missing required field "UsageLog.is_client_outcome"`)}
+	}
+	if _, ok := _c.mutation.IsFailoverAttempt(); !ok {
+		return &ValidationError{Name: "is_failover_attempt", err: errors.New(`ent: missing required field "UsageLog.is_failover_attempt"`)}
 	}
 	return nil
 }
@@ -528,6 +591,18 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CachedTokens(); ok {
 		_spec.SetField(usagelog.FieldCachedTokens, field.TypeInt, value)
 		_node.CachedTokens = value
+	}
+	if value, ok := _c.mutation.UpstreamAttempt(); ok {
+		_spec.SetField(usagelog.FieldUpstreamAttempt, field.TypeInt, value)
+		_node.UpstreamAttempt = value
+	}
+	if value, ok := _c.mutation.IsClientOutcome(); ok {
+		_spec.SetField(usagelog.FieldIsClientOutcome, field.TypeBool, value)
+		_node.IsClientOutcome = value
+	}
+	if value, ok := _c.mutation.IsFailoverAttempt(); ok {
+		_spec.SetField(usagelog.FieldIsFailoverAttempt, field.TypeBool, value)
+		_node.IsFailoverAttempt = value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -542,6 +542,8 @@ export default {
     videoGroupSubRow: '子請求',
     videoGroupSubCount: '含 {n} 次子請求',
     toolbarGroupedHidden: '已折疊 {k} 條輪詢/查詢',
+    failoverAttempt: '故障轉移 · 嘗試 #{n}',
+    failoverResolved: '故障轉移 · 共 {n} 次',
   },
   ledgerPage: {
     title: '流水明細',

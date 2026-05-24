@@ -155,6 +155,21 @@ func CachedTokens(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCachedTokens, v))
 }
 
+// UpstreamAttempt applies equality check predicate on the "upstream_attempt" field. It's identical to UpstreamAttemptEQ.
+func UpstreamAttempt(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldUpstreamAttempt, v))
+}
+
+// IsClientOutcome applies equality check predicate on the "is_client_outcome" field. It's identical to IsClientOutcomeEQ.
+func IsClientOutcome(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldIsClientOutcome, v))
+}
+
+// IsFailoverAttempt applies equality check predicate on the "is_failover_attempt" field. It's identical to IsFailoverAttemptEQ.
+func IsFailoverAttempt(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldIsFailoverAttempt, v))
+}
+
 // UserIDEQ applies the EQ predicate on the "user_id" field.
 func UserIDEQ(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldUserID, v))
@@ -1113,6 +1128,66 @@ func CachedTokensLT(v int) predicate.UsageLog {
 // CachedTokensLTE applies the LTE predicate on the "cached_tokens" field.
 func CachedTokensLTE(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldCachedTokens, v))
+}
+
+// UpstreamAttemptEQ applies the EQ predicate on the "upstream_attempt" field.
+func UpstreamAttemptEQ(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldUpstreamAttempt, v))
+}
+
+// UpstreamAttemptNEQ applies the NEQ predicate on the "upstream_attempt" field.
+func UpstreamAttemptNEQ(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldUpstreamAttempt, v))
+}
+
+// UpstreamAttemptIn applies the In predicate on the "upstream_attempt" field.
+func UpstreamAttemptIn(vs ...int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldUpstreamAttempt, vs...))
+}
+
+// UpstreamAttemptNotIn applies the NotIn predicate on the "upstream_attempt" field.
+func UpstreamAttemptNotIn(vs ...int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldUpstreamAttempt, vs...))
+}
+
+// UpstreamAttemptGT applies the GT predicate on the "upstream_attempt" field.
+func UpstreamAttemptGT(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldUpstreamAttempt, v))
+}
+
+// UpstreamAttemptGTE applies the GTE predicate on the "upstream_attempt" field.
+func UpstreamAttemptGTE(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldUpstreamAttempt, v))
+}
+
+// UpstreamAttemptLT applies the LT predicate on the "upstream_attempt" field.
+func UpstreamAttemptLT(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldUpstreamAttempt, v))
+}
+
+// UpstreamAttemptLTE applies the LTE predicate on the "upstream_attempt" field.
+func UpstreamAttemptLTE(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldUpstreamAttempt, v))
+}
+
+// IsClientOutcomeEQ applies the EQ predicate on the "is_client_outcome" field.
+func IsClientOutcomeEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldIsClientOutcome, v))
+}
+
+// IsClientOutcomeNEQ applies the NEQ predicate on the "is_client_outcome" field.
+func IsClientOutcomeNEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldIsClientOutcome, v))
+}
+
+// IsFailoverAttemptEQ applies the EQ predicate on the "is_failover_attempt" field.
+func IsFailoverAttemptEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldIsFailoverAttempt, v))
+}
+
+// IsFailoverAttemptNEQ applies the NEQ predicate on the "is_failover_attempt" field.
+func IsFailoverAttemptNEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldIsFailoverAttempt, v))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

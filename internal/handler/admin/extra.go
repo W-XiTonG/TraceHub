@@ -38,6 +38,7 @@ import (
 	"tracehub/internal/pkg/modelkind"
 	"tracehub/internal/pkg/redeemutil"
 	"tracehub/internal/pkg/sitecfg"
+	"tracehub/internal/pkg/usagelogfilter"
 	"tracehub/internal/service/availmodels"
 	"tracehub/internal/service/billing"
 
@@ -63,7 +64,7 @@ func GetUser(client *ent.Client) gin.HandlerFunc {
 			httpx.Forbidden(c, "仅超级管理员可查看管理员详情")
 			return
 		}
-		totalReq, _ := client.UsageLog.Query().Where(usagelog.UserIDEQ(id)).Count(ctx)
+		totalReq, _ := usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().Where(usagelog.UserIDEQ(id))).Count(ctx)
 		gn := ""
 		if u.Edges.Group != nil {
 			gn = u.Edges.Group.Name
@@ -1443,7 +1444,7 @@ func LogStats(client *ent.Client) gin.HandlerFunc {
 			since = time.Now().Add(-30 * 24 * time.Hour)
 		}
 		ctx := c.Request.Context()
-		q := client.UsageLog.Query().Where(usagelog.RequestTimeGTE(since))
+		q := usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().Where(usagelog.RequestTimeGTE(since)))
 		if uid := c.Query("user_id"); uid != "" {
 			id, _ := strconv.Atoi(uid)
 			q = q.Where(usagelog.UserIDEQ(id))
@@ -2227,28 +2228,28 @@ func DashboardInsight(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 }
 
 func httpErrorCounts(ctx context.Context, client *ent.Client, start, end time.Time) (total, n4xx, n5xx int, err error) {
-	total, err = client.UsageLog.Query().
-		Where(usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end)).
+	total, err = usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().
+		Where(usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end))).
 		Count(ctx)
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	n4xx, err = client.UsageLog.Query().
+	n4xx, err = usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().
 		Where(
 			usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end),
 			usagelog.StatusCodeNotNil(),
 			usagelog.StatusCodeGTE(400), usagelog.StatusCodeLT(500),
-		).
+		)).
 		Count(ctx)
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	n5xx, err = client.UsageLog.Query().
+	n5xx, err = usagelogfilter.ApplyClientOutcomeOnly(client.UsageLog.Query().
 		Where(
 			usagelog.RequestTimeGTE(start), usagelog.RequestTimeLT(end),
 			usagelog.StatusCodeNotNil(),
 			usagelog.StatusCodeGTE(500),
-		).
+		)).
 		Count(ctx)
 	if err != nil {
 		return 0, 0, 0, err

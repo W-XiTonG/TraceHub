@@ -63,7 +63,7 @@ func TestExecuteWithFailover_retriesOn5xx(t *testing.T) {
 				return &UpstreamResult{StatusCode: http.StatusInternalServerError, Body: []byte(`{"error":"boom"}`)}, nil
 			}
 			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{"ok":true}`)}, nil
-		}, nil)
+		}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,6 +76,81 @@ func TestExecuteWithFailover_retriesOn5xx(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("status=%d", res.StatusCode)
 	}
+}
+
+func TestExecuteWithFailover_attemptHook_onIntermediateRetry(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:failoverhook?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+	ctx := context.Background()
+
+	g, err := client.Group.Create().
+		SetName("failover-hook").
+		SetRoutingStrategy(sitecfg.RoutingStrategyPriority).
+		SetRoutingOptions(map[string]any{
+			"failover_enabled":      true,
+			"failover_max_attempts": float64(2),
+		}).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	InvalidateRoutingCache(g.ID)
+
+	chHigh, err := client.Channel.Create().
+		SetGroupID(g.ID).
+		SetChannelType("openai").
+		SetPriority(10).
+		SetModels([]string{"gpt-4o"}).
+		SetEnabled(true).
+		SetSchedulable(true).
+		SetHealthStatus(1).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chLow, err := client.Channel.Create().
+		SetGroupID(g.ID).
+		SetChannelType("openai").
+		SetPriority(1).
+		SetModels([]string{"gpt-4o"}).
+		SetEnabled(true).
+		SetSchedulable(true).
+		SetHealthStatus(1).
+		Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hookCalls := 0
+	hook := func(_ context.Context, ev FailoverAttemptEvent) {
+		if !ev.WillRetry {
+			t.Fatal("expected WillRetry")
+		}
+		if ev.Attempt != 1 {
+			t.Fatalf("attempt=%d", ev.Attempt)
+		}
+		hookCalls++
+	}
+
+	attempts := 0
+	_, res, err := ExecuteWithFailover(ctx, SelectDeps{Client: client}, 1, g.ID, "gpt-4o", "", false, nil,
+		func(_ context.Context, sel *Selected) (*UpstreamResult, error) {
+			attempts++
+			if sel.Channel.ID == chHigh.ID {
+				return &UpstreamResult{StatusCode: http.StatusInternalServerError, Body: []byte(`{"error":"boom"}`)}, nil
+			}
+			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{"ok":true}`)}, nil
+		}, nil, hook)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 2 || hookCalls != 1 {
+		t.Fatalf("attempts=%d hookCalls=%d", attempts, hookCalls)
+	}
+	if res.FailoverAttempts != 2 {
+		t.Fatalf("FailoverAttempts=%d", res.FailoverAttempts)
+	}
+	_ = chLow
 }
 
 func TestExecuteWithFailover_noRetryOn4xx(t *testing.T) {
@@ -126,7 +201,7 @@ func TestExecuteWithFailover_noRetryOn4xx(t *testing.T) {
 		func(ctx context.Context, sel *Selected) (*UpstreamResult, error) {
 			attempts++
 			return &UpstreamResult{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":"bad"}`)}, nil
-		}, nil)
+		}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +255,7 @@ func TestExecuteWithFailover_retriesOn401Selective(t *testing.T) {
 				return &UpstreamResult{StatusCode: http.StatusUnauthorized, Body: []byte(`{"error":{"message":"invalid api key"}}`)}, nil
 			}
 			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{}`)}, nil
-		}, nil)
+		}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +304,7 @@ func TestExecuteWithFailover_disabledSingleAttempt(t *testing.T) {
 		func(ctx context.Context, sel *Selected) (*UpstreamResult, error) {
 			attempts++
 			return &UpstreamResult{StatusCode: http.StatusInternalServerError}, nil
-		}, nil)
+		}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +367,7 @@ func TestExecuteWithFailover_transportErrorRetries(t *testing.T) {
 				return &UpstreamResult{TransportErr: errors.New("dial failed")}, errors.New("dial failed")
 			}
 			return &UpstreamResult{StatusCode: http.StatusOK, Body: []byte(`{}`)}, nil
-		}, nil)
+		}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +415,7 @@ func TestExecuteWithFailover_firstAttemptContextDeadline(t *testing.T) {
 				return nil, attemptCtx.Err()
 			}
 			return &UpstreamResult{StatusCode: http.StatusOK}, nil
-		}, nil)
+		}, nil, nil)
 	if err != nil || attempts != 2 || sel.Channel.ID != chLow.ID {
 		t.Fatalf("err=%v attempts=%d sel=%d", err, attempts, sel.Channel.ID)
 	}

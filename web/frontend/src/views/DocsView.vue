@@ -408,6 +408,7 @@ onUnmounted(() => {
               <li>{{ t('docs.routingFailoverLi1') }}</li>
               <li>{{ t('docs.routingFailoverLi2') }}</li>
               <li>{{ t('docs.routingFailoverLi3') }}</li>
+              <li>{{ t('docs.routingFailoverLi4') }}</li>
             </ul>
 
             <h3 class="mt-8">{{ t('docs.routingHealthH3') }}</h3>

@@ -121,7 +121,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 	start := time.Now()
 	routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
-	sel, res, err := ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
+	sel, res, err := ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
 		func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 			secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 			if !ok {

@@ -40,7 +40,7 @@ func runClaudeOrGeminiChat(
 	if stream {
 		responseWritten = false
 	}
-	sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, responseWritten, sel, body, nil, nil,
+	sel, res, err := ExecuteModelForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, responseWritten, sel, body, nil, nil,
 		func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 			secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 			if !ok {
@@ -77,6 +77,7 @@ func runClaudeOrGeminiChat(
 		})
 	if err != nil {
 		metrics.GatewayRequests.WithLabelValues(model, ct, "transport_err").Inc()
+		RecordUsageTransportOutcome(c, sel, res, err)
 		WriteGatewayTransportErrorWithFailover(c, d.Client, gid, FailoverAttemptsFromResult(res), err)
 		return
 	}
@@ -85,6 +86,7 @@ func runClaudeOrGeminiChat(
 	metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 	if res.StatusCode >= 400 {
 		metrics.GatewayRequests.WithLabelValues(model, ct, http.StatusText(res.StatusCode)).Inc()
+		RecordUsageProxyOutcome(c, d.Client, u.ID, k.ID, sel, res, rid, model, c.ClientIP(), start)
 		WriteClientProxyWithFailover(c, d.Client, gid, res.StatusCode, "application/json", res.Body, res)
 		return
 	}
@@ -130,11 +132,13 @@ func runClaudeOrGeminiChat(
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			em := err.Error()
 			metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
+			noteUsageOutcomeFromUpstreamResult(c, res)
 			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, &em, time.Since(start))
 			return
 		}
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 		RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil, nil)
+		noteUsageOutcomeFromUpstreamResult(c, res)
 		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt2, ct2, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 		return
 	}
@@ -146,6 +150,7 @@ func runClaudeOrGeminiChat(
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
+	noteUsageOutcomeFromUpstreamResult(c, res)
 	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens, cost, c.ClientIP(), res.StatusCode, nil, time.Since(start))
 	WriteClientProxyWithFailover(c, d.Client, gid, res.StatusCode, "application/json", res.Body, res)
 }

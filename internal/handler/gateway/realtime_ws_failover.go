@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,11 +11,12 @@ import (
 	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/service/channelsecret"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
 func dialRealtimeUpstreamWithFailover(
-	ctx context.Context,
+	c *gin.Context,
 	d ChatDeps,
 	userID int64,
 	gid int,
@@ -26,10 +26,11 @@ func dialRealtimeUpstreamWithFailover(
 	clientQuery url.Values,
 	clientHeaders http.Header,
 	dialer websocket.Dialer,
-) (*router.Selected, *websocket.Conn, error) {
+) (*router.Selected, *websocket.Conn, int, error) {
+	ctx := c.Request.Context()
 	cfg, err := router.ResolveRoutingConfig(ctx, d.Client, gid)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	maxAttempts := 1
 	if cfg.FailoverEnabled {
@@ -44,24 +45,34 @@ func dialRealtimeUpstreamWithFailover(
 	var exclude []int
 	var lastSel *router.Selected
 	var lastErr error
+	attemptsUsed := 0
 	for attemptN := 0; attemptN < maxAttempts; attemptN++ {
 		sel, err := router.SelectChannelExcluding(ctx, d.RDB, d.Client, userID, gid, model, sticky, exclude)
 		if err != nil {
-			return lastSel, nil, err
+			return lastSel, nil, attemptsUsed, err
 		}
 		lastSel = sel
 		ch := sel.Channel
+		attemptsUsed = attemptN + 1
 		secret, baseURL, ok := channelSecretAndBase(d, ch)
 		if !ok {
 			lastErr = errChannelNoSecret
+			after := append(append([]int(nil), exclude...), ch.ID)
+			willRetry := attemptN+1 < maxAttempts && router.CountModelCandidates(ctx, d.Client, gid, model, after) >= 1
+			if willRetry {
+				recordRealtimeFailoverAttempt(c, model, sel, 503, errChannelNoSecret, attemptsUsed)
+			}
 			exclude = append(exclude, ch.ID)
+			if !willRetry {
+				break
+			}
 			continue
 		}
 		q2 := cloneQueryWithoutModel(clientQuery)
 		q2.Set("model", sel.UpstreamModel)
 		wsURL, err := openaicompat.WebSocketURLFromOpenAIRoot(baseURL, pathUnderV1, q2)
 		if err != nil {
-			return sel, nil, err
+			return sel, nil, attemptsUsed, err
 		}
 		upHdr := realtimeUpstreamHeaders(secret, clientHeaders)
 		upConn, upResp, err := dialer.DialContext(ctx, wsURL, upHdr)
@@ -69,7 +80,7 @@ func dialRealtimeUpstreamWithFailover(
 			_ = upResp.Body.Close()
 		}
 		if err == nil {
-			return sel, upConn, nil
+			return sel, upConn, attemptsUsed, nil
 		}
 		lastErr = err
 		RecordUpstreamOutcome(ctx, d.Client, ch.ID, 0, err, nil)
@@ -77,12 +88,37 @@ func dialRealtimeUpstreamWithFailover(
 			router.ClearStickySession(ctx, d.RDB, userID, sticky)
 		}
 		after := append(append([]int(nil), exclude...), ch.ID)
-		if !router.IsRetryableUpstream(0, err) || router.CountModelCandidates(ctx, d.Client, gid, model, after) < 1 {
+		willRetry := attemptN+1 < maxAttempts &&
+			router.IsRetryableUpstream(0, err) &&
+			router.CountModelCandidates(ctx, d.Client, gid, model, after) >= 1
+		if willRetry {
+			recordRealtimeFailoverAttempt(c, model, sel, 502, err, attemptsUsed)
+		}
+		if !willRetry {
 			break
 		}
 		exclude = append(exclude, ch.ID)
 	}
-	return lastSel, nil, lastErr
+	return lastSel, nil, attemptsUsed, lastErr
+}
+
+func recordRealtimeFailoverAttempt(c *gin.Context, model string, sel *router.Selected, status int, err error, attempt int) {
+	rec := UsageRecorderFrom(c)
+	if rec == nil || sel == nil {
+		return
+	}
+	if m := strings.TrimSpace(model); m != "" {
+		rec.SetModel(m)
+	}
+	var em *string
+	if err != nil {
+		msg := err.Error()
+		if len(msg) > 200 {
+			msg = msg[:200]
+		}
+		em = &msg
+	}
+	rec.SaveFailoverAttempt(sel.Channel.ID, sel.UpstreamModel, status, em, attempt, 0)
 }
 
 func channelSecretAndBase(d ChatDeps, ch *ent.Channel) (secret, baseURL string, ok bool) {

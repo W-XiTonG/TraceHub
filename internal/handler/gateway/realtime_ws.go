@@ -76,9 +76,16 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			HandshakeTimeout: 45 * time.Second,
 			Subprotocols:     parseSecWebSocketProtocols(c.GetHeader("Sec-WebSocket-Protocol")),
 		}
-		sel, upConn, dialErr := dialRealtimeUpstreamWithFailover(
-			c.Request.Context(), d, int64(u.ID), gid, model, sticky, pathUnderV1, q, c.Request.Header, dialer)
+		sel, upConn, dialAttempts, dialErr := dialRealtimeUpstreamWithFailover(
+			c, d, int64(u.ID), gid, model, sticky, pathUnderV1, q, c.Request.Header, dialer)
 		if dialErr != nil {
+			NoteUsageOutcomeAttempt(c, dialAttempts)
+			if rec := UsageRecorderFrom(c); rec != nil {
+				if sel != nil {
+					rec.SetChannel(sel.Channel.ID, sel.UpstreamModel)
+				}
+				rec.SaveFail(503, dialErr.Error(), 0, 0, 0)
+			}
 			middleware.WriteOpenAIError(c, 503, "api_error", MsgServiceUnavailable)
 			return
 		}
@@ -126,6 +133,7 @@ func RealtimeWebSocket(d ChatDeps) gin.HandlerFunc {
 			slog.Warn("realtime ws deduct failed", "user_id", u.ID, "err", err)
 		}
 		metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
+		NoteUsageOutcomeAttempt(c, dialAttempts)
 		RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, promptToks, compToks, 0, cost, c.ClientIP(), 200, nil, time.Since(start))
 
 		t0 := time.Now()

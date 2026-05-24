@@ -361,7 +361,7 @@ func AudioSpeech(d ChatDeps) gin.HandlerFunc {
 		accept := c.GetHeader("Accept")
 		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
-		sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, nil, nil,
+		sel, res, err := ExecuteModelForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body, nil, nil,
 			func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 				if !ok {

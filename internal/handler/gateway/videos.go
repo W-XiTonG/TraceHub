@@ -262,7 +262,7 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 	kling := isKlingVideoChannel(ct)
 	var klingCreateKind klingvideo.CreateKind
 
-	sel, res, err := ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body,
+	sel, res, err := ExecuteModelForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, c.Writer.Written(), sel, body,
 		func(b []byte, upstream string) ([]byte, error) {
 			return patchVideoCreateBody(b, upstream, volc)
 		}, nil,
@@ -374,7 +374,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 		start := time.Now()
 		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 
-		sel, res, err := ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
+		sel, res, err := ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
 			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 				if !ok {
@@ -472,7 +472,7 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 	routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 	rawQuery := c.Request.URL.RawQuery
 
-	sel, res, err := ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
+	sel, res, err := ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
 		func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 			secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 			if !ok {

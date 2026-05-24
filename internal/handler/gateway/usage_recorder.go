@@ -44,6 +44,7 @@ type UsageRecorder struct {
 	errMsg   string
 	traceRef string // 非错误追踪（如 video_job:id），写入 error_message 供前端聚合
 	logged   bool
+	outcomeAttempt int // 客户端最终结果在 failover 链中的序号；默认 1
 	mu       sync.Mutex
 
 	disabled bool
@@ -186,13 +187,66 @@ func (r *UsageRecorder) IsLogged() bool {
 	return r.logged
 }
 
+func (r *UsageRecorder) SetOutcomeAttempt(attempt int) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if attempt > 0 {
+		r.outcomeAttempt = attempt
+	}
+}
+
+func (r *UsageRecorder) OutcomeAttempt() int {
+	if r == nil {
+		return 1
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.outcomeAttempt > 0 {
+		return r.outcomeAttempt
+	}
+	return 1
+}
+
+// SaveFailoverAttempt 记录 failover 中间上游尝试；不触发 MarkLogged。
+func (r *UsageRecorder) SaveFailoverAttempt(channelID int, upstream string, status int, errMsg *string, attempt int, _ time.Duration) {
+	if r == nil || r.disabled {
+		return
+	}
+	r.mu.Lock()
+	model := r.model
+	client := r.client
+	userID := r.userID
+	apiKeyID := r.apiKeyID
+	requestID := r.requestID
+	ip := r.ip
+	start := r.start
+	if channelID > 0 {
+		r.channelID = channelID
+	}
+	if u := strings.TrimSpace(upstream); u != "" {
+		r.upstream = u
+	}
+	up := r.upstream
+	chID := r.channelID
+	r.mu.Unlock()
+
+	if model == "" {
+		model = "gateway:unknown"
+	}
+	go saveUsage(client, userID, apiKeyID, chID, requestID, model, up,
+		0, 0, 0, 0, ip, status, errMsg, time.Since(start), metaForFailoverAttempt(attempt))
+}
+
 // SaveOK 记录成功（或已产生计费用量）的调用，异步写库。
 func (r *UsageRecorder) SaveOK(pt, ct, cachedPrompt int, cost int64, status int, errMsg *string) {
 	if r == nil || r.disabled {
 		return
 	}
 	r.MarkLogged()
-	r.persist(pt, ct, cachedPrompt, cost, status, errMsg)
+	r.persist(pt, ct, cachedPrompt, cost, status, errMsg, metaForClientOutcome(r.OutcomeAttempt()))
 }
 
 // SaveFail 显式记录失败（如 WebSocket dial 失败）；异步写库。
@@ -205,7 +259,7 @@ func (r *UsageRecorder) SaveFail(status int, errMsg string, pt, ct int, cost int
 	if errMsg != "" {
 		em = &errMsg
 	}
-	r.persist(pt, ct, 0, cost, status, em)
+	r.persist(pt, ct, 0, cost, status, em, metaForClientOutcome(r.OutcomeAttempt()))
 }
 
 func (r *UsageRecorder) maybeFlushFailure(c *gin.Context) {
@@ -242,7 +296,7 @@ func (r *UsageRecorder) maybeFlushFailure(c *gin.Context) {
 		em = &wrapped
 	}
 	go saveUsage(r.client, r.userID, r.apiKeyID, channelID, r.requestID, model, upstream,
-		0, 0, 0, 0, r.ip, status, em, time.Since(r.start))
+		0, 0, 0, 0, r.ip, status, em, time.Since(r.start), metaForClientOutcome(r.OutcomeAttempt()))
 }
 
 func gatewayErrMsgFromContext(c *gin.Context) *string {
@@ -270,7 +324,7 @@ func noteGatewayLogicalModel(c *gin.Context, model string) {
 	}
 }
 
-func (r *UsageRecorder) persist(pt, ct, cachedPrompt int, cost int64, status int, errMsg *string) {
+func (r *UsageRecorder) persist(pt, ct, cachedPrompt int, cost int64, status int, errMsg *string, meta UsageLogMeta) {
 	r.mu.Lock()
 	model := r.model
 	channelID := r.channelID
@@ -287,7 +341,7 @@ func (r *UsageRecorder) persist(pt, ct, cachedPrompt int, cost int64, status int
 		model = "gateway:unknown"
 	}
 	go saveUsage(client, userID, apiKeyID, channelID, requestID, model, upstream,
-		pt, ct, cachedPrompt, cost, ip, status, errMsg, time.Since(start))
+		pt, ct, cachedPrompt, cost, ip, status, errMsg, time.Since(start), meta)
 }
 
 func fallbackModel(c *gin.Context) string {
@@ -306,13 +360,32 @@ func fallbackModel(c *gin.Context) string {
 
 // RecordUsageOK 在 recorder 存在时用 SaveOK，否则回退为裸 saveUsage（测试/非 gate 路由）。
 func RecordUsageOK(c *gin.Context, client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration) {
+	RecordUsageOKWithAttempt(c, client, userID, apiKeyID, channelID, requestID, model, upstream, pt, ct, cachedPrompt, cost, ip, status, errMsg, elapsed, 0)
+}
+
+// RecordUsageOKWithAttempt 写入客户端最终结果；attempt<=0 时从 UsageRecorder 读取。
+func RecordUsageOKWithAttempt(c *gin.Context, client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration, attempt int) {
 	if rec := UsageRecorderFrom(c); rec != nil {
 		rec.SetModel(model)
 		rec.SetChannel(channelID, upstream)
+		if attempt > 0 {
+			rec.SetOutcomeAttempt(attempt)
+		}
 		rec.SaveOK(pt, ct, cachedPrompt, cost, status, errMsg)
 		return
 	}
-	go saveUsage(client, userID, apiKeyID, channelID, requestID, model, upstream, pt, ct, cachedPrompt, cost, ip, status, errMsg, elapsed)
+	meta := metaForClientOutcome(attempt)
+	if attempt < 1 {
+		meta = defaultUsageLogMeta()
+	}
+	go saveUsage(client, userID, apiKeyID, channelID, requestID, model, upstream, pt, ct, cachedPrompt, cost, ip, status, errMsg, elapsed, meta)
+}
+
+// NoteUsageOutcomeAttempt 在 RecordUsageOK 前设置 failover 最终尝试序号。
+func NoteUsageOutcomeAttempt(c *gin.Context, attempt int) {
+	if rec := UsageRecorderFrom(c); rec != nil && attempt > 0 {
+		rec.SetOutcomeAttempt(attempt)
+	}
 }
 
 // noteUsageErrorFromContext 供 billing / OpenAI 错误写出路径挂接。

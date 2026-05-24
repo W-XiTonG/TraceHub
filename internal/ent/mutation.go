@@ -26447,6 +26447,10 @@ type UsageLogMutation struct {
 	is_cached            *bool
 	cached_tokens        *int
 	addcached_tokens     *int
+	upstream_attempt     *int
+	addupstream_attempt  *int
+	is_client_outcome    *bool
+	is_failover_attempt  *bool
 	clearedFields        map[string]struct{}
 	user                 *int
 	cleareduser          bool
@@ -27589,6 +27593,134 @@ func (m *UsageLogMutation) ResetCachedTokens() {
 	m.addcached_tokens = nil
 }
 
+// SetUpstreamAttempt sets the "upstream_attempt" field.
+func (m *UsageLogMutation) SetUpstreamAttempt(i int) {
+	m.upstream_attempt = &i
+	m.addupstream_attempt = nil
+}
+
+// UpstreamAttempt returns the value of the "upstream_attempt" field in the mutation.
+func (m *UsageLogMutation) UpstreamAttempt() (r int, exists bool) {
+	v := m.upstream_attempt
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpstreamAttempt returns the old "upstream_attempt" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldUpstreamAttempt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpstreamAttempt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpstreamAttempt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpstreamAttempt: %w", err)
+	}
+	return oldValue.UpstreamAttempt, nil
+}
+
+// AddUpstreamAttempt adds i to the "upstream_attempt" field.
+func (m *UsageLogMutation) AddUpstreamAttempt(i int) {
+	if m.addupstream_attempt != nil {
+		*m.addupstream_attempt += i
+	} else {
+		m.addupstream_attempt = &i
+	}
+}
+
+// AddedUpstreamAttempt returns the value that was added to the "upstream_attempt" field in this mutation.
+func (m *UsageLogMutation) AddedUpstreamAttempt() (r int, exists bool) {
+	v := m.addupstream_attempt
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUpstreamAttempt resets all changes to the "upstream_attempt" field.
+func (m *UsageLogMutation) ResetUpstreamAttempt() {
+	m.upstream_attempt = nil
+	m.addupstream_attempt = nil
+}
+
+// SetIsClientOutcome sets the "is_client_outcome" field.
+func (m *UsageLogMutation) SetIsClientOutcome(b bool) {
+	m.is_client_outcome = &b
+}
+
+// IsClientOutcome returns the value of the "is_client_outcome" field in the mutation.
+func (m *UsageLogMutation) IsClientOutcome() (r bool, exists bool) {
+	v := m.is_client_outcome
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsClientOutcome returns the old "is_client_outcome" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldIsClientOutcome(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsClientOutcome is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsClientOutcome requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsClientOutcome: %w", err)
+	}
+	return oldValue.IsClientOutcome, nil
+}
+
+// ResetIsClientOutcome resets all changes to the "is_client_outcome" field.
+func (m *UsageLogMutation) ResetIsClientOutcome() {
+	m.is_client_outcome = nil
+}
+
+// SetIsFailoverAttempt sets the "is_failover_attempt" field.
+func (m *UsageLogMutation) SetIsFailoverAttempt(b bool) {
+	m.is_failover_attempt = &b
+}
+
+// IsFailoverAttempt returns the value of the "is_failover_attempt" field in the mutation.
+func (m *UsageLogMutation) IsFailoverAttempt() (r bool, exists bool) {
+	v := m.is_failover_attempt
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsFailoverAttempt returns the old "is_failover_attempt" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldIsFailoverAttempt(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsFailoverAttempt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsFailoverAttempt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsFailoverAttempt: %w", err)
+	}
+	return oldValue.IsFailoverAttempt, nil
+}
+
+// ResetIsFailoverAttempt resets all changes to the "is_failover_attempt" field.
+func (m *UsageLogMutation) ResetIsFailoverAttempt() {
+	m.is_failover_attempt = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *UsageLogMutation) ClearUser() {
 	m.cleareduser = true
@@ -27704,7 +27836,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 23)
 	if m.user != nil {
 		fields = append(fields, usagelog.FieldUserID)
 	}
@@ -27765,6 +27897,15 @@ func (m *UsageLogMutation) Fields() []string {
 	if m.cached_tokens != nil {
 		fields = append(fields, usagelog.FieldCachedTokens)
 	}
+	if m.upstream_attempt != nil {
+		fields = append(fields, usagelog.FieldUpstreamAttempt)
+	}
+	if m.is_client_outcome != nil {
+		fields = append(fields, usagelog.FieldIsClientOutcome)
+	}
+	if m.is_failover_attempt != nil {
+		fields = append(fields, usagelog.FieldIsFailoverAttempt)
+	}
 	return fields
 }
 
@@ -27813,6 +27954,12 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.IsCached()
 	case usagelog.FieldCachedTokens:
 		return m.CachedTokens()
+	case usagelog.FieldUpstreamAttempt:
+		return m.UpstreamAttempt()
+	case usagelog.FieldIsClientOutcome:
+		return m.IsClientOutcome()
+	case usagelog.FieldIsFailoverAttempt:
+		return m.IsFailoverAttempt()
 	}
 	return nil, false
 }
@@ -27862,6 +28009,12 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldIsCached(ctx)
 	case usagelog.FieldCachedTokens:
 		return m.OldCachedTokens(ctx)
+	case usagelog.FieldUpstreamAttempt:
+		return m.OldUpstreamAttempt(ctx)
+	case usagelog.FieldIsClientOutcome:
+		return m.OldIsClientOutcome(ctx)
+	case usagelog.FieldIsFailoverAttempt:
+		return m.OldIsFailoverAttempt(ctx)
 	}
 	return nil, fmt.Errorf("unknown UsageLog field %s", name)
 }
@@ -28011,6 +28164,27 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCachedTokens(v)
 		return nil
+	case usagelog.FieldUpstreamAttempt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpstreamAttempt(v)
+		return nil
+	case usagelog.FieldIsClientOutcome:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsClientOutcome(v)
+		return nil
+	case usagelog.FieldIsFailoverAttempt:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsFailoverAttempt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown UsageLog field %s", name)
 }
@@ -28046,6 +28220,9 @@ func (m *UsageLogMutation) AddedFields() []string {
 	if m.addcached_tokens != nil {
 		fields = append(fields, usagelog.FieldCachedTokens)
 	}
+	if m.addupstream_attempt != nil {
+		fields = append(fields, usagelog.FieldUpstreamAttempt)
+	}
 	return fields
 }
 
@@ -28072,6 +28249,8 @@ func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedStatusCode()
 	case usagelog.FieldCachedTokens:
 		return m.AddedCachedTokens()
+	case usagelog.FieldUpstreamAttempt:
+		return m.AddedUpstreamAttempt()
 	}
 	return nil, false
 }
@@ -28143,6 +28322,13 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddCachedTokens(v)
+		return nil
+	case usagelog.FieldUpstreamAttempt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUpstreamAttempt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog numeric field %s", name)
@@ -28293,6 +28479,15 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldCachedTokens:
 		m.ResetCachedTokens()
+		return nil
+	case usagelog.FieldUpstreamAttempt:
+		m.ResetUpstreamAttempt()
+		return nil
+	case usagelog.FieldIsClientOutcome:
+		m.ResetIsClientOutcome()
+		return nil
+	case usagelog.FieldIsFailoverAttempt:
+		m.ResetIsFailoverAttempt()
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog field %s", name)

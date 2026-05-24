@@ -138,7 +138,7 @@ func (d RoutingExecDeps) executeWithFailoverRecorded(
 				RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, 0, err, nil)
 			}
 			return res, err
-		}, nil)
+		}, nil, failoverAttemptHookFromContext(ctx))
 }
 
 // ExecuteModelForward 按模型选路并支持 failover；patchFn 为 nil 时使用 PatchModelInBody，patchExtra 可为 nil。

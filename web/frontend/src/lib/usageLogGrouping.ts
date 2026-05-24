@@ -15,6 +15,9 @@ export type UsageLogGroupRow = {
   ip_address?: string
   response_time_ms?: number
   billing_mode?: string
+  upstream_attempt?: number
+  is_client_outcome?: boolean
+  is_failover_attempt?: boolean
 }
 
 export type UsageLogGroup = {
@@ -22,6 +25,33 @@ export type UsageLogGroup = {
   primary: UsageLogGroupRow
   children: UsageLogGroupRow[]
   videoJobId: string
+}
+
+export function isFailoverIntermediateRow(row: {
+  is_failover_attempt?: boolean
+}): boolean {
+  return row.is_failover_attempt === true
+}
+
+export function isFailoverOutcomeRow(row: {
+  is_failover_attempt?: boolean
+  is_client_outcome?: boolean
+  upstream_attempt?: number
+}): boolean {
+  return (
+    row.is_failover_attempt !== true &&
+    row.is_client_outcome !== false &&
+    (row.upstream_attempt ?? 1) > 1
+  )
+}
+
+export function failoverAttemptBadgeKey(row: {
+  upstream_attempt?: number
+  is_failover_attempt?: boolean
+}): string | null {
+  if (!isFailoverIntermediateRow(row)) return null
+  const n = row.upstream_attempt ?? 1
+  return `failoverAttempt:${n}`
 }
 
 const VIDEO_TRACE_PREFIXES = [

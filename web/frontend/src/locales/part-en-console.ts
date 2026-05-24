@@ -544,6 +544,8 @@ export default {
     videoGroupSubRow: 'Sub-request',
     videoGroupSubCount: '{n} sub-requests',
     toolbarGroupedHidden: '{k} poll/query rows folded',
+    failoverAttempt: 'Failover · attempt #{n}',
+    failoverResolved: 'Failover · {n} attempts',
   },
   ledgerPage: {
     title: 'Balance ledger',

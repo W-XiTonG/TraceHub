@@ -21,6 +21,18 @@ type UpstreamResult struct {
 	FailoverAttempts int            // 本次请求上游尝试次数（含成功）
 }
 
+// FailoverAttemptEvent 单次上游尝试结果（WillRetry 为 true 时表示中间尝试）。
+type FailoverAttemptEvent struct {
+	Attempt   int // 1-based
+	Selected  *Selected
+	Result    *UpstreamResult
+	Err       error
+	WillRetry bool
+}
+
+// FailoverAttemptHook 在判定将重试时记录中间上游尝试。
+type FailoverAttemptHook func(ctx context.Context, ev FailoverAttemptEvent)
+
 // UpstreamAttemptFunc 执行一次上游请求。
 type UpstreamAttemptFunc func(ctx context.Context, sel *Selected) (*UpstreamResult, error)
 
@@ -66,6 +78,7 @@ func ExecuteWithFailover(
 	firstSel *Selected,
 	attempt UpstreamAttemptFunc,
 	meta *FailoverExecMeta,
+	attemptHook FailoverAttemptHook,
 ) (*Selected, *UpstreamResult, error) {
 	var exclude []int
 	var lastSel *Selected
@@ -141,6 +154,16 @@ func ExecuteWithFailover(
 				return sel, res, err
 			}
 			return sel, res, nil
+		}
+
+		if attemptHook != nil {
+			attemptHook(ctx, FailoverAttemptEvent{
+				Attempt:   attemptsUsed,
+				Selected:  sel,
+				Result:    res,
+				Err:       err,
+				WillRetry: true,
+			})
 		}
 
 		if cfg.StickyEnabled && sticky != "" {

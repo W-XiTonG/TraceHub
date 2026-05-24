@@ -203,7 +203,7 @@ func enterpriseForwardJSON(
 	var res *router.UpstreamResult
 	var err error
 	if len(body) == 0 {
-		sel, res, err = ExecuteModelHTTPForward(c.Request.Context(), routeDeps, int64(u.ID), gid, routingModel, sticky, sel,
+		sel, res, err = ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, routingModel), routeDeps, int64(u.ID), gid, routingModel, sticky, sel,
 			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 				return forwardHTTP(ctx, sel, nil)
 			})
@@ -214,7 +214,7 @@ func enterpriseForwardJSON(
 		} else {
 			patchFn = func(b []byte, _ string) ([]byte, error) { return b, nil }
 		}
-		sel, res, err = ExecuteModelForward(c.Request.Context(), routeDeps, int64(u.ID), gid, routingModel, sticky, false, sel, body, patchFn, nil,
+		sel, res, err = ExecuteModelForward(GinContextWithFailoverAttemptHook(c, routingModel), routeDeps, int64(u.ID), gid, routingModel, sticky, false, sel, body, patchFn, nil,
 			func(ctx context.Context, sel *router.Selected, patched []byte) (*router.UpstreamResult, error) {
 				return forwardHTTP(ctx, sel, patched)
 			})

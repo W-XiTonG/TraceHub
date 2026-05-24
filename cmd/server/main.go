@@ -11,6 +11,7 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/pginit"
+	"tracehub/internal/pkg/usagelogmigrate"
 	"tracehub/internal/server"
 
 	_ "github.com/lib/pq"
@@ -56,6 +57,9 @@ func main() {
 
 	if err := client.Schema.Create(ctx); err != nil {
 		zlog.Fatal("database migration failed", zap.Error(err))
+	}
+	if err := usagelogmigrate.BackfillFailoverFlags(ctx, sqldb); err != nil {
+		zlog.Fatal("usage_logs failover flag backfill failed", zap.Error(err))
 	}
 
 	var rdb *redis.Client

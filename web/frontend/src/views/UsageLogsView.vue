@@ -21,6 +21,8 @@ import {
   flattenGroupedUsageLogs,
   groupVideoUsageLogs,
   isVideoJobTraceMessage,
+  isFailoverIntermediateRow,
+  isFailoverOutcomeRow,
   type FlatUsageLogEntry,
   type UsageLogGroup,
 } from '../lib/usageLogGrouping'
@@ -40,6 +42,9 @@ type LogRow = UsageLogBillingRow & {
   status_code?: number
   error_message?: string
   ip_address?: string
+  upstream_attempt?: number
+  is_client_outcome?: boolean
+  is_failover_attempt?: boolean
 }
 
 const items = ref<LogRow[]>([])
@@ -488,7 +493,10 @@ onMounted(() => {
                   ? `s-${entry.row.id}`
                   : `p-${entry.group.primary.id}`
             "
-            :class="entry.kind === 'group-child' ? 'th-usage-logs-row--child' : ''"
+            :class="[
+              entry.kind === 'group-child' ? 'th-usage-logs-row--child' : '',
+              isFailoverIntermediateRow(rowFromEntry(entry)) ? 'opacity-75' : '',
+            ]"
           >
             <td class="px-3" :class="compact ? 'py-1.5' : 'py-2.5'">
               <input
@@ -542,6 +550,18 @@ onMounted(() => {
                   parseModelCell(rowFromEntry(entry).model).path
                 }}</span>
               </p>
+              <span
+                v-if="isFailoverIntermediateRow(rowFromEntry(entry))"
+                class="mt-1 inline-block rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400"
+              >
+                {{ t('logsPage.failoverAttempt', { n: rowFromEntry(entry).upstream_attempt ?? 1 }) }}
+              </span>
+              <span
+                v-else-if="isFailoverOutcomeRow(rowFromEntry(entry))"
+                class="mt-1 inline-block rounded bg-emerald-950/80 px-1.5 py-0.5 text-[10px] text-emerald-400/90"
+              >
+                {{ t('logsPage.failoverResolved', { n: rowFromEntry(entry).upstream_attempt ?? 1 }) }}
+              </span>
             </td>
             <td
               v-if="!compact"
