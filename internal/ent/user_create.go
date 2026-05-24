@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/feedback"
@@ -414,6 +415,21 @@ func (_c *UserCreate) AddInvoiceProfile(v ...*InvoiceProfile) *UserCreate {
 	return _c.AddInvoiceProfileIDs(ids...)
 }
 
+// AddGatewayAlertReadStateIDs adds the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity by IDs.
+func (_c *UserCreate) AddGatewayAlertReadStateIDs(ids ...int) *UserCreate {
+	_c.mutation.AddGatewayAlertReadStateIDs(ids...)
+	return _c
+}
+
+// AddGatewayAlertReadState adds the "gateway_alert_read_state" edges to the AdminGatewayAlertRead entity.
+func (_c *UserCreate) AddGatewayAlertReadState(v ...*AdminGatewayAlertRead) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddGatewayAlertReadStateIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -806,6 +822,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(invoiceprofile.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.GatewayAlertReadStateIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

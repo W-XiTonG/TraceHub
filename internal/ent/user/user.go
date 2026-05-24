@@ -72,6 +72,8 @@ const (
 	EdgePaymentOrders = "payment_orders"
 	// EdgeInvoiceProfile holds the string denoting the invoice_profile edge name in mutations.
 	EdgeInvoiceProfile = "invoice_profile"
+	// EdgeGatewayAlertReadState holds the string denoting the gateway_alert_read_state edge name in mutations.
+	EdgeGatewayAlertReadState = "gateway_alert_read_state"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table that holds the group relation/edge.
@@ -151,6 +153,13 @@ const (
 	InvoiceProfileInverseTable = "invoice_profiles"
 	// InvoiceProfileColumn is the table column denoting the invoice_profile relation/edge.
 	InvoiceProfileColumn = "user_id"
+	// GatewayAlertReadStateTable is the table that holds the gateway_alert_read_state relation/edge.
+	GatewayAlertReadStateTable = "admin_gateway_alert_reads"
+	// GatewayAlertReadStateInverseTable is the table name for the AdminGatewayAlertRead entity.
+	// It exists in this package in order to avoid circular dependency with the "admingatewayalertread" package.
+	GatewayAlertReadStateInverseTable = "admin_gateway_alert_reads"
+	// GatewayAlertReadStateColumn is the table column denoting the gateway_alert_read_state relation/edge.
+	GatewayAlertReadStateColumn = "admin_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -448,6 +457,20 @@ func ByInvoiceProfile(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newInvoiceProfileStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByGatewayAlertReadStateCount orders the results by gateway_alert_read_state count.
+func ByGatewayAlertReadStateCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newGatewayAlertReadStateStep(), opts...)
+	}
+}
+
+// ByGatewayAlertReadState orders the results by gateway_alert_read_state terms.
+func ByGatewayAlertReadState(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newGatewayAlertReadStateStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -523,5 +546,12 @@ func newInvoiceProfileStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(InvoiceProfileInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, InvoiceProfileTable, InvoiceProfileColumn),
+	)
+}
+func newGatewayAlertReadStateStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(GatewayAlertReadStateInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, GatewayAlertReadStateTable, GatewayAlertReadStateColumn),
 	)
 }

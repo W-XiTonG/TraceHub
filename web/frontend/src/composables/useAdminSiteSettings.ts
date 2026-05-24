@@ -98,6 +98,37 @@ export type SiteSettingsPayload = {
   currency_quota_per_yuan?: number
   currency_quota_per_usd?: number
   pricing_cny_per_usd?: number
+  gateway_admin_alert_enabled?: boolean
+  gateway_admin_alert_enabled_db_set?: boolean
+  gateway_admin_alert_config?: GatewayAdminAlertWireConfig | null
+  gateway_admin_alert_config_db_set?: boolean
+  gateway_admin_alert_secrets_configured?: Record<string, boolean>
+}
+
+export type GatewayAdminAlertWireConfig = {
+  triggers?: {
+    notify_5xx?: boolean
+    notify_transport?: boolean
+    notify_failover?: boolean
+    notify_4xx?: boolean
+    notify_402?: boolean
+  }
+  channels?: {
+    email?: boolean
+    dingtalk?: boolean
+    feishu?: boolean
+    wecom?: boolean
+    generic_webhook?: boolean
+    in_app?: boolean
+  }
+  emails?: string[]
+  dingtalk_webhook?: string
+  feishu_webhook?: string
+  wecom_webhook?: string
+  generic_webhook_url?: string
+  cooldown_sec?: number
+  min_interval_sec?: number
+  include_user_email?: boolean
 }
 
 export function createAdminSiteSettings() {
@@ -136,6 +167,25 @@ export function createAdminSiteSettings() {
     httpsHstsEnabled: true,
     httpsHstsMaxAgeSeconds: 31536000,
     tlsEnabled: false,
+    gatewayAdminAlertEnabled: false,
+    gwAlertNotify5xx: true,
+    gwAlertNotifyTransport: true,
+    gwAlertNotifyFailover: false,
+    gwAlertNotify4xx: false,
+    gwAlertNotify402: false,
+    gwAlertChannelEmail: false,
+    gwAlertChannelDingtalk: false,
+    gwAlertChannelFeishu: false,
+    gwAlertChannelWecom: false,
+    gwAlertChannelGenericWebhook: false,
+    gwAlertChannelInApp: true,
+    gwAlertEmailsText: '',
+    gwAlertDingtalkWebhook: '',
+    gwAlertFeishuWebhook: '',
+    gwAlertWecomWebhook: '',
+    gwAlertGenericWebhookUrl: '',
+    gwAlertCooldownSec: 300,
+    gwAlertMinIntervalSec: 30,
   })
 
   watch(
@@ -182,6 +232,16 @@ export function createAdminSiteSettings() {
   const upstreamProbeIntervalDbOverride = ref(false)
   const gatewayIpBlacklistDbOverride = ref(false)
   const gatewayIpBlacklistRows = ref<Array<{ value: string }>>([])
+
+  const gwAlertSecretDing = ref('')
+  const gwAlertSecretFeishu = ref('')
+  const gwAlertSecretWecom = ref('')
+  const gwAlertSecretGeneric = ref('')
+  const gwAlertClearDingSign = ref(false)
+  const gwAlertClearFeishuSign = ref(false)
+  const gwAlertClearWecomSign = ref(false)
+  const gwAlertClearGenericSign = ref(false)
+  const gwAlertSignConfigured = ref<Record<string, boolean>>({})
 
   function addGatewayIpBlacklistRow() {
     gatewayIpBlacklistRows.value.push({ value: '' })
@@ -377,6 +437,85 @@ export function createAdminSiteSettings() {
       contactEmailsText.value = ''
       contactQRs.value = []
     }
+    form.gatewayAdminAlertEnabled = Boolean(d.gateway_admin_alert_enabled)
+    const gac = d.gateway_admin_alert_config
+    if (gac && typeof gac === 'object') {
+      form.gwAlertNotify5xx = gac.triggers?.notify_5xx !== false
+      form.gwAlertNotifyTransport = gac.triggers?.notify_transport !== false
+      form.gwAlertNotifyFailover = Boolean(gac.triggers?.notify_failover)
+      form.gwAlertNotify4xx = Boolean(gac.triggers?.notify_4xx)
+      form.gwAlertNotify402 = Boolean(gac.triggers?.notify_402)
+      form.gwAlertChannelEmail = Boolean(gac.channels?.email)
+      form.gwAlertChannelDingtalk = Boolean(gac.channels?.dingtalk)
+      form.gwAlertChannelFeishu = Boolean(gac.channels?.feishu)
+      form.gwAlertChannelWecom = Boolean(gac.channels?.wecom)
+      form.gwAlertChannelGenericWebhook = Boolean(gac.channels?.generic_webhook)
+      form.gwAlertChannelInApp = gac.channels?.in_app !== false
+      form.gwAlertEmailsText = Array.isArray(gac.emails)
+        ? gac.emails.filter((e): e is string => typeof e === 'string' && e.trim()).join('\n')
+        : ''
+      form.gwAlertDingtalkWebhook = typeof gac.dingtalk_webhook === 'string' ? gac.dingtalk_webhook : ''
+      form.gwAlertFeishuWebhook = typeof gac.feishu_webhook === 'string' ? gac.feishu_webhook : ''
+      form.gwAlertWecomWebhook = typeof gac.wecom_webhook === 'string' ? gac.wecom_webhook : ''
+      form.gwAlertGenericWebhookUrl = typeof gac.generic_webhook_url === 'string' ? gac.generic_webhook_url : ''
+      form.gwAlertCooldownSec = pickInt64ish(gac.cooldown_sec) || 300
+      form.gwAlertMinIntervalSec = pickInt64ish(gac.min_interval_sec) || 30
+    }
+    gwAlertSignConfigured.value =
+      d.gateway_admin_alert_secrets_configured && typeof d.gateway_admin_alert_secrets_configured === 'object'
+        ? { ...d.gateway_admin_alert_secrets_configured }
+        : {}
+    gwAlertSecretDing.value = ''
+    gwAlertSecretFeishu.value = ''
+    gwAlertSecretWecom.value = ''
+    gwAlertSecretGeneric.value = ''
+    gwAlertClearDingSign.value = false
+    gwAlertClearFeishuSign.value = false
+    gwAlertClearWecomSign.value = false
+    gwAlertClearGenericSign.value = false
+  }
+
+  function buildGatewayAdminAlertConfig(): GatewayAdminAlertWireConfig {
+    return {
+      triggers: {
+        notify_5xx: form.gwAlertNotify5xx,
+        notify_transport: form.gwAlertNotifyTransport,
+        notify_failover: form.gwAlertNotifyFailover,
+        notify_4xx: form.gwAlertNotify4xx,
+        notify_402: form.gwAlertNotify402,
+      },
+      channels: {
+        email: form.gwAlertChannelEmail,
+        dingtalk: form.gwAlertChannelDingtalk,
+        feishu: form.gwAlertChannelFeishu,
+        wecom: form.gwAlertChannelWecom,
+        generic_webhook: form.gwAlertChannelGenericWebhook,
+        in_app: form.gwAlertChannelInApp,
+      },
+      emails: form.gwAlertEmailsText
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      dingtalk_webhook: form.gwAlertDingtalkWebhook.trim(),
+      feishu_webhook: form.gwAlertFeishuWebhook.trim(),
+      wecom_webhook: form.gwAlertWecomWebhook.trim(),
+      generic_webhook_url: form.gwAlertGenericWebhookUrl.trim(),
+      cooldown_sec: Math.min(3600, Math.max(60, Math.trunc(Number(form.gwAlertCooldownSec)) || 300)),
+      min_interval_sec: Math.min(600, Math.max(10, Math.trunc(Number(form.gwAlertMinIntervalSec)) || 30)),
+    }
+  }
+
+  function buildGatewayAdminAlertSecretsPatch(): Record<string, string> | null {
+    const sec: Record<string, string> = {}
+    if (gwAlertClearDingSign.value) sec.dingtalk = ''
+    else if (gwAlertSecretDing.value.trim()) sec.dingtalk = gwAlertSecretDing.value.trim()
+    if (gwAlertClearFeishuSign.value) sec.feishu = ''
+    else if (gwAlertSecretFeishu.value.trim()) sec.feishu = gwAlertSecretFeishu.value.trim()
+    if (gwAlertClearWecomSign.value) sec.wecom = ''
+    else if (gwAlertSecretWecom.value.trim()) sec.wecom = gwAlertSecretWecom.value.trim()
+    if (gwAlertClearGenericSign.value) sec.generic_webhook = ''
+    else if (gwAlertSecretGeneric.value.trim()) sec.generic_webhook = gwAlertSecretGeneric.value.trim()
+    return Object.keys(sec).length ? sec : null
   }
 
   async function load() {
@@ -891,7 +1030,25 @@ export function createAdminSiteSettings() {
         value: String(Math.min(20, Math.max(1, Math.trunc(Number(form.routingProbeFailThreshold)) || 3))),
         description: t('adminSystem.descRoutingProbeThreshold'),
       },
+      {
+        key: 'gateway.admin_alert.enabled',
+        value: form.gatewayAdminAlertEnabled ? 'true' : 'false',
+        description: t('adminSystem.descGatewayAdminAlertEnabled'),
+      },
+      {
+        key: 'gateway.admin_alert.config',
+        value: JSON.stringify(buildGatewayAdminAlertConfig()),
+        description: t('adminSystem.descGatewayAdminAlertConfig'),
+      },
     ]
+    const secPatch = buildGatewayAdminAlertSecretsPatch()
+    if (secPatch) {
+      items.push({
+        key: 'gateway.admin_alert.secrets',
+        value: JSON.stringify(secPatch),
+        description: t('adminSystem.descGatewayAdminAlertSecrets'),
+      })
+    }
     try {
       const { data } = await http.put<Envelope<unknown>>('/api/admin/config', { items })
       if (!isEnvelopeSuccess(data)) throw new Error(data.message || t('adminSystem.saveFail'))
@@ -972,6 +1129,15 @@ export function createAdminSiteSettings() {
     gatewayIpBlacklistRows,
     addGatewayIpBlacklistRow,
     removeGatewayIpBlacklistRow,
+    gwAlertSecretDing,
+    gwAlertSecretFeishu,
+    gwAlertSecretWecom,
+    gwAlertSecretGeneric,
+    gwAlertClearDingSign,
+    gwAlertClearFeishuSign,
+    gwAlertClearWecomSign,
+    gwAlertClearGenericSign,
+    gwAlertSignConfigured,
     brandIconPreviewSrc,
     brandFaviconPreviewSrc,
     brandOgPreviewSrc,

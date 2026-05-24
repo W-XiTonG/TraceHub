@@ -12,6 +12,8 @@ import (
 	"tracehub/internal/ent/migrate"
 
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalert"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
@@ -50,6 +52,10 @@ type Client struct {
 	APIKey *APIKeyClient
 	// AdminAuditLog is the client for interacting with the AdminAuditLog builders.
 	AdminAuditLog *AdminAuditLogClient
+	// AdminGatewayAlert is the client for interacting with the AdminGatewayAlert builders.
+	AdminGatewayAlert *AdminGatewayAlertClient
+	// AdminGatewayAlertRead is the client for interacting with the AdminGatewayAlertRead builders.
+	AdminGatewayAlertRead *AdminGatewayAlertReadClient
 	// Announcement is the client for interacting with the Announcement builders.
 	Announcement *AnnouncementClient
 	// Channel is the client for interacting with the Channel builders.
@@ -105,6 +111,8 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
 	c.AdminAuditLog = NewAdminAuditLogClient(c.config)
+	c.AdminGatewayAlert = NewAdminGatewayAlertClient(c.config)
+	c.AdminGatewayAlertRead = NewAdminGatewayAlertReadClient(c.config)
 	c.Announcement = NewAnnouncementClient(c.config)
 	c.Channel = NewChannelClient(c.config)
 	c.ChannelModelPricing = NewChannelModelPricingClient(c.config)
@@ -220,6 +228,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:                 cfg,
 		APIKey:                 NewAPIKeyClient(cfg),
 		AdminAuditLog:          NewAdminAuditLogClient(cfg),
+		AdminGatewayAlert:      NewAdminGatewayAlertClient(cfg),
+		AdminGatewayAlertRead:  NewAdminGatewayAlertReadClient(cfg),
 		Announcement:           NewAnnouncementClient(cfg),
 		Channel:                NewChannelClient(cfg),
 		ChannelModelPricing:    NewChannelModelPricingClient(cfg),
@@ -262,6 +272,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:                 cfg,
 		APIKey:                 NewAPIKeyClient(cfg),
 		AdminAuditLog:          NewAdminAuditLogClient(cfg),
+		AdminGatewayAlert:      NewAdminGatewayAlertClient(cfg),
+		AdminGatewayAlertRead:  NewAdminGatewayAlertReadClient(cfg),
 		Announcement:           NewAnnouncementClient(cfg),
 		Channel:                NewChannelClient(cfg),
 		ChannelModelPricing:    NewChannelModelPricingClient(cfg),
@@ -312,12 +324,12 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.ChannelModelPricing,
-		c.DashboardAggregation, c.Feedback, c.GlobalModelPricing, c.Group,
-		c.GroupModelRate, c.InvoiceProfile, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.ModelPricingSyncTarget, c.PaymentLedger, c.PaymentOrder, c.PaymentRefund,
-		c.RechargePackage, c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog,
-		c.User,
+		c.APIKey, c.AdminAuditLog, c.AdminGatewayAlert, c.AdminGatewayAlertRead,
+		c.Announcement, c.Channel, c.ChannelModelPricing, c.DashboardAggregation,
+		c.Feedback, c.GlobalModelPricing, c.Group, c.GroupModelRate, c.InvoiceProfile,
+		c.ModelCatalogEntry, c.ModelCatalogSource, c.ModelPricingSyncTarget,
+		c.PaymentLedger, c.PaymentOrder, c.PaymentRefund, c.RechargePackage,
+		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -327,12 +339,12 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.AdminAuditLog, c.Announcement, c.Channel, c.ChannelModelPricing,
-		c.DashboardAggregation, c.Feedback, c.GlobalModelPricing, c.Group,
-		c.GroupModelRate, c.InvoiceProfile, c.ModelCatalogEntry, c.ModelCatalogSource,
-		c.ModelPricingSyncTarget, c.PaymentLedger, c.PaymentOrder, c.PaymentRefund,
-		c.RechargePackage, c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog,
-		c.User,
+		c.APIKey, c.AdminAuditLog, c.AdminGatewayAlert, c.AdminGatewayAlertRead,
+		c.Announcement, c.Channel, c.ChannelModelPricing, c.DashboardAggregation,
+		c.Feedback, c.GlobalModelPricing, c.Group, c.GroupModelRate, c.InvoiceProfile,
+		c.ModelCatalogEntry, c.ModelCatalogSource, c.ModelPricingSyncTarget,
+		c.PaymentLedger, c.PaymentOrder, c.PaymentRefund, c.RechargePackage,
+		c.RedeemCode, c.RedeemLedger, c.SystemConfig, c.UsageLog, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -345,6 +357,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.APIKey.mutate(ctx, m)
 	case *AdminAuditLogMutation:
 		return c.AdminAuditLog.mutate(ctx, m)
+	case *AdminGatewayAlertMutation:
+		return c.AdminGatewayAlert.mutate(ctx, m)
+	case *AdminGatewayAlertReadMutation:
+		return c.AdminGatewayAlertRead.mutate(ctx, m)
 	case *AnnouncementMutation:
 		return c.Announcement.mutate(ctx, m)
 	case *ChannelMutation:
@@ -719,6 +735,288 @@ func (c *AdminAuditLogClient) mutate(ctx context.Context, m *AdminAuditLogMutati
 		return (&AdminAuditLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AdminAuditLog mutation op: %q", m.Op())
+	}
+}
+
+// AdminGatewayAlertClient is a client for the AdminGatewayAlert schema.
+type AdminGatewayAlertClient struct {
+	config
+}
+
+// NewAdminGatewayAlertClient returns a client for the AdminGatewayAlert from the given config.
+func NewAdminGatewayAlertClient(c config) *AdminGatewayAlertClient {
+	return &AdminGatewayAlertClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `admingatewayalert.Hooks(f(g(h())))`.
+func (c *AdminGatewayAlertClient) Use(hooks ...Hook) {
+	c.hooks.AdminGatewayAlert = append(c.hooks.AdminGatewayAlert, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `admingatewayalert.Intercept(f(g(h())))`.
+func (c *AdminGatewayAlertClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AdminGatewayAlert = append(c.inters.AdminGatewayAlert, interceptors...)
+}
+
+// Create returns a builder for creating a AdminGatewayAlert entity.
+func (c *AdminGatewayAlertClient) Create() *AdminGatewayAlertCreate {
+	mutation := newAdminGatewayAlertMutation(c.config, OpCreate)
+	return &AdminGatewayAlertCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AdminGatewayAlert entities.
+func (c *AdminGatewayAlertClient) CreateBulk(builders ...*AdminGatewayAlertCreate) *AdminGatewayAlertCreateBulk {
+	return &AdminGatewayAlertCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AdminGatewayAlertClient) MapCreateBulk(slice any, setFunc func(*AdminGatewayAlertCreate, int)) *AdminGatewayAlertCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AdminGatewayAlertCreateBulk{err: fmt.Errorf("calling to AdminGatewayAlertClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AdminGatewayAlertCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AdminGatewayAlertCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AdminGatewayAlert.
+func (c *AdminGatewayAlertClient) Update() *AdminGatewayAlertUpdate {
+	mutation := newAdminGatewayAlertMutation(c.config, OpUpdate)
+	return &AdminGatewayAlertUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AdminGatewayAlertClient) UpdateOne(_m *AdminGatewayAlert) *AdminGatewayAlertUpdateOne {
+	mutation := newAdminGatewayAlertMutation(c.config, OpUpdateOne, withAdminGatewayAlert(_m))
+	return &AdminGatewayAlertUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AdminGatewayAlertClient) UpdateOneID(id int) *AdminGatewayAlertUpdateOne {
+	mutation := newAdminGatewayAlertMutation(c.config, OpUpdateOne, withAdminGatewayAlertID(id))
+	return &AdminGatewayAlertUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AdminGatewayAlert.
+func (c *AdminGatewayAlertClient) Delete() *AdminGatewayAlertDelete {
+	mutation := newAdminGatewayAlertMutation(c.config, OpDelete)
+	return &AdminGatewayAlertDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AdminGatewayAlertClient) DeleteOne(_m *AdminGatewayAlert) *AdminGatewayAlertDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AdminGatewayAlertClient) DeleteOneID(id int) *AdminGatewayAlertDeleteOne {
+	builder := c.Delete().Where(admingatewayalert.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AdminGatewayAlertDeleteOne{builder}
+}
+
+// Query returns a query builder for AdminGatewayAlert.
+func (c *AdminGatewayAlertClient) Query() *AdminGatewayAlertQuery {
+	return &AdminGatewayAlertQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAdminGatewayAlert},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AdminGatewayAlert entity by its id.
+func (c *AdminGatewayAlertClient) Get(ctx context.Context, id int) (*AdminGatewayAlert, error) {
+	return c.Query().Where(admingatewayalert.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AdminGatewayAlertClient) GetX(ctx context.Context, id int) *AdminGatewayAlert {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *AdminGatewayAlertClient) Hooks() []Hook {
+	return c.hooks.AdminGatewayAlert
+}
+
+// Interceptors returns the client interceptors.
+func (c *AdminGatewayAlertClient) Interceptors() []Interceptor {
+	return c.inters.AdminGatewayAlert
+}
+
+func (c *AdminGatewayAlertClient) mutate(ctx context.Context, m *AdminGatewayAlertMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AdminGatewayAlertCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AdminGatewayAlertUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AdminGatewayAlertUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AdminGatewayAlertDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AdminGatewayAlert mutation op: %q", m.Op())
+	}
+}
+
+// AdminGatewayAlertReadClient is a client for the AdminGatewayAlertRead schema.
+type AdminGatewayAlertReadClient struct {
+	config
+}
+
+// NewAdminGatewayAlertReadClient returns a client for the AdminGatewayAlertRead from the given config.
+func NewAdminGatewayAlertReadClient(c config) *AdminGatewayAlertReadClient {
+	return &AdminGatewayAlertReadClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `admingatewayalertread.Hooks(f(g(h())))`.
+func (c *AdminGatewayAlertReadClient) Use(hooks ...Hook) {
+	c.hooks.AdminGatewayAlertRead = append(c.hooks.AdminGatewayAlertRead, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `admingatewayalertread.Intercept(f(g(h())))`.
+func (c *AdminGatewayAlertReadClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AdminGatewayAlertRead = append(c.inters.AdminGatewayAlertRead, interceptors...)
+}
+
+// Create returns a builder for creating a AdminGatewayAlertRead entity.
+func (c *AdminGatewayAlertReadClient) Create() *AdminGatewayAlertReadCreate {
+	mutation := newAdminGatewayAlertReadMutation(c.config, OpCreate)
+	return &AdminGatewayAlertReadCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AdminGatewayAlertRead entities.
+func (c *AdminGatewayAlertReadClient) CreateBulk(builders ...*AdminGatewayAlertReadCreate) *AdminGatewayAlertReadCreateBulk {
+	return &AdminGatewayAlertReadCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AdminGatewayAlertReadClient) MapCreateBulk(slice any, setFunc func(*AdminGatewayAlertReadCreate, int)) *AdminGatewayAlertReadCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AdminGatewayAlertReadCreateBulk{err: fmt.Errorf("calling to AdminGatewayAlertReadClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AdminGatewayAlertReadCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AdminGatewayAlertReadCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AdminGatewayAlertRead.
+func (c *AdminGatewayAlertReadClient) Update() *AdminGatewayAlertReadUpdate {
+	mutation := newAdminGatewayAlertReadMutation(c.config, OpUpdate)
+	return &AdminGatewayAlertReadUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AdminGatewayAlertReadClient) UpdateOne(_m *AdminGatewayAlertRead) *AdminGatewayAlertReadUpdateOne {
+	mutation := newAdminGatewayAlertReadMutation(c.config, OpUpdateOne, withAdminGatewayAlertRead(_m))
+	return &AdminGatewayAlertReadUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AdminGatewayAlertReadClient) UpdateOneID(id int) *AdminGatewayAlertReadUpdateOne {
+	mutation := newAdminGatewayAlertReadMutation(c.config, OpUpdateOne, withAdminGatewayAlertReadID(id))
+	return &AdminGatewayAlertReadUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AdminGatewayAlertRead.
+func (c *AdminGatewayAlertReadClient) Delete() *AdminGatewayAlertReadDelete {
+	mutation := newAdminGatewayAlertReadMutation(c.config, OpDelete)
+	return &AdminGatewayAlertReadDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AdminGatewayAlertReadClient) DeleteOne(_m *AdminGatewayAlertRead) *AdminGatewayAlertReadDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AdminGatewayAlertReadClient) DeleteOneID(id int) *AdminGatewayAlertReadDeleteOne {
+	builder := c.Delete().Where(admingatewayalertread.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AdminGatewayAlertReadDeleteOne{builder}
+}
+
+// Query returns a query builder for AdminGatewayAlertRead.
+func (c *AdminGatewayAlertReadClient) Query() *AdminGatewayAlertReadQuery {
+	return &AdminGatewayAlertReadQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAdminGatewayAlertRead},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AdminGatewayAlertRead entity by its id.
+func (c *AdminGatewayAlertReadClient) Get(ctx context.Context, id int) (*AdminGatewayAlertRead, error) {
+	return c.Query().Where(admingatewayalertread.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AdminGatewayAlertReadClient) GetX(ctx context.Context, id int) *AdminGatewayAlertRead {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryAdmin queries the admin edge of a AdminGatewayAlertRead.
+func (c *AdminGatewayAlertReadClient) QueryAdmin(_m *AdminGatewayAlertRead) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(admingatewayalertread.Table, admingatewayalertread.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, admingatewayalertread.AdminTable, admingatewayalertread.AdminColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *AdminGatewayAlertReadClient) Hooks() []Hook {
+	return c.hooks.AdminGatewayAlertRead
+}
+
+// Interceptors returns the client interceptors.
+func (c *AdminGatewayAlertReadClient) Interceptors() []Interceptor {
+	return c.inters.AdminGatewayAlertRead
+}
+
+func (c *AdminGatewayAlertReadClient) mutate(ctx context.Context, m *AdminGatewayAlertReadMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AdminGatewayAlertReadCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AdminGatewayAlertReadUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AdminGatewayAlertReadUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AdminGatewayAlertReadDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AdminGatewayAlertRead mutation op: %q", m.Op())
 	}
 }
 
@@ -4098,6 +4396,22 @@ func (c *UserClient) QueryInvoiceProfile(_m *User) *InvoiceProfileQuery {
 	return query
 }
 
+// QueryGatewayAlertReadState queries the gateway_alert_read_state edge of a User.
+func (c *UserClient) QueryGatewayAlertReadState(_m *User) *AdminGatewayAlertReadQuery {
+	query := (&AdminGatewayAlertReadClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(admingatewayalertread.Table, admingatewayalertread.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.GatewayAlertReadStateTable, user.GatewayAlertReadStateColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -4126,17 +4440,19 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, AdminAuditLog, Announcement, Channel, ChannelModelPricing,
-		DashboardAggregation, Feedback, GlobalModelPricing, Group, GroupModelRate,
-		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, ModelPricingSyncTarget,
-		PaymentLedger, PaymentOrder, PaymentRefund, RechargePackage, RedeemCode,
-		RedeemLedger, SystemConfig, UsageLog, User []ent.Hook
+		APIKey, AdminAuditLog, AdminGatewayAlert, AdminGatewayAlertRead, Announcement,
+		Channel, ChannelModelPricing, DashboardAggregation, Feedback,
+		GlobalModelPricing, Group, GroupModelRate, InvoiceProfile, ModelCatalogEntry,
+		ModelCatalogSource, ModelPricingSyncTarget, PaymentLedger, PaymentOrder,
+		PaymentRefund, RechargePackage, RedeemCode, RedeemLedger, SystemConfig,
+		UsageLog, User []ent.Hook
 	}
 	inters struct {
-		APIKey, AdminAuditLog, Announcement, Channel, ChannelModelPricing,
-		DashboardAggregation, Feedback, GlobalModelPricing, Group, GroupModelRate,
-		InvoiceProfile, ModelCatalogEntry, ModelCatalogSource, ModelPricingSyncTarget,
-		PaymentLedger, PaymentOrder, PaymentRefund, RechargePackage, RedeemCode,
-		RedeemLedger, SystemConfig, UsageLog, User []ent.Interceptor
+		APIKey, AdminAuditLog, AdminGatewayAlert, AdminGatewayAlertRead, Announcement,
+		Channel, ChannelModelPricing, DashboardAggregation, Feedback,
+		GlobalModelPricing, Group, GroupModelRate, InvoiceProfile, ModelCatalogEntry,
+		ModelCatalogSource, ModelPricingSyncTarget, PaymentLedger, PaymentOrder,
+		PaymentRefund, RechargePackage, RedeemCode, RedeemLedger, SystemConfig,
+		UsageLog, User []ent.Interceptor
 	}
 )

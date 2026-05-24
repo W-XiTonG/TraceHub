@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalert"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
@@ -49,6 +51,8 @@ const (
 	// Node types.
 	TypeAPIKey                 = "APIKey"
 	TypeAdminAuditLog          = "AdminAuditLog"
+	TypeAdminGatewayAlert      = "AdminGatewayAlert"
+	TypeAdminGatewayAlertRead  = "AdminGatewayAlertRead"
 	TypeAnnouncement           = "Announcement"
 	TypeChannel                = "Channel"
 	TypeChannelModelPricing    = "ChannelModelPricing"
@@ -3190,6 +3194,1604 @@ func (m *AdminAuditLogMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown AdminAuditLog edge %s", name)
+}
+
+// AdminGatewayAlertMutation represents an operation that mutates the AdminGatewayAlert nodes in the graph.
+type AdminGatewayAlertMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	event_kind     *string
+	severity       *string
+	title          *string
+	summary        *string
+	payload_json   *map[string]interface{}
+	request_id     *string
+	user_id        *int
+	adduser_id     *int
+	status_code    *int
+	addstatus_code *int
+	model          *string
+	channel_id     *int
+	addchannel_id  *int
+	created_at     *time.Time
+	clearedFields  map[string]struct{}
+	done           bool
+	oldValue       func(context.Context) (*AdminGatewayAlert, error)
+	predicates     []predicate.AdminGatewayAlert
+}
+
+var _ ent.Mutation = (*AdminGatewayAlertMutation)(nil)
+
+// admingatewayalertOption allows management of the mutation configuration using functional options.
+type admingatewayalertOption func(*AdminGatewayAlertMutation)
+
+// newAdminGatewayAlertMutation creates new mutation for the AdminGatewayAlert entity.
+func newAdminGatewayAlertMutation(c config, op Op, opts ...admingatewayalertOption) *AdminGatewayAlertMutation {
+	m := &AdminGatewayAlertMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAdminGatewayAlert,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAdminGatewayAlertID sets the ID field of the mutation.
+func withAdminGatewayAlertID(id int) admingatewayalertOption {
+	return func(m *AdminGatewayAlertMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *AdminGatewayAlert
+		)
+		m.oldValue = func(ctx context.Context) (*AdminGatewayAlert, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().AdminGatewayAlert.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAdminGatewayAlert sets the old AdminGatewayAlert of the mutation.
+func withAdminGatewayAlert(node *AdminGatewayAlert) admingatewayalertOption {
+	return func(m *AdminGatewayAlertMutation) {
+		m.oldValue = func(context.Context) (*AdminGatewayAlert, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AdminGatewayAlertMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AdminGatewayAlertMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AdminGatewayAlertMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AdminGatewayAlertMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().AdminGatewayAlert.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetEventKind sets the "event_kind" field.
+func (m *AdminGatewayAlertMutation) SetEventKind(s string) {
+	m.event_kind = &s
+}
+
+// EventKind returns the value of the "event_kind" field in the mutation.
+func (m *AdminGatewayAlertMutation) EventKind() (r string, exists bool) {
+	v := m.event_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEventKind returns the old "event_kind" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldEventKind(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEventKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEventKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEventKind: %w", err)
+	}
+	return oldValue.EventKind, nil
+}
+
+// ResetEventKind resets all changes to the "event_kind" field.
+func (m *AdminGatewayAlertMutation) ResetEventKind() {
+	m.event_kind = nil
+}
+
+// SetSeverity sets the "severity" field.
+func (m *AdminGatewayAlertMutation) SetSeverity(s string) {
+	m.severity = &s
+}
+
+// Severity returns the value of the "severity" field in the mutation.
+func (m *AdminGatewayAlertMutation) Severity() (r string, exists bool) {
+	v := m.severity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSeverity returns the old "severity" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldSeverity(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSeverity is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSeverity requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSeverity: %w", err)
+	}
+	return oldValue.Severity, nil
+}
+
+// ResetSeverity resets all changes to the "severity" field.
+func (m *AdminGatewayAlertMutation) ResetSeverity() {
+	m.severity = nil
+}
+
+// SetTitle sets the "title" field.
+func (m *AdminGatewayAlertMutation) SetTitle(s string) {
+	m.title = &s
+}
+
+// Title returns the value of the "title" field in the mutation.
+func (m *AdminGatewayAlertMutation) Title() (r string, exists bool) {
+	v := m.title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitle returns the old "title" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitle: %w", err)
+	}
+	return oldValue.Title, nil
+}
+
+// ResetTitle resets all changes to the "title" field.
+func (m *AdminGatewayAlertMutation) ResetTitle() {
+	m.title = nil
+}
+
+// SetSummary sets the "summary" field.
+func (m *AdminGatewayAlertMutation) SetSummary(s string) {
+	m.summary = &s
+}
+
+// Summary returns the value of the "summary" field in the mutation.
+func (m *AdminGatewayAlertMutation) Summary() (r string, exists bool) {
+	v := m.summary
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSummary returns the old "summary" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldSummary(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSummary is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSummary requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSummary: %w", err)
+	}
+	return oldValue.Summary, nil
+}
+
+// ClearSummary clears the value of the "summary" field.
+func (m *AdminGatewayAlertMutation) ClearSummary() {
+	m.summary = nil
+	m.clearedFields[admingatewayalert.FieldSummary] = struct{}{}
+}
+
+// SummaryCleared returns if the "summary" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) SummaryCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldSummary]
+	return ok
+}
+
+// ResetSummary resets all changes to the "summary" field.
+func (m *AdminGatewayAlertMutation) ResetSummary() {
+	m.summary = nil
+	delete(m.clearedFields, admingatewayalert.FieldSummary)
+}
+
+// SetPayloadJSON sets the "payload_json" field.
+func (m *AdminGatewayAlertMutation) SetPayloadJSON(value map[string]interface{}) {
+	m.payload_json = &value
+}
+
+// PayloadJSON returns the value of the "payload_json" field in the mutation.
+func (m *AdminGatewayAlertMutation) PayloadJSON() (r map[string]interface{}, exists bool) {
+	v := m.payload_json
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPayloadJSON returns the old "payload_json" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldPayloadJSON(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPayloadJSON is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPayloadJSON requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayloadJSON: %w", err)
+	}
+	return oldValue.PayloadJSON, nil
+}
+
+// ClearPayloadJSON clears the value of the "payload_json" field.
+func (m *AdminGatewayAlertMutation) ClearPayloadJSON() {
+	m.payload_json = nil
+	m.clearedFields[admingatewayalert.FieldPayloadJSON] = struct{}{}
+}
+
+// PayloadJSONCleared returns if the "payload_json" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) PayloadJSONCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldPayloadJSON]
+	return ok
+}
+
+// ResetPayloadJSON resets all changes to the "payload_json" field.
+func (m *AdminGatewayAlertMutation) ResetPayloadJSON() {
+	m.payload_json = nil
+	delete(m.clearedFields, admingatewayalert.FieldPayloadJSON)
+}
+
+// SetRequestID sets the "request_id" field.
+func (m *AdminGatewayAlertMutation) SetRequestID(s string) {
+	m.request_id = &s
+}
+
+// RequestID returns the value of the "request_id" field in the mutation.
+func (m *AdminGatewayAlertMutation) RequestID() (r string, exists bool) {
+	v := m.request_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestID returns the old "request_id" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldRequestID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestID: %w", err)
+	}
+	return oldValue.RequestID, nil
+}
+
+// ClearRequestID clears the value of the "request_id" field.
+func (m *AdminGatewayAlertMutation) ClearRequestID() {
+	m.request_id = nil
+	m.clearedFields[admingatewayalert.FieldRequestID] = struct{}{}
+}
+
+// RequestIDCleared returns if the "request_id" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) RequestIDCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldRequestID]
+	return ok
+}
+
+// ResetRequestID resets all changes to the "request_id" field.
+func (m *AdminGatewayAlertMutation) ResetRequestID() {
+	m.request_id = nil
+	delete(m.clearedFields, admingatewayalert.FieldRequestID)
+}
+
+// SetUserID sets the "user_id" field.
+func (m *AdminGatewayAlertMutation) SetUserID(i int) {
+	m.user_id = &i
+	m.adduser_id = nil
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *AdminGatewayAlertMutation) UserID() (r int, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// AddUserID adds i to the "user_id" field.
+func (m *AdminGatewayAlertMutation) AddUserID(i int) {
+	if m.adduser_id != nil {
+		*m.adduser_id += i
+	} else {
+		m.adduser_id = &i
+	}
+}
+
+// AddedUserID returns the value that was added to the "user_id" field in this mutation.
+func (m *AdminGatewayAlertMutation) AddedUserID() (r int, exists bool) {
+	v := m.adduser_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (m *AdminGatewayAlertMutation) ClearUserID() {
+	m.user_id = nil
+	m.adduser_id = nil
+	m.clearedFields[admingatewayalert.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldUserID]
+	return ok
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *AdminGatewayAlertMutation) ResetUserID() {
+	m.user_id = nil
+	m.adduser_id = nil
+	delete(m.clearedFields, admingatewayalert.FieldUserID)
+}
+
+// SetStatusCode sets the "status_code" field.
+func (m *AdminGatewayAlertMutation) SetStatusCode(i int) {
+	m.status_code = &i
+	m.addstatus_code = nil
+}
+
+// StatusCode returns the value of the "status_code" field in the mutation.
+func (m *AdminGatewayAlertMutation) StatusCode() (r int, exists bool) {
+	v := m.status_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatusCode returns the old "status_code" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldStatusCode(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatusCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatusCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatusCode: %w", err)
+	}
+	return oldValue.StatusCode, nil
+}
+
+// AddStatusCode adds i to the "status_code" field.
+func (m *AdminGatewayAlertMutation) AddStatusCode(i int) {
+	if m.addstatus_code != nil {
+		*m.addstatus_code += i
+	} else {
+		m.addstatus_code = &i
+	}
+}
+
+// AddedStatusCode returns the value that was added to the "status_code" field in this mutation.
+func (m *AdminGatewayAlertMutation) AddedStatusCode() (r int, exists bool) {
+	v := m.addstatus_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStatusCode clears the value of the "status_code" field.
+func (m *AdminGatewayAlertMutation) ClearStatusCode() {
+	m.status_code = nil
+	m.addstatus_code = nil
+	m.clearedFields[admingatewayalert.FieldStatusCode] = struct{}{}
+}
+
+// StatusCodeCleared returns if the "status_code" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) StatusCodeCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldStatusCode]
+	return ok
+}
+
+// ResetStatusCode resets all changes to the "status_code" field.
+func (m *AdminGatewayAlertMutation) ResetStatusCode() {
+	m.status_code = nil
+	m.addstatus_code = nil
+	delete(m.clearedFields, admingatewayalert.FieldStatusCode)
+}
+
+// SetModel sets the "model" field.
+func (m *AdminGatewayAlertMutation) SetModel(s string) {
+	m.model = &s
+}
+
+// Model returns the value of the "model" field in the mutation.
+func (m *AdminGatewayAlertMutation) Model() (r string, exists bool) {
+	v := m.model
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModel returns the old "model" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldModel(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModel: %w", err)
+	}
+	return oldValue.Model, nil
+}
+
+// ClearModel clears the value of the "model" field.
+func (m *AdminGatewayAlertMutation) ClearModel() {
+	m.model = nil
+	m.clearedFields[admingatewayalert.FieldModel] = struct{}{}
+}
+
+// ModelCleared returns if the "model" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) ModelCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldModel]
+	return ok
+}
+
+// ResetModel resets all changes to the "model" field.
+func (m *AdminGatewayAlertMutation) ResetModel() {
+	m.model = nil
+	delete(m.clearedFields, admingatewayalert.FieldModel)
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *AdminGatewayAlertMutation) SetChannelID(i int) {
+	m.channel_id = &i
+	m.addchannel_id = nil
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *AdminGatewayAlertMutation) ChannelID() (r int, exists bool) {
+	v := m.channel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// AddChannelID adds i to the "channel_id" field.
+func (m *AdminGatewayAlertMutation) AddChannelID(i int) {
+	if m.addchannel_id != nil {
+		*m.addchannel_id += i
+	} else {
+		m.addchannel_id = &i
+	}
+}
+
+// AddedChannelID returns the value that was added to the "channel_id" field in this mutation.
+func (m *AdminGatewayAlertMutation) AddedChannelID() (r int, exists bool) {
+	v := m.addchannel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (m *AdminGatewayAlertMutation) ClearChannelID() {
+	m.channel_id = nil
+	m.addchannel_id = nil
+	m.clearedFields[admingatewayalert.FieldChannelID] = struct{}{}
+}
+
+// ChannelIDCleared returns if the "channel_id" field was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) ChannelIDCleared() bool {
+	_, ok := m.clearedFields[admingatewayalert.FieldChannelID]
+	return ok
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *AdminGatewayAlertMutation) ResetChannelID() {
+	m.channel_id = nil
+	m.addchannel_id = nil
+	delete(m.clearedFields, admingatewayalert.FieldChannelID)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *AdminGatewayAlertMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *AdminGatewayAlertMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the AdminGatewayAlert entity.
+// If the AdminGatewayAlert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *AdminGatewayAlertMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// Where appends a list predicates to the AdminGatewayAlertMutation builder.
+func (m *AdminGatewayAlertMutation) Where(ps ...predicate.AdminGatewayAlert) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AdminGatewayAlertMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AdminGatewayAlertMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.AdminGatewayAlert, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AdminGatewayAlertMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AdminGatewayAlertMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (AdminGatewayAlert).
+func (m *AdminGatewayAlertMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AdminGatewayAlertMutation) Fields() []string {
+	fields := make([]string, 0, 11)
+	if m.event_kind != nil {
+		fields = append(fields, admingatewayalert.FieldEventKind)
+	}
+	if m.severity != nil {
+		fields = append(fields, admingatewayalert.FieldSeverity)
+	}
+	if m.title != nil {
+		fields = append(fields, admingatewayalert.FieldTitle)
+	}
+	if m.summary != nil {
+		fields = append(fields, admingatewayalert.FieldSummary)
+	}
+	if m.payload_json != nil {
+		fields = append(fields, admingatewayalert.FieldPayloadJSON)
+	}
+	if m.request_id != nil {
+		fields = append(fields, admingatewayalert.FieldRequestID)
+	}
+	if m.user_id != nil {
+		fields = append(fields, admingatewayalert.FieldUserID)
+	}
+	if m.status_code != nil {
+		fields = append(fields, admingatewayalert.FieldStatusCode)
+	}
+	if m.model != nil {
+		fields = append(fields, admingatewayalert.FieldModel)
+	}
+	if m.channel_id != nil {
+		fields = append(fields, admingatewayalert.FieldChannelID)
+	}
+	if m.created_at != nil {
+		fields = append(fields, admingatewayalert.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AdminGatewayAlertMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case admingatewayalert.FieldEventKind:
+		return m.EventKind()
+	case admingatewayalert.FieldSeverity:
+		return m.Severity()
+	case admingatewayalert.FieldTitle:
+		return m.Title()
+	case admingatewayalert.FieldSummary:
+		return m.Summary()
+	case admingatewayalert.FieldPayloadJSON:
+		return m.PayloadJSON()
+	case admingatewayalert.FieldRequestID:
+		return m.RequestID()
+	case admingatewayalert.FieldUserID:
+		return m.UserID()
+	case admingatewayalert.FieldStatusCode:
+		return m.StatusCode()
+	case admingatewayalert.FieldModel:
+		return m.Model()
+	case admingatewayalert.FieldChannelID:
+		return m.ChannelID()
+	case admingatewayalert.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AdminGatewayAlertMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case admingatewayalert.FieldEventKind:
+		return m.OldEventKind(ctx)
+	case admingatewayalert.FieldSeverity:
+		return m.OldSeverity(ctx)
+	case admingatewayalert.FieldTitle:
+		return m.OldTitle(ctx)
+	case admingatewayalert.FieldSummary:
+		return m.OldSummary(ctx)
+	case admingatewayalert.FieldPayloadJSON:
+		return m.OldPayloadJSON(ctx)
+	case admingatewayalert.FieldRequestID:
+		return m.OldRequestID(ctx)
+	case admingatewayalert.FieldUserID:
+		return m.OldUserID(ctx)
+	case admingatewayalert.FieldStatusCode:
+		return m.OldStatusCode(ctx)
+	case admingatewayalert.FieldModel:
+		return m.OldModel(ctx)
+	case admingatewayalert.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case admingatewayalert.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown AdminGatewayAlert field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AdminGatewayAlertMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case admingatewayalert.FieldEventKind:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEventKind(v)
+		return nil
+	case admingatewayalert.FieldSeverity:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSeverity(v)
+		return nil
+	case admingatewayalert.FieldTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitle(v)
+		return nil
+	case admingatewayalert.FieldSummary:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSummary(v)
+		return nil
+	case admingatewayalert.FieldPayloadJSON:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPayloadJSON(v)
+		return nil
+	case admingatewayalert.FieldRequestID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestID(v)
+		return nil
+	case admingatewayalert.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case admingatewayalert.FieldStatusCode:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatusCode(v)
+		return nil
+	case admingatewayalert.FieldModel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModel(v)
+		return nil
+	case admingatewayalert.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case admingatewayalert.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlert field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AdminGatewayAlertMutation) AddedFields() []string {
+	var fields []string
+	if m.adduser_id != nil {
+		fields = append(fields, admingatewayalert.FieldUserID)
+	}
+	if m.addstatus_code != nil {
+		fields = append(fields, admingatewayalert.FieldStatusCode)
+	}
+	if m.addchannel_id != nil {
+		fields = append(fields, admingatewayalert.FieldChannelID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AdminGatewayAlertMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case admingatewayalert.FieldUserID:
+		return m.AddedUserID()
+	case admingatewayalert.FieldStatusCode:
+		return m.AddedStatusCode()
+	case admingatewayalert.FieldChannelID:
+		return m.AddedChannelID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AdminGatewayAlertMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case admingatewayalert.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUserID(v)
+		return nil
+	case admingatewayalert.FieldStatusCode:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStatusCode(v)
+		return nil
+	case admingatewayalert.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddChannelID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlert numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AdminGatewayAlertMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(admingatewayalert.FieldSummary) {
+		fields = append(fields, admingatewayalert.FieldSummary)
+	}
+	if m.FieldCleared(admingatewayalert.FieldPayloadJSON) {
+		fields = append(fields, admingatewayalert.FieldPayloadJSON)
+	}
+	if m.FieldCleared(admingatewayalert.FieldRequestID) {
+		fields = append(fields, admingatewayalert.FieldRequestID)
+	}
+	if m.FieldCleared(admingatewayalert.FieldUserID) {
+		fields = append(fields, admingatewayalert.FieldUserID)
+	}
+	if m.FieldCleared(admingatewayalert.FieldStatusCode) {
+		fields = append(fields, admingatewayalert.FieldStatusCode)
+	}
+	if m.FieldCleared(admingatewayalert.FieldModel) {
+		fields = append(fields, admingatewayalert.FieldModel)
+	}
+	if m.FieldCleared(admingatewayalert.FieldChannelID) {
+		fields = append(fields, admingatewayalert.FieldChannelID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AdminGatewayAlertMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AdminGatewayAlertMutation) ClearField(name string) error {
+	switch name {
+	case admingatewayalert.FieldSummary:
+		m.ClearSummary()
+		return nil
+	case admingatewayalert.FieldPayloadJSON:
+		m.ClearPayloadJSON()
+		return nil
+	case admingatewayalert.FieldRequestID:
+		m.ClearRequestID()
+		return nil
+	case admingatewayalert.FieldUserID:
+		m.ClearUserID()
+		return nil
+	case admingatewayalert.FieldStatusCode:
+		m.ClearStatusCode()
+		return nil
+	case admingatewayalert.FieldModel:
+		m.ClearModel()
+		return nil
+	case admingatewayalert.FieldChannelID:
+		m.ClearChannelID()
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlert nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AdminGatewayAlertMutation) ResetField(name string) error {
+	switch name {
+	case admingatewayalert.FieldEventKind:
+		m.ResetEventKind()
+		return nil
+	case admingatewayalert.FieldSeverity:
+		m.ResetSeverity()
+		return nil
+	case admingatewayalert.FieldTitle:
+		m.ResetTitle()
+		return nil
+	case admingatewayalert.FieldSummary:
+		m.ResetSummary()
+		return nil
+	case admingatewayalert.FieldPayloadJSON:
+		m.ResetPayloadJSON()
+		return nil
+	case admingatewayalert.FieldRequestID:
+		m.ResetRequestID()
+		return nil
+	case admingatewayalert.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case admingatewayalert.FieldStatusCode:
+		m.ResetStatusCode()
+		return nil
+	case admingatewayalert.FieldModel:
+		m.ResetModel()
+		return nil
+	case admingatewayalert.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case admingatewayalert.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlert field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AdminGatewayAlertMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AdminGatewayAlertMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AdminGatewayAlertMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AdminGatewayAlertMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AdminGatewayAlertMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AdminGatewayAlertMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AdminGatewayAlertMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown AdminGatewayAlert unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AdminGatewayAlertMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown AdminGatewayAlert edge %s", name)
+}
+
+// AdminGatewayAlertReadMutation represents an operation that mutates the AdminGatewayAlertRead nodes in the graph.
+type AdminGatewayAlertReadMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	last_read_at  *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	admin         *int
+	clearedadmin  bool
+	done          bool
+	oldValue      func(context.Context) (*AdminGatewayAlertRead, error)
+	predicates    []predicate.AdminGatewayAlertRead
+}
+
+var _ ent.Mutation = (*AdminGatewayAlertReadMutation)(nil)
+
+// admingatewayalertreadOption allows management of the mutation configuration using functional options.
+type admingatewayalertreadOption func(*AdminGatewayAlertReadMutation)
+
+// newAdminGatewayAlertReadMutation creates new mutation for the AdminGatewayAlertRead entity.
+func newAdminGatewayAlertReadMutation(c config, op Op, opts ...admingatewayalertreadOption) *AdminGatewayAlertReadMutation {
+	m := &AdminGatewayAlertReadMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAdminGatewayAlertRead,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAdminGatewayAlertReadID sets the ID field of the mutation.
+func withAdminGatewayAlertReadID(id int) admingatewayalertreadOption {
+	return func(m *AdminGatewayAlertReadMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *AdminGatewayAlertRead
+		)
+		m.oldValue = func(ctx context.Context) (*AdminGatewayAlertRead, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().AdminGatewayAlertRead.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAdminGatewayAlertRead sets the old AdminGatewayAlertRead of the mutation.
+func withAdminGatewayAlertRead(node *AdminGatewayAlertRead) admingatewayalertreadOption {
+	return func(m *AdminGatewayAlertReadMutation) {
+		m.oldValue = func(context.Context) (*AdminGatewayAlertRead, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AdminGatewayAlertReadMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AdminGatewayAlertReadMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AdminGatewayAlertReadMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AdminGatewayAlertReadMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().AdminGatewayAlertRead.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetAdminID sets the "admin_id" field.
+func (m *AdminGatewayAlertReadMutation) SetAdminID(i int) {
+	m.admin = &i
+}
+
+// AdminID returns the value of the "admin_id" field in the mutation.
+func (m *AdminGatewayAlertReadMutation) AdminID() (r int, exists bool) {
+	v := m.admin
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAdminID returns the old "admin_id" field's value of the AdminGatewayAlertRead entity.
+// If the AdminGatewayAlertRead object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertReadMutation) OldAdminID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAdminID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAdminID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAdminID: %w", err)
+	}
+	return oldValue.AdminID, nil
+}
+
+// ResetAdminID resets all changes to the "admin_id" field.
+func (m *AdminGatewayAlertReadMutation) ResetAdminID() {
+	m.admin = nil
+}
+
+// SetLastReadAt sets the "last_read_at" field.
+func (m *AdminGatewayAlertReadMutation) SetLastReadAt(t time.Time) {
+	m.last_read_at = &t
+}
+
+// LastReadAt returns the value of the "last_read_at" field in the mutation.
+func (m *AdminGatewayAlertReadMutation) LastReadAt() (r time.Time, exists bool) {
+	v := m.last_read_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastReadAt returns the old "last_read_at" field's value of the AdminGatewayAlertRead entity.
+// If the AdminGatewayAlertRead object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertReadMutation) OldLastReadAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastReadAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastReadAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastReadAt: %w", err)
+	}
+	return oldValue.LastReadAt, nil
+}
+
+// ResetLastReadAt resets all changes to the "last_read_at" field.
+func (m *AdminGatewayAlertReadMutation) ResetLastReadAt() {
+	m.last_read_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *AdminGatewayAlertReadMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *AdminGatewayAlertReadMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the AdminGatewayAlertRead entity.
+// If the AdminGatewayAlertRead object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AdminGatewayAlertReadMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *AdminGatewayAlertReadMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearAdmin clears the "admin" edge to the User entity.
+func (m *AdminGatewayAlertReadMutation) ClearAdmin() {
+	m.clearedadmin = true
+	m.clearedFields[admingatewayalertread.FieldAdminID] = struct{}{}
+}
+
+// AdminCleared reports if the "admin" edge to the User entity was cleared.
+func (m *AdminGatewayAlertReadMutation) AdminCleared() bool {
+	return m.clearedadmin
+}
+
+// AdminIDs returns the "admin" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AdminID instead. It exists only for internal usage by the builders.
+func (m *AdminGatewayAlertReadMutation) AdminIDs() (ids []int) {
+	if id := m.admin; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAdmin resets all changes to the "admin" edge.
+func (m *AdminGatewayAlertReadMutation) ResetAdmin() {
+	m.admin = nil
+	m.clearedadmin = false
+}
+
+// Where appends a list predicates to the AdminGatewayAlertReadMutation builder.
+func (m *AdminGatewayAlertReadMutation) Where(ps ...predicate.AdminGatewayAlertRead) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AdminGatewayAlertReadMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AdminGatewayAlertReadMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.AdminGatewayAlertRead, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AdminGatewayAlertReadMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AdminGatewayAlertReadMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (AdminGatewayAlertRead).
+func (m *AdminGatewayAlertReadMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AdminGatewayAlertReadMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.admin != nil {
+		fields = append(fields, admingatewayalertread.FieldAdminID)
+	}
+	if m.last_read_at != nil {
+		fields = append(fields, admingatewayalertread.FieldLastReadAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, admingatewayalertread.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AdminGatewayAlertReadMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case admingatewayalertread.FieldAdminID:
+		return m.AdminID()
+	case admingatewayalertread.FieldLastReadAt:
+		return m.LastReadAt()
+	case admingatewayalertread.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AdminGatewayAlertReadMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case admingatewayalertread.FieldAdminID:
+		return m.OldAdminID(ctx)
+	case admingatewayalertread.FieldLastReadAt:
+		return m.OldLastReadAt(ctx)
+	case admingatewayalertread.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown AdminGatewayAlertRead field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AdminGatewayAlertReadMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case admingatewayalertread.FieldAdminID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAdminID(v)
+		return nil
+	case admingatewayalertread.FieldLastReadAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastReadAt(v)
+		return nil
+	case admingatewayalertread.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlertRead field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AdminGatewayAlertReadMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AdminGatewayAlertReadMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AdminGatewayAlertReadMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown AdminGatewayAlertRead numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AdminGatewayAlertReadMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AdminGatewayAlertReadMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AdminGatewayAlertReadMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown AdminGatewayAlertRead nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AdminGatewayAlertReadMutation) ResetField(name string) error {
+	switch name {
+	case admingatewayalertread.FieldAdminID:
+		m.ResetAdminID()
+		return nil
+	case admingatewayalertread.FieldLastReadAt:
+		m.ResetLastReadAt()
+		return nil
+	case admingatewayalertread.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlertRead field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AdminGatewayAlertReadMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.admin != nil {
+		edges = append(edges, admingatewayalertread.EdgeAdmin)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AdminGatewayAlertReadMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case admingatewayalertread.EdgeAdmin:
+		if id := m.admin; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AdminGatewayAlertReadMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AdminGatewayAlertReadMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AdminGatewayAlertReadMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedadmin {
+		edges = append(edges, admingatewayalertread.EdgeAdmin)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AdminGatewayAlertReadMutation) EdgeCleared(name string) bool {
+	switch name {
+	case admingatewayalertread.EdgeAdmin:
+		return m.clearedadmin
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AdminGatewayAlertReadMutation) ClearEdge(name string) error {
+	switch name {
+	case admingatewayalertread.EdgeAdmin:
+		m.ClearAdmin()
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlertRead unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AdminGatewayAlertReadMutation) ResetEdge(name string) error {
+	switch name {
+	case admingatewayalertread.EdgeAdmin:
+		m.ResetAdmin()
+		return nil
+	}
+	return fmt.Errorf("unknown AdminGatewayAlertRead edge %s", name)
 }
 
 // AnnouncementMutation represents an operation that mutates the Announcement nodes in the graph.
@@ -28606,69 +30208,72 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                           Op
-	typ                          string
-	id                           *int
-	email                        *string
-	username                     *string
-	password_hash                *string
-	balance                      *int64
-	addbalance                   *int64
-	status                       *int
-	addstatus                    *int
-	role                         *string
-	ip_whitelist                 *[]string
-	appendip_whitelist           []string
-	ip_blacklist                 *[]string
-	appendip_blacklist           []string
-	concurrency                  *int
-	addconcurrency               *int
-	rate_multiplier              *float64
-	addrate_multiplier           *float64
-	totp_secret                  *string
-	webhook_url                  *string
-	balance_alert_threshold      *int64
-	addbalance_alert_threshold   *int64
-	custom_alert_config          *alertconfig.Stored
-	last_login_at                *time.Time
-	created_at                   *time.Time
-	updated_at                   *time.Time
-	clearedFields                map[string]struct{}
-	group                        *int
-	clearedgroup                 bool
-	api_keys                     map[int]struct{}
-	removedapi_keys              map[int]struct{}
-	clearedapi_keys              bool
-	usage_logs                   map[int]struct{}
-	removedusage_logs            map[int]struct{}
-	clearedusage_logs            bool
-	redeemed_codes               map[int]struct{}
-	removedredeemed_codes        map[int]struct{}
-	clearedredeemed_codes        bool
-	created_redeem_codes         map[int]struct{}
-	removedcreated_redeem_codes  map[int]struct{}
-	clearedcreated_redeem_codes  bool
-	redeem_ledgers               map[int]struct{}
-	removedredeem_ledgers        map[int]struct{}
-	clearedredeem_ledgers        bool
-	admin_audit_logs             map[int]struct{}
-	removedadmin_audit_logs      map[int]struct{}
-	clearedadmin_audit_logs      bool
-	created_announcements        map[int]struct{}
-	removedcreated_announcements map[int]struct{}
-	clearedcreated_announcements bool
-	feedbacks                    map[int]struct{}
-	removedfeedbacks             map[int]struct{}
-	clearedfeedbacks             bool
-	payment_orders               map[int]struct{}
-	removedpayment_orders        map[int]struct{}
-	clearedpayment_orders        bool
-	invoice_profile              map[int]struct{}
-	removedinvoice_profile       map[int]struct{}
-	clearedinvoice_profile       bool
-	done                         bool
-	oldValue                     func(context.Context) (*User, error)
-	predicates                   []predicate.User
+	op                              Op
+	typ                             string
+	id                              *int
+	email                           *string
+	username                        *string
+	password_hash                   *string
+	balance                         *int64
+	addbalance                      *int64
+	status                          *int
+	addstatus                       *int
+	role                            *string
+	ip_whitelist                    *[]string
+	appendip_whitelist              []string
+	ip_blacklist                    *[]string
+	appendip_blacklist              []string
+	concurrency                     *int
+	addconcurrency                  *int
+	rate_multiplier                 *float64
+	addrate_multiplier              *float64
+	totp_secret                     *string
+	webhook_url                     *string
+	balance_alert_threshold         *int64
+	addbalance_alert_threshold      *int64
+	custom_alert_config             *alertconfig.Stored
+	last_login_at                   *time.Time
+	created_at                      *time.Time
+	updated_at                      *time.Time
+	clearedFields                   map[string]struct{}
+	group                           *int
+	clearedgroup                    bool
+	api_keys                        map[int]struct{}
+	removedapi_keys                 map[int]struct{}
+	clearedapi_keys                 bool
+	usage_logs                      map[int]struct{}
+	removedusage_logs               map[int]struct{}
+	clearedusage_logs               bool
+	redeemed_codes                  map[int]struct{}
+	removedredeemed_codes           map[int]struct{}
+	clearedredeemed_codes           bool
+	created_redeem_codes            map[int]struct{}
+	removedcreated_redeem_codes     map[int]struct{}
+	clearedcreated_redeem_codes     bool
+	redeem_ledgers                  map[int]struct{}
+	removedredeem_ledgers           map[int]struct{}
+	clearedredeem_ledgers           bool
+	admin_audit_logs                map[int]struct{}
+	removedadmin_audit_logs         map[int]struct{}
+	clearedadmin_audit_logs         bool
+	created_announcements           map[int]struct{}
+	removedcreated_announcements    map[int]struct{}
+	clearedcreated_announcements    bool
+	feedbacks                       map[int]struct{}
+	removedfeedbacks                map[int]struct{}
+	clearedfeedbacks                bool
+	payment_orders                  map[int]struct{}
+	removedpayment_orders           map[int]struct{}
+	clearedpayment_orders           bool
+	invoice_profile                 map[int]struct{}
+	removedinvoice_profile          map[int]struct{}
+	clearedinvoice_profile          bool
+	gateway_alert_read_state        map[int]struct{}
+	removedgateway_alert_read_state map[int]struct{}
+	clearedgateway_alert_read_state bool
+	done                            bool
+	oldValue                        func(context.Context) (*User, error)
+	predicates                      []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -30233,6 +31838,60 @@ func (m *UserMutation) ResetInvoiceProfile() {
 	m.removedinvoice_profile = nil
 }
 
+// AddGatewayAlertReadStateIDs adds the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity by ids.
+func (m *UserMutation) AddGatewayAlertReadStateIDs(ids ...int) {
+	if m.gateway_alert_read_state == nil {
+		m.gateway_alert_read_state = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.gateway_alert_read_state[ids[i]] = struct{}{}
+	}
+}
+
+// ClearGatewayAlertReadState clears the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity.
+func (m *UserMutation) ClearGatewayAlertReadState() {
+	m.clearedgateway_alert_read_state = true
+}
+
+// GatewayAlertReadStateCleared reports if the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity was cleared.
+func (m *UserMutation) GatewayAlertReadStateCleared() bool {
+	return m.clearedgateway_alert_read_state
+}
+
+// RemoveGatewayAlertReadStateIDs removes the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity by IDs.
+func (m *UserMutation) RemoveGatewayAlertReadStateIDs(ids ...int) {
+	if m.removedgateway_alert_read_state == nil {
+		m.removedgateway_alert_read_state = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.gateway_alert_read_state, ids[i])
+		m.removedgateway_alert_read_state[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedGatewayAlertReadState returns the removed IDs of the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity.
+func (m *UserMutation) RemovedGatewayAlertReadStateIDs() (ids []int) {
+	for id := range m.removedgateway_alert_read_state {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// GatewayAlertReadStateIDs returns the "gateway_alert_read_state" edge IDs in the mutation.
+func (m *UserMutation) GatewayAlertReadStateIDs() (ids []int) {
+	for id := range m.gateway_alert_read_state {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetGatewayAlertReadState resets all changes to the "gateway_alert_read_state" edge.
+func (m *UserMutation) ResetGatewayAlertReadState() {
+	m.gateway_alert_read_state = nil
+	m.clearedgateway_alert_read_state = false
+	m.removedgateway_alert_read_state = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -30775,7 +32434,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 12)
 	if m.group != nil {
 		edges = append(edges, user.EdgeGroup)
 	}
@@ -30808,6 +32467,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.invoice_profile != nil {
 		edges = append(edges, user.EdgeInvoiceProfile)
+	}
+	if m.gateway_alert_read_state != nil {
+		edges = append(edges, user.EdgeGatewayAlertReadState)
 	}
 	return edges
 }
@@ -30880,13 +32542,19 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeGatewayAlertReadState:
+		ids := make([]ent.Value, 0, len(m.gateway_alert_read_state))
+		for id := range m.gateway_alert_read_state {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 12)
 	if m.removedapi_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -30916,6 +32584,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedinvoice_profile != nil {
 		edges = append(edges, user.EdgeInvoiceProfile)
+	}
+	if m.removedgateway_alert_read_state != nil {
+		edges = append(edges, user.EdgeGatewayAlertReadState)
 	}
 	return edges
 }
@@ -30984,13 +32655,19 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeGatewayAlertReadState:
+		ids := make([]ent.Value, 0, len(m.removedgateway_alert_read_state))
+		for id := range m.removedgateway_alert_read_state {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 12)
 	if m.clearedgroup {
 		edges = append(edges, user.EdgeGroup)
 	}
@@ -31024,6 +32701,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedinvoice_profile {
 		edges = append(edges, user.EdgeInvoiceProfile)
 	}
+	if m.clearedgateway_alert_read_state {
+		edges = append(edges, user.EdgeGatewayAlertReadState)
+	}
 	return edges
 }
 
@@ -31053,6 +32733,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedpayment_orders
 	case user.EdgeInvoiceProfile:
 		return m.clearedinvoice_profile
+	case user.EdgeGatewayAlertReadState:
+		return m.clearedgateway_alert_read_state
 	}
 	return false
 }
@@ -31104,6 +32786,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeInvoiceProfile:
 		m.ResetInvoiceProfile()
+		return nil
+	case user.EdgeGatewayAlertReadState:
+		m.ResetGatewayAlertReadState()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

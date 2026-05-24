@@ -12,6 +12,12 @@ type APIKey func(*sql.Selector)
 // AdminAuditLog is the predicate function for adminauditlog builders.
 type AdminAuditLog func(*sql.Selector)
 
+// AdminGatewayAlert is the predicate function for admingatewayalert builders.
+type AdminGatewayAlert func(*sql.Selector)
+
+// AdminGatewayAlertRead is the predicate function for admingatewayalertread builders.
+type AdminGatewayAlertRead func(*sql.Selector)
+
 // Announcement is the predicate function for announcement builders.
 type Announcement func(*sql.Selector)
 

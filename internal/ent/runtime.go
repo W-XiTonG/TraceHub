@@ -5,6 +5,8 @@ package ent
 import (
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalert"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
@@ -152,6 +154,74 @@ func init() {
 	adminauditlogDescCreatedAt := adminauditlogFields[7].Descriptor()
 	// adminauditlog.DefaultCreatedAt holds the default value on creation for the created_at field.
 	adminauditlog.DefaultCreatedAt = adminauditlogDescCreatedAt.Default.(func() time.Time)
+	admingatewayalertFields := schema.AdminGatewayAlert{}.Fields()
+	_ = admingatewayalertFields
+	// admingatewayalertDescEventKind is the schema descriptor for event_kind field.
+	admingatewayalertDescEventKind := admingatewayalertFields[0].Descriptor()
+	// admingatewayalert.EventKindValidator is a validator for the "event_kind" field. It is called by the builders before save.
+	admingatewayalert.EventKindValidator = func() func(string) error {
+		validators := admingatewayalertDescEventKind.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(event_kind string) error {
+			for _, fn := range fns {
+				if err := fn(event_kind); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// admingatewayalertDescSeverity is the schema descriptor for severity field.
+	admingatewayalertDescSeverity := admingatewayalertFields[1].Descriptor()
+	// admingatewayalert.DefaultSeverity holds the default value on creation for the severity field.
+	admingatewayalert.DefaultSeverity = admingatewayalertDescSeverity.Default.(string)
+	// admingatewayalert.SeverityValidator is a validator for the "severity" field. It is called by the builders before save.
+	admingatewayalert.SeverityValidator = admingatewayalertDescSeverity.Validators[0].(func(string) error)
+	// admingatewayalertDescTitle is the schema descriptor for title field.
+	admingatewayalertDescTitle := admingatewayalertFields[2].Descriptor()
+	// admingatewayalert.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	admingatewayalert.TitleValidator = func() func(string) error {
+		validators := admingatewayalertDescTitle.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(title string) error {
+			for _, fn := range fns {
+				if err := fn(title); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// admingatewayalertDescRequestID is the schema descriptor for request_id field.
+	admingatewayalertDescRequestID := admingatewayalertFields[5].Descriptor()
+	// admingatewayalert.RequestIDValidator is a validator for the "request_id" field. It is called by the builders before save.
+	admingatewayalert.RequestIDValidator = admingatewayalertDescRequestID.Validators[0].(func(string) error)
+	// admingatewayalertDescModel is the schema descriptor for model field.
+	admingatewayalertDescModel := admingatewayalertFields[8].Descriptor()
+	// admingatewayalert.ModelValidator is a validator for the "model" field. It is called by the builders before save.
+	admingatewayalert.ModelValidator = admingatewayalertDescModel.Validators[0].(func(string) error)
+	// admingatewayalertDescCreatedAt is the schema descriptor for created_at field.
+	admingatewayalertDescCreatedAt := admingatewayalertFields[10].Descriptor()
+	// admingatewayalert.DefaultCreatedAt holds the default value on creation for the created_at field.
+	admingatewayalert.DefaultCreatedAt = admingatewayalertDescCreatedAt.Default.(func() time.Time)
+	admingatewayalertreadFields := schema.AdminGatewayAlertRead{}.Fields()
+	_ = admingatewayalertreadFields
+	// admingatewayalertreadDescLastReadAt is the schema descriptor for last_read_at field.
+	admingatewayalertreadDescLastReadAt := admingatewayalertreadFields[1].Descriptor()
+	// admingatewayalertread.DefaultLastReadAt holds the default value on creation for the last_read_at field.
+	admingatewayalertread.DefaultLastReadAt = admingatewayalertreadDescLastReadAt.Default.(func() time.Time)
+	// admingatewayalertreadDescUpdatedAt is the schema descriptor for updated_at field.
+	admingatewayalertreadDescUpdatedAt := admingatewayalertreadFields[2].Descriptor()
+	// admingatewayalertread.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	admingatewayalertread.DefaultUpdatedAt = admingatewayalertreadDescUpdatedAt.Default.(func() time.Time)
+	// admingatewayalertread.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	admingatewayalertread.UpdateDefaultUpdatedAt = admingatewayalertreadDescUpdatedAt.UpdateDefault.(func() time.Time)
 	announcementFields := schema.Announcement{}.Fields()
 	_ = announcementFields
 	// announcementDescTitle is the schema descriptor for title field.

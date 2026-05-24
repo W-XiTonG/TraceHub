@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"sync"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalert"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/channel"
@@ -97,6 +99,8 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:                 apikey.ValidColumn,
 			adminauditlog.Table:          adminauditlog.ValidColumn,
+			admingatewayalert.Table:      admingatewayalert.ValidColumn,
+			admingatewayalertread.Table:  admingatewayalertread.ValidColumn,
 			announcement.Table:           announcement.ValidColumn,
 			channel.Table:                channel.ValidColumn,
 			channelmodelpricing.Table:    channelmodelpricing.ValidColumn,

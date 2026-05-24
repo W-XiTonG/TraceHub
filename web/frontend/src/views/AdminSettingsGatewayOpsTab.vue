@@ -143,6 +143,105 @@ const s = inject(adminSiteSettingsKey)!
       </div>
     </section>
 
+    <section class="th-glass rounded-[var(--th-radius-lg)] p-5 md:p-6">
+      <h2 class="text-sm font-semibold text-slate-100">{{ t('adminSystem.secGatewayAdminAlert') }}</h2>
+      <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ t('adminSystem.secGatewayAdminAlertHint') }}</p>
+      <div class="mt-5 max-w-2xl space-y-4">
+        <label class="flex cursor-pointer items-start gap-3">
+          <input v-model="s.form.gatewayAdminAlertEnabled" type="checkbox" class="mt-1" />
+          <span class="block text-xs text-slate-300">{{ t('adminSystem.lblGatewayAdminAlertEnabled') }}</span>
+        </label>
+        <template v-if="s.form.gatewayAdminAlertEnabled">
+          <div class="space-y-2 rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('adminSystem.lblGatewayAlertTriggers') }}</p>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertNotify5xx" type="checkbox" /> {{ t('adminSystem.gwAlertTrigger5xx') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertNotifyTransport" type="checkbox" /> {{ t('adminSystem.gwAlertTriggerTransport') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertNotifyFailover" type="checkbox" /> {{ t('adminSystem.gwAlertTriggerFailover') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertNotify4xx" type="checkbox" /> {{ t('adminSystem.gwAlertTrigger4xx') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertNotify402" type="checkbox" /> {{ t('adminSystem.gwAlertTrigger402') }}
+            </label>
+          </div>
+          <div class="space-y-2 rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ t('adminSystem.lblGatewayAlertChannels') }}</p>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertChannelInApp" type="checkbox" /> {{ t('adminSystem.gwAlertChannelInApp') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertChannelEmail" type="checkbox" /> {{ t('adminSystem.gwAlertChannelEmail') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertChannelDingtalk" type="checkbox" /> {{ t('adminSystem.gwAlertChannelDingtalk') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertChannelFeishu" type="checkbox" /> {{ t('adminSystem.gwAlertChannelFeishu') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertChannelWecom" type="checkbox" /> {{ t('adminSystem.gwAlertChannelWecom') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input v-model="s.form.gwAlertChannelGenericWebhook" type="checkbox" /> {{ t('adminSystem.gwAlertChannelGeneric') }}
+            </label>
+          </div>
+          <div v-if="s.form.gwAlertChannelEmail" class="space-y-2">
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertEmails') }}</label>
+            <textarea v-model="s.form.gwAlertEmailsText" rows="3" class="th-input w-full font-mono text-sm" :placeholder="t('adminSystem.phGatewayAlertEmails')" />
+          </div>
+          <div v-if="s.form.gwAlertChannelDingtalk" class="space-y-2">
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertDingtalk') }}</label>
+            <input v-model="s.form.gwAlertDingtalkWebhook" type="url" class="th-input w-full font-mono text-sm" autocomplete="off" />
+            <input v-model="s.gwAlertSecretDing" type="password" class="th-input w-full font-mono text-sm" :placeholder="t('adminSystem.phAlertSignSecret')" autocomplete="new-password" />
+            <label v-if="s.gwAlertSignConfigured?.dingtalk_sign_configured" class="flex items-center gap-2 text-[11px] text-slate-500">
+              <input v-model="s.gwAlertClearDingSign" type="checkbox" /> {{ t('adminSystem.clearAlertSign') }}
+            </label>
+          </div>
+          <div v-if="s.form.gwAlertChannelFeishu" class="space-y-2">
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertFeishu') }}</label>
+            <input v-model="s.form.gwAlertFeishuWebhook" type="url" class="th-input w-full font-mono text-sm" autocomplete="off" />
+            <input v-model="s.gwAlertSecretFeishu" type="password" class="th-input w-full font-mono text-sm" :placeholder="t('adminSystem.phAlertSignSecret')" autocomplete="new-password" />
+            <label v-if="s.gwAlertSignConfigured?.feishu_sign_configured" class="flex items-center gap-2 text-[11px] text-slate-500">
+              <input v-model="s.gwAlertClearFeishuSign" type="checkbox" /> {{ t('adminSystem.clearAlertSign') }}
+            </label>
+          </div>
+          <div v-if="s.form.gwAlertChannelWecom" class="space-y-2">
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertWecom') }}</label>
+            <input v-model="s.form.gwAlertWecomWebhook" type="url" class="th-input w-full font-mono text-sm" autocomplete="off" />
+            <input v-model="s.gwAlertSecretWecom" type="password" class="th-input w-full font-mono text-sm" :placeholder="t('adminSystem.phAlertSignSecret')" autocomplete="new-password" />
+            <label v-if="s.gwAlertSignConfigured?.wecom_sign_configured" class="flex items-center gap-2 text-[11px] text-slate-500">
+              <input v-model="s.gwAlertClearWecomSign" type="checkbox" /> {{ t('adminSystem.clearAlertSign') }}
+            </label>
+          </div>
+          <div v-if="s.form.gwAlertChannelGenericWebhook" class="space-y-2">
+            <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertGeneric') }}</label>
+            <input v-model="s.form.gwAlertGenericWebhookUrl" type="url" class="th-input w-full font-mono text-sm" autocomplete="off" />
+            <input v-model="s.gwAlertSecretGeneric" type="password" class="th-input w-full font-mono text-sm" :placeholder="t('adminSystem.phAlertSignSecret')" autocomplete="new-password" />
+            <label v-if="s.gwAlertSignConfigured?.generic_webhook_sign_configured" class="flex items-center gap-2 text-[11px] text-slate-500">
+              <input v-model="s.gwAlertClearGenericSign" type="checkbox" /> {{ t('adminSystem.clearAlertSign') }}
+            </label>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertCooldown') }}</label>
+              <input v-model.number="s.form.gwAlertCooldownSec" type="number" min="60" max="3600" class="th-input font-mono text-sm" />
+            </div>
+            <div>
+              <label class="mb-1 block text-xs text-slate-500">{{ t('adminSystem.lblGatewayAlertMinInterval') }}</label>
+              <input v-model.number="s.form.gwAlertMinIntervalSec" type="number" min="10" max="600" class="th-input font-mono text-sm" />
+            </div>
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintGatewayAdminAlertPerf') }}</p>
+        </template>
+      </div>
+    </section>
+
     <section class="rounded-lg border border-dashed border-white/[0.1] bg-black/[0.06] p-4">
       <p class="text-xs text-slate-500">{{ t('adminSystem.moreHint') }}</p>
     </section>

@@ -20,6 +20,7 @@ import (
 	"tracehub/internal/pkg/openaicompat"
 	"tracehub/internal/service/billing"
 	"tracehub/internal/service/channelsecret"
+	"tracehub/internal/service/gatewayalert"
 
 	"github.com/gin-gonic/gin"
 	redis "github.com/redis/go-redis/v9"
@@ -476,6 +477,12 @@ func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, m
 	if err != nil {
 		slog.Warn("gateway usage log persist failed", append(logArgs, "err", err)...)
 		return
+	}
+	if n := gatewayalert.Global(); n != nil {
+		n.MaybeNotify(gatewayalert.EventFromUsage(
+			userID, apiKeyID, channelID, requestID, model, upstream, status, errMsg,
+			meta.IsFailoverAttempt, meta.IsClientOutcome,
+		))
 	}
 	if channelID <= 0 {
 		slog.Warn("gateway usage recorded without channel_id", append(logArgs, "usage_log_id", ulog.ID)...)

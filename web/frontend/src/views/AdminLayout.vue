@@ -5,6 +5,7 @@ import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useSiteMetaStore } from '../stores/siteMeta'
 import UserAccountMenu from '../components/UserAccountMenu.vue'
 import AnnouncementBell from '../components/AnnouncementBell.vue'
+import AdminGatewayAlertBell from '../components/AdminGatewayAlertBell.vue'
 import AdminSidebarNav from '../components/shell/AdminSidebarNav.vue'
 import ShellNavDrawer from '../components/shell/ShellNavDrawer.vue'
 import SiteBeianFooter from '../components/SiteBeianFooter.vue'
@@ -78,6 +79,7 @@ onMounted(() => void siteMeta.ensureLoaded())
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-2">
+          <AdminGatewayAlertBell accent="amber" />
           <AnnouncementBell accent="amber" />
           <UserAccountMenu accent="amber" />
         </div>

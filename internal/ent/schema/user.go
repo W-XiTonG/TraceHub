@@ -54,6 +54,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("feedbacks", Feedback.Type),
 		edge.To("payment_orders", PaymentOrder.Type),
 		edge.To("invoice_profile", InvoiceProfile.Type),
+		edge.To("gateway_alert_read_state", AdminGatewayAlertRead.Type),
 	}
 }
 

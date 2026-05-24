@@ -16,6 +16,10 @@ type Tx struct {
 	APIKey *APIKeyClient
 	// AdminAuditLog is the client for interacting with the AdminAuditLog builders.
 	AdminAuditLog *AdminAuditLogClient
+	// AdminGatewayAlert is the client for interacting with the AdminGatewayAlert builders.
+	AdminGatewayAlert *AdminGatewayAlertClient
+	// AdminGatewayAlertRead is the client for interacting with the AdminGatewayAlertRead builders.
+	AdminGatewayAlertRead *AdminGatewayAlertReadClient
 	// Announcement is the client for interacting with the Announcement builders.
 	Announcement *AnnouncementClient
 	// Channel is the client for interacting with the Channel builders.
@@ -191,6 +195,8 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.APIKey = NewAPIKeyClient(tx.config)
 	tx.AdminAuditLog = NewAdminAuditLogClient(tx.config)
+	tx.AdminGatewayAlert = NewAdminGatewayAlertClient(tx.config)
+	tx.AdminGatewayAlertRead = NewAdminGatewayAlertReadClient(tx.config)
 	tx.Announcement = NewAnnouncementClient(tx.config)
 	tx.Channel = NewChannelClient(tx.config)
 	tx.ChannelModelPricing = NewChannelModelPricingClient(tx.config)

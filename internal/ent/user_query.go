@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/feedback"
@@ -29,21 +30,22 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx                      *QueryContext
-	order                    []user.OrderOption
-	inters                   []Interceptor
-	predicates               []predicate.User
-	withGroup                *GroupQuery
-	withAPIKeys              *APIKeyQuery
-	withUsageLogs            *UsageLogQuery
-	withRedeemedCodes        *RedeemCodeQuery
-	withCreatedRedeemCodes   *RedeemCodeQuery
-	withRedeemLedgers        *RedeemLedgerQuery
-	withAdminAuditLogs       *AdminAuditLogQuery
-	withCreatedAnnouncements *AnnouncementQuery
-	withFeedbacks            *FeedbackQuery
-	withPaymentOrders        *PaymentOrderQuery
-	withInvoiceProfile       *InvoiceProfileQuery
+	ctx                       *QueryContext
+	order                     []user.OrderOption
+	inters                    []Interceptor
+	predicates                []predicate.User
+	withGroup                 *GroupQuery
+	withAPIKeys               *APIKeyQuery
+	withUsageLogs             *UsageLogQuery
+	withRedeemedCodes         *RedeemCodeQuery
+	withCreatedRedeemCodes    *RedeemCodeQuery
+	withRedeemLedgers         *RedeemLedgerQuery
+	withAdminAuditLogs        *AdminAuditLogQuery
+	withCreatedAnnouncements  *AnnouncementQuery
+	withFeedbacks             *FeedbackQuery
+	withPaymentOrders         *PaymentOrderQuery
+	withInvoiceProfile        *InvoiceProfileQuery
+	withGatewayAlertReadState *AdminGatewayAlertReadQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -322,6 +324,28 @@ func (_q *UserQuery) QueryInvoiceProfile() *InvoiceProfileQuery {
 	return query
 }
 
+// QueryGatewayAlertReadState chains the current query on the "gateway_alert_read_state" edge.
+func (_q *UserQuery) QueryGatewayAlertReadState() *AdminGatewayAlertReadQuery {
+	query := (&AdminGatewayAlertReadClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(admingatewayalertread.Table, admingatewayalertread.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.GatewayAlertReadStateTable, user.GatewayAlertReadStateColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first User entity from the query.
 // Returns a *NotFoundError when no User was found.
 func (_q *UserQuery) First(ctx context.Context) (*User, error) {
@@ -509,22 +533,23 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:                   _q.config,
-		ctx:                      _q.ctx.Clone(),
-		order:                    append([]user.OrderOption{}, _q.order...),
-		inters:                   append([]Interceptor{}, _q.inters...),
-		predicates:               append([]predicate.User{}, _q.predicates...),
-		withGroup:                _q.withGroup.Clone(),
-		withAPIKeys:              _q.withAPIKeys.Clone(),
-		withUsageLogs:            _q.withUsageLogs.Clone(),
-		withRedeemedCodes:        _q.withRedeemedCodes.Clone(),
-		withCreatedRedeemCodes:   _q.withCreatedRedeemCodes.Clone(),
-		withRedeemLedgers:        _q.withRedeemLedgers.Clone(),
-		withAdminAuditLogs:       _q.withAdminAuditLogs.Clone(),
-		withCreatedAnnouncements: _q.withCreatedAnnouncements.Clone(),
-		withFeedbacks:            _q.withFeedbacks.Clone(),
-		withPaymentOrders:        _q.withPaymentOrders.Clone(),
-		withInvoiceProfile:       _q.withInvoiceProfile.Clone(),
+		config:                    _q.config,
+		ctx:                       _q.ctx.Clone(),
+		order:                     append([]user.OrderOption{}, _q.order...),
+		inters:                    append([]Interceptor{}, _q.inters...),
+		predicates:                append([]predicate.User{}, _q.predicates...),
+		withGroup:                 _q.withGroup.Clone(),
+		withAPIKeys:               _q.withAPIKeys.Clone(),
+		withUsageLogs:             _q.withUsageLogs.Clone(),
+		withRedeemedCodes:         _q.withRedeemedCodes.Clone(),
+		withCreatedRedeemCodes:    _q.withCreatedRedeemCodes.Clone(),
+		withRedeemLedgers:         _q.withRedeemLedgers.Clone(),
+		withAdminAuditLogs:        _q.withAdminAuditLogs.Clone(),
+		withCreatedAnnouncements:  _q.withCreatedAnnouncements.Clone(),
+		withFeedbacks:             _q.withFeedbacks.Clone(),
+		withPaymentOrders:         _q.withPaymentOrders.Clone(),
+		withInvoiceProfile:        _q.withInvoiceProfile.Clone(),
+		withGatewayAlertReadState: _q.withGatewayAlertReadState.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -652,6 +677,17 @@ func (_q *UserQuery) WithInvoiceProfile(opts ...func(*InvoiceProfileQuery)) *Use
 	return _q
 }
 
+// WithGatewayAlertReadState tells the query-builder to eager-load the nodes that are connected to
+// the "gateway_alert_read_state" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithGatewayAlertReadState(opts ...func(*AdminGatewayAlertReadQuery)) *UserQuery {
+	query := (&AdminGatewayAlertReadClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withGatewayAlertReadState = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -730,7 +766,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [11]bool{
+		loadedTypes = [12]bool{
 			_q.withGroup != nil,
 			_q.withAPIKeys != nil,
 			_q.withUsageLogs != nil,
@@ -742,6 +778,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withFeedbacks != nil,
 			_q.withPaymentOrders != nil,
 			_q.withInvoiceProfile != nil,
+			_q.withGatewayAlertReadState != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -835,6 +872,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadInvoiceProfile(ctx, query, nodes,
 			func(n *User) { n.Edges.InvoiceProfile = []*InvoiceProfile{} },
 			func(n *User, e *InvoiceProfile) { n.Edges.InvoiceProfile = append(n.Edges.InvoiceProfile, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withGatewayAlertReadState; query != nil {
+		if err := _q.loadGatewayAlertReadState(ctx, query, nodes,
+			func(n *User) { n.Edges.GatewayAlertReadState = []*AdminGatewayAlertRead{} },
+			func(n *User, e *AdminGatewayAlertRead) {
+				n.Edges.GatewayAlertReadState = append(n.Edges.GatewayAlertReadState, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -1165,6 +1211,36 @@ func (_q *UserQuery) loadInvoiceProfile(ctx context.Context, query *InvoiceProfi
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadGatewayAlertReadState(ctx context.Context, query *AdminGatewayAlertReadQuery, nodes []*User, init func(*User), assign func(*User, *AdminGatewayAlertRead)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(admingatewayalertread.FieldAdminID)
+	}
+	query.Where(predicate.AdminGatewayAlertRead(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.GatewayAlertReadStateColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.AdminID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "admin_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

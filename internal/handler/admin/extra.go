@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -1553,6 +1554,7 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 		}
 		gwIPSet, gwIPRaw, gwIPList := sitecfg.GatewayIPBlacklistDBMeta(ctx, client)
 		routingDefaults := sitecfg.EffectiveRoutingDefaults(ctx, client)
+		gwAlertEn, gwAlertEnSet, gwAlertCfg, gwAlertCfgSet, _, gwAlertSecConfigured := sitecfg.GatewayAdminAlertDBMeta(ctx, client)
 		// 管理页依赖最新库值；禁止缓存以免与「恢复默认」等操作不同步
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		c.Header("Pragma", "no-cache")
@@ -1656,6 +1658,11 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"tls_key_present":                               tlsKey != "" && keyErr == nil,
 			"tls_material_ready":                            tlsMat.MaterialReady,
 			"tls_pair_ok":                                   tlsMat.PairOK,
+			"gateway_admin_alert_enabled":                   gwAlertEn,
+			"gateway_admin_alert_enabled_db_set":            gwAlertEnSet,
+			"gateway_admin_alert_config":                    gwAlertCfg,
+			"gateway_admin_alert_config_db_set":             gwAlertCfgSet,
+			"gateway_admin_alert_secrets_configured":        gwAlertSecConfigured,
 		})
 	}
 }
@@ -1723,6 +1730,9 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyCurrencyQuotaPerYuan,
 			sitecfg.SystemConfigKeyCurrencyQuotaPerUsd,
 			sitecfg.SystemConfigKeyPricingCnyPerUsd,
+			sitecfg.SystemConfigKeyGatewayAdminAlertEnabled,
+			sitecfg.SystemConfigKeyGatewayAdminAlertConfig,
+			sitecfg.SystemConfigKeyGatewayAdminAlertSecrets,
 		}
 		n, err := client.SystemConfig.Delete().Where(systemconfig.ConfigKeyIn(keys...)).Exec(ctx)
 		if err != nil {
@@ -1731,6 +1741,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 		}
 		sitecfg.InvalidateGatewayIPBlacklistCache()
 		sitecfg.InvalidateHTTPSPolicyCache()
+		sitecfg.InvalidateGatewayAdminAlertCache()
 		billing.InvalidateNoBillModelsCacheAdmin()
 		auditLog(client, adm.ID, "site.settings_reset_defaults", "system_config", "", map[string]any{"deleted_rows": n}, c)
 		httpx.OK(c, gin.H{"deleted_rows": n})
@@ -1776,6 +1787,7 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		invalidateGatewayBlacklist := false
 		invalidateDefaultMarkup := false
 		invalidateHTTPSPolicy := false
+		invalidateGatewayAdminAlert := false
 		tlsEnabledTouched := false
 		tlsMaterialTouched := false
 		for _, it := range req.Items {
@@ -1793,6 +1805,10 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 				invalidateDefaultMarkup = true
 			}
 			switch k {
+			case sitecfg.SystemConfigKeyGatewayAdminAlertEnabled,
+				sitecfg.SystemConfigKeyGatewayAdminAlertConfig,
+				sitecfg.SystemConfigKeyGatewayAdminAlertSecrets:
+				invalidateGatewayAdminAlert = true
 			case sitecfg.SystemConfigKeyHTTPSForceRedirect,
 				sitecfg.SystemConfigKeyHTTPSHSTSEnabled,
 				sitecfg.SystemConfigKeyHTTPSHSTSMaxAge:
@@ -1825,6 +1841,24 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 					return
 				}
 				val = canon
+			}
+			if k == sitecfg.SystemConfigKeyGatewayAdminAlertSecrets {
+				existing, _ := sitecfg.LoadGatewayAdminAlertSecretsForMerge(ctx, client)
+				merged, err := sitecfg.MergeGatewayAdminAlertSecrets(existing, []byte(val))
+				if err != nil {
+					httpx.BadRequest(c, err.Error())
+					return
+				}
+				if merged.ReallyEmpty() {
+					val = ""
+				} else {
+					b, err := json.Marshal(merged)
+					if err != nil {
+						httpx.ServerError(c, "序列化密钥失败")
+						return
+					}
+					val = string(b)
+				}
 			}
 			ex, err := client.SystemConfig.Query().Where(systemconfig.ConfigKeyEQ(k)).Only(ctx)
 			if ent.IsNotFound(err) {
@@ -1862,6 +1896,9 @@ func PutSystemConfig(client *ent.Client, cfg *config.Config) gin.HandlerFunc {
 		}
 		if invalidateHTTPSPolicy {
 			sitecfg.InvalidateHTTPSPolicyCache()
+		}
+		if invalidateGatewayAdminAlert {
+			sitecfg.InvalidateGatewayAdminAlertCache()
 		}
 		msg := "已保存"
 		if tlsEnabledTouched || tlsMaterialTouched {

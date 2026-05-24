@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tracehub/internal/ent/adminauditlog"
+	"tracehub/internal/ent/admingatewayalertread"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/ent/apikey"
 	"tracehub/internal/ent/feedback"
@@ -510,6 +511,21 @@ func (_u *UserUpdate) AddInvoiceProfile(v ...*InvoiceProfile) *UserUpdate {
 	return _u.AddInvoiceProfileIDs(ids...)
 }
 
+// AddGatewayAlertReadStateIDs adds the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity by IDs.
+func (_u *UserUpdate) AddGatewayAlertReadStateIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddGatewayAlertReadStateIDs(ids...)
+	return _u
+}
+
+// AddGatewayAlertReadState adds the "gateway_alert_read_state" edges to the AdminGatewayAlertRead entity.
+func (_u *UserUpdate) AddGatewayAlertReadState(v ...*AdminGatewayAlertRead) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddGatewayAlertReadStateIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -729,6 +745,27 @@ func (_u *UserUpdate) RemoveInvoiceProfile(v ...*InvoiceProfile) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveInvoiceProfileIDs(ids...)
+}
+
+// ClearGatewayAlertReadState clears all "gateway_alert_read_state" edges to the AdminGatewayAlertRead entity.
+func (_u *UserUpdate) ClearGatewayAlertReadState() *UserUpdate {
+	_u.mutation.ClearGatewayAlertReadState()
+	return _u
+}
+
+// RemoveGatewayAlertReadStateIDs removes the "gateway_alert_read_state" edge to AdminGatewayAlertRead entities by IDs.
+func (_u *UserUpdate) RemoveGatewayAlertReadStateIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveGatewayAlertReadStateIDs(ids...)
+	return _u
+}
+
+// RemoveGatewayAlertReadState removes "gateway_alert_read_state" edges to AdminGatewayAlertRead entities.
+func (_u *UserUpdate) RemoveGatewayAlertReadState(v ...*AdminGatewayAlertRead) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveGatewayAlertReadStateIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1390,6 +1427,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.GatewayAlertReadStateCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedGatewayAlertReadStateIDs(); len(nodes) > 0 && !_u.mutation.GatewayAlertReadStateCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.GatewayAlertReadStateIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1880,6 +1962,21 @@ func (_u *UserUpdateOne) AddInvoiceProfile(v ...*InvoiceProfile) *UserUpdateOne 
 	return _u.AddInvoiceProfileIDs(ids...)
 }
 
+// AddGatewayAlertReadStateIDs adds the "gateway_alert_read_state" edge to the AdminGatewayAlertRead entity by IDs.
+func (_u *UserUpdateOne) AddGatewayAlertReadStateIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddGatewayAlertReadStateIDs(ids...)
+	return _u
+}
+
+// AddGatewayAlertReadState adds the "gateway_alert_read_state" edges to the AdminGatewayAlertRead entity.
+func (_u *UserUpdateOne) AddGatewayAlertReadState(v ...*AdminGatewayAlertRead) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddGatewayAlertReadStateIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -2099,6 +2196,27 @@ func (_u *UserUpdateOne) RemoveInvoiceProfile(v ...*InvoiceProfile) *UserUpdateO
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveInvoiceProfileIDs(ids...)
+}
+
+// ClearGatewayAlertReadState clears all "gateway_alert_read_state" edges to the AdminGatewayAlertRead entity.
+func (_u *UserUpdateOne) ClearGatewayAlertReadState() *UserUpdateOne {
+	_u.mutation.ClearGatewayAlertReadState()
+	return _u
+}
+
+// RemoveGatewayAlertReadStateIDs removes the "gateway_alert_read_state" edge to AdminGatewayAlertRead entities by IDs.
+func (_u *UserUpdateOne) RemoveGatewayAlertReadStateIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveGatewayAlertReadStateIDs(ids...)
+	return _u
+}
+
+// RemoveGatewayAlertReadState removes "gateway_alert_read_state" edges to AdminGatewayAlertRead entities.
+func (_u *UserUpdateOne) RemoveGatewayAlertReadState(v ...*AdminGatewayAlertRead) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveGatewayAlertReadStateIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -2783,6 +2901,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(invoiceprofile.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.GatewayAlertReadStateCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedGatewayAlertReadStateIDs(); len(nodes) > 0 && !_u.mutation.GatewayAlertReadStateCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.GatewayAlertReadStateIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.GatewayAlertReadStateTable,
+			Columns: []string{user.GatewayAlertReadStateColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(admingatewayalertread.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

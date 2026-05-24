@@ -22,6 +22,7 @@ import (
 	webhookhandler "tracehub/internal/handler/webhook"
 	"tracehub/internal/service/balancealert"
 	"tracehub/internal/service/billing"
+	"tracehub/internal/service/gatewayalert"
 	"tracehub/internal/service/payment"
 	"tracehub/internal/service/pricingsync"
 	"tracehub/internal/service/upstreamprobe"
@@ -107,6 +108,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	balAlerts := balancealert.New(opt.Config, opt.Log)
 	billingEngine := &billing.Engine{Client: opt.Client, Alerts: balAlerts, Config: opt.Config}
 	billing.SetAdminEngine(billingEngine)
+	gwAlerts := gatewayalert.New(opt.Client, opt.Redis, opt.Config, opt.Log)
+	gatewayalert.SetGlobal(gwAlerts)
 
 	gate := r.Group("/v1")
 	gate.Use(middleware.GatewayAPIKeyAuth(opt.Client))
@@ -370,6 +373,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.GET("/logs/export", adminhandler.ExportLogs(opt.Client))
 	a.GET("/logs/stats", adminhandler.LogStats(opt.Client))
 	a.GET("/logs", adminhandler.ListLogs(opt.Client))
+	a.GET("/gateway-alerts", adminhandler.ListGatewayAlerts(opt.Client))
+	a.POST("/gateway-alerts/mark-read", adminhandler.MarkGatewayAlertsRead(opt.Client))
 	a.GET("/balance-ledger", adminhandler.AdminBalanceLedger(opt.StdDB))
 	a.GET("/redeem-codes", adminhandler.ListRedeemCodes(opt.Client))
 	a.POST("/redeem-codes", adminhandler.BatchRedeemCodes(opt.Client))

@@ -102,6 +102,12 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidatePricingSyncManualCooldown(value)
 	case SystemConfigKeyPricingSyncInboundTokenSHA256, SystemConfigKeyPricingSyncInboundTokenAt:
 		return nil
+	case SystemConfigKeyGatewayAdminAlertEnabled:
+		return ValidateGatewayAdminAlertEnabled(value)
+	case SystemConfigKeyGatewayAdminAlertConfig:
+		return ValidateGatewayAdminAlertConfigJSON(value)
+	case SystemConfigKeyGatewayAdminAlertSecrets:
+		return ValidateGatewayAdminAlertSecretsJSON(value)
 	default:
 		return nil
 	}

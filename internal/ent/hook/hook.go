@@ -32,6 +32,30 @@ func (f AdminAuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Valu
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AdminAuditLogMutation", m)
 }
 
+// The AdminGatewayAlertFunc type is an adapter to allow the use of ordinary
+// function as AdminGatewayAlert mutator.
+type AdminGatewayAlertFunc func(context.Context, *ent.AdminGatewayAlertMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AdminGatewayAlertFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AdminGatewayAlertMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AdminGatewayAlertMutation", m)
+}
+
+// The AdminGatewayAlertReadFunc type is an adapter to allow the use of ordinary
+// function as AdminGatewayAlertRead mutator.
+type AdminGatewayAlertReadFunc func(context.Context, *ent.AdminGatewayAlertReadMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AdminGatewayAlertReadFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AdminGatewayAlertReadMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AdminGatewayAlertReadMutation", m)
+}
+
 // The AnnouncementFunc type is an adapter to allow the use of ordinary
 // function as Announcement mutator.
 type AnnouncementFunc func(context.Context, *ent.AnnouncementMutation) (ent.Value, error)

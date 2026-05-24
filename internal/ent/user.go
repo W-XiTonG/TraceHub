@@ -86,9 +86,11 @@ type UserEdges struct {
 	PaymentOrders []*PaymentOrder `json:"payment_orders,omitempty"`
 	// InvoiceProfile holds the value of the invoice_profile edge.
 	InvoiceProfile []*InvoiceProfile `json:"invoice_profile,omitempty"`
+	// GatewayAlertReadState holds the value of the gateway_alert_read_state edge.
+	GatewayAlertReadState []*AdminGatewayAlertRead `json:"gateway_alert_read_state,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [11]bool
+	loadedTypes [12]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -190,6 +192,15 @@ func (e UserEdges) InvoiceProfileOrErr() ([]*InvoiceProfile, error) {
 		return e.InvoiceProfile, nil
 	}
 	return nil, &NotLoadedError{edge: "invoice_profile"}
+}
+
+// GatewayAlertReadStateOrErr returns the GatewayAlertReadState value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) GatewayAlertReadStateOrErr() ([]*AdminGatewayAlertRead, error) {
+	if e.loadedTypes[11] {
+		return e.GatewayAlertReadState, nil
+	}
+	return nil, &NotLoadedError{edge: "gateway_alert_read_state"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -408,6 +419,11 @@ func (_m *User) QueryPaymentOrders() *PaymentOrderQuery {
 // QueryInvoiceProfile queries the "invoice_profile" edge of the User entity.
 func (_m *User) QueryInvoiceProfile() *InvoiceProfileQuery {
 	return NewUserClient(_m.config).QueryInvoiceProfile(_m)
+}
+
+// QueryGatewayAlertReadState queries the "gateway_alert_read_state" edge of the User entity.
+func (_m *User) QueryGatewayAlertReadState() *AdminGatewayAlertReadQuery {
+	return NewUserClient(_m.config).QueryGatewayAlertReadState(_m)
 }
 
 // Update returns a builder for updating this User.

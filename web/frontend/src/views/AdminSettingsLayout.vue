@@ -47,10 +47,16 @@ onMounted(() => {
     <p v-if="ctx.err" class="th-admin-flash--error mt-4 rounded-lg border px-3 py-2 text-sm">{{ ctx.err }}</p>
     <p v-if="ctx.msg" class="th-admin-flash--success mt-4 rounded-lg border px-3 py-2 text-sm">{{ ctx.msg }}</p>
 
-    <ThLoadingState v-if="ctx.busyUi" class="mt-8" />
-
-    <div v-else class="mt-6">
+    <div class="relative mt-6 min-h-[12rem]">
       <RouterView />
+      <div
+        v-if="ctx.busyUi"
+        class="absolute inset-0 z-10 flex items-start justify-center rounded-lg bg-slate-950/70 pt-8 backdrop-blur-[2px]"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <ThLoadingState />
+      </div>
     </div>
 
     <div v-if="!ctx.busy" class="th-admin-divider-t mt-10 flex flex-wrap gap-3 pt-8">
