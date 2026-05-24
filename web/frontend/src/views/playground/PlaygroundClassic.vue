@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ThLoadingSpinner from '../../components/ui/ThLoadingSpinner.vue'
+import PlaygroundMediaDownloadBtn from '../../components/playground/PlaygroundMediaDownloadBtn.vue'
 import { ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usePlaygroundCore } from '../../composables/usePlaygroundCore'
@@ -952,20 +953,33 @@ watch(showDebug, (enabled) => {
               </div>
               <div v-else-if="m.role === 'assistant' && m.videoUrl" class="mb-2 w-full max-w-md">
                 <video :src="m.videoUrl" controls class="max-w-full rounded-lg border border-white/10 bg-slate-950/80" />
+                <PlaygroundMediaDownloadBtn
+                  :src="m.videoUrl"
+                  kind="video"
+                  variant="classic"
+                  :filename-base="m.videoJobId || m.id"
+                />
               </div>
               <div v-if="m.role === 'assistant' && m.audioUrl" class="mb-2 w-full max-w-md">
                 <audio :src="m.audioUrl" controls class="w-full rounded-lg border border-white/10 bg-slate-950/80" />
               </div>
               <div v-if="m.role === 'assistant' && m.imageOutputs?.length" class="mb-2 flex flex-col gap-2">
                 <template v-for="(src, ix) in m.imageOutputs" :key="`${m.id}-img-${ix}`">
-                  <img
-                    v-if="!imageOutputFailed(m, ix)"
-                    :src="src"
-                    alt=""
-                    class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
-                    referrerpolicy="no-referrer"
-                    @error="markImageLoadFailed(m.id, ix)"
-                  />
+                  <template v-if="!imageOutputFailed(m, ix)">
+                    <img
+                      :src="src"
+                      alt=""
+                      class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
+                      referrerpolicy="no-referrer"
+                      @error="markImageLoadFailed(m.id, ix)"
+                    />
+                    <PlaygroundMediaDownloadBtn
+                      :src="src"
+                      kind="image"
+                      variant="classic"
+                      :filename-base="`${m.id}-${ix + 1}`"
+                    />
+                  </template>
                   <p
                     v-else
                     class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-2.5 py-2 text-xs leading-relaxed text-amber-100/90"

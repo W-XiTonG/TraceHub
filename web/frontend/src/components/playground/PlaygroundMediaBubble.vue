@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import ThLoadingSpinner from '../ui/ThLoadingSpinner.vue'
+import PlaygroundMediaDownloadBtn from './PlaygroundMediaDownloadBtn.vue'
 import { isResolvableHttpImage, resolveImageUrlForDisplay } from '../../utils/playgroundMediaResolve'
 
 const props = defineProps<{
@@ -8,6 +9,7 @@ const props = defineProps<{
   alt?: string
   failed?: boolean
   showRetryB64?: boolean
+  downloadName?: string
 }>()
 
 const emit = defineEmits<{
@@ -89,14 +91,16 @@ onBeforeUnmount(revokeObject)
         {{ $t('playground.retryB64') }}
       </button>
     </template>
-    <img
-      v-else
-      :src="displaySrc"
-      :alt="alt || ''"
-      loading="lazy"
-      class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
-      referrerpolicy="no-referrer"
-      @error="onImgError"
-    />
+    <template v-else>
+      <img
+        :src="displaySrc"
+        :alt="alt || ''"
+        loading="lazy"
+        class="max-h-72 max-w-full rounded-lg border border-white/10 object-contain"
+        referrerpolicy="no-referrer"
+        @error="onImgError"
+      />
+      <PlaygroundMediaDownloadBtn :src="displaySrc || src" kind="image" :filename-base="downloadName" />
+    </template>
   </div>
 </template>

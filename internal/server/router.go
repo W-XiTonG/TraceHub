@@ -277,6 +277,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	authUser.PUT("/ip_whitelist", userhandler.SetIPWhitelist(opt.Client))
 	authUser.GET("/announcements/latest", userhandler.LatestAnnouncement(opt.Client))
 	authUser.GET("/announcements", userhandler.ListPublishedAnnouncements(opt.Client))
+	authUser.GET("/playground/media", userhandler.PlaygroundMediaProxy())
 	authUser.GET("/feedbacks/meta/throttle", userhandler.FeedbackThrottleMeta(opt.Client))
 	authUser.POST("/feedbacks", userhandler.CreateFeedback(opt.Client))
 	authUser.GET("/feedbacks", userhandler.ListMyFeedbacks(opt.Client))

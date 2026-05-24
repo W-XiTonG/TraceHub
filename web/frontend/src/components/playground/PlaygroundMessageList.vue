@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import ThLoadingSpinner from '../ui/ThLoadingSpinner.vue'
 import PlaygroundMediaBubble from './PlaygroundMediaBubble.vue'
+import PlaygroundMediaDownloadBtn from './PlaygroundMediaDownloadBtn.vue'
 import PlaygroundUserAvatar from './PlaygroundUserAvatar.vue'
 import type { ChatMsg } from '../../types/playground'
 
@@ -103,13 +104,22 @@ const showStandaloneTyping = computed(() => {
                 </button>
               </template>
             </div>
-            <video
+            <div
               v-else-if="m.role === 'assistant' && m.videoUrl"
-              :src="m.videoUrl"
-              controls
-              preload="metadata"
-              class="th-pg-v2-media-block max-w-full rounded-lg"
-            />
+              class="th-pg-v2-media-block"
+            >
+              <video
+                :src="m.videoUrl"
+                controls
+                preload="metadata"
+                class="max-w-full rounded-lg"
+              />
+              <PlaygroundMediaDownloadBtn
+                :src="m.videoUrl"
+                kind="video"
+                :filename-base="m.videoJobId || m.id"
+              />
+            </div>
             <audio v-if="m.role === 'assistant' && m.audioUrl" :src="m.audioUrl" controls preload="metadata" class="th-pg-v2-media-block w-full" />
             <div v-if="m.role === 'assistant' && m.imageOutputs?.length" class="th-pg-v2-media-block flex flex-col gap-2">
               <PlaygroundMediaBubble
@@ -118,6 +128,7 @@ const showStandaloneTyping = computed(() => {
                 :src="src"
                 :failed="imageOutputFailed(m, ix)"
                 :show-retry-b64="playMode === 'image' && ix === 0"
+                :download-name="`${m.id}-${ix + 1}`"
                 @error="emit('imageError', m.id, ix)"
                 @retry-b64="emit('retryB64')"
               />
