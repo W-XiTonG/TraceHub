@@ -1132,6 +1132,7 @@ export default {
     directionLabelBoth: '双向',
     colActions: '操作',
     colChange: '变更',
+    colDetail: '变更明细',
   },
   adminPricingConversion: {
     title: '标价换算配置',

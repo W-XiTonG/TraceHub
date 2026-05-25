@@ -1137,6 +1137,7 @@ export default {
     directionLabelBoth: 'Both',
     colActions: 'Actions',
     colChange: 'Change',
+    colDetail: 'Details',
   },
   adminPricingConversion: {
     title: 'Price conversion settings',

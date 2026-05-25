@@ -1036,6 +1036,7 @@ export default {
     directionLabelBoth: '雙向',
     colActions: '操作',
     colChange: '變更',
+    colDetail: '變更明細',
   },
   adminPricingConversion: {
     title: '標價換算設定',

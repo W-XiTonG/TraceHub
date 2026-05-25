@@ -63,15 +63,23 @@ type GroupItem struct {
 	Billable   bool    `json:"billable"`
 }
 
+// FieldChange 单字段变更（预览明细）。
+type FieldChange struct {
+	Label string `json:"label"`
+	Old   string `json:"old,omitempty"`
+	New   string `json:"new,omitempty"`
+}
+
 // DiffRow 预览/差异行。
 type DiffRow struct {
-	Layer      string `json:"layer"`
-	ModelName  string `json:"model_name"`
-	ChannelID  int    `json:"channel_id,omitempty"`
-	GroupID    int    `json:"group_id,omitempty"`
-	Change     string `json:"change"`
-	Selected   bool   `json:"selected"`
-	Detail     string `json:"detail,omitempty"`
+	Layer        string        `json:"layer"`
+	ModelName    string        `json:"model_name"`
+	ChannelID    int           `json:"channel_id,omitempty"`
+	GroupID      int           `json:"group_id,omitempty"`
+	Change       string        `json:"change"`
+	Selected     bool          `json:"selected"`
+	Detail       string        `json:"detail,omitempty"`
+	FieldChanges []FieldChange `json:"field_changes,omitempty"`
 }
 
 // PreviewResult 预览结果。

@@ -18,18 +18,11 @@ func diffPullPayload(ctx context.Context, client *ent.Client, t *ent.ModelPricin
 		if !rowPasses(key, opts) {
 			continue
 		}
-		_, ok, err := lookupGlobal(ctx, client, item.ModelName)
+		row, err := pullRowFromGlobal(ctx, client, t, item)
 		if err != nil {
 			return nil, warnings, err
 		}
-		ch := ChangeAdded
-		if ok {
-			ch = ChangeUpdated
-		}
-		if t.MergeStrategy == "skip_existing" && ok {
-			ch = ChangeSkipped
-		}
-		rows = append(rows, DiffRow{Layer: ScopeGlobal, ModelName: item.ModelName, Change: ch, Selected: true})
+		rows = append(rows, row)
 	}
 	for _, block := range p.Channels {
 		cid, err := resolveChannelID(t, block)
@@ -42,18 +35,11 @@ func diffPullPayload(ctx context.Context, client *ent.Client, t *ent.ModelPricin
 			if !rowPasses(key, opts) {
 				continue
 			}
-			_, ok, err := lookupChannel(ctx, client, cid, item.ModelName)
+			row, err := pullRowFromChannel(ctx, client, t, cid, item.GlobalItem)
 			if err != nil {
 				return nil, warnings, err
 			}
-			ch := ChangeAdded
-			if ok {
-				ch = ChangeUpdated
-			}
-			if string(t.MergeStrategy) == "skip_existing" && ok {
-				ch = ChangeSkipped
-			}
-			rows = append(rows, DiffRow{Layer: ScopeChannel, ModelName: item.ModelName, ChannelID: cid, Change: ch, Selected: true})
+			rows = append(rows, row)
 		}
 	}
 	for _, block := range p.Groups {
@@ -67,18 +53,11 @@ func diffPullPayload(ctx context.Context, client *ent.Client, t *ent.ModelPricin
 			if !rowPasses(key, opts) {
 				continue
 			}
-			_, ok, err := lookupGroupRate(ctx, client, gid, item.ModelName)
+			row, err := pullRowFromGroup(ctx, client, t, gid, item)
 			if err != nil {
 				return nil, warnings, err
 			}
-			ch := ChangeAdded
-			if ok {
-				ch = ChangeUpdated
-			}
-			if string(t.MergeStrategy) == "skip_existing" && ok {
-				ch = ChangeSkipped
-			}
-			rows = append(rows, DiffRow{Layer: ScopeGroup, ModelName: item.ModelName, GroupID: gid, Change: ch, Selected: true})
+			rows = append(rows, row)
 		}
 	}
 	return rows, warnings, nil

@@ -45,6 +45,14 @@ type DiffRow = {
   group_id?: number
   change: string
   selected: boolean
+  detail?: string
+  field_changes?: FieldChange[]
+}
+
+type FieldChange = {
+  label: string
+  old?: string
+  new: string
 }
 
 type PreviewResult = {
@@ -747,7 +755,7 @@ onMounted(() => void loadAll())
 
     <!-- 同步弹窗 -->
     <div v-if="syncModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="syncModalOpen = false">
-      <div class="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-xl">
+      <div class="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-xl">
         <h3 class="text-lg font-semibold">{{ syncModalTitle }}</h3>
         <p v-if="preview" class="mt-2 text-sm text-slate-400">
           {{ t('adminPricingSync.summary', { added: preview.added, updated: preview.updated, skipped: preview.skipped }) }}
@@ -769,6 +777,7 @@ onMounted(() => void loadAll())
               <th class="py-1">{{ t('adminPricingSync.scopes') }}</th>
               <th class="py-1">model</th>
               <th class="py-1">{{ t('adminPricingSync.colChange') }}</th>
+              <th class="py-1">{{ t('adminPricingSync.colDetail') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -776,7 +785,24 @@ onMounted(() => void loadAll())
               <td class="py-1"><input type="checkbox" :checked="r.selected" @change="toggleRow(r)" /></td>
               <td class="py-1">{{ layerLabel(r.layer) }}</td>
               <td class="py-1 font-mono">{{ r.model_name }}</td>
-              <td class="py-1">{{ changeLabel(r.change) }}</td>
+              <td class="py-1 whitespace-nowrap">{{ changeLabel(r.change) }}</td>
+              <td class="py-2 align-top">
+                <div v-if="r.field_changes?.length" class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="(fc, fi) in r.field_changes"
+                    :key="fi"
+                    class="inline-flex max-w-full flex-wrap items-center gap-x-1 rounded border border-slate-700/70 bg-slate-800/50 px-1.5 py-0.5 leading-relaxed"
+                  >
+                    <span class="shrink-0 text-slate-500">{{ fc.label }}</span>
+                    <template v-if="fc.old">
+                      <span class="text-slate-500 line-through decoration-slate-600">{{ fc.old }}</span>
+                      <span class="text-slate-600">→</span>
+                    </template>
+                    <span class="font-medium text-slate-200">{{ fc.new }}</span>
+                  </span>
+                </div>
+                <span v-else class="text-slate-500">{{ r.detail || '—' }}</span>
+              </td>
             </tr>
           </tbody>
         </table>
