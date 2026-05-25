@@ -2,7 +2,7 @@ package pricingsync
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -68,14 +68,17 @@ func testPullConnection(ctx context.Context, client *ent.Client, t *ent.ModelPri
 			Message:    fmt.Sprintf("HTTP %d: %s", resp.StatusCode, truncate(string(body), 300)),
 		}, nil
 	}
-	var p Payload
-	if err := json.Unmarshal(body, &p); err != nil {
-		return TestConnectionResult{OK: false, Direction: DirectionPull, LatencyMS: latency, Message: "解析 JSON: " + err.Error()}, nil
+	p, err := ParsePayloadJSON(body)
+	if err != nil {
+		msg := err.Error()
+		if errors.Is(err, errVersionMismatch) {
+			msg = errVersionMismatch.Error()
+		} else {
+			msg = "解析 JSON: " + msg
+		}
+		return TestConnectionResult{OK: false, Direction: DirectionPull, LatencyMS: latency, Message: msg}, nil
 	}
-	if p.Version != VersionTraceHubPricingV1 {
-		return TestConnectionResult{OK: false, Direction: DirectionPull, LatencyMS: latency, Message: errVersionMismatch.Error()}, nil
-	}
-	counts := payloadModelCounts(&p)
+	counts := payloadModelCounts(p)
 	return TestConnectionResult{
 		OK: true, Direction: DirectionPull, LatencyMS: latency,
 		ModelCounts: counts,

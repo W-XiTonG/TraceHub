@@ -140,13 +140,20 @@ func itoa(n int) string {
 }
 
 // ParsePayloadJSON 解析 tracehub_pricing_v1 JSON 载荷。
+// 兼容旧版 Export 误用 httpx 信封 { code, data } 的响应。
 func ParsePayloadJSON(body []byte) (*Payload, error) {
 	var p Payload
 	if err := json.Unmarshal(body, &p); err != nil {
 		return nil, err
 	}
-	if p.Version != VersionTraceHubPricingV1 {
-		return nil, ErrVersionMismatch
+	if p.Version == VersionTraceHubPricingV1 {
+		return &p, nil
 	}
-	return &p, nil
+	var wrapped struct {
+		Data *Payload `json:"data"`
+	}
+	if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.Data != nil && wrapped.Data.Version == VersionTraceHubPricingV1 {
+		return wrapped.Data, nil
+	}
+	return nil, ErrVersionMismatch
 }

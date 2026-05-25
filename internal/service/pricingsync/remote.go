@@ -3,6 +3,7 @@ package pricingsync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -95,14 +96,14 @@ func FetchRemotePull(ctx context.Context, client *ent.Client, t *ent.ModelPricin
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncate(string(body), 500))
 	}
-	var p Payload
-	if err := json.Unmarshal(body, &p); err != nil {
+	p, err := ParsePayloadJSON(body)
+	if err != nil {
+		if errors.Is(err, errVersionMismatch) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("解析 JSON: %w", err)
 	}
-	if p.Version != VersionTraceHubPricingV1 {
-		return nil, errVersionMismatch
-	}
-	return &p, nil
+	return p, nil
 }
 
 // PostRemotePush 推送 pricing payload 到外部。

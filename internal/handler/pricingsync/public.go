@@ -2,6 +2,7 @@ package pricingsynchandler
 
 import (
 	"io"
+	"net/http"
 	"strings"
 
 	"tracehub/internal/ent"
@@ -49,7 +50,8 @@ func ExportInbound(d PublicDeps) gin.HandlerFunc {
 			httpx.ServerError(c, "导出失败")
 			return
 		}
-		httpx.OK(c, payload)
+		// 对外同步协议返回裸 tracehub_pricing_v1 JSON，不使用 httpx 信封。
+		c.JSON(http.StatusOK, payload)
 	}
 }
 
