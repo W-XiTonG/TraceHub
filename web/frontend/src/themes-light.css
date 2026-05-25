@@ -384,24 +384,32 @@ html[data-th-theme="paper"] .th-admin-divider-b {
   border-bottom-color: rgba(15, 23, 42, 0.08);
 }
 
-/* 系统设置页：浅色下主标题、小节标题、分段标签（布局与表单仍带深色语义类名） */
+/* 系统设置 / 公告管理：浅色下主标题、小节标题、分段标签（布局与表单仍带深色语义类名） */
 html[data-th-theme="dawn"] .th-admin-settings-root .th-admin-settings-title,
-html[data-th-theme="paper"] .th-admin-settings-root .th-admin-settings-title {
+html[data-th-theme="paper"] .th-admin-settings-root .th-admin-settings-title,
+html[data-th-theme="dawn"] .th-admin-announce-root .th-admin-settings-title,
+html[data-th-theme="paper"] .th-admin-announce-root .th-admin-settings-title {
   color: #0f172a;
 }
 
 html[data-th-theme="dawn"] .th-admin-settings-root .text-slate-100,
-html[data-th-theme="paper"] .th-admin-settings-root .text-slate-100 {
+html[data-th-theme="paper"] .th-admin-settings-root .text-slate-100,
+html[data-th-theme="dawn"] .th-admin-announce-root .text-slate-100,
+html[data-th-theme="paper"] .th-admin-announce-root .text-slate-100 {
   color: #0f172a;
 }
 
 html[data-th-theme="dawn"] .th-admin-settings-root .text-slate-200,
-html[data-th-theme="paper"] .th-admin-settings-root .text-slate-200 {
+html[data-th-theme="paper"] .th-admin-settings-root .text-slate-200,
+html[data-th-theme="dawn"] .th-admin-announce-root .text-slate-200,
+html[data-th-theme="paper"] .th-admin-announce-root .text-slate-200 {
   color: #334155;
 }
 
 html[data-th-theme="dawn"] .th-admin-settings-root .text-slate-300,
-html[data-th-theme="paper"] .th-admin-settings-root .text-slate-300 {
+html[data-th-theme="paper"] .th-admin-settings-root .text-slate-300,
+html[data-th-theme="dawn"] .th-admin-announce-root .text-slate-300,
+html[data-th-theme="paper"] .th-admin-announce-root .text-slate-300 {
   color: #64748b;
 }
 
