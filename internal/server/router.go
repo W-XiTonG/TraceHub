@@ -427,6 +427,7 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	aPay.PUT("/packages/:id", adminhandler.UpdateRechargePackage(opt.Client))
 	aPay.DELETE("/packages/:id", adminhandler.DeleteRechargePackage(opt.Client))
 
+	upstreamprobe.SetReconcileNotifyDeps(opt.Config, opt.Log, opt.Redis)
 	upstreamprobe.StartWorker(context.Background(), opt.Log, opt.Client, aesKey)
 	pricingsync.StartWorker(context.Background(), opt.Log, pricingsync.ServiceOpts{
 		Client:            opt.Client,

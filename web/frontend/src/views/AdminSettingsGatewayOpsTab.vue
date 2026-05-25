@@ -175,6 +175,51 @@ const s = inject(adminSiteSettingsKey)!
           <span class="block text-xs font-medium text-slate-300">{{ t('adminSystem.lblUpstreamCapabilityProbeEnabled') }}</span>
         </label>
         <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamCapabilityProbeEnabled') }}</p>
+        <div class="mt-6 border-t border-slate-800/80 pt-5">
+          <h3 class="text-xs font-semibold text-slate-200">{{ t('adminSystem.secUpstreamProbeReconcile') }}</h3>
+          <p class="mt-1 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.secUpstreamProbeReconcileHint') }}</p>
+          <div class="mt-4 space-y-3">
+            <label class="flex cursor-pointer items-start gap-3">
+              <input v-model="s.form.upstreamProbeReconcileEnabled" type="checkbox" class="mt-1" />
+              <span class="block text-xs font-medium text-slate-300">{{ t('adminSystem.lblUpstreamProbeReconcileEnabled') }}</span>
+            </label>
+            <fieldset :disabled="!s.form.upstreamProbeReconcileEnabled" class="space-y-3 disabled:opacity-50">
+              <label class="flex cursor-pointer items-start gap-3">
+                <input v-model="s.form.upstreamProbeSyncOnIncrease" type="checkbox" class="mt-1" />
+                <span class="block text-xs text-slate-300">{{ t('adminSystem.lblUpstreamProbeSyncOnIncrease') }}</span>
+              </label>
+              <label class="flex cursor-pointer items-start gap-3">
+                <input v-model="s.form.upstreamProbeSyncOnDecrease" type="checkbox" class="mt-1" />
+                <span class="block text-xs text-slate-300">{{ t('adminSystem.lblUpstreamProbeSyncOnDecrease') }}</span>
+              </label>
+            </fieldset>
+            <label class="flex cursor-pointer items-start gap-3">
+              <input v-model="s.form.upstreamProbeNotifyOnIncrease" type="checkbox" class="mt-1" />
+              <span class="block text-xs text-slate-300">{{ t('adminSystem.lblUpstreamProbeNotifyOnIncrease') }}</span>
+            </label>
+            <label class="flex cursor-pointer items-start gap-3">
+              <input v-model="s.form.upstreamProbeNotifyOnDecrease" type="checkbox" class="mt-1" />
+              <span class="block text-xs text-slate-300">{{ t('adminSystem.lblUpstreamProbeNotifyOnDecrease') }}</span>
+            </label>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">{{
+                t('adminSystem.lblUpstreamProbeReconcileScope')
+              }}</label>
+              <select v-model="s.form.upstreamProbeReconcileScope" class="th-input max-w-xs text-sm">
+                <option value="models_only">{{ t('adminSystem.optUpstreamProbeScopeModelsOnly') }}</option>
+                <option value="models_and_alias">{{ t('adminSystem.optUpstreamProbeScopeModelsAndAlias') }}</option>
+              </select>
+              <p class="mt-2 text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamProbeReconcileScope') }}</p>
+            </div>
+            <p class="text-[11px] leading-relaxed text-slate-500">{{ t('adminSystem.hintUpstreamProbeReconcileNotify') }}</p>
+            <p
+              v-if="s.upstreamProbeReconcileDbOverride"
+              class="text-[11px] leading-relaxed text-amber-100/80"
+            >
+              {{ t('adminSystem.hintUpstreamProbeReconcileDb') }}
+            </p>
+          </div>
+        </div>
       </div>
     </section>
 

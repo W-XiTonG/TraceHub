@@ -173,6 +173,13 @@ func ProbeChannel(ctx context.Context, client *ent.Client, aesKey []byte, ch *en
 			"checked_at":       now,
 		}
 	}
+	reconcileCfg := sitecfg.EffectiveUpstreamModelProbeReconcile(ctx, client)
+	if reconcileCfg.AnyAction() {
+		if e := maybeReconcileAfterProbe(ctx, client, ch, upstream, out, oldProbe, now); e != nil {
+			return e
+		}
+		return applyProbeHealthIfEnabled(ctx, client, ch.ID, true)
+	}
 	if e := client.Channel.UpdateOneID(ch.ID).SetModelUpstreamProbe(out).Exec(ctx); e != nil {
 		return e
 	}

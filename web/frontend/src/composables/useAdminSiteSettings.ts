@@ -69,6 +69,18 @@ export type SiteSettingsPayload = {
   upstream_capability_fail_stale_hours_db_set?: boolean
   upstream_capability_fail_stale_hours_db_value?: string
   upstream_capability_probe_enabled?: boolean
+  upstream_model_probe_reconcile_enabled?: boolean
+  upstream_model_probe_sync_on_increase?: boolean
+  upstream_model_probe_sync_on_decrease?: boolean
+  upstream_model_probe_notify_on_increase?: boolean
+  upstream_model_probe_notify_on_decrease?: boolean
+  upstream_model_probe_reconcile_scope?: string
+  upstream_model_probe_reconcile_enabled_db_set?: boolean
+  upstream_model_probe_sync_on_increase_db_set?: boolean
+  upstream_model_probe_sync_on_decrease_db_set?: boolean
+  upstream_model_probe_notify_on_increase_db_set?: boolean
+  upstream_model_probe_notify_on_decrease_db_set?: boolean
+  upstream_model_probe_reconcile_scope_db_set?: boolean
   routing_strategy_default?: string
   routing_failover_enabled_default?: boolean
   routing_failover_max_attempts_default?: number
@@ -158,6 +170,12 @@ export function createAdminSiteSettings() {
     upstreamProbeInterval: 360,
     upstreamCapabilityFailStaleHours: 6,
     upstreamCapabilityProbeEnabled: false,
+    upstreamProbeReconcileEnabled: false,
+    upstreamProbeSyncOnIncrease: false,
+    upstreamProbeSyncOnDecrease: false,
+    upstreamProbeNotifyOnIncrease: false,
+    upstreamProbeNotifyOnDecrease: false,
+    upstreamProbeReconcileScope: 'models_only' as 'models_only' | 'models_and_alias',
     routingStrategy: 'weighted_random',
     routingFailoverEnabled: true,
     routingFailoverMaxAttempts: 2,
@@ -248,6 +266,7 @@ export function createAdminSiteSettings() {
   const noBillModelsDbOverride = ref(false)
   const upstreamProbeEnabledDbOverride = ref(false)
   const upstreamProbeIntervalDbOverride = ref(false)
+  const upstreamProbeReconcileDbOverride = ref(false)
   const gatewayIpBlacklistDbOverride = ref(false)
   const gatewayIpBlacklistRows = ref<Array<{ value: string }>>([])
 
@@ -395,6 +414,21 @@ export function createAdminSiteSettings() {
     const staleH = pickInt64ish(d.upstream_capability_fail_stale_hours)
     form.upstreamCapabilityFailStaleHours = staleH >= 0 && staleH <= 168 ? staleH : 6
     form.upstreamCapabilityProbeEnabled = Boolean(d.upstream_capability_probe_enabled)
+    form.upstreamProbeReconcileEnabled = Boolean(d.upstream_model_probe_reconcile_enabled)
+    form.upstreamProbeSyncOnIncrease = Boolean(d.upstream_model_probe_sync_on_increase)
+    form.upstreamProbeSyncOnDecrease = Boolean(d.upstream_model_probe_sync_on_decrease)
+    form.upstreamProbeNotifyOnIncrease = Boolean(d.upstream_model_probe_notify_on_increase)
+    form.upstreamProbeNotifyOnDecrease = Boolean(d.upstream_model_probe_notify_on_decrease)
+    const scopeRaw = String(d.upstream_model_probe_reconcile_scope || 'models_only').trim()
+    form.upstreamProbeReconcileScope =
+      scopeRaw === 'models_and_alias' ? 'models_and_alias' : 'models_only'
+    upstreamProbeReconcileDbOverride.value =
+      Boolean(d.upstream_model_probe_reconcile_enabled_db_set) ||
+      Boolean(d.upstream_model_probe_sync_on_increase_db_set) ||
+      Boolean(d.upstream_model_probe_sync_on_decrease_db_set) ||
+      Boolean(d.upstream_model_probe_notify_on_increase_db_set) ||
+      Boolean(d.upstream_model_probe_notify_on_decrease_db_set) ||
+      Boolean(d.upstream_model_probe_reconcile_scope_db_set)
     form.routingStrategy =
       typeof d.routing_strategy_default === 'string' && d.routing_strategy_default.trim()
         ? d.routing_strategy_default
@@ -1001,6 +1035,36 @@ export function createAdminSiteSettings() {
         description: t('adminSystem.descUpstreamCapabilityProbeEnabled'),
       },
       {
+        key: 'upstream_model_probe.reconcile_enabled',
+        value: form.upstreamProbeReconcileEnabled ? 'true' : 'false',
+        description: t('adminSystem.descUpstreamProbeReconcileEnabled'),
+      },
+      {
+        key: 'upstream_model_probe.sync_on_increase',
+        value: form.upstreamProbeSyncOnIncrease ? 'true' : 'false',
+        description: t('adminSystem.descUpstreamProbeSyncOnIncrease'),
+      },
+      {
+        key: 'upstream_model_probe.sync_on_decrease',
+        value: form.upstreamProbeSyncOnDecrease ? 'true' : 'false',
+        description: t('adminSystem.descUpstreamProbeSyncOnDecrease'),
+      },
+      {
+        key: 'upstream_model_probe.notify_on_increase',
+        value: form.upstreamProbeNotifyOnIncrease ? 'true' : 'false',
+        description: t('adminSystem.descUpstreamProbeNotifyOnIncrease'),
+      },
+      {
+        key: 'upstream_model_probe.notify_on_decrease',
+        value: form.upstreamProbeNotifyOnDecrease ? 'true' : 'false',
+        description: t('adminSystem.descUpstreamProbeNotifyOnDecrease'),
+      },
+      {
+        key: 'upstream_model_probe.reconcile_scope',
+        value: form.upstreamProbeReconcileScope,
+        description: t('adminSystem.descUpstreamProbeReconcileScope'),
+      },
+      {
         key: 'gateway.routing.strategy_default',
         value: form.routingStrategy,
         description: t('adminSystem.descRoutingStrategy'),
@@ -1165,6 +1229,7 @@ export function createAdminSiteSettings() {
     noBillModelsDbOverride,
     upstreamProbeEnabledDbOverride,
     upstreamProbeIntervalDbOverride,
+    upstreamProbeReconcileDbOverride,
     gatewayIpBlacklistDbOverride,
     tlsCertFile,
     tlsKeyFile,

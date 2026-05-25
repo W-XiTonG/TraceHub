@@ -1543,6 +1543,13 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			httpx.ServerError(c, "读取探测配置失败")
 			return
 		}
+		reconcileEff := sitecfg.EffectiveUpstreamModelProbeReconcile(ctx, client)
+		recEnSet, recEnVal, syncIncSet, syncIncVal, syncDecSet, syncDecVal,
+			notifyIncSet, notifyIncVal, notifyDecSet, notifyDecVal, scopeSet, scopeVal, recMetaErr := sitecfg.UpstreamModelProbeReconcileDBMeta(ctx, client)
+		if recMetaErr != nil {
+			httpx.ServerError(c, "读取探测联动配置失败")
+			return
+		}
 		capStaleSet, capStaleVal, capStaleMetaErr := sitecfg.UpstreamCapabilityFailStaleHoursDBMeta(ctx, client)
 		if capStaleMetaErr != nil {
 			httpx.ServerError(c, "读取能力探测配置失败")
@@ -1600,6 +1607,24 @@ func GetAdminSiteSettings(client *ent.Client, cfg *config.Config) gin.HandlerFun
 			"upstream_capability_fail_stale_hours_db_set":   capStaleSet,
 			"upstream_capability_fail_stale_hours_db_value": strings.TrimSpace(capStaleVal),
 			"upstream_capability_probe_enabled":             sitecfg.EffectiveUpstreamCapabilityProbeEnabled(ctx, client),
+			"upstream_model_probe_reconcile_enabled":        reconcileEff.Enabled,
+			"upstream_model_probe_sync_on_increase":         reconcileEff.SyncOnIncrease,
+			"upstream_model_probe_sync_on_decrease":         reconcileEff.SyncOnDecrease,
+			"upstream_model_probe_notify_on_increase":       reconcileEff.NotifyOnIncrease,
+			"upstream_model_probe_notify_on_decrease":       reconcileEff.NotifyOnDecrease,
+			"upstream_model_probe_reconcile_scope":          reconcileEff.Scope,
+			"upstream_model_probe_reconcile_enabled_db_set": recEnSet,
+			"upstream_model_probe_reconcile_enabled_db_value": strings.TrimSpace(recEnVal),
+			"upstream_model_probe_sync_on_increase_db_set":    syncIncSet,
+			"upstream_model_probe_sync_on_increase_db_value":  strings.TrimSpace(syncIncVal),
+			"upstream_model_probe_sync_on_decrease_db_set":    syncDecSet,
+			"upstream_model_probe_sync_on_decrease_db_value":  strings.TrimSpace(syncDecVal),
+			"upstream_model_probe_notify_on_increase_db_set":  notifyIncSet,
+			"upstream_model_probe_notify_on_increase_db_value": strings.TrimSpace(notifyIncVal),
+			"upstream_model_probe_notify_on_decrease_db_set":  notifyDecSet,
+			"upstream_model_probe_notify_on_decrease_db_value": strings.TrimSpace(notifyDecVal),
+			"upstream_model_probe_reconcile_scope_db_set":     scopeSet,
+			"upstream_model_probe_reconcile_scope_db_value":   strings.TrimSpace(scopeVal),
 			"routing_strategy_default":                      routingDefaults.Strategy,
 			"routing_failover_enabled_default":              routingDefaults.FailoverEnabled,
 			"routing_failover_max_attempts_default":         routingDefaults.FailoverMaxAttempts,

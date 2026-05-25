@@ -49,6 +49,9 @@ var (
 	errInvalidUpstreamProbeInterval = errors.New("upstream_model_probe.interval_minutes 须为整数")
 	errUpstreamProbeIntervalRange    = errors.New("upstream_model_probe.interval_minutes 须在 15–1440 之间")
 
+	errInvalidUpstreamProbeReconcileBool  = errors.New("upstream_model_probe 联动布尔配置须为 true 或 false")
+	errInvalidUpstreamProbeReconcileScope = errors.New("upstream_model_probe.reconcile_scope 须为 models_only 或 models_and_alias")
+
 	errInvalidUpstreamCapabilityFailStale = errors.New("upstream_capability.fail_stale_hours 须为整数")
 	errUpstreamCapabilityFailStaleRange    = errors.New("upstream_capability.fail_stale_hours 须在 0–168 之间")
 	errInvalidUpstreamCapabilityProbeEnabled = errors.New("upstream_capability_probe.enabled 须为 true 或 false")
