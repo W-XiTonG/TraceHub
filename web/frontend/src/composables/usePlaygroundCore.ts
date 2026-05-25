@@ -1034,6 +1034,16 @@ async function pollVideoUntilDone(assistantId: string, videoId: string, modelNam
       const st = snap.status.toLowerCase()
       if (st === 'completed') {
         clearPersistedVideoJob()
+        const directUrl = snap.videoUrl?.trim()
+        if (directUrl && /^https?:\/\//i.test(directUrl)) {
+          patchAssistantVideo(assistantId, t('playground.videoCompleted'), {
+            videoUrl: directUrl,
+            videoJobId: videoId,
+            videoModel: modelName,
+            videoStatus: 'completed',
+          })
+          return
+        }
         const { blob } = await pgw.videoContent(
           k,
           stickySession.value,
@@ -1093,6 +1103,18 @@ async function fetchVideoBlobForMessage(m: ChatMsg): Promise<boolean> {
   next.add(m.id)
   videoRestoringIds.value = next
   try {
+    const snap = await pgw.videoRetrieve(k, stickySession.value, modelName, m.videoJobId)
+    const directUrl = snap.videoUrl?.trim()
+    if (directUrl && /^https?:\/\//i.test(directUrl)) {
+      const cap = m.content?.trim() || t('playground.videoCompleted')
+      patchAssistantVideo(m.id, cap, {
+        videoUrl: directUrl,
+        videoJobId: m.videoJobId,
+        videoModel: modelName,
+        videoStatus: 'completed',
+      })
+      return true
+    }
     const { blob } = await pgw.videoContent(k, stickySession.value, modelName, m.videoJobId)
     const cap = m.content?.trim() || t('playground.videoCompleted')
     patchAssistantVideo(m.id, cap, {

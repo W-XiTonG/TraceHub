@@ -57,3 +57,25 @@ func TestParseVideoStatusFromJSON_failed(t *testing.T) {
 		t.Fatal("failed status should be terminal failure")
 	}
 }
+
+func TestIsVideoPollTerminalHTTPError(t *testing.T) {
+	cases := []struct {
+		code int
+		body string
+		want bool
+	}{
+		{404, `{}`, true},
+		{410, `{}`, true},
+		{400, `{"error":{"message":"video not found"}}`, true},
+		{400, `{"error":{"message":"invalid video id"}}`, true},
+		{400, `{"error":{"message":"bad request"}}`, false},
+		{503, `{}`, false},
+		{502, `{}`, false},
+		{200, `{"status":"failed"}`, false},
+	}
+	for _, tc := range cases {
+		if got := isVideoPollTerminalHTTPError(tc.code, []byte(tc.body)); got != tc.want {
+			t.Fatalf("code=%d body=%q: got %v want %v", tc.code, tc.body, got, tc.want)
+		}
+	}
+}

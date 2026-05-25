@@ -202,12 +202,37 @@ func trySettleVideoJob(ctx context.Context, eng *billing.Engine, rdb *redis.Clie
 
 // trySettleVideoOnFailed 在 GET 任务且 status 为终端失败时全额退还创建预扣。
 func trySettleVideoOnFailed(ctx context.Context, eng *billing.Engine, rdb *redis.Client, u *ent.User, model, videoID string, upstreamBody []byte) videoSettleOutcome {
-	out := videoSettleOutcome{}
 	if eng == nil || videoID == "" || u == nil {
-		return out
+		return videoSettleOutcome{}
 	}
 	status, _ := parseVideoStatusFromJSON(upstreamBody)
 	if !isVideoTerminalFailureStatus(status) {
+		return videoSettleOutcome{}
+	}
+	return tryRefundVideoPrecharge(ctx, eng, rdb, u, videoID)
+}
+
+// isVideoPollTerminalHTTPError 轮询 GET 返回的 HTTP 错误是否表示任务已不存在（可退预扣）。
+func isVideoPollTerminalHTTPError(statusCode int, body []byte) bool {
+	switch statusCode {
+	case 404, 410:
+		return true
+	case 400:
+		lower := strings.ToLower(string(body))
+		return strings.Contains(lower, "not found") ||
+			strings.Contains(lower, "invalid video") ||
+			strings.Contains(lower, "does not exist") ||
+			strings.Contains(lower, "no such") ||
+			strings.Contains(lower, "unknown video")
+	default:
+		return false
+	}
+}
+
+// tryRefundVideoPrecharge 全额退还视频创建预扣（SetNX 幂等，与 completed 精调互斥）。
+func tryRefundVideoPrecharge(ctx context.Context, eng *billing.Engine, rdb *redis.Client, u *ent.User, videoID string) videoSettleOutcome {
+	out := videoSettleOutcome{}
+	if eng == nil || videoID == "" || u == nil {
 		return out
 	}
 	if rdb == nil {

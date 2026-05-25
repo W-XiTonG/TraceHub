@@ -77,38 +77,13 @@ func SelectChannelExcluding(ctx context.Context, rdb *redis.Client, client *ent.
 	if !cfg.StickyEnabled {
 		stickySession = ""
 	}
-	exclude := make(map[int]struct{}, len(excludeIDs))
-	for _, id := range excludeIDs {
-		exclude[id] = struct{}{}
-	}
 
-	channels, err := client.Channel.Query().
-		Where(
-			channel.Enabled(true),
-			channel.Schedulable(true),
-			channel.HealthStatusEQ(1),
-			channel.HasGroupWith(group.ID(userGroupID)),
-		).
-		All(ctx)
+	candidates, _, err := listModelCandidates(ctx, client, userGroupID, requestedModel, excludeIDs)
 	if err != nil {
 		return nil, err
-	}
-	var candidates []candidate
-	for _, ch := range channels {
-		if _, skip := exclude[ch.ID]; skip {
-			continue
-		}
-		if up, ok := modelMatch(ch, requestedModel); ok {
-			candidates = append(candidates, candidate{ch: ch, upstream: up})
-		}
 	}
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("没有可用渠道支持模型 %s", requestedModel)
-	}
-
-	candidates, err = filterCandidatesByModelRouting(candidates, cfg.ModelRouting, requestedModel)
-	if err != nil {
-		return nil, err
 	}
 
 	if rdb != nil && stickySession != "" {
@@ -134,10 +109,15 @@ func SelectChannelExcluding(ctx context.Context, rdb *redis.Client, client *ent.
 	return &Selected{Channel: chosen.ch, UpstreamModel: chosen.upstream, Config: cfg}, nil
 }
 
-// CountModelCandidates 统计分组内仍支持该模型且未排除的渠道数量。
-func CountModelCandidates(ctx context.Context, client *ent.Client, groupID int, model string, excludeIDs []int) int {
-	if groupID <= 0 || client == nil {
-		return 0
+// listModelCandidates 列出分组内支持该模型且未排除的渠道（含 model_routing 过滤）。
+func listModelCandidates(ctx context.Context, client *ent.Client, groupID int, requestedModel string, excludeIDs []int) ([]candidate, RoutingConfig, error) {
+	requestedModel = strings.TrimSpace(requestedModel)
+	if groupID <= 0 {
+		return nil, RoutingConfig{}, errors.New("用户未分配分组")
+	}
+	cfg, err := ResolveRoutingConfig(ctx, client, groupID)
+	if err != nil {
+		return nil, RoutingConfig{}, err
 	}
 	exclude := make(map[int]struct{}, len(excludeIDs))
 	for _, id := range excludeIDs {
@@ -152,18 +132,70 @@ func CountModelCandidates(ctx context.Context, client *ent.Client, groupID int, 
 		).
 		All(ctx)
 	if err != nil {
-		return 0
+		return nil, RoutingConfig{}, err
 	}
-	n := 0
+	var candidates []candidate
 	for _, ch := range channels {
 		if _, skip := exclude[ch.ID]; skip {
 			continue
 		}
-		if _, ok := modelMatch(ch, model); ok {
-			n++
+		if up, ok := modelMatch(ch, requestedModel); ok {
+			candidates = append(candidates, candidate{ch: ch, upstream: up})
 		}
 	}
-	return n
+	candidates, err = filterCandidatesByModelRouting(candidates, cfg.ModelRouting, requestedModel)
+	if err != nil {
+		return nil, RoutingConfig{}, err
+	}
+	return candidates, cfg, nil
+}
+
+// SelectChannelByID 按创建任务时记录的渠道 ID 选路（视频轮询/下载/删除专用）。
+func SelectChannelByID(ctx context.Context, client *ent.Client, userGroupID int, channelID int, requestedModel string) (*Selected, error) {
+	requestedModel = strings.TrimSpace(requestedModel)
+	if userGroupID <= 0 {
+		return nil, errors.New("用户未分配分组")
+	}
+	if channelID <= 0 {
+		return nil, fmt.Errorf("invalid channel id")
+	}
+	cfg, err := ResolveRoutingConfig(ctx, client, userGroupID)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := client.Channel.Query().
+		Where(
+			channel.IDEQ(channelID),
+			channel.Enabled(true),
+			channel.Schedulable(true),
+			channel.HealthStatusEQ(1),
+			channel.HasGroupWith(group.ID(userGroupID)),
+		).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("渠道 %d 不可用", channelID)
+	}
+	up, ok := modelMatch(ch, requestedModel)
+	if !ok {
+		return nil, fmt.Errorf("渠道 %d 不支持模型 %s", channelID, requestedModel)
+	}
+	filtered, err := filterCandidatesByModelRouting([]candidate{{ch: ch, upstream: up}}, cfg.ModelRouting, requestedModel)
+	if err != nil {
+		return nil, err
+	}
+	if len(filtered) == 0 {
+		return nil, fmt.Errorf("渠道 %d 不在模型 %s 路由绑定内", channelID, requestedModel)
+	}
+	return &Selected{Channel: filtered[0].ch, UpstreamModel: filtered[0].upstream, Config: cfg}, nil
+}
+
+// CountModelCandidates 统计分组内仍支持该模型且未排除的渠道数量。
+func CountModelCandidates(ctx context.Context, client *ent.Client, groupID int, model string, excludeIDs []int) int {
+	candidates, _, err := listModelCandidates(ctx, client, groupID, model, excludeIDs)
+	if err != nil {
+		return 0
+	}
+	return len(candidates)
 }
 
 // PatchModelInBody 将请求 JSON 中的 model 替换为上游模型名。

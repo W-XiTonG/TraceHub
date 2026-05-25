@@ -217,7 +217,9 @@ POST /v1/images/generations
 
 **渠道**：`openai` / `deepseek` / `site.openai_compat_channel_types` 直转上游 `/videos`；`volcengine`（火山方舟）经网关字段适配后转发，默认 `api_base_url` 为 `https://ark.cn-beijing.volces.com/api/v3`。
 
-**计费**：`POST /v1/videos` 按模型+时长预扣；`GET /v1/videos/{id}` 在 `status=completed` 时读取上游 `usage.seconds` 或 `seconds`/`duration` 精调（补扣/退还差额）；在 `status=failed`/`cancelled` 等终端失败时全额退还预扣；Redis 键 `tracehub:video:job:{user_id}:{video_id}` 保证同一任务只结算一次；轮询与 `content` 下载不重复扣费。
+**计费**：`POST /v1/videos` 按模型+时长预扣；`GET /v1/videos/{id}` 在 `status=completed` 时读取上游 `usage.seconds` 或 `seconds`/`duration` 精调（补扣/退还差额）；在 `status=failed`/`cancelled` 等终端失败时全额退还预扣；`404` 或任务不存在类 `400` 亦全额退预扣；`503`/`502` 等暂不退（可重试）。Redis 键 `tracehub:video:job:{user_id}:{video_id}` 保证同一任务只结算一次；轮询与 `content` 下载不重复扣费。
+
+**选路**：创建任务仍按 model 选路（可 Failover）；查询/下载/删除同一 `video_id` 时**固定创建时的渠道**（Redis meta `channel_id`），不 Failover，避免跨渠道查 id 导致 400/503。响应头 `X-TraceHub-Channel-Id`、`X-TraceHub-Upstream-Status` 便于对照上游后台排查。
 
 ```json
 POST /v1/videos

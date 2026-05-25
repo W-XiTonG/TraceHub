@@ -696,7 +696,30 @@ export type VideoJobSnapshot = {
   progress?: number
   seconds?: number
   error?: string
+  /** 上游在 completed 时直链（非 OpenAI 官方必选，但常见） */
+  videoUrl?: string
   raw: string
+}
+
+function extractVideoURLFromJob(j: Record<string, unknown>): string | undefined {
+  if (typeof j.video_url === 'string' && j.video_url.trim()) return j.video_url.trim()
+  const content = j.content
+  if (content && typeof content === 'object' && content !== null) {
+    const u = (content as Record<string, unknown>).video_url
+    if (typeof u === 'string' && u.trim()) return u.trim()
+  }
+  const data = j.data
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (!item || typeof item !== 'object') continue
+      const o = item as Record<string, unknown>
+      for (const k of ['video_url', 'url']) {
+        const v = o[k]
+        if (typeof v === 'string' && v.trim()) return v.trim()
+      }
+    }
+  }
+  return undefined
 }
 
 function videoAuthHeaders(apiKey: string, sticky: string, model: string): Record<string, string> {
@@ -743,7 +766,8 @@ export function parseVideoJobResponse(raw: string): VideoJobSnapshot {
   } else if (typeof err === 'string') {
     errMsg = err
   }
-  return { videoId, status, progress, seconds, error: errMsg || undefined, raw }
+  const videoUrl = extractVideoURLFromJob(j)
+  return { videoId, status, progress, seconds, error: errMsg || undefined, videoUrl, raw }
 }
 
 /** POST /v1/videos（JSON） */

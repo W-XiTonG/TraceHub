@@ -371,7 +371,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少用于选路的 model：请使用 Query 参数 model=…，或设置请求头 X-TraceHub-Model")
 			return
 		}
-		u, _, gid, sticky, previewSel, err := loadVideoGatewayUser(c, d, model)
+		u, _, gid, _, previewSel, err := loadVideoGatewayUser(c, d, model)
 		if err != nil {
 			return
 		}
@@ -383,8 +383,9 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 
 		start := time.Now()
 		routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
+		sel := resolveVideoJobSelected(c.Request.Context(), d.Client, d.RDB, gid, u, model, id, previewSel)
 
-		sel, res, err := ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
+		res, err := routeDeps.ExecuteSingleChannelHTTPForward(c.Request.Context(), sel,
 			func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
 				secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
 				if !ok {
@@ -394,7 +395,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 				var ferr error
 				ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
 				if isKlingVideoChannel(ctSel) {
-					resp, ferr = relay.ForwardKlingVideoContent(ctx, baseURL, secret, id, klingKindForVideo(c.Request.Context(), d.RDB, int64(u.ID), id), klingPathForVideo(c.Request.Context(), d.RDB, int64(u.ID), id), openAIPassthroughHeaders(c))
+					resp, ferr = relay.ForwardKlingVideoContent(ctx, baseURL, secret, id, klingKindForVideo(ctx, d.RDB, int64(u.ID), id), klingPathForVideo(ctx, d.RDB, int64(u.ID), id), openAIPassthroughHeaders(c))
 				} else if isVolcengineVideoChannel(ctSel) {
 					resp, ferr = relay.ForwardVolcVideoContent(ctx, baseURL, secret, id, openAIPassthroughHeaders(c))
 				} else {
@@ -408,6 +409,7 @@ func VideosContent(d ChatDeps) gin.HandlerFunc {
 		}
 		ct := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
 		metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
+		setVideoJobTraceHeaders(c, sel.Channel.ID, res.StatusCode)
 		if res.StatusCode >= 400 {
 			outCT := "application/json"
 			if res.Headers != nil {
@@ -482,28 +484,37 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 	routeDeps := RoutingExecDeps{Client: d.Client, RDB: d.RDB, AESKey: d.AESKey}
 	rawQuery := c.Request.URL.RawQuery
 
-	sel, res, err := ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, previewSel,
-		func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
-			secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
-			if !ok {
-				return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+	var sel *router.Selected
+	var res *router.UpstreamResult
+
+	forwardFn := func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error) {
+		secret, baseURL, ok := ChannelSecretAndBaseURL(d.AESKey, sel.Channel)
+		if !ok {
+			return &router.UpstreamResult{StatusCode: 503}, errChannelNoSecret
+		}
+		var resp *http.Response
+		var ferr error
+		ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
+		if isKlingVideoChannel(ctSel) {
+			resp, ferr = relay.ForwardKlingVideoTaskHTTP(ctx, baseURL, secret, method, id, klingKindForVideo(ctx, d.RDB, int64(u.ID), id), klingPathForVideo(ctx, d.RDB, int64(u.ID), id), rawQuery, openAIPassthroughHeaders(c))
+		} else if isVolcengineVideoChannel(ctSel) {
+			taskID := id
+			if mode == "list" {
+				taskID = ""
 			}
-			var resp *http.Response
-			var ferr error
-			ctSel := strings.ToLower(strings.TrimSpace(sel.Channel.ChannelType))
-			if isKlingVideoChannel(ctSel) {
-				resp, ferr = relay.ForwardKlingVideoTaskHTTP(ctx, baseURL, secret, method, id, klingKindForVideo(ctx, d.RDB, int64(u.ID), id), klingPathForVideo(ctx, d.RDB, int64(u.ID), id), rawQuery, openAIPassthroughHeaders(c))
-			} else if isVolcengineVideoChannel(ctSel) {
-				taskID := id
-				if mode == "list" {
-					taskID = ""
-				}
-				resp, ferr = relay.ForwardVolcVideoTaskHTTP(ctx, baseURL, secret, method, taskID, rawQuery, openAIPassthroughHeaders(c))
-			} else {
-				resp, ferr = relay.ForwardOpenAIVideoHTTP(ctx, baseURL, secret, method, rel, nil, rawQuery, openAIPassthroughHeaders(c))
-			}
-			return HTTPResponseToUpstreamResult(resp, ferr)
-		})
+			resp, ferr = relay.ForwardVolcVideoTaskHTTP(ctx, baseURL, secret, method, taskID, rawQuery, openAIPassthroughHeaders(c))
+		} else {
+			resp, ferr = relay.ForwardOpenAIVideoHTTP(ctx, baseURL, secret, method, rel, nil, rawQuery, openAIPassthroughHeaders(c))
+		}
+		return HTTPResponseToUpstreamResult(resp, ferr)
+	}
+
+	if mode == "list" {
+		sel, res, err = ExecuteModelHTTPForward(GinContextWithFailoverAttemptHook(c, model), routeDeps, int64(u.ID), gid, model, sticky, previewSel, forwardFn)
+	} else {
+		sel = resolveVideoJobSelected(c.Request.Context(), d.Client, d.RDB, gid, u, model, id, previewSel)
+		res, err = routeDeps.ExecuteSingleChannelHTTPForward(c.Request.Context(), sel, forwardFn)
+	}
 	if err != nil {
 		WriteGatewayTransportError(c, err)
 		return
@@ -512,6 +523,7 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 	metrics.GatewayLatency.WithLabelValues(ct).Observe(time.Since(start).Seconds())
 
 	outBody := normalizeVideoUpstreamBody(ct, res.Body)
+	setVideoJobTraceHeaders(c, sel.Channel.ID, res.StatusCode)
 	if res.StatusCode >= 400 {
 		if id != "" {
 			if rec := UsageRecorderFrom(c); rec != nil {
@@ -519,6 +531,11 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 					rec.SetTraceRef(*ref)
 				}
 			}
+		}
+		var settle videoSettleOutcome
+		if method == http.MethodGet && id != "" && isVideoPollTerminalHTTPError(res.StatusCode, outBody) {
+			settle = tryRefundVideoPrecharge(c.Request.Context(), d.Billing, d.RDB, u, id)
+			recordVideoSettleUsage(c, d, u, k, sel.Channel.ID, rid, model, sel.UpstreamModel, id, "video_settle", settle, res.StatusCode, c.ClientIP(), time.Since(start))
 		}
 		WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 		return

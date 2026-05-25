@@ -187,3 +187,21 @@ func ExecuteModelHTTPForward(
 ) (*router.Selected, *router.UpstreamResult, error) {
 	return deps.executeWithFailoverRecorded(ctx, userID, groupID, model, sticky, false, firstSel, forward)
 }
+
+// ExecuteSingleChannelHTTPForward 单次上游转发，不 failover（视频 job 后续请求专用）。
+func (d RoutingExecDeps) ExecuteSingleChannelHTTPForward(
+	ctx context.Context,
+	sel *router.Selected,
+	forward func(ctx context.Context, sel *router.Selected) (*router.UpstreamResult, error),
+) (*router.UpstreamResult, error) {
+	res, err := forward(ctx, sel)
+	if res != nil {
+		RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, res.StatusCode, res.TransportErr, res.Body)
+	} else if err != nil {
+		RecordUpstreamOutcome(ctx, d.Client, sel.Channel.ID, 0, err, nil)
+	}
+	if res != nil {
+		res.FailoverAttempts = 1
+	}
+	return res, err
+}
