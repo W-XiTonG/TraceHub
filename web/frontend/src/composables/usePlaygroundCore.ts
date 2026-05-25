@@ -963,17 +963,31 @@ function videoStatusLabel(status: string): string {
   return status
 }
 
-function formatVideoPollingCaption(snap: pgw.VideoJobSnapshot): string {
-  const status = videoStatusLabel(snap.status)
+function formatVideoPollingCaption(status: string, pollProgress?: number): string {
+  const label = videoStatusLabel(status)
   const progress =
-    snap.progress != null && Number.isFinite(snap.progress) ? ` · ${Math.round(snap.progress)}%` : ''
-  return t('playground.videoPolling', { status, progress })
+    pollProgress != null && Number.isFinite(pollProgress) && pollProgress > 0
+      ? ` · ${Math.round(pollProgress)}%`
+      : ''
+  return t('playground.videoPolling', { status: label, progress })
+}
+
+/** 上游 progress 可能回跳；单任务轮询内只增不减。 */
+function mergeVideoPollProgress(prev: number | undefined, incoming: number | undefined): number | undefined {
+  const p = prev ?? 0
+  if (incoming == null || !Number.isFinite(incoming)) {
+    return p > 0 ? p : undefined
+  }
+  const next = Math.max(p, incoming)
+  return next > 0 ? next : undefined
 }
 
 function patchAssistantVideo(
   id: string,
   content: string,
-  extra?: Partial<Pick<ChatMsg, 'videoUrl' | 'videoJobId' | 'videoModel' | 'videoStatus'>>,
+  extra?: Partial<
+    Pick<ChatMsg, 'videoUrl' | 'videoJobId' | 'videoModel' | 'videoStatus' | 'videoPollProgress'>
+  >,
 ) {
   messages.value = messages.value.map((m) => {
     if (m.id !== id) return m
@@ -987,6 +1001,7 @@ function patchAssistantVideo(
       ...(extra?.videoJobId !== undefined ? { videoJobId: extra.videoJobId } : {}),
       ...(extra?.videoModel !== undefined ? { videoModel: extra.videoModel } : {}),
       ...(extra?.videoStatus !== undefined ? { videoStatus: extra.videoStatus } : {}),
+      ...(extra?.videoPollProgress !== undefined ? { videoPollProgress: extra.videoPollProgress } : {}),
     }
   })
 }
@@ -1008,10 +1023,13 @@ async function pollVideoUntilDone(assistantId: string, videoId: string, modelNam
         videoPollAbort.value?.signal,
       )
       lastResponse.value = snap.raw
-      patchAssistantVideo(assistantId, formatVideoPollingCaption(snap), {
+      const prevMsg = messages.value.find((m) => m.id === assistantId)
+      const pollProgress = mergeVideoPollProgress(prevMsg?.videoPollProgress, snap.progress)
+      patchAssistantVideo(assistantId, formatVideoPollingCaption(snap.status, pollProgress), {
         videoJobId: videoId,
         videoModel: modelName,
         videoStatus: snap.status,
+        videoPollProgress: pollProgress,
       })
       const st = snap.status.toLowerCase()
       if (st === 'completed') {
@@ -1112,9 +1130,10 @@ async function retryVideoMessage(m: ChatMsg) {
   videoPollAbort.value = new AbortController()
   sending.value = true
   modelsErr.value = ''
-  patchAssistantVideo(assistantId, formatVideoPollingCaption({ videoId: m.videoJobId, status: 'in_progress', raw: '' }), {
+  patchAssistantVideo(assistantId, formatVideoPollingCaption('in_progress', m.videoPollProgress), {
     videoJobId: m.videoJobId,
     videoStatus: 'in_progress',
+    videoPollProgress: m.videoPollProgress,
   })
   try {
     await pollVideoUntilDone(assistantId, m.videoJobId, model.value.trim())
@@ -1936,18 +1955,26 @@ watch(chatScrollEl, (el, prev) => {
   prev?.removeEventListener('scroll', onChatScrollEvent)
   if (el) {
     el.addEventListener('scroll', onChatScrollEvent, { passive: true })
-    userPinnedToBottom.value = isNearBottom(el)
+    if (messages.value.length) {
+      scrollChatToBottom(true)
+    } else {
+      userPinnedToBottom.value = true
+    }
   }
 })
 
 function scrollChatToBottom(force = false) {
-  nextTick(() => {
+  const apply = () => {
     const el = chatScrollEl.value
     if (!el) return
     if (force || userPinnedToBottom.value) {
       el.scrollTop = el.scrollHeight
       if (force) userPinnedToBottom.value = true
     }
+  }
+  nextTick(() => {
+    apply()
+    if (force) requestAnimationFrame(apply)
   })
 }
 

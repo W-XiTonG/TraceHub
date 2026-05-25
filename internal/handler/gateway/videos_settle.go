@@ -177,6 +177,88 @@ func trySettleVideoOnComplete(ctx context.Context, eng *billing.Engine, rdb *red
 	return out
 }
 
+func isVideoTerminalFailureStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "failed", "error", "cancelled", "canceled":
+		return true
+	default:
+		return false
+	}
+}
+
+// trySettleVideoJob 按上游 status 在 completed 精调或终端失败全额退预扣（同一 video_id 仅结算一次）。
+func trySettleVideoJob(ctx context.Context, eng *billing.Engine, rdb *redis.Client, u *ent.User, model, videoID string, upstreamBody []byte) videoSettleOutcome {
+	status, _ := parseVideoStatusFromJSON(upstreamBody)
+	switch status {
+	case "completed":
+		return trySettleVideoOnComplete(ctx, eng, rdb, u, model, videoID, upstreamBody)
+	default:
+		if isVideoTerminalFailureStatus(status) {
+			return trySettleVideoOnFailed(ctx, eng, rdb, u, model, videoID, upstreamBody)
+		}
+	}
+	return videoSettleOutcome{}
+}
+
+// trySettleVideoOnFailed 在 GET 任务且 status 为终端失败时全额退还创建预扣。
+func trySettleVideoOnFailed(ctx context.Context, eng *billing.Engine, rdb *redis.Client, u *ent.User, model, videoID string, upstreamBody []byte) videoSettleOutcome {
+	out := videoSettleOutcome{}
+	if eng == nil || videoID == "" || u == nil {
+		return out
+	}
+	status, _ := parseVideoStatusFromJSON(upstreamBody)
+	if !isVideoTerminalFailureStatus(status) {
+		return out
+	}
+	if rdb == nil {
+		slog.Warn("video failed refund skipped: redis unavailable", "user_id", u.ID, "video_id", videoID)
+		return out
+	}
+
+	precharge, err := rdb.Get(ctx, videoPrechargeRedisKey(int64(u.ID), videoID)).Int64()
+	if err == redis.Nil {
+		return out
+	}
+	if err != nil {
+		slog.Warn("video failed refund: read precharge failed", "user_id", u.ID, "video_id", videoID, "err", err)
+		return out
+	}
+	if precharge <= 0 {
+		return out
+	}
+	out.Precharge = precharge
+
+	jobKey := videoJobRedisKey(int64(u.ID), videoID)
+	acquired, err := rdb.SetNX(ctx, jobKey, "settled", videoBillingRedisTTL).Result()
+	if err != nil {
+		slog.Warn("video failed refund: setnx failed", "user_id", u.ID, "video_id", videoID, "err", err)
+		return out
+	}
+	if !acquired {
+		return out
+	}
+
+	metaRaw, _ := rdb.Get(ctx, videoMetaRedisKey(int64(u.ID), videoID)).Bytes()
+	var meta videoJobMeta
+	if len(metaRaw) > 0 {
+		_ = json.Unmarshal(metaRaw, &meta)
+	}
+	out.Seconds = meta.Seconds
+	if out.Seconds <= 0 {
+		out.Seconds = billing.ParseVideoSeconds("")
+	}
+
+	if err := eng.CreditBalance(ctx, int64(u.ID), precharge); err != nil {
+		slog.Warn("video failed refund: credit failed", "user_id", u.ID, "video_id", videoID, "refund", precharge, "err", err)
+		_, _ = rdb.Del(ctx, jobKey).Result()
+		return out
+	}
+	out.Adjust = -precharge
+	out.FinalCost = 0
+	out.Settled = true
+	return out
+}
+
 func patchVideoCreateBody(body []byte, upstream string, volc bool) ([]byte, error) {
 	patched, err := router.PatchModelInBody(body, upstream)
 	if err != nil {

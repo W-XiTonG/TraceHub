@@ -215,8 +215,13 @@ func videoCreateMultipart(c *gin.Context, d ChatDeps) {
 		}
 		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, meta)
 	}
+	var settle videoSettleOutcome
+	if vid != "" {
+		settle = trySettleVideoJob(c.Request.Context(), d.Billing, d.RDB, u, parsed.Model, vid, raw)
+	}
 	metrics.GatewayRequests.WithLabelValues(parsed.Model, ct, "200").Inc()
 	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, parsed.Model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, videoJobTraceRef(vid), time.Since(start))
+	recordVideoSettleUsage(c, d, u, k, ch.ID, rid, parsed.Model, sel.UpstreamModel, vid, "video_settle", settle, resp.StatusCode, c.ClientIP(), time.Since(start))
 	WriteClientProxy(c, resp.StatusCode, "application/json", raw)
 }
 
@@ -321,9 +326,14 @@ func runVideoCreate(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, mode
 		}
 		storeVideoJobBillingMeta(c.Request.Context(), d.RDB, int64(u.ID), vid, meta)
 	}
+	var settle videoSettleOutcome
+	if vid != "" {
+		settle = trySettleVideoJob(c.Request.Context(), d.Billing, d.RDB, u, model, vid, outBody)
+	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 	upstreamprobe.NotifyCapabilityOutcome(ch.ID, model, upstreamprobe.CapabilityVideo, res.StatusCode, nil, upstreamprobe.CapSourceRuntime)
 	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), res.StatusCode, videoJobTraceRef(vid), time.Since(start))
+	recordVideoSettleUsage(c, d, u, k, ch.ID, rid, model, sel.UpstreamModel, vid, "video_settle", settle, res.StatusCode, c.ClientIP(), time.Since(start))
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }
 
@@ -515,21 +525,10 @@ func videosResourceHTTP(c *gin.Context, d ChatDeps, method, mode string) {
 	}
 	var settle videoSettleOutcome
 	if mode != "list" && id != "" && method == http.MethodGet {
-		settle = trySettleVideoOnComplete(c.Request.Context(), d.Billing, d.RDB, u, model, id, outBody)
+		settle = trySettleVideoJob(c.Request.Context(), d.Billing, d.RDB, u, model, id, outBody)
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	if settle.Settled && settle.Adjust != 0 {
-		adjCost := settle.Adjust
-		if adjCost < 0 {
-			adjCost = -adjCost
-		}
-		tag := "video_settle_extra"
-		if settle.Adjust < 0 {
-			tag = "video_settle_refund"
-		}
-		em := tag + ":" + id
-		RecordUsageOK(c, d.Client, u.ID, k.ID, sel.Channel.ID, rid, model, sel.UpstreamModel, settle.Seconds, 0, 0, adjCost, c.ClientIP(), res.StatusCode, &em, time.Since(start))
-	}
+	recordVideoSettleUsage(c, d, u, k, sel.Channel.ID, rid, model, sel.UpstreamModel, id, "video_settle", settle, res.StatusCode, c.ClientIP(), time.Since(start))
 	WriteClientProxy(c, res.StatusCode, "application/json", outBody)
 }
 
@@ -555,6 +554,22 @@ func noteGatewayModelForUsage(c *gin.Context, model string) {
 			rec.SetModel(m)
 		}
 	}
+}
+
+func recordVideoSettleUsage(c *gin.Context, d ChatDeps, u *ent.User, k *ent.APIKey, channelID int, rid, model, upstream, videoID, tagPrefix string, settle videoSettleOutcome, statusCode int, ip string, elapsed time.Duration) {
+	if !settle.Settled || settle.Adjust == 0 {
+		return
+	}
+	adjCost := settle.Adjust
+	if adjCost < 0 {
+		adjCost = -adjCost
+	}
+	tag := tagPrefix + "_extra"
+	if settle.Adjust < 0 {
+		tag = tagPrefix + "_refund"
+	}
+	em := tag + ":" + videoID
+	RecordUsageOK(c, d.Client, u.ID, k.ID, channelID, rid, model, upstream, settle.Seconds, 0, 0, adjCost, ip, statusCode, &em, elapsed)
 }
 
 // videoJobTraceRef 写入 usage_logs.error_message，供控制台按 video_id 聚合（非用户可见错误）。

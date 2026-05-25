@@ -199,25 +199,15 @@ func KlingV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		}
 
 		var settle videoSettleOutcome
-		if klingvideo.IsTaskQuery(method, klingPath) && vid != "" {
-			settle = trySettleVideoOnComplete(c.Request.Context(), d.Billing, d.RDB, u, model, vid, outBody)
+		if vid != "" {
+			settle = trySettleVideoJob(c.Request.Context(), d.Billing, d.RDB, u, model, vid, outBody)
 		}
 
 		metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-		if settle.Settled && settle.Adjust != 0 {
-			adjCost := settle.Adjust
-			if adjCost < 0 {
-				adjCost = -adjCost
-			}
-			tag := "kling_settle_extra"
-			if settle.Adjust < 0 {
-				tag = "kling_settle_refund"
-			}
-			em := tag + ":" + vid
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, settle.Seconds, 0, 0, adjCost, c.ClientIP(), resp.StatusCode, &em, time.Since(start))
-		} else {
+		if costPre > 0 {
 			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, vParams.Seconds, 0, 0, costPre, c.ClientIP(), resp.StatusCode, videoJobTraceRef(vid), time.Since(start))
 		}
+		recordVideoSettleUsage(c, d, u, k, ch.ID, rid, model, sel.UpstreamModel, vid, "kling_settle", settle, resp.StatusCode, c.ClientIP(), time.Since(start))
 
 		oct := resp.Header.Get("Content-Type")
 		if oct == "" {

@@ -16,6 +16,8 @@ export type ChatMsg = {
   videoJobId?: string
   videoModel?: string
   videoStatus?: string
+  /** 轮询期间展示用：取历次上游 progress 的最大值，避免回跳 */
+  videoPollProgress?: number
   videoRefUrl?: string
 }
 

@@ -217,7 +217,7 @@ POST /v1/images/generations
 
 **渠道**：`openai` / `deepseek` / `site.openai_compat_channel_types` 直转上游 `/videos`；`volcengine`（火山方舟）经网关字段适配后转发，默认 `api_base_url` 为 `https://ark.cn-beijing.volces.com/api/v3`。
 
-**计费**：`POST /v1/videos` 按模型+时长预扣；`GET /v1/videos/{id}` 在 `status=completed` 时读取上游 `usage.seconds` 或 `seconds`/`duration` 精调（补扣/退还差额）；Redis 键 `tracehub:video:job:{user_id}:{video_id}` 保证同一任务只结算一次；轮询与 `content` 下载不重复扣费。
+**计费**：`POST /v1/videos` 按模型+时长预扣；`GET /v1/videos/{id}` 在 `status=completed` 时读取上游 `usage.seconds` 或 `seconds`/`duration` 精调（补扣/退还差额）；在 `status=failed`/`cancelled` 等终端失败时全额退还预扣；Redis 键 `tracehub:video:job:{user_id}:{video_id}` 保证同一任务只结算一次；轮询与 `content` 下载不重复扣费。
 
 ```json
 POST /v1/videos

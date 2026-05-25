@@ -25,3 +25,35 @@ func TestParseVideoBillableSeconds_Duration(t *testing.T) {
 		t.Fatalf("got %d", sec)
 	}
 }
+
+func TestIsVideoTerminalFailureStatus(t *testing.T) {
+	cases := []struct {
+		status string
+		want   bool
+	}{
+		{"failed", true},
+		{"error", true},
+		{"cancelled", true},
+		{"canceled", true},
+		{"FAILED", true},
+		{"completed", false},
+		{"in_progress", false},
+		{"queued", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := isVideoTerminalFailureStatus(tc.status); got != tc.want {
+			t.Fatalf("status %q: got %v want %v", tc.status, got, tc.want)
+		}
+	}
+}
+
+func TestParseVideoStatusFromJSON_failed(t *testing.T) {
+	st, _ := parseVideoStatusFromJSON([]byte(`{"status":"failed","error":{"message":"blocked"}}`))
+	if st != "failed" {
+		t.Fatalf("got %q", st)
+	}
+	if !isVideoTerminalFailureStatus(st) {
+		t.Fatal("failed status should be terminal failure")
+	}
+}
