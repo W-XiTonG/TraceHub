@@ -83,6 +83,9 @@ func isTraceOnly(msg string) bool {
 	if strings.HasPrefix(msg, "video_job:") {
 		return true
 	}
+	if strings.HasPrefix(msg, "usage_note:") {
+		return true
+	}
 	for _, p := range []string{
 		"video_settle_extra:", "video_settle_refund:",
 		"kling_settle_extra:", "kling_settle_refund:",

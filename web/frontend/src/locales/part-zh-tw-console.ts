@@ -494,6 +494,10 @@ export default {
     usageRouteFailed: '路由失敗（見模型列）',
     usageTokenInOut: '入 {in} / 出 {out}',
     usageTokenTotal: '入 {in} / 出 {out}（合計 {total}）',
+    noteStreamContent: '輸出按流式內容估算',
+    noteMaxTokens: '輸出按 max_tokens 估算',
+    noteClientDisconnect: '客戶端已斷開',
+    noteNoOutput: '無輸出內容',
   },
   logsPage: {
     title: '呼叫日誌',

@@ -13,6 +13,7 @@ import { useSmoothLoading } from '../composables/useSmoothLoading'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
 import {
   formatUsageLogUsageLine,
+  isUsageNoteMessage,
   resolveUsageBillingMode,
   usageBillingBadgeKey,
   type UsageLogBillingRow,
@@ -246,7 +247,7 @@ function toggleGroup(key: string) {
 }
 
 function displayError(msg?: string): string {
-  if (!msg?.trim() || isVideoJobTraceMessage(msg)) return t('modelsPage.dash')
+  if (!msg?.trim() || isVideoJobTraceMessage(msg) || isUsageNoteMessage(msg)) return t('modelsPage.dash')
   return msg.trim()
 }
 

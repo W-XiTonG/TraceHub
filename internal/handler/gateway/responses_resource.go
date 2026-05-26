@@ -153,7 +153,7 @@ func responsesResourceHTTP(c *gin.Context, d ChatDeps, method, tail string) {
 	}
 	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, promptToks)
-	applyCompletionFallback(&usage, maxOut)
+	applyCompletionFallback(&usage, maxOut, maxOut > 0)
 	cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return

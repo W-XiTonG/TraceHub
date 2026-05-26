@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 
@@ -16,7 +17,12 @@ func gatewayDeduct(c *gin.Context, eng *billing.Engine, userID int64, cost int64
 	if eng == nil || cost <= 0 {
 		return nil
 	}
-	err := eng.DeductBalance(c.Request.Context(), userID, cost)
+	deductCtx := c.Request.Context()
+	if afterResponse {
+		// 流式/SSE 已开始写响应后，客户端断开会使 Request.Context 取消；扣费须用独立 context。
+		deductCtx = context.Background()
+	}
+	err := eng.DeductBalance(deductCtx, userID, cost)
 	if err == nil {
 		return nil
 	}

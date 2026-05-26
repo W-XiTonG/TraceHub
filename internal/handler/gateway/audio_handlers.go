@@ -202,20 +202,15 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 			if f, ok := c.Writer.(http.Flusher); ok {
 				f.Flush()
 			}
-			streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-			pt := streamPT
-			comp := streamCT
-			cached := streamCached
-			if pt < 1 {
-				pt = promptToks
-			}
+			capture := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+			usage := ResolveOpenAIStreamUsage(capture, d.Billing, sel.UpstreamModel, promptToks, maxComp, false)
+			pt := usage.PromptTokens
+			comp := usage.CompletionTokens
+			cached := usage.CachedPromptTokens
 			if comp < 0 {
 				comp = 0
 			}
-			if streamPT == 0 && streamCT == 0 {
-				comp = completionTokensFallback(maxComp)
-			}
-			cost := GatewayFinalCost(br,pt, comp, cached)
+			cost := GatewayFinalCost(br, pt, comp, cached)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, chType, "deduct_err").Inc()
@@ -223,7 +218,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 				return
 			}
 			metrics.GatewayRequests.WithLabelValues(model, chType, "200").Inc()
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), usageNoteForLog(usage.Note), time.Since(start))
 			return
 		}
 
@@ -270,7 +265,7 @@ func audioMultipartHandler(d ChatDeps, upstreamRelPath string) gin.HandlerFunc {
 		}
 		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
-		applyCompletionFallback(&usage, maxComp)
+		applyCompletionFallback(&usage, maxComp, false)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return

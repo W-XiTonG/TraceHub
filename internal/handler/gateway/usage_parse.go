@@ -121,14 +121,15 @@ func parseUsageFlexible(raw []byte) ParsedOpenAIUsage {
 }
 
 // applyCompletionFallback sets CompletionTokens when zero, using capped max requested tokens.
-func applyCompletionFallback(u *ParsedOpenAIUsage, maxRequested int) {
+// explicit 为 false 时不做 max_tokens 兜底（避免未传 max_tokens 时误按 512 计费）。
+func applyCompletionFallback(u *ParsedOpenAIUsage, maxRequested int, explicit bool) {
 	if u == nil || u.CompletionTokens > 0 {
 		return
 	}
 	if u.SuppressCompletionFallback {
 		return
 	}
-	if maxRequested <= 0 {
+	if !explicit || maxRequested <= 0 {
 		return
 	}
 	u.CompletionTokens = completionTokensFallback(maxRequested)

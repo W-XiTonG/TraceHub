@@ -54,6 +54,7 @@ export type UsageLogBillingRow = {
   completion_tokens?: number
   total_tokens?: number
   billing_mode?: string
+  error_message?: string
 }
 
 export function resolveUsageBillingMode(row: UsageLogBillingRow): 'video_duration' | 'token' {
@@ -69,6 +70,35 @@ export function usageBillingBadgeKey(mode: 'video_duration' | 'token'): string {
   return mode === 'video_duration' ? 'usageLog.billingVideo' : 'usageLog.billingToken'
 }
 
+/** 网关写入的用量说明（usage_note:*），非错误 */
+export function parseUsageNote(errorMessage?: string): string {
+  const m = (errorMessage ?? '').trim()
+  if (!m.startsWith('usage_note:')) return ''
+  return m.slice('usage_note:'.length)
+}
+
+export function isUsageNoteMessage(errorMessage?: string): boolean {
+  return parseUsageNote(errorMessage) !== '' || (errorMessage ?? '').trim().startsWith('usage_note:')
+}
+
+function usageNoteSuffix(
+  t: (key: string, params?: Record<string, unknown>) => string,
+  errorMessage?: string,
+): string {
+  switch (parseUsageNote(errorMessage)) {
+    case 'stream_content':
+      return t('usageLog.noteStreamContent')
+    case 'max_tokens':
+      return t('usageLog.noteMaxTokens')
+    case 'client_disconnect':
+      return t('usageLog.noteClientDisconnect')
+    case 'no_output':
+      return t('usageLog.noteNoOutput')
+    default:
+      return ''
+  }
+}
+
 /** 调用日志表格：用量单元格文案 */
 export function formatUsageLogUsageLine(
   t: (key: string, params?: Record<string, unknown>) => string,
@@ -79,24 +109,29 @@ export function formatUsageLogUsageLine(
     return t('usageLog.usageRouteFailed')
   }
   const mode = resolveUsageBillingMode(row)
+  let base: string
   if (mode === 'video_duration') {
     const sec = numTok(row.prompt_tokens)
     const cost = numTok(row.total_cost)
     if (cost === 0 && sec === 0) {
-      return t('usageLog.usageVideoNoCharge')
+      base = t('usageLog.usageVideoNoCharge')
+    } else if (cost === 0 && sec > 0) {
+      base = t('usageLog.usageVideoSeconds', { seconds: sec }) + ' · ' + t('usageLog.usageVideoNoCharge')
+    } else {
+      base = t('usageLog.usageVideoSeconds', { seconds: sec })
     }
-    if (cost === 0 && sec > 0) {
-      return t('usageLog.usageVideoSeconds', { seconds: sec }) + ' · ' + t('usageLog.usageVideoNoCharge')
+  } else {
+    const pt = numTok(row.prompt_tokens)
+    const ct = numTok(row.completion_tokens)
+    const total = numTok(row.total_tokens)
+    if (total > 0 && total !== pt + ct) {
+      base = t('usageLog.usageTokenTotal', { in: pt, out: ct, total })
+    } else {
+      base = t('usageLog.usageTokenInOut', { in: pt, out: ct })
     }
-    return t('usageLog.usageVideoSeconds', { seconds: sec })
   }
-  const pt = numTok(row.prompt_tokens)
-  const ct = numTok(row.completion_tokens)
-  const total = numTok(row.total_tokens)
-  if (total > 0 && total !== pt + ct) {
-    return t('usageLog.usageTokenTotal', { in: pt, out: ct, total })
-  }
-  return t('usageLog.usageTokenInOut', { in: pt, out: ct })
+  const note = usageNoteSuffix(t, row.error_message)
+  return note ? `${base} · ${note}` : base
 }
 
 export function formatApiUsageLedgerLine(

@@ -157,7 +157,7 @@ func openAIForwardJSONCustomPatch(c *gin.Context, d ChatDeps, body []byte, model
 	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, promptToks)
 	if maxCompFallback > 0 {
-		applyCompletionFallback(&usage, maxCompFallback)
+		applyCompletionFallback(&usage, maxCompFallback, maxCompFallback > 0)
 	}
 	cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {

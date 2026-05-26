@@ -224,20 +224,15 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
 				}
-				streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-				pt := streamPT
-				comp := streamCT
-				cached := streamCached
-				if pt < 1 {
-					pt = promptToks
-				}
+				capture := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+				usage := ResolveOpenAIStreamUsage(capture, d.Billing, sel.UpstreamModel, promptToks, maxComp, maxComp > 0)
+				pt := usage.PromptTokens
+				comp := usage.CompletionTokens
+				cached := usage.CachedPromptTokens
 				if comp < 0 {
 					comp = 0
 				}
-				if streamPT == 0 && streamCT == 0 {
-					comp = completionTokensFallback(maxComp)
-				}
-				cost := GatewayFinalCost(br,pt, comp, cached)
+				cost := GatewayFinalCost(br, pt, comp, cached)
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 					em := err.Error()
 					metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -245,7 +240,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 					return
 				}
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, nil, time.Since(start))
+				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), resp.StatusCode, usageNoteForLog(usage.Note), time.Since(start))
 				return
 			}
 			out, _ := io.ReadAll(resp.Body)
@@ -261,7 +256,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 			}
 			usage := parseUsageFlexible(out)
 			applyPromptFallback(&usage, promptToks)
-			applyCompletionFallback(&usage, maxComp)
+			applyCompletionFallback(&usage, maxComp, maxComp > 0)
 			cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
@@ -317,7 +312,7 @@ func OpenAIV1Passthrough(d ChatDeps) gin.HandlerFunc {
 		}
 		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
-		applyCompletionFallback(&usage, maxComp)
+		applyCompletionFallback(&usage, maxComp, maxComp > 0)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return

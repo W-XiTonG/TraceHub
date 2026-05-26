@@ -501,7 +501,7 @@ func openAIVectorStoreFilesCreateMultipart(c *gin.Context, d ChatDeps, vsID stri
 		if usage.PromptTokens == 0 {
 			usage.PromptTokens = imgTok
 		}
-		applyCompletionFallback(&usage, 2048)
+		applyCompletionFallback(&usage, 2048, false)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return

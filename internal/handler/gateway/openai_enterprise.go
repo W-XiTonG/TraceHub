@@ -242,7 +242,7 @@ func enterpriseForwardJSON(
 	}
 	usage := parseUsageFlexible(res.Body)
 	applyPromptFallback(&usage, prePrompt)
-	applyCompletionFallback(&usage, preComp)
+	applyCompletionFallback(&usage, preComp, preComp > 0)
 	cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 		return
@@ -315,20 +315,15 @@ func enterpriseForwardStream(
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-	pt := streamPT
-	comp := streamCT
-	cached := streamCached
-	if pt < 1 {
-		pt = prePrompt
-	}
+	capture := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+	usage := ResolveOpenAIStreamUsage(capture, d.Billing, sel.UpstreamModel, prePrompt, preComp, preComp > 0)
+	pt := usage.PromptTokens
+	comp := usage.CompletionTokens
+	cached := usage.CachedPromptTokens
 	if comp < 0 {
 		comp = 0
 	}
-	if streamPT == 0 && streamCT == 0 {
-		comp = completionTokensFallback(preComp)
-	}
-	cost := GatewayFinalCost(br,pt, comp, cached)
+	cost := GatewayFinalCost(br, pt, comp, cached)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -336,7 +331,7 @@ func enterpriseForwardStream(
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), usageNoteForLog(usage.Note), time.Since(start))
 }
 
 // enterpriseForwardPostSSE POST JSON 且上游返回 text/event-stream（如 Thread Run 流式）。
@@ -401,20 +396,15 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 	if f, ok := c.Writer.(http.Flusher); ok {
 		f.Flush()
 	}
-	streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-	pt := streamPT
-	comp := streamCT
-	cached := streamCached
-	if pt < 1 {
-		pt = prePrompt
-	}
+	capture := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+	usage := ResolveOpenAIStreamUsage(capture, d.Billing, sel.UpstreamModel, prePrompt, preComp, preComp > 0)
+	pt := usage.PromptTokens
+	comp := usage.CompletionTokens
+	cached := usage.CachedPromptTokens
 	if comp < 0 {
 		comp = 0
 	}
-	if streamPT == 0 && streamCT == 0 {
-		comp = completionTokensFallback(preComp)
-	}
-	cost := GatewayFinalCost(br,pt, comp, cached)
+	cost := GatewayFinalCost(br, pt, comp, cached)
 	if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 		em := err.Error()
 		metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -422,7 +412,7 @@ func enterpriseForwardPostSSE(c *gin.Context, d ChatDeps, routingModel string, p
 		return
 	}
 	metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+	RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), usageNoteForLog(usage.Note), time.Since(start))
 }
 
 func enterpriseForwardBinaryDownload(
@@ -575,7 +565,7 @@ func OpenAIFilesCreate(d ChatDeps) gin.HandlerFunc {
 		if usage.PromptTokens == 0 {
 			usage.PromptTokens = imgTok
 		}
-		applyCompletionFallback(&usage, 2048)
+		applyCompletionFallback(&usage, 2048, false)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return

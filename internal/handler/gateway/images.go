@@ -210,7 +210,7 @@ func imageMultipartRelay(d ChatDeps, upstreamRelPath string, requirePrompt bool)
 		raw := buf.Bytes()
 		usage := ParseOpenAIUsageJSON(raw)
 		applyPromptFallback(&usage, promptToks)
-		applyCompletionFallback(&usage, maxOut)
+		applyCompletionFallback(&usage, maxOut, maxOut > 0)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 			em := err.Error()
@@ -340,7 +340,7 @@ func ImageGenerations(d ChatDeps) gin.HandlerFunc {
 		}
 		usage := ParseOpenAIUsageJSON(res.Body)
 		applyPromptFallback(&usage, promptToks)
-		applyCompletionFallback(&usage, maxOut)
+		applyCompletionFallback(&usage, maxOut, maxOut > 0)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			em := err.Error()

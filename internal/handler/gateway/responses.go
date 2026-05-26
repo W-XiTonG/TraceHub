@@ -29,7 +29,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "无法读取请求体")
 			return
 		}
-		model, stream, maxOut, inputRaw, err := parseResponsesBody(body)
+		model, stream, maxOut, maxOutExplicit, inputRaw, err := parseResponsesBody(body)
 		if err != nil || model == "" {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或请求 JSON 无效")
 			return
@@ -87,7 +87,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			if promptToks < 1 {
 				promptToks = 1
 			}
-			compAssumed = completionTokensFallback(maxOut)
+			compAssumed = precheckCompletionAssumed(maxOut, maxOutExplicit, 2048)
 		}
 		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
 			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
@@ -148,20 +148,15 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			if f, ok := c.Writer.(http.Flusher); ok {
 				f.Flush()
 			}
-			streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-			pt := streamPT
-			comp := streamCT
-			cached := streamCached
-			if pt < 1 {
-				pt = promptToks
-			}
+			capture := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+			usage := ResolveOpenAIStreamUsage(capture, d.Billing, sel.UpstreamModel, promptToks, maxOut, maxOutExplicit)
+			pt := usage.PromptTokens
+			comp := usage.CompletionTokens
+			cached := usage.CachedPromptTokens
 			if comp < 0 {
 				comp = 0
 			}
-			if streamPT == 0 && streamCT == 0 {
-				comp = completionTokensFallback(maxOut)
-			}
-			cost := GatewayFinalCost(br,pt, comp, cached)
+			cost := GatewayFinalCost(br, pt, comp, cached)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
 				em := err.Error()
 				metrics.GatewayRequests.WithLabelValues(model, ct, "deduct_err").Inc()
@@ -170,7 +165,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 			}
 			RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil, nil)
 			metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
-			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+			RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), usageNoteForLog(usage.Note), time.Since(start))
 			return
 		}
 
@@ -199,7 +194,7 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 		}
 		usage := parseUsageFlexible(res.Body)
 		applyPromptFallback(&usage, promptToks)
-		applyCompletionFallback(&usage, maxOut)
+		applyCompletionFallback(&usage, maxOut, maxOutExplicit)
 		cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 		if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 			return
@@ -210,11 +205,12 @@ func ResponsesCreate(d ChatDeps) gin.HandlerFunc {
 	}
 }
 
-func parseResponsesBody(body []byte) (model string, stream bool, maxOut int, inputRaw json.RawMessage, err error) {
-	maxOut = 2048
+func parseResponsesBody(body []byte) (model string, stream bool, maxOut int, maxOutExplicit bool, inputRaw json.RawMessage, err error) {
+	maxOut = 0
+	maxOutExplicit = false
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(body, &m); err != nil {
-		return "", false, 0, nil, err
+		return "", false, 0, false, nil, err
 	}
 	if raw, ok := m["model"]; ok {
 		_ = json.Unmarshal(raw, &model)
@@ -226,10 +222,11 @@ func parseResponsesBody(body []byte) (model string, stream bool, maxOut int, inp
 		var mt int
 		if json.Unmarshal(raw, &mt) == nil && mt > 0 {
 			maxOut = mt
+			maxOutExplicit = true
 		}
 	}
 	if raw, ok := m["input"]; ok {
 		inputRaw = raw
 	}
-	return strings.TrimSpace(model), stream, maxOut, inputRaw, nil
+	return strings.TrimSpace(model), stream, maxOut, maxOutExplicit, inputRaw, nil
 }

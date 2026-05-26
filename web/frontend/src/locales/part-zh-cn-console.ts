@@ -497,6 +497,10 @@ export default {
     usageRouteFailed: '路由失败（见模型列）',
     usageTokenInOut: '入 {in} / 出 {out}',
     usageTokenTotal: '入 {in} / 出 {out}（合计 {total}）',
+    noteStreamContent: '输出按流式内容估算',
+    noteMaxTokens: '输出按 max_tokens 估算',
+    noteClientDisconnect: '客户端已断开',
+    noteNoOutput: '无输出内容',
   },
   logsPage: {
     title: '调用日志',

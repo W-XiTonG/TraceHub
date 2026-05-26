@@ -496,6 +496,10 @@ export default {
     usageRouteFailed: 'Routing failed (see model column)',
     usageTokenInOut: 'in {in} / out {out}',
     usageTokenTotal: 'in {in} / out {out} (total {total})',
+    noteStreamContent: 'Output estimated from stream',
+    noteMaxTokens: 'Output estimated from max_tokens',
+    noteClientDisconnect: 'Client disconnected',
+    noteNoOutput: 'No output content',
   },
   logsPage: {
     title: 'Request logs',

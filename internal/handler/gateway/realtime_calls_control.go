@@ -195,7 +195,7 @@ func realtimeCallSubresource(d ChatDeps, action string) gin.HandlerFunc {
 			usage := parseUsageFlexible(raw)
 			applyPromptFallback(&usage, promptToks)
 			if maxComp > 0 {
-				applyCompletionFallback(&usage, maxComp)
+				applyCompletionFallback(&usage, maxComp, maxComp > 0)
 			}
 			cost := GatewayFinalCost(br,usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {

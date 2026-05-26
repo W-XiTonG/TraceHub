@@ -33,7 +33,7 @@ func TestParseUsageFlexible_SecondsSuppressesCompletionFallback(t *testing.T) {
 	if !u.SuppressCompletionFallback {
 		t.Fatal("expected SuppressCompletionFallback")
 	}
-	applyCompletionFallback(&u, 2048)
+	applyCompletionFallback(&u, 2048, true)
 	if u.CompletionTokens != 0 {
 		t.Fatalf("completion got %d", u.CompletionTokens)
 	}
@@ -45,7 +45,7 @@ func TestParseUsageFlexible_TotalTokensSuppressesCompletionFallback(t *testing.T
 	if u.PromptTokens != 500 || u.CompletionTokens != 0 || !u.SuppressCompletionFallback {
 		t.Fatalf("got %+v", u)
 	}
-	applyCompletionFallback(&u, 2048)
+	applyCompletionFallback(&u, 2048, true)
 	if u.CompletionTokens != 0 {
 		t.Fatalf("completion got %d", u.CompletionTokens)
 	}
@@ -57,7 +57,7 @@ func TestParseUsageFlexible_StandardStillAllowsCompletionFallback(t *testing.T) 
 	if u.SuppressCompletionFallback {
 		t.Fatal("unexpected suppress for standard shape")
 	}
-	applyCompletionFallback(&u, 2048)
+	applyCompletionFallback(&u, 2048, true)
 	if u.CompletionTokens != 2048 {
 		t.Fatalf("completion got %d", u.CompletionTokens)
 	}

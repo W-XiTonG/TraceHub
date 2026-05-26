@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"io"
@@ -58,7 +57,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			return
 		}
 
-		model, stream, maxOut, _, err := parseChatBody(body)
+		model, stream, maxOut, maxOutExplicit, _, err := parseChatBody(body)
 		if err != nil || model == "" {
 			middleware.WriteOpenAIError(c, 400, "invalid_request_error", "缺少 model 或 messages 无效")
 			return
@@ -93,7 +92,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			if promptToks < 1 {
 				promptToks = 1
 			}
-			compAssumed = completionTokensFallback(maxOut)
+			compAssumed = precheckCompletionAssumed(maxOut, maxOutExplicit, 512)
 		}
 		sel, err := SelectChannelForBillingPrecheck(c.Request.Context(), d.Client, d.RDB, d.Billing, u, gid, model, sticky,
 			BillTokenEst{Prompt: promptToks, Completion: compAssumed})
@@ -118,7 +117,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			if promptToks < 1 {
 				promptToks = 1
 			}
-			compAssumed = completionTokensFallback(maxOut)
+			compAssumed = precheckCompletionAssumed(maxOut, maxOutExplicit, 512)
 		}
 		if _, ok := GatewayBillingPrecheck(c, u, br, func() (BillTokenEst, error) {
 			return BillTokenEst{Prompt: promptToks, Completion: compAssumed}, nil
@@ -200,18 +199,13 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				if f, ok := c.Writer.(http.Flusher); ok {
 					f.Flush()
 				}
-				streamPT, streamCT, streamCached := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
-				pt := streamPT
-				comp := streamCT
-				cached := streamCached
-				if pt < 1 {
-					pt = promptToks
-				}
+				capture := copyOpenAIChatSSEWithUsage(c.Writer, resp.Body)
+				usage := ResolveOpenAIStreamUsage(capture, d.Billing, sel.UpstreamModel, promptToks, maxOut, maxOutExplicit)
+				pt := usage.PromptTokens
+				comp := usage.CompletionTokens
+				cached := usage.CachedPromptTokens
 				if comp < 0 {
 					comp = 0
-				}
-				if streamPT == 0 && streamCT == 0 {
-					comp = completionTokensFallback(maxOut)
 				}
 				cost := GatewayFinalCost(br, pt, comp, cached)
 				if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, true); err != nil {
@@ -224,7 +218,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 				metrics.GatewayRequests.WithLabelValues(model, ct, "200").Inc()
 				RecordUpstreamOutcome(c.Request.Context(), d.Client, ch.ID, 200, nil, nil)
 				noteUsageOutcomeFromUpstreamResult(c, res)
-				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), nil, time.Since(start))
+				RecordUsageOK(c, d.Client, u.ID, k.ID, ch.ID, rid, model, sel.UpstreamModel, pt, comp, cached, cost, c.ClientIP(), int(resp.StatusCode), usageNoteForLog(usage.Note), time.Since(start))
 				return
 			}
 
@@ -257,7 +251,7 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 			}
 			usage := ParseOpenAIUsageJSON(res.Body)
 			applyPromptFallback(&usage, promptToks)
-			applyCompletionFallback(&usage, maxOut)
+			applyCompletionFallback(&usage, maxOut, maxOutExplicit)
 			cost := GatewayFinalCost(br, usage.PromptTokens, usage.CompletionTokens, usage.CachedPromptTokens)
 			if err := gatewayDeduct(c, d.Billing, int64(u.ID), cost, false); err != nil {
 				return
@@ -279,10 +273,10 @@ func ChatCompletions(d ChatDeps) gin.HandlerFunc {
 	}
 }
 
-func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptText string, err error) {
+func parseChatBody(body []byte) (model string, stream bool, maxOut int, maxOutExplicit bool, promptText string, err error) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(body, &m); err != nil {
-		return "", false, 0, "", err
+		return "", false, 0, false, "", err
 	}
 	if raw, ok := m["model"]; ok {
 		_ = json.Unmarshal(raw, &model)
@@ -291,26 +285,29 @@ func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptTe
 	if raw, ok := m["stream"]; ok {
 		_ = json.Unmarshal(raw, &stream)
 	}
-	maxOut = 512
+	maxOut = 0
+	maxOutExplicit = false
 	if raw, ok := m["max_tokens"]; ok {
 		var mt int
 		if json.Unmarshal(raw, &mt) == nil && mt > 0 {
 			maxOut = mt
+			maxOutExplicit = true
 		}
 	}
 	if raw, ok := m["max_completion_tokens"]; ok {
 		var mt int
 		if json.Unmarshal(raw, &mt) == nil && mt > 0 {
 			maxOut = mt
+			maxOutExplicit = true
 		}
 	}
 	msgsRaw, ok := m["messages"]
 	if !ok {
-		return strings.TrimSpace(model), stream, maxOut, "", nil
+		return strings.TrimSpace(model), stream, maxOut, maxOutExplicit, "", nil
 	}
 	var messages []map[string]any
 	if err := json.Unmarshal(msgsRaw, &messages); err != nil {
-		return strings.TrimSpace(model), stream, maxOut, "", err
+		return strings.TrimSpace(model), stream, maxOut, maxOutExplicit, "", err
 	}
 	var b strings.Builder
 	for _, msg := range messages {
@@ -325,7 +322,7 @@ func parseChatBody(body []byte) (model string, stream bool, maxOut int, promptTe
 			}
 		}
 	}
-	return strings.TrimSpace(model), stream, maxOut, b.String(), nil
+	return strings.TrimSpace(model), stream, maxOut, maxOutExplicit, b.String(), nil
 }
 
 // effectiveChannelBaseURL 解析渠道实际上游根地址（含留空时用类型默认）。
@@ -377,41 +374,6 @@ func injectStreamUsageJSON(body []byte) ([]byte, error) {
 	so, _ := json.Marshal(map[string]bool{"include_usage": true})
 	m["stream_options"] = json.RawMessage(so)
 	return json.Marshal(m)
-}
-
-// copyOpenAIChatSSEWithUsage 透传 OpenAI 兼容 SSE，并解析各 data 行中最后一个非空 usage（依赖 stream_options.include_usage）。
-// 写入经 WriterFlushWrap，与 copyStreamFlushing 一致，避免缓冲导致流式卡顿。
-func copyOpenAIChatSSEWithUsage(w http.ResponseWriter, r io.Reader) (promptTokens, completionTokens, cachedPromptTokens int) {
-	out := WriterFlushWrap(w)
-	br := bufio.NewReader(r)
-	for {
-		line, err := br.ReadString('\n')
-		if _, werr := io.WriteString(out, line); werr != nil {
-			return promptTokens, completionTokens, cachedPromptTokens
-		}
-		s := strings.TrimSpace(line)
-		if strings.HasPrefix(s, "data:") {
-			payload := strings.TrimSpace(strings.TrimPrefix(s, "data:"))
-			if payload != "" && payload != "[DONE]" {
-				rawPayload := []byte(payload)
-				u := ParseOpenAIUsageJSON(rawPayload)
-				if u.PromptTokens > 0 || u.CompletionTokens > 0 || u.CachedPromptTokens > 0 {
-					promptTokens, completionTokens, cachedPromptTokens = u.PromptTokens, u.CompletionTokens, u.CachedPromptTokens
-				} else {
-					flex := parseUsageFlexible(rawPayload)
-					if flex.PromptTokens > 0 || flex.CompletionTokens > 0 || flex.CachedPromptTokens > 0 {
-						promptTokens, completionTokens, cachedPromptTokens = flex.PromptTokens, flex.CompletionTokens, flex.CachedPromptTokens
-					}
-				}
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				return promptTokens, completionTokens, cachedPromptTokens
-			}
-			return promptTokens, completionTokens, cachedPromptTokens
-		}
-	}
 }
 
 func saveUsage(client *ent.Client, userID, apiKeyID, channelID int, requestID, model, upstream string, pt, ct, cachedPrompt int, cost int64, ip string, status int, errMsg *string, elapsed time.Duration, meta UsageLogMeta) {

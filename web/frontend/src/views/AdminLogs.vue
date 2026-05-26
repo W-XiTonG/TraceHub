@@ -10,6 +10,7 @@ import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useSmoothLoading } from '../composables/useSmoothLoading'
 import {
   formatUsageLogUsageLine,
+  isUsageNoteMessage,
   resolveUsageBillingMode,
   usageBillingBadgeKey,
   type UsageLogBillingRow,
@@ -215,7 +216,7 @@ function toggleGroup(key: string) {
 }
 
 function displayError(msg?: string): string {
-  if (!msg?.trim() || isVideoJobTraceMessage(msg)) return t('adminCommon.dash')
+  if (!msg?.trim() || isVideoJobTraceMessage(msg) || isUsageNoteMessage(msg)) return t('adminCommon.dash')
   return msg.trim()
 }
 
