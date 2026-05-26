@@ -1138,6 +1138,7 @@ export default {
     colActions: 'Actions',
     colChange: 'Change',
     colDetail: 'Details',
+    detailMissingHint: 'No diff details from server — redeploy backend and refresh preview',
   },
   adminPricingConversion: {
     title: 'Price conversion settings',

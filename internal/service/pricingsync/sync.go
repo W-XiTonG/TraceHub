@@ -180,7 +180,7 @@ func Confirm(ctx context.Context, svc ServiceOpts, targetID int, req ConfirmRequ
 
 func runPull(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget, snap *previewSnapshot) (SyncResult, error) {
 	filter := filterOptsFromTarget(t, nil, snap.SelectedKeys)
-	payload := filterPayloadBySelectedKeys(snap.Payload, selectedKeySet(snap.Rows))
+	payload := filterPayloadBySelectedKeys(snap.Payload, selectedKeySet(snap.Rows), t)
 	plan, warnings, err := buildApplyPlan(ctx, svc.Client, t, payload, filter)
 	if err != nil {
 		updatePullStatus(ctx, svc.Client, t.ID, false, err.Error())
@@ -192,11 +192,11 @@ func runPull(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget
 		return SyncResult{}, err
 	}
 	invalidateCachesAfterApply(plan)
-	skipped, _, _, _ := summarizeRows(snap.Rows)
+	_, _, skippedCount, _ := summarizeRows(snap.Rows)
 	res := SyncResult{
 		Added:    added,
 		Updated:  updated,
-		Skipped:  skipped,
+		Skipped:  skippedCount,
 		Removed:  plan.Removed,
 		Warnings: append(snap.Warnings, warnings...),
 		Message:  "",
@@ -207,7 +207,7 @@ func runPull(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget
 }
 
 func runPush(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget, snap *previewSnapshot) (SyncResult, error) {
-	payload := filterPayloadBySelectedKeys(snap.Payload, selectedKeySet(snap.Rows))
+	payload := filterPayloadBySelectedKeys(snap.Payload, selectedKeySet(snap.Rows), t)
 	if payload == nil {
 		payload = snap.Payload
 	}

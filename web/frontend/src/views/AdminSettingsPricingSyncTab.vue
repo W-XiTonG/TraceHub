@@ -105,6 +105,8 @@ const syncModalOpen = ref(false)
 const syncTarget = ref<Target | null>(null)
 const preview = ref<PreviewResult | null>(null)
 const previewStale = ref(false)
+const previewLoading = ref(false)
+let previewReqSeq = 0
 const confirmChecked = ref(false)
 const syncing = ref(false)
 
@@ -387,6 +389,8 @@ function openSyncModal(tgt: Target) {
 
 async function loadPreview() {
   if (!syncTarget.value) return
+  const seq = ++previewReqSeq
+  previewLoading.value = true
   err.value = ''
   try {
     const selectedKeys = preview.value?.rows.filter((r) => r.selected).map(rowKey) ?? []
@@ -394,12 +398,16 @@ async function loadPreview() {
       `/api/admin/pricing-sync/targets/${syncTarget.value.id}/sync/preview`,
       { direction: 'pull', selected_keys: selectedKeys.length ? selectedKeys : undefined },
     )
+    if (seq !== previewReqSeq) return
     if (data.code === 0) {
       preview.value = data.data
       previewStale.value = false
     }
   } catch (e: unknown) {
+    if (seq !== previewReqSeq) return
     err.value = e instanceof Error ? e.message : t('adminPricingSync.previewFail')
+  } finally {
+    if (seq === previewReqSeq) previewLoading.value = false
   }
 }
 
@@ -420,7 +428,10 @@ function toggleRow(r: DiffRow) {
 
 function selectAllRows(on: boolean) {
   if (!preview.value) return
-  preview.value.rows = preview.value.rows.map((x) => ({ ...x, selected: on }))
+  preview.value.rows = preview.value.rows.map((x) => ({
+    ...x,
+    selected: on && (x.change === 'added' || x.change === 'updated'),
+  }))
   previewStale.value = true
 }
 
@@ -801,7 +812,14 @@ onMounted(() => void loadAll())
                     <span class="font-medium text-slate-200">{{ fc.new }}</span>
                   </span>
                 </div>
-                <span v-else class="text-slate-500">{{ r.detail || '—' }}</span>
+                <span v-else-if="r.detail" class="text-slate-400">{{ r.detail }}</span>
+                <span
+                  v-else-if="r.change === 'updated' || r.change === 'added'"
+                  class="text-amber-400/90"
+                >
+                  {{ t('adminPricingSync.detailMissingHint') }}
+                </span>
+                <span v-else class="text-slate-500">—</span>
               </td>
             </tr>
           </tbody>

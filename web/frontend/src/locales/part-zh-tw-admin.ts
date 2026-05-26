@@ -1037,6 +1037,7 @@ export default {
     colActions: '操作',
     colChange: '變更',
     colDetail: '變更明細',
+    detailMissingHint: '伺服器未回傳明細，請重新部署後端並點「刷新預覽」',
   },
   adminPricingConversion: {
     title: '標價換算設定',

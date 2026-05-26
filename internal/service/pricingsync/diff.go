@@ -136,7 +136,7 @@ func applyRowSelection(rows []DiffRow, selectedKeys []string) []DiffRow {
 	return out
 }
 
-func filterPayloadBySelectedKeys(p *Payload, keys map[string]struct{}) *Payload {
+func filterPayloadBySelectedKeys(p *Payload, keys map[string]struct{}, t *ent.ModelPricingSyncTarget) *Payload {
 	if p == nil || len(keys) == 0 {
 		return p
 	}
@@ -148,11 +148,11 @@ func filterPayloadBySelectedKeys(p *Payload, keys map[string]struct{}) *Payload 
 		}
 	}
 	for _, block := range p.Channels {
-		cid := block.ChannelID
-		if cid == 0 && block.Ref != "" {
+		cid, err := resolveChannelID(t, block)
+		if err != nil {
 			continue
 		}
-		nb := ChannelBlock{Ref: block.Ref, ChannelID: block.ChannelID}
+		nb := ChannelBlock{Ref: block.Ref, ChannelID: cid}
 		for _, item := range block.Items {
 			key := SelectedKey{Layer: ScopeChannel, ModelName: item.ModelName, ChannelID: cid}
 			if _, ok := keys[key.String()]; ok {
@@ -164,8 +164,11 @@ func filterPayloadBySelectedKeys(p *Payload, keys map[string]struct{}) *Payload 
 		}
 	}
 	for _, block := range p.Groups {
-		gid := block.GroupID
-		nb := GroupBlock{Ref: block.Ref, GroupID: block.GroupID}
+		gid, err := resolveGroupID(t, block)
+		if err != nil {
+			continue
+		}
+		nb := GroupBlock{Ref: block.Ref, GroupID: gid}
 		for _, item := range block.Items {
 			key := SelectedKey{Layer: ScopeGroup, ModelName: item.ModelName, GroupID: gid}
 			if _, ok := keys[key.String()]; ok {

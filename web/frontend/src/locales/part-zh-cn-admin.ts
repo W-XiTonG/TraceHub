@@ -1133,6 +1133,7 @@ export default {
     colActions: '操作',
     colChange: '变更',
     colDetail: '变更明细',
+    detailMissingHint: '服务端未返回明细，请重新部署后端并点「刷新预览」',
   },
   adminPricingConversion: {
     title: '标价换算配置',
