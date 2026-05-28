@@ -8,6 +8,8 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/modelpricingsynctarget"
 	"tracehub/internal/pkg/sitecfg"
+
+	"go.uber.org/zap"
 )
 
 // ServiceOpts 同步服务依赖。
@@ -15,6 +17,7 @@ type ServiceOpts struct {
 	Client            *ent.Client
 	AESKey            []byte
 	AllowInsecureHTTP bool
+	Log               *zap.Logger
 }
 
 // PreviewRequest 预览请求。
@@ -183,12 +186,12 @@ func runPull(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget
 	payload := filterPayloadBySelectedKeys(snap.Payload, selectedKeySet(snap.Rows), t)
 	plan, warnings, err := buildApplyPlan(ctx, svc.Client, t, payload, filter)
 	if err != nil {
-		updatePullStatus(ctx, svc.Client, t.ID, false, err.Error())
+		updatePullStatus(ctx, svc, t.ID, false, err.Error())
 		return SyncResult{}, err
 	}
 	added, updated, err := executeApplyPlan(ctx, svc.Client, plan)
 	if err != nil {
-		updatePullStatus(ctx, svc.Client, t.ID, false, err.Error())
+		updatePullStatus(ctx, svc, t.ID, false, err.Error())
 		return SyncResult{}, err
 	}
 	invalidateCachesAfterApply(plan)
@@ -202,7 +205,7 @@ func runPull(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget
 		Message:  "",
 	}
 	res.Message = formatSyncMessage(res)
-	updatePullStatus(ctx, svc.Client, t.ID, true, res.Message)
+	updatePullStatus(ctx, svc, t.ID, true, res.Message)
 	return res, nil
 }
 
@@ -212,7 +215,7 @@ func runPush(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget
 		payload = snap.Payload
 	}
 	if err := PostRemotePush(ctx, svc.Client, t, payload, RemoteOpts{AESKey: svc.AESKey, AllowInsecureHTTP: svc.AllowInsecureHTTP}); err != nil {
-		updatePushStatus(ctx, svc.Client, t.ID, false, err.Error())
+		updatePushStatus(ctx, svc, t.ID, false, err.Error())
 		return SyncResult{}, err
 	}
 	added, updated, skipped, _ := summarizeRows(snap.Rows)
@@ -223,24 +226,36 @@ func runPush(ctx context.Context, svc ServiceOpts, t *ent.ModelPricingSyncTarget
 		Warnings: snap.Warnings,
 		Message:  fmt.Sprintf("推送完成: %d 条记录", added+updated),
 	}
-	updatePushStatus(ctx, svc.Client, t.ID, true, res.Message)
+	updatePushStatus(ctx, svc, t.ID, true, res.Message)
 	return res, nil
 }
 
-func updatePullStatus(ctx context.Context, client *ent.Client, id int, ok bool, msg string) {
-	_ = client.ModelPricingSyncTarget.UpdateOneID(id).
+func updatePullStatus(ctx context.Context, svc ServiceOpts, id int, ok bool, msg string) {
+	if err := svc.Client.ModelPricingSyncTarget.UpdateOneID(id).
 		SetLastPullAt(time.Now()).
 		SetLastPullOk(ok).
 		SetLastPullMessage(msg).
-		Exec(ctx)
+		Exec(ctx); err != nil && svc.Log != nil {
+		svc.Log.Warn("pricing_sync update pull status failed",
+			zap.Int("target_id", id),
+			zap.Bool("ok", ok),
+			zap.Error(err),
+		)
+	}
 }
 
-func updatePushStatus(ctx context.Context, client *ent.Client, id int, ok bool, msg string) {
-	_ = client.ModelPricingSyncTarget.UpdateOneID(id).
+func updatePushStatus(ctx context.Context, svc ServiceOpts, id int, ok bool, msg string) {
+	if err := svc.Client.ModelPricingSyncTarget.UpdateOneID(id).
 		SetLastPushAt(time.Now()).
 		SetLastPushOk(ok).
 		SetLastPushMessage(msg).
-		Exec(ctx)
+		Exec(ctx); err != nil && svc.Log != nil {
+		svc.Log.Warn("pricing_sync update push status failed",
+			zap.Int("target_id", id),
+			zap.Bool("ok", ok),
+			zap.Error(err),
+		)
+	}
 }
 
 // ExportLocal 导出本地定价快照。
@@ -267,12 +282,17 @@ func RunScheduledTarget(ctx context.Context, svc ServiceOpts, targetID int) erro
 		case modelpricingsynctarget.DirectionPull, modelpricingsynctarget.DirectionBoth:
 			p, err := FetchRemotePull(ctx, svc.Client, t, RemoteOpts{AESKey: svc.AESKey, AllowInsecureHTTP: svc.AllowInsecureHTTP})
 			if err != nil {
-				updatePullStatus(ctx, svc.Client, t.ID, false, err.Error())
+				updatePullStatus(ctx, svc, t.ID, false, err.Error())
 				return err
+			}
+			maxRows := sitecfg.EffectivePricingSyncMaxRows(ctx, svc.Client)
+			if countPayloadRows(p) > maxRows {
+				updatePullStatus(ctx, svc, t.ID, false, errTooManyRows.Error())
+				return errTooManyRows
 			}
 			rows, _, err := diffPullPayload(ctx, svc.Client, t, p, filter)
 			if err != nil {
-				updatePullStatus(ctx, svc.Client, t.ID, false, err.Error())
+				updatePullStatus(ctx, svc, t.ID, false, err.Error())
 				return err
 			}
 			snap := &previewSnapshot{Payload: p, Rows: rows, SelectedKeys: selectedKeysFromRows(rows)}

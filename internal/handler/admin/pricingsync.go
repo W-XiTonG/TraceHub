@@ -433,13 +433,16 @@ type pricingSyncTargetReq struct {
 }
 
 func buildTargetCreate(client *ent.Client, req pricingSyncTargetReq, aesKey []byte) (*ent.ModelPricingSyncTargetCreate, error) {
+	exportPath, _ := sitecfg.InboundPricingPaths()
+	pullPath := strings.TrimSpace(req.PullPath)
+	if pullPath == "" {
+		pullPath = exportPath
+	}
 	cr := client.ModelPricingSyncTarget.Create().
 		SetName(strings.TrimSpace(req.Name)).
 		SetBaseURL(strings.TrimSpace(req.BaseURL)).
-		SetDirection(modelpricingsynctarget.DirectionPull)
-	if req.PullPath != "" {
-		cr.SetPullPath(req.PullPath)
-	}
+		SetDirection(modelpricingsynctarget.DirectionPull).
+		SetPullPath(pullPath)
 	if req.CredentialMode != "" {
 		cr.SetCredentialMode(modelpricingsynctarget.CredentialMode(req.CredentialMode))
 	}
@@ -505,8 +508,8 @@ func buildTargetUpdate(client *ent.Client, id int, req pricingSyncTargetReq, aes
 		up.SetBaseURL(strings.TrimSpace(req.BaseURL))
 	}
 	up.SetDirection(modelpricingsynctarget.DirectionPull)
-	if req.PullPath != "" {
-		up.SetPullPath(req.PullPath)
+	if pullPath := strings.TrimSpace(req.PullPath); pullPath != "" {
+		up.SetPullPath(pullPath)
 	}
 	if req.CredentialMode != "" {
 		up.SetCredentialMode(modelpricingsynctarget.CredentialMode(req.CredentialMode))

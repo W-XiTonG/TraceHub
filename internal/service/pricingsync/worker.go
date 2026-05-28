@@ -15,6 +15,8 @@ func StartWorker(ctx context.Context, log *zap.Logger, svc ServiceOpts) {
 	if log == nil {
 		log = zap.NewNop()
 	}
+	svc.Log = log
+	StartPreviewCleanup(ctx)
 	go func() {
 		for {
 			if ctx.Err() != nil {

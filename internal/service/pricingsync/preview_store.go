@@ -1,6 +1,7 @@
 package pricingsync
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -86,4 +87,33 @@ func checkManualCooldown(targetID int, cooldownSec int) error {
 		return errCooldown
 	}
 	return nil
+}
+
+const previewCleanupInterval = 2 * time.Minute
+
+// StartPreviewCleanup 定期清理过期的预览快照，避免内存长期增长。
+func StartPreviewCleanup(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(previewCleanupInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				purgeExpiredPreviews()
+			}
+		}
+	}()
+}
+
+func purgeExpiredPreviews() {
+	now := time.Now()
+	previewMu.Lock()
+	defer previewMu.Unlock()
+	for id, s := range previews {
+		if now.After(s.ExpiresAt) {
+			delete(previews, id)
+		}
+	}
 }

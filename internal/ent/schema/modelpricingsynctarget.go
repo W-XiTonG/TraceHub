@@ -21,8 +21,8 @@ func (ModelPricingSyncTarget) Fields() []ent.Field {
 			Values("pull", "push", "both").
 			Default("both"),
 		field.String("base_url").MaxLen(500).NotEmpty(),
-		field.String("pull_path").MaxLen(255).Default("/api/pricing/export"),
-		field.String("push_path").MaxLen(255).Default("/api/pricing/import"),
+		field.String("pull_path").MaxLen(255).Default("/api/pricing/sync/export"),
+		field.String("push_path").MaxLen(255).Default("/api/pricing/sync/import"),
 		field.Enum("credential_mode").
 			Values("none", "static", "channel").
 			Default("static"),

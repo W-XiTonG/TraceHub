@@ -11,6 +11,7 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/pginit"
+	"tracehub/internal/pkg/pricingsyncmigrate"
 	"tracehub/internal/pkg/usagelogmigrate"
 	"tracehub/internal/server"
 
@@ -57,6 +58,9 @@ func main() {
 
 	if err := client.Schema.Create(ctx); err != nil {
 		zlog.Fatal("database migration failed", zap.Error(err))
+	}
+	if err := pricingsyncmigrate.FixLegacyPullPaths(ctx, sqldb); err != nil {
+		zlog.Fatal("pricing sync pull_path backfill failed", zap.Error(err))
 	}
 	if err := usagelogmigrate.BackfillFailoverFlags(ctx, sqldb); err != nil {
 		zlog.Fatal("usage_logs failover flag backfill failed", zap.Error(err))

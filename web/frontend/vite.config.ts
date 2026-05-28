@@ -6,6 +6,17 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   appType: 'spa',
   plugins: [vue(), tailwindcss()],
+  build: {
+    // 提高阈值，避免 >500kB chunk 的体积提示（仅隐藏提示，不减小产物）
+    chunkSizeWarningLimit: 10_000,
+    rolldownOptions: {
+      checks: {
+        // 关闭 Rolldown 诊断：无效动态 import、插件耗时占比
+        ineffectiveDynamicImport: false,
+        pluginTimings: false,
+      },
+    },
+  },
   server: {
     proxy: {
       // 本地后端默认 :8080；若本机也改为 :80 运营，把下面 target 改成 http://127.0.0.1:80
