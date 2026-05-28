@@ -1032,6 +1032,8 @@ export default {
     refreshPreview: '刷新预览',
     confirmCheckbox: '我已查看变更内容，确认执行同步',
     confirmExecute: '确认执行',
+    previewLoadingHint: '正在从远端拉取定价并生成预览，请稍候…',
+    syncExecutingHint: '正在写入本地定价，请勿关闭…',
     previewFail: '预览失败',
     syncDone: '同步完成',
     syncFail: '同步失败',

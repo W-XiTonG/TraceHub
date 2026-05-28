@@ -936,6 +936,8 @@ export default {
     refreshPreview: '刷新預覽',
     confirmCheckbox: '我已查看變更內容，確認執行同步',
     confirmExecute: '確認執行',
+    previewLoadingHint: '正在從遠端拉取定價並產生預覽，請稍候…',
+    syncExecutingHint: '正在寫入本機定價，請勿關閉…',
     previewFail: '預覽失敗',
     syncDone: '同步完成',
     syncFail: '同步失敗',

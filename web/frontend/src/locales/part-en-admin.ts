@@ -1037,6 +1037,8 @@ export default {
     refreshPreview: 'Refresh preview',
     confirmCheckbox: 'I have reviewed changes and confirm sync',
     confirmExecute: 'Execute',
+    previewLoadingHint: 'Fetching remote pricing and building preview…',
+    syncExecutingHint: 'Applying pricing locally, please wait…',
     previewFail: 'Preview failed',
     syncDone: 'Sync completed',
     syncFail: 'Sync failed',

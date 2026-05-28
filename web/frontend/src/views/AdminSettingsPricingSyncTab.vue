@@ -123,8 +123,15 @@ const syncModalTitle = computed(() =>
 )
 
 const canConfirmSync = computed(
-  () => confirmChecked.value && preview.value && !previewStale.value && !syncing.value,
+  () =>
+    confirmChecked.value &&
+    preview.value &&
+    !previewStale.value &&
+    !syncing.value &&
+    !previewLoading.value,
 )
+
+const syncModalBusy = computed(() => previewLoading.value || syncing.value)
 
 function parseLines(raw: string): string[] {
   return raw.split(/[\n,，;；]+/).map((s) => s.trim()).filter(Boolean)
@@ -764,75 +771,156 @@ onMounted(() => void loadAll())
       </div>
     </div>
 
-    <!-- 同步弹窗 -->
-    <div v-if="syncModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="syncModalOpen = false">
-      <div class="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-xl">
-        <h3 class="text-lg font-semibold">{{ syncModalTitle }}</h3>
-        <p v-if="preview" class="mt-2 text-sm text-slate-400">
-          {{ t('adminPricingSync.summary', { added: preview.added, updated: preview.updated, skipped: preview.skipped }) }}
-          · {{ t('adminPricingSync.selectedCount', { n: selectedRowCount }) }}
-        </p>
-        <p v-if="preview?.expires_at" class="mt-1 text-xs text-slate-500">
-          {{ t('adminPricingSync.previewExpires', { time: preview.expires_at }) }}
-        </p>
-        <p v-if="previewStale" class="mt-2 text-xs text-amber-400">{{ t('adminPricingSync.previewStaleHint') }}</p>
-        <div v-if="preview" class="mt-4 flex gap-2 text-xs">
-          <button type="button" class="th-btn-secondary px-2 py-1" @click="selectAllRows(true)">{{ t('adminPricingSync.selectAll') }}</button>
-          <button type="button" class="th-btn-secondary px-2 py-1" @click="selectAllRows(false)">{{ t('adminPricingSync.selectNone') }}</button>
-          <button type="button" class="th-btn-primary px-2 py-1" @click="loadPreview">{{ t('adminPricingSync.refreshPreview') }}</button>
+    <!-- 同步弹窗：固定顶栏/底栏，中间列表可滚动 -->
+    <div
+      v-if="syncModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      @click.self="!syncModalBusy && (syncModalOpen = false)"
+    >
+      <div
+        class="relative flex max-h-[min(90vh,52rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        :aria-busy="syncModalBusy"
+      >
+        <ThLoadingState
+          v-if="syncing"
+          variant="overlay"
+          class="absolute inset-0 z-30 rounded-xl"
+          :label="t('adminPricingSync.syncExecutingHint')"
+        />
+        <div class="shrink-0 border-b border-slate-700/60 px-5 pb-3 pt-5">
+          <h3 class="text-lg font-semibold">{{ syncModalTitle }}</h3>
+          <p v-if="preview && !previewLoading" class="mt-2 text-sm text-slate-400">
+            {{ t('adminPricingSync.summary', { added: preview.added, updated: preview.updated, skipped: preview.skipped }) }}
+            · {{ t('adminPricingSync.selectedCount', { n: selectedRowCount }) }}
+          </p>
+          <p v-if="preview?.expires_at && !previewLoading" class="mt-1 text-xs text-slate-500">
+            {{ t('adminPricingSync.previewExpires', { time: preview.expires_at }) }}
+          </p>
+          <p v-if="previewStale && preview" class="mt-2 text-xs text-amber-400">{{ t('adminPricingSync.previewStaleHint') }}</p>
+          <p v-if="err && !previewLoading" class="mt-2 text-sm text-red-400">{{ err }}</p>
         </div>
-        <table v-if="preview" class="mt-3 w-full text-left text-xs">
-          <thead>
-            <tr class="text-slate-500">
-              <th class="py-1 w-8"></th>
-              <th class="py-1">{{ t('adminPricingSync.scopes') }}</th>
-              <th class="py-1">model</th>
-              <th class="py-1">{{ t('adminPricingSync.colChange') }}</th>
-              <th class="py-1">{{ t('adminPricingSync.colDetail') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(r, idx) in preview.rows.slice(0, 100)" :key="idx" class="border-t border-slate-800">
-              <td class="py-1"><input type="checkbox" :checked="r.selected" @change="toggleRow(r)" /></td>
-              <td class="py-1">{{ layerLabel(r.layer) }}</td>
-              <td class="py-1 font-mono">{{ r.model_name }}</td>
-              <td class="py-1 whitespace-nowrap">{{ changeLabel(r.change) }}</td>
-              <td class="py-2 align-top">
-                <div v-if="r.field_changes?.length" class="flex flex-wrap gap-1.5">
-                  <span
-                    v-for="(fc, fi) in r.field_changes"
-                    :key="fi"
-                    class="inline-flex max-w-full flex-wrap items-center gap-x-1 rounded border border-slate-700/70 bg-slate-800/50 px-1.5 py-0.5 leading-relaxed"
-                  >
-                    <span class="shrink-0 text-slate-500">{{ fc.label }}</span>
-                    <template v-if="fc.old">
-                      <span class="text-slate-500 line-through decoration-slate-600">{{ fc.old }}</span>
-                      <span class="text-slate-600">→</span>
-                    </template>
-                    <span class="font-medium text-slate-200">{{ fc.new }}</span>
-                  </span>
-                </div>
-                <span v-else-if="r.detail" class="text-slate-400">{{ r.detail }}</span>
-                <span
-                  v-else-if="r.change === 'updated' || r.change === 'added'"
-                  class="text-amber-400/90"
-                >
-                  {{ t('adminPricingSync.detailMissingHint') }}
-                </span>
-                <span v-else class="text-slate-500">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <label class="mt-4 flex items-start gap-2 text-sm">
-          <input v-model="confirmChecked" type="checkbox" class="mt-1" />
-          {{ t('adminPricingSync.confirmCheckbox') }}
-        </label>
-        <div class="mt-4 flex justify-end gap-2">
-          <button type="button" class="th-btn-secondary px-4 py-2 text-sm" @click="syncModalOpen = false">{{ t('common.cancel') }}</button>
-          <button type="button" class="th-btn-primary px-4 py-2 text-sm" :disabled="!canConfirmSync" @click="confirmSync">
-            {{ syncing ? t('common.submitting') : t('adminPricingSync.confirmExecute') }}
+
+        <div
+          v-if="preview"
+          class="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-700/60 bg-slate-900 px-5 py-2.5 text-xs"
+        >
+          <button
+            type="button"
+            class="th-btn-secondary px-2 py-1"
+            :disabled="syncModalBusy"
+            @click="selectAllRows(true)"
+          >
+            {{ t('adminPricingSync.selectAll') }}
           </button>
+          <button
+            type="button"
+            class="th-btn-secondary px-2 py-1"
+            :disabled="syncModalBusy"
+            @click="selectAllRows(false)"
+          >
+            {{ t('adminPricingSync.selectNone') }}
+          </button>
+          <button
+            type="button"
+            class="th-btn-primary px-2 py-1"
+            :disabled="syncModalBusy"
+            @click="loadPreview"
+          >
+            {{ previewLoading ? t('common.loading') : t('adminPricingSync.refreshPreview') }}
+          </button>
+        </div>
+
+        <div class="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <ThLoadingState
+            v-if="previewLoading && !preview"
+            class="min-h-[14rem] px-5"
+            :label="t('adminPricingSync.previewLoadingHint')"
+          />
+          <div v-else-if="preview" class="relative px-5 pb-3 pt-1">
+            <ThLoadingState
+              v-if="previewLoading"
+              variant="overlay"
+              class="rounded-lg"
+              :label="t('adminPricingSync.previewLoadingHint')"
+            />
+            <table class="w-full text-left text-xs">
+              <thead class="sticky top-0 z-10 bg-slate-900 shadow-[0_1px_0_0_rgb(51,65,85)]">
+                <tr class="text-slate-500">
+                  <th class="py-2 w-8"></th>
+                  <th class="py-2">{{ t('adminPricingSync.scopes') }}</th>
+                  <th class="py-2">model</th>
+                  <th class="py-2">{{ t('adminPricingSync.colChange') }}</th>
+                  <th class="py-2">{{ t('adminPricingSync.colDetail') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                  <tr v-for="(r, idx) in preview.rows.slice(0, 100)" :key="idx" class="border-t border-slate-800">
+                    <td class="py-1">
+                      <input type="checkbox" :checked="r.selected" :disabled="syncModalBusy" @change="toggleRow(r)" />
+                    </td>
+                    <td class="py-1">{{ layerLabel(r.layer) }}</td>
+                    <td class="py-1 font-mono">{{ r.model_name }}</td>
+                    <td class="py-1 whitespace-nowrap">{{ changeLabel(r.change) }}</td>
+                    <td class="py-2 align-top">
+                      <div v-if="r.field_changes?.length" class="flex flex-wrap gap-1.5">
+                        <span
+                          v-for="(fc, fi) in r.field_changes"
+                          :key="fi"
+                          class="inline-flex max-w-full flex-wrap items-center gap-x-1 rounded border border-slate-700/70 bg-slate-800/50 px-1.5 py-0.5 leading-relaxed"
+                        >
+                          <span class="shrink-0 text-slate-500">{{ fc.label }}</span>
+                          <template v-if="fc.old">
+                            <span class="text-slate-500 line-through decoration-slate-600">{{ fc.old }}</span>
+                            <span class="text-slate-600">→</span>
+                          </template>
+                          <span class="font-medium text-slate-200">{{ fc.new }}</span>
+                        </span>
+                      </div>
+                      <span v-else-if="r.detail" class="text-slate-400">{{ r.detail }}</span>
+                      <span
+                        v-else-if="r.change === 'updated' || r.change === 'added'"
+                        class="text-amber-400/90"
+                      >
+                        {{ t('adminPricingSync.detailMissingHint') }}
+                      </span>
+                      <span v-else class="text-slate-500">—</span>
+                    </td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="shrink-0 border-t border-slate-700/60 bg-slate-900 px-5 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
+          <label class="flex items-start gap-2 text-sm" :class="!preview || syncModalBusy ? 'opacity-60' : ''">
+            <input
+              v-model="confirmChecked"
+              type="checkbox"
+              class="mt-1"
+              :disabled="!preview || syncModalBusy"
+            />
+            {{ t('adminPricingSync.confirmCheckbox') }}
+          </label>
+          <div class="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              class="th-btn-secondary px-4 py-2 text-sm"
+              :disabled="syncing"
+              @click="syncModalOpen = false"
+            >
+              {{ t('common.cancel') }}
+            </button>
+            <button
+              type="button"
+              class="th-btn-primary px-4 py-2 text-sm"
+              :disabled="!canConfirmSync"
+              @click="confirmSync"
+            >
+              {{ syncing ? t('adminPricingSync.syncExecutingHint') : t('adminPricingSync.confirmExecute') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
