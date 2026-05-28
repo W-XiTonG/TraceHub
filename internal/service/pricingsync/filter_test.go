@@ -56,3 +56,17 @@ func TestSelectedKeyString(t *testing.T) {
 		t.Fatalf("got %s", k.String())
 	}
 }
+
+func TestApplyRowSelectionKeepsAllRows(t *testing.T) {
+	rows := []DiffRow{
+		{Layer: ScopeGlobal, ModelName: "a", Change: ChangeSkipped, Selected: false},
+		{Layer: ScopeChannel, ModelName: "b", ChannelID: 1, Change: ChangeAdded, Selected: true},
+	}
+	out := applyRowSelection(rows, []string{"channel:1:b"})
+	if len(out) != 2 {
+		t.Fatalf("len=%d", len(out))
+	}
+	if out[0].Selected || !out[1].Selected {
+		t.Fatalf("selection=%v %v", out[0].Selected, out[1].Selected)
+	}
+}

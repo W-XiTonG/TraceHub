@@ -80,7 +80,8 @@ func Preview(ctx context.Context, opts ServiceOpts, targetID int, req PreviewReq
 	if !directionAllowed(t, direction) {
 		return PreviewResult{}, errDirection
 	}
-	filter := filterOptsFromTarget(t, req.SelectedModels, req.SelectedKeys)
+	// SelectedKeys 仅用于勾选状态，不参与 diff 过滤（否则刷新预览会只剩子集行）。
+	filter := filterOptsFromTarget(t, req.SelectedModels, nil)
 	var rows []DiffRow
 	var warnings []string
 	var payload *Payload

@@ -394,20 +394,34 @@ function openSyncModal(tgt: Target) {
   void loadPreview()
 }
 
-async function loadPreview() {
+async function loadPreview(opts?: { preserveSelection?: boolean }) {
   if (!syncTarget.value) return
+  const preserve = opts?.preserveSelection ?? false
+  const selectedBefore =
+    preserve && preview.value
+      ? new Set(preview.value.rows.filter((r) => r.selected).map(rowKey))
+      : null
   const seq = ++previewReqSeq
   previewLoading.value = true
   err.value = ''
   try {
-    const selectedKeys = preview.value?.rows.filter((r) => r.selected).map(rowKey) ?? []
     const { data } = await http.post<Envelope<PreviewResult>>(
       `/api/admin/pricing-sync/targets/${syncTarget.value.id}/sync/preview`,
-      { direction: 'pull', selected_keys: selectedKeys.length ? selectedKeys : undefined },
+      { direction: 'pull' },
     )
     if (seq !== previewReqSeq) return
     if (data.code === 0) {
-      preview.value = data.data
+      if (selectedBefore) {
+        preview.value = {
+          ...data.data,
+          rows: data.data.rows.map((r) => ({
+            ...r,
+            selected: selectedBefore.has(rowKey(r)),
+          })),
+        }
+      } else {
+        preview.value = data.data
+      }
       previewStale.value = false
     }
   } catch (e: unknown) {
@@ -826,7 +840,7 @@ onMounted(() => void loadAll())
             type="button"
             class="th-btn-primary px-2 py-1"
             :disabled="syncModalBusy"
-            @click="loadPreview"
+            @click="loadPreview({ preserveSelection: true })"
           >
             {{ previewLoading ? t('common.loading') : t('adminPricingSync.refreshPreview') }}
           </button>
