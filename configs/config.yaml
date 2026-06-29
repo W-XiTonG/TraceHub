@@ -71,7 +71,7 @@ email:
   smtp_port: 587
   smtp_user: "2751799737@qq.com"
   smtp_password: "cwzjnavjozjnddjf"
-  from: "循迹未来 TraceHub"
+  from: "循迹未来 TraceHub <2751799737@qq.com>"
   starttls: true
   insecure_skip_verify: false
   # 仅当「非三语邮件」且界面/请求为简中（zh-CN）时用作邮件主题；留空则用内置「{operator} · TraceHub 登录验证码」

@@ -26,6 +26,8 @@ const (
 	FieldCreatedBy = "created_by"
 	// FieldAudienceUserID holds the string denoting the audience_user_id field in the database.
 	FieldAudienceUserID = "audience_user_id"
+	// FieldAudienceUserIds holds the string denoting the audience_user_ids field in the database.
+	FieldAudienceUserIds = "audience_user_ids"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -52,6 +54,7 @@ var Columns = []string{
 	FieldPublishedAt,
 	FieldCreatedBy,
 	FieldAudienceUserID,
+	FieldAudienceUserIds,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }

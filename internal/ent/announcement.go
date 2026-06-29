@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ type Announcement struct {
 	CreatedBy int `json:"created_by,omitempty"`
 	// 定向用户：仅该用户可见；空表示全员公告
 	AudienceUserID *int `json:"audience_user_id,omitempty"`
+	// 定向用户列表；空/nil 且 audience_user_id 为空表示全员
+	AudienceUserIds []int `json:"audience_user_ids,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -65,6 +68,8 @@ func (*Announcement) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case announcement.FieldAudienceUserIds:
+			values[i] = new([]byte)
 		case announcement.FieldPublished:
 			values[i] = new(sql.NullBool)
 		case announcement.FieldID, announcement.FieldCreatedBy, announcement.FieldAudienceUserID:
@@ -131,6 +136,14 @@ func (_m *Announcement) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AudienceUserID = new(int)
 				*_m.AudienceUserID = int(value.Int64)
+			}
+		case announcement.FieldAudienceUserIds:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field audience_user_ids", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.AudienceUserIds); err != nil {
+					return fmt.Errorf("unmarshal field audience_user_ids: %w", err)
+				}
 			}
 		case announcement.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -206,6 +219,9 @@ func (_m *Announcement) String() string {
 		builder.WriteString("audience_user_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("audience_user_ids=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AudienceUserIds))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

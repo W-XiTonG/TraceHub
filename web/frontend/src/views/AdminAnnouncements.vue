@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
+import AdminAnnounceUserPicker from '../components/admin/AdminAnnounceUserPicker.vue'
 import MobileLabelValueCard from '../components/ui/MobileLabelValueCard.vue'
 import MobileLabelValueRow from '../components/ui/MobileLabelValueRow.vue'
 import ThLoadingState from '../components/ui/ThLoadingState.vue'
@@ -19,7 +20,15 @@ type Row = {
   published_at?: string
   created_at?: string
   updated_at?: string
+  audience?: 'all' | 'specific'
   audience_user_id?: number | null
+  audience_user_ids?: number[]
+}
+
+type EmailNotify = {
+  requested?: boolean
+  skipped_reason?: string
+  recipient_count?: number
 }
 
 const rows = ref<Row[]>([])
@@ -30,9 +39,41 @@ const pageSize = 20
 const msg = ref('')
 const err = ref('')
 
-const createForm = reactive({ title: '', content: '' })
+const createForm = reactive({
+  title: '',
+  content: '',
+  audience: 'all' as 'all' | 'specific',
+  notifyEmail: false,
+})
+const createSelectedUserIds = ref<number[]>([])
+
 const editOpen = ref(false)
-const editForm = reactive({ id: 0, title: '', content: '' })
+const editForm = reactive({
+  id: 0,
+  title: '',
+  content: '',
+  published: false,
+  audience: 'all' as 'all' | 'specific',
+})
+const editSelectedUserIds = ref<number[]>([])
+
+const publishOpen = ref(false)
+const publishTargetId = ref(0)
+const publishNotifyEmail = ref(true)
+
+watch(
+  () => createForm.audience,
+  (v) => {
+    if (v === 'all') createSelectedUserIds.value = []
+  },
+)
+
+watch(
+  () => editForm.audience,
+  (v) => {
+    if (v === 'all') editSelectedUserIds.value = []
+  },
+)
 
 function httpErr(e: unknown): string {
   if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
@@ -40,6 +81,44 @@ function httpErr(e: unknown): string {
     if (typeof d.message === 'string' && d.message.trim()) return d.message.trim()
   }
   return e instanceof Error ? e.message : t('adminCommon.requestFail')
+}
+
+function audienceLabel(r: Row): string {
+  if (r.audience_user_id != null && r.audience_user_id > 0) {
+    return t('adminAnnounce.audienceUser', { id: r.audience_user_id })
+  }
+  const n = r.audience_user_ids?.length ?? 0
+  if (n > 0) return t('adminAnnounce.audienceCount', { n })
+  return t('adminAnnounce.audienceAll')
+}
+
+function applyEmailNotifyHint(en?: EmailNotify) {
+  if (!en?.requested) return
+  if (en.skipped_reason === 'smtp_not_configured') {
+    msg.value = t('adminAnnounce.emailSkippedSmtp')
+    return
+  }
+  if (en.skipped_reason === 'no_recipients') {
+    msg.value = t('adminAnnounce.emailSkippedNoRecipients')
+    return
+  }
+  if (en.recipient_count && en.recipient_count > 0) {
+    msg.value = t('adminAnnounce.emailQueued', { n: en.recipient_count })
+  }
+}
+
+function audiencePayload(audience: 'all' | 'specific', ids: number[]) {
+  if (audience === 'all') return { audience: 'all' as const }
+  if (!ids.length) throw new Error(t('adminAnnounce.audienceRequired'))
+  return { audience: 'specific' as const, audience_user_ids: ids }
+}
+
+function resetCreateForm() {
+  createForm.title = ''
+  createForm.content = ''
+  createForm.audience = 'all'
+  createForm.notifyEmail = false
+  createSelectedUserIds.value = []
 }
 
 async function load() {
@@ -64,12 +143,13 @@ async function createDraft() {
     return
   }
   try {
+    const aud = audiencePayload(createForm.audience, createSelectedUserIds.value)
     await http.post('/api/admin/announcements', {
       title: createForm.title.trim(),
       content: createForm.content.trim(),
+      ...aud,
     })
-    createForm.title = ''
-    createForm.content = ''
+    resetCreateForm()
     msg.value = t('adminAnnounce.created')
     await load()
   } catch (e: unknown) {
@@ -85,14 +165,20 @@ async function createAndPublish() {
     return
   }
   try {
-    await http.post('/api/admin/announcements', {
+    const aud = audiencePayload(createForm.audience, createSelectedUserIds.value)
+    const notifyEmail = createForm.notifyEmail
+    const { data } = await http.post<Envelope<Row & { email_notify?: EmailNotify }>>('/api/admin/announcements', {
       title: createForm.title.trim(),
       content: createForm.content.trim(),
       publish: true,
+      notify_email: notifyEmail,
+      ...aud,
     })
-    createForm.title = ''
-    createForm.content = ''
-    msg.value = t('adminAnnounce.createdPublished')
+    resetCreateForm()
+    if (notifyEmail) {
+      applyEmailNotifyHint(data.data?.email_notify)
+    }
+    if (!msg.value) msg.value = t('adminAnnounce.createdPublished')
     await load()
   } catch (e: unknown) {
     err.value = httpErr(e)
@@ -103,16 +189,31 @@ function openEdit(r: Row) {
   editForm.id = r.id
   editForm.title = r.title
   editForm.content = r.content
+  editForm.published = r.published
+  if (r.audience_user_id != null && r.audience_user_id > 0) {
+    editForm.audience = 'specific'
+    editSelectedUserIds.value = [r.audience_user_id]
+  } else if (r.audience_user_ids?.length || r.audience === 'specific') {
+    editForm.audience = 'specific'
+    editSelectedUserIds.value = [...(r.audience_user_ids ?? [])]
+  } else {
+    editForm.audience = 'all'
+    editSelectedUserIds.value = []
+  }
   editOpen.value = true
 }
 
 async function saveEdit() {
   err.value = ''
   try {
-    await http.put(`/api/admin/announcements/${editForm.id}`, {
+    const body: Record<string, unknown> = {
       title: editForm.title.trim(),
       content: editForm.content.trim(),
-    })
+    }
+    if (!editForm.published) {
+      Object.assign(body, audiencePayload(editForm.audience, editSelectedUserIds.value))
+    }
+    await http.put(`/api/admin/announcements/${editForm.id}`, body)
     editOpen.value = false
     msg.value = t('adminAnnounce.saved')
     await load()
@@ -121,11 +222,24 @@ async function saveEdit() {
   }
 }
 
-async function publish(id: number) {
+function openPublishModal(id: number) {
+  publishTargetId.value = id
+  publishNotifyEmail.value = true
+  publishOpen.value = true
+}
+
+async function confirmPublish() {
   err.value = ''
   try {
-    await http.post(`/api/admin/announcements/${id}/publish`)
-    msg.value = t('adminAnnounce.published')
+    const { data } = await http.post<Envelope<Row & { email_notify?: EmailNotify }>>(
+      `/api/admin/announcements/${publishTargetId.value}/publish`,
+      { notify_email: publishNotifyEmail.value },
+    )
+    publishOpen.value = false
+    if (publishNotifyEmail.value) {
+      applyEmailNotifyHint(data.data?.email_notify)
+    }
+    if (!msg.value) msg.value = t('adminAnnounce.published')
     await load()
   } catch (e: unknown) {
     err.value = httpErr(e)
@@ -198,6 +312,31 @@ onMounted(() => void load())
           class="th-input w-full resize-y text-sm"
           :placeholder="t('adminAnnounce.contentPh')"
         />
+
+        <fieldset class="flex flex-col gap-2">
+          <legend class="text-xs font-medium text-slate-400">{{ t('adminAnnounce.lblAudience') }}</legend>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input v-model="createForm.audience" type="radio" value="all" class="accent-[var(--th-accent)]" />
+            {{ t('adminAnnounce.audienceAll') }}
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input v-model="createForm.audience" type="radio" value="specific" class="accent-[var(--th-accent)]" />
+            {{ t('adminAnnounce.audienceSpecific') }}
+          </label>
+        </fieldset>
+
+        <div v-if="createForm.audience === 'specific'" class="rounded-lg border border-slate-700/80 bg-slate-950/40 p-3">
+          <AdminAnnounceUserPicker v-model="createSelectedUserIds" />
+        </div>
+
+        <label class="flex items-start gap-2 text-sm text-slate-300">
+          <input v-model="createForm.notifyEmail" type="checkbox" class="mt-0.5 accent-[var(--th-accent)]" />
+          <span>
+            {{ t('adminAnnounce.notifyEmail') }}
+            <span class="mt-0.5 block text-xs text-slate-500">{{ t('adminAnnounce.notifyEmailHint') }}</span>
+          </span>
+        </label>
+
         <div class="flex flex-wrap gap-2">
           <button type="button" class="th-btn-secondary px-4 py-2 text-sm" @click="createDraft">
             {{ t('adminAnnounce.saveDraft') }}
@@ -235,10 +374,7 @@ onMounted(() => void load())
             <tr v-for="r in rows" :key="r.id" class="text-slate-300">
               <td class="px-3 py-2.5 font-mono text-xs text-slate-400">{{ r.id }}</td>
               <td class="max-w-[220px] truncate px-3 py-2.5" :title="r.title">{{ r.title }}</td>
-              <td class="px-3 py-2.5 text-xs text-slate-400">
-                <span v-if="r.audience_user_id != null && r.audience_user_id > 0">{{ t('adminAnnounce.audienceUser', { id: r.audience_user_id }) }}</span>
-                <span v-else>{{ t('adminAnnounce.audienceAll') }}</span>
-              </td>
+              <td class="px-3 py-2.5 text-xs text-slate-400">{{ audienceLabel(r) }}</td>
               <td class="px-3 py-2.5">
                 <span v-if="r.published" class="th-badge-apikey th-badge-apikey--enabled">{{ t('adminAnnounce.statusOn') }}</span>
                 <span v-else class="text-slate-500">{{ t('adminAnnounce.statusDraft') }}</span>
@@ -246,7 +382,7 @@ onMounted(() => void load())
               <td class="px-3 py-2.5 text-xs text-slate-400">{{ r.published_at || '—' }}</td>
               <td class="px-3 py-2.5 text-right">
                 <button type="button" class="th-link-accent mr-2 text-xs hover:underline" @click="openEdit(r)">{{ t('common.edit') }}</button>
-                <button v-if="!r.published" type="button" class="th-link-accent mr-2 text-xs hover:underline" @click="publish(r.id)">
+                <button v-if="!r.published" type="button" class="th-link-accent mr-2 text-xs hover:underline" @click="openPublishModal(r.id)">
                   {{ t('adminAnnounce.publish') }}
                 </button>
                 <button v-else type="button" class="mr-2 text-xs text-slate-500 hover:underline" @click="unpublish(r.id)">
@@ -261,10 +397,7 @@ onMounted(() => void load())
       <div class="mt-3 space-y-3 lg:hidden">
         <MobileLabelValueCard v-for="r in rows" :key="`ann-m-${r.id}`" :title="r.title">
           <MobileLabelValueRow :label="t('adminAnnounce.thId')">{{ r.id }}</MobileLabelValueRow>
-          <MobileLabelValueRow :label="t('adminAnnounce.thAudience')">
-            <span v-if="r.audience_user_id != null && r.audience_user_id > 0">{{ t('adminAnnounce.audienceUser', { id: r.audience_user_id }) }}</span>
-            <span v-else>{{ t('adminAnnounce.audienceAll') }}</span>
-          </MobileLabelValueRow>
+          <MobileLabelValueRow :label="t('adminAnnounce.thAudience')">{{ audienceLabel(r) }}</MobileLabelValueRow>
           <MobileLabelValueRow :label="t('adminAnnounce.thStatus')">
             <span v-if="r.published" class="th-badge-apikey th-badge-apikey--enabled">{{ t('adminAnnounce.statusOn') }}</span>
             <span v-else class="text-slate-500">{{ t('adminAnnounce.statusDraft') }}</span>
@@ -272,7 +405,7 @@ onMounted(() => void load())
           <MobileLabelValueRow :label="t('adminAnnounce.thPublishedAt')">{{ r.published_at || '—' }}</MobileLabelValueRow>
           <div class="flex flex-wrap gap-2 pt-1">
             <button type="button" class="th-link-accent text-xs hover:underline" @click="openEdit(r)">{{ t('common.edit') }}</button>
-            <button v-if="!r.published" type="button" class="th-link-accent text-xs hover:underline" @click="publish(r.id)">{{ t('adminAnnounce.publish') }}</button>
+            <button v-if="!r.published" type="button" class="th-link-accent text-xs hover:underline" @click="openPublishModal(r.id)">{{ t('adminAnnounce.publish') }}</button>
             <button v-else type="button" class="text-xs text-slate-500 hover:underline" @click="unpublish(r.id)">{{ t('adminAnnounce.unpublish') }}</button>
             <button type="button" class="th-link-danger-plain text-xs" @click="remove(r.id)">{{ t('common.delete') }}</button>
           </div>
@@ -296,11 +429,29 @@ onMounted(() => void load())
         aria-modal="true"
         @click.self="editOpen = false"
       >
-        <div class="th-feedback-modal w-full max-w-lg rounded-xl p-5">
+        <div class="th-feedback-modal max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl p-5">
           <h3 class="th-feedback-modal__title text-sm font-semibold">{{ t('adminAnnounce.editTitle', { id: editForm.id }) }}</h3>
           <div class="mt-4 flex flex-col gap-3">
             <input v-model="editForm.title" type="text" maxlength="500" class="th-input w-full text-sm" />
             <textarea v-model="editForm.content" rows="6" class="th-input w-full resize-y text-sm" />
+
+            <template v-if="!editForm.published">
+              <fieldset class="flex flex-col gap-2">
+                <legend class="text-xs font-medium text-slate-400">{{ t('adminAnnounce.lblAudience') }}</legend>
+                <label class="flex items-center gap-2 text-sm text-slate-300">
+                  <input v-model="editForm.audience" type="radio" value="all" class="accent-[var(--th-accent)]" />
+                  {{ t('adminAnnounce.audienceAll') }}
+                </label>
+                <label class="flex items-center gap-2 text-sm text-slate-300">
+                  <input v-model="editForm.audience" type="radio" value="specific" class="accent-[var(--th-accent)]" />
+                  {{ t('adminAnnounce.audienceSpecific') }}
+                </label>
+              </fieldset>
+              <div v-if="editForm.audience === 'specific'" class="rounded-lg border border-slate-700/80 bg-slate-950/40 p-3">
+                <AdminAnnounceUserPicker :key="`edit-picker-${editForm.id}`" v-model="editSelectedUserIds" />
+              </div>
+            </template>
+            <p v-else class="text-xs text-slate-500">{{ t('adminAnnounce.audienceLocked') }}</p>
           </div>
           <div class="mt-5 flex justify-end gap-2">
             <button type="button" class="th-modal-secondary-btn px-3 py-1.5 text-sm" @click="editOpen = false">
@@ -308,6 +459,31 @@ onMounted(() => void load())
             </button>
             <button type="button" class="th-btn-primary-flat px-4 py-1.5 text-sm" @click="saveEdit">
               {{ t('adminCommon.save') }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="publishOpen"
+        class="th-feedback-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        @click.self="publishOpen = false"
+      >
+        <div class="th-feedback-modal w-full max-w-md rounded-xl p-5">
+          <h3 class="th-feedback-modal__title text-sm font-semibold">{{ t('adminAnnounce.publishModalTitle') }}</h3>
+          <p class="mt-2 text-xs text-slate-500">{{ t('adminAnnounce.publishModalHint') }}</p>
+          <label class="mt-4 flex items-start gap-2 text-sm text-slate-300">
+            <input v-model="publishNotifyEmail" type="checkbox" class="mt-0.5 accent-[var(--th-accent)]" />
+            <span>{{ t('adminAnnounce.notifyEmail') }}</span>
+          </label>
+          <div class="mt-5 flex justify-end gap-2">
+            <button type="button" class="th-modal-secondary-btn px-3 py-1.5 text-sm" @click="publishOpen = false">
+              {{ t('adminCommon.cancel') }}
+            </button>
+            <button type="button" class="th-btn-primary-flat px-4 py-1.5 text-sm" @click="confirmPublish">
+              {{ t('adminAnnounce.publish') }}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 package adminhandler
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -8,9 +9,18 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/announcementaudience"
+	"tracehub/internal/pkg/config"
 	"tracehub/internal/pkg/httpx"
+	"tracehub/internal/service/announcementnotify"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+const (
+	audienceAll      = "all"
+	audienceSpecific = "specific"
 )
 
 func ListAnnouncements(client *ent.Client) gin.HandlerFunc {
@@ -51,13 +61,17 @@ func ListAnnouncements(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-func CreateAnnouncement(client *ent.Client) gin.HandlerFunc {
+func CreateAnnouncement(client *ent.Client, cfg *config.Config, log *zap.Logger) gin.HandlerFunc {
+	notifier := announcementnotify.New(cfg, client, log)
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		var req struct {
-			Title   string `json:"title"`
-			Content string `json:"content"`
-			Publish bool   `json:"publish"`
+			Title           string `json:"title"`
+			Content         string `json:"content"`
+			Publish         bool   `json:"publish"`
+			Audience        string `json:"audience"`
+			AudienceUserIDs []int  `json:"audience_user_ids"`
+			NotifyEmail     bool   `json:"notify_email"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
@@ -74,10 +88,29 @@ func CreateAnnouncement(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		ctx := c.Request.Context()
+		audience := strings.TrimSpace(req.Audience)
+		if audience == "" {
+			audience = audienceAll
+		}
+		if audience != audienceAll && audience != audienceSpecific {
+			httpx.BadRequest(c, "无效的可见范围")
+			return
+		}
+		if audience == audienceSpecific {
+			if err := announcementaudience.ValidateAudienceIDs(ctx, client, req.AudienceUserIDs); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+		}
 		b := client.Announcement.Create().
 			SetTitle(title).
 			SetContent(content).
 			SetCreatedBy(adm.ID)
+		if err := applyAudienceMutation(b, audience, req.AudienceUserIDs); err != nil {
+			httpx.BadRequest(c, err.Error())
+			return
+		}
+		var emailResult announcementnotify.Result
 		if req.Publish {
 			now := time.Now()
 			b = b.SetPublished(true).SetPublishedAt(now)
@@ -90,8 +123,12 @@ func CreateAnnouncement(client *ent.Client) gin.HandlerFunc {
 		auditLog(client, adm.ID, "announcement.create", "announcement", strconv.Itoa(a.ID), nil, c)
 		if req.Publish {
 			auditLog(client, adm.ID, "announcement.publish", "announcement", strconv.Itoa(a.ID), nil, c)
+			emailResult = notifier.NotifyOnPublish(ctx, a, req.NotifyEmail)
+			if req.NotifyEmail {
+				auditLog(client, adm.ID, "announcement.email_notify", "announcement", strconv.Itoa(a.ID), emailNotifyDetail(emailResult), c)
+			}
 		}
-		httpx.OK(c, announcementJSON(a))
+		httpx.OK(c, announcementResponse(a, emailResult))
 	}
 }
 
@@ -104,18 +141,33 @@ func UpdateAnnouncement(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		var req struct {
-			Title   *string `json:"title"`
-			Content *string `json:"content"`
+			Title           *string `json:"title"`
+			Content         *string `json:"content"`
+			Audience        *string `json:"audience"`
+			AudienceUserIDs []int   `json:"audience_user_ids"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			httpx.BadRequest(c, "参数无效")
 			return
 		}
-		if req.Title == nil && req.Content == nil {
+		if req.Title == nil && req.Content == nil && req.Audience == nil && req.AudienceUserIDs == nil {
 			httpx.BadRequest(c, "无更新字段")
 			return
 		}
 		ctx := c.Request.Context()
+		existing, err := client.Announcement.Get(ctx, id)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				httpx.BadRequest(c, "公告不存在")
+				return
+			}
+			httpx.ServerError(c, "查询失败")
+			return
+		}
+		if existing.Published && (req.Audience != nil || req.AudienceUserIDs != nil) {
+			httpx.BadRequest(c, "已发布公告不可修改可见范围")
+			return
+		}
 		up := client.Announcement.UpdateOneID(id)
 		if req.Title != nil {
 			t := strings.TrimSpace(*req.Title)
@@ -137,6 +189,32 @@ func UpdateAnnouncement(client *ent.Client) gin.HandlerFunc {
 			}
 			up = up.SetContent(co)
 		}
+		if req.Audience != nil || req.AudienceUserIDs != nil {
+			audience := audienceAll
+			if req.Audience != nil {
+				audience = strings.TrimSpace(*req.Audience)
+			} else if len(existing.AudienceUserIds) > 0 || existing.AudienceUserID != nil {
+				audience = audienceSpecific
+			}
+			if audience != audienceAll && audience != audienceSpecific {
+				httpx.BadRequest(c, "无效的可见范围")
+				return
+			}
+			ids := req.AudienceUserIDs
+			if ids == nil {
+				ids = existing.AudienceUserIds
+			}
+			if audience == audienceSpecific {
+				if err := announcementaudience.ValidateAudienceIDs(ctx, client, ids); err != nil {
+					httpx.BadRequest(c, err.Error())
+					return
+				}
+			}
+			if err := applyAudienceUpdate(up, audience, ids); err != nil {
+				httpx.BadRequest(c, err.Error())
+				return
+			}
+		}
 		a, err := up.Save(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
@@ -147,7 +225,7 @@ func UpdateAnnouncement(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		auditLog(client, adm.ID, "announcement.update", "announcement", strconv.Itoa(id), nil, c)
-		httpx.OK(c, announcementJSON(a))
+		httpx.OK(c, announcementResponse(a, announcementnotify.Result{}))
 	}
 }
 
@@ -173,7 +251,8 @@ func DeleteAnnouncement(client *ent.Client) gin.HandlerFunc {
 	}
 }
 
-func PublishAnnouncement(client *ent.Client) gin.HandlerFunc {
+func PublishAnnouncement(client *ent.Client, cfg *config.Config, log *zap.Logger) gin.HandlerFunc {
+	notifier := announcementnotify.New(cfg, client, log)
 	return func(c *gin.Context) {
 		adm := c.MustGet(middleware.CtxUserKey).(*ent.User)
 		id, err := strconv.Atoi(c.Param("id"))
@@ -181,6 +260,10 @@ func PublishAnnouncement(client *ent.Client) gin.HandlerFunc {
 			httpx.BadRequest(c, "无效 id")
 			return
 		}
+		var req struct {
+			NotifyEmail bool `json:"notify_email"`
+		}
+		_ = c.ShouldBindJSON(&req)
 		ctx := c.Request.Context()
 		now := time.Now()
 		a, err := client.Announcement.UpdateOneID(id).
@@ -196,7 +279,11 @@ func PublishAnnouncement(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		auditLog(client, adm.ID, "announcement.publish", "announcement", strconv.Itoa(id), nil, c)
-		httpx.OK(c, announcementJSON(a))
+		emailResult := notifier.NotifyOnPublish(ctx, a, req.NotifyEmail)
+		if req.NotifyEmail {
+			auditLog(client, adm.ID, "announcement.email_notify", "announcement", strconv.Itoa(id), emailNotifyDetail(emailResult), c)
+		}
+		httpx.OK(c, announcementResponse(a, emailResult))
 	}
 }
 
@@ -222,8 +309,34 @@ func UnpublishAnnouncement(client *ent.Client) gin.HandlerFunc {
 			return
 		}
 		auditLog(client, adm.ID, "announcement.unpublish", "announcement", strconv.Itoa(id), nil, c)
-		httpx.OK(c, announcementJSON(a))
+		httpx.OK(c, announcementResponse(a, announcementnotify.Result{}))
 	}
+}
+
+func applyAudienceMutation(b *ent.AnnouncementCreate, audience string, ids []int) error {
+	if audience == audienceAll {
+		return nil
+	}
+	norm := announcementaudience.NormalizeIDs(ids)
+	if len(norm) == 0 {
+		return fmt.Errorf("指定用户时至少选择一位用户")
+	}
+	b.SetAudienceUserIds(norm)
+	return nil
+}
+
+func applyAudienceUpdate(up *ent.AnnouncementUpdateOne, audience string, ids []int) error {
+	up.ClearAudienceUserID()
+	if audience == audienceAll {
+		up.ClearAudienceUserIds()
+		return nil
+	}
+	norm := announcementaudience.NormalizeIDs(ids)
+	if len(norm) == 0 {
+		return fmt.Errorf("指定用户时至少选择一位用户")
+	}
+	up.SetAudienceUserIds(norm)
+	return nil
 }
 
 func announcementJSON(a *ent.Announcement) gin.H {
@@ -244,5 +357,40 @@ func announcementJSON(a *ent.Announcement) gin.H {
 	if a.AudienceUserID != nil {
 		h["audience_user_id"] = *a.AudienceUserID
 	}
+	if len(a.AudienceUserIds) > 0 {
+		h["audience_user_ids"] = a.AudienceUserIds
+	}
+	if announcementaudience.IsGlobal(a) {
+		h["audience"] = audienceAll
+	} else if len(a.AudienceUserIds) > 0 {
+		h["audience"] = audienceSpecific
+	}
 	return h
+}
+
+func announcementResponse(a *ent.Announcement, email announcementnotify.Result) gin.H {
+	h := announcementJSON(a)
+	if email.Requested {
+		h["email_notify"] = email
+	}
+	return h
+}
+
+func emailNotifyDetail(r announcementnotify.Result) map[string]any {
+	d := map[string]any{
+		"requested": r.Requested,
+	}
+	if r.SkippedReason != "" {
+		d["skipped_reason"] = r.SkippedReason
+	}
+	if r.RecipientCount > 0 {
+		d["recipient_count"] = r.RecipientCount
+	}
+	if r.Sent > 0 {
+		d["sent"] = r.Sent
+	}
+	if r.Failed > 0 {
+		d["failed"] = r.Failed
+	}
+	return d
 }

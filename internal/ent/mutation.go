@@ -4797,23 +4797,25 @@ func (m *AdminGatewayAlertReadMutation) ResetEdge(name string) error {
 // AnnouncementMutation represents an operation that mutates the Announcement nodes in the graph.
 type AnnouncementMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	title               *string
-	content             *string
-	published           *bool
-	published_at        *time.Time
-	audience_user_id    *int
-	addaudience_user_id *int
-	created_at          *time.Time
-	updated_at          *time.Time
-	clearedFields       map[string]struct{}
-	creator             *int
-	clearedcreator      bool
-	done                bool
-	oldValue            func(context.Context) (*Announcement, error)
-	predicates          []predicate.Announcement
+	op                      Op
+	typ                     string
+	id                      *int
+	title                   *string
+	content                 *string
+	published               *bool
+	published_at            *time.Time
+	audience_user_id        *int
+	addaudience_user_id     *int
+	audience_user_ids       *[]int
+	appendaudience_user_ids []int
+	created_at              *time.Time
+	updated_at              *time.Time
+	clearedFields           map[string]struct{}
+	creator                 *int
+	clearedcreator          bool
+	done                    bool
+	oldValue                func(context.Context) (*Announcement, error)
+	predicates              []predicate.Announcement
 }
 
 var _ ent.Mutation = (*AnnouncementMutation)(nil)
@@ -5190,6 +5192,71 @@ func (m *AnnouncementMutation) ResetAudienceUserID() {
 	delete(m.clearedFields, announcement.FieldAudienceUserID)
 }
 
+// SetAudienceUserIds sets the "audience_user_ids" field.
+func (m *AnnouncementMutation) SetAudienceUserIds(i []int) {
+	m.audience_user_ids = &i
+	m.appendaudience_user_ids = nil
+}
+
+// AudienceUserIds returns the value of the "audience_user_ids" field in the mutation.
+func (m *AnnouncementMutation) AudienceUserIds() (r []int, exists bool) {
+	v := m.audience_user_ids
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAudienceUserIds returns the old "audience_user_ids" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldAudienceUserIds(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAudienceUserIds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAudienceUserIds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAudienceUserIds: %w", err)
+	}
+	return oldValue.AudienceUserIds, nil
+}
+
+// AppendAudienceUserIds adds i to the "audience_user_ids" field.
+func (m *AnnouncementMutation) AppendAudienceUserIds(i []int) {
+	m.appendaudience_user_ids = append(m.appendaudience_user_ids, i...)
+}
+
+// AppendedAudienceUserIds returns the list of values that were appended to the "audience_user_ids" field in this mutation.
+func (m *AnnouncementMutation) AppendedAudienceUserIds() ([]int, bool) {
+	if len(m.appendaudience_user_ids) == 0 {
+		return nil, false
+	}
+	return m.appendaudience_user_ids, true
+}
+
+// ClearAudienceUserIds clears the value of the "audience_user_ids" field.
+func (m *AnnouncementMutation) ClearAudienceUserIds() {
+	m.audience_user_ids = nil
+	m.appendaudience_user_ids = nil
+	m.clearedFields[announcement.FieldAudienceUserIds] = struct{}{}
+}
+
+// AudienceUserIdsCleared returns if the "audience_user_ids" field was cleared in this mutation.
+func (m *AnnouncementMutation) AudienceUserIdsCleared() bool {
+	_, ok := m.clearedFields[announcement.FieldAudienceUserIds]
+	return ok
+}
+
+// ResetAudienceUserIds resets all changes to the "audience_user_ids" field.
+func (m *AnnouncementMutation) ResetAudienceUserIds() {
+	m.audience_user_ids = nil
+	m.appendaudience_user_ids = nil
+	delete(m.clearedFields, announcement.FieldAudienceUserIds)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *AnnouncementMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -5336,7 +5403,7 @@ func (m *AnnouncementMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AnnouncementMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.title != nil {
 		fields = append(fields, announcement.FieldTitle)
 	}
@@ -5354,6 +5421,9 @@ func (m *AnnouncementMutation) Fields() []string {
 	}
 	if m.audience_user_id != nil {
 		fields = append(fields, announcement.FieldAudienceUserID)
+	}
+	if m.audience_user_ids != nil {
+		fields = append(fields, announcement.FieldAudienceUserIds)
 	}
 	if m.created_at != nil {
 		fields = append(fields, announcement.FieldCreatedAt)
@@ -5381,6 +5451,8 @@ func (m *AnnouncementMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedBy()
 	case announcement.FieldAudienceUserID:
 		return m.AudienceUserID()
+	case announcement.FieldAudienceUserIds:
+		return m.AudienceUserIds()
 	case announcement.FieldCreatedAt:
 		return m.CreatedAt()
 	case announcement.FieldUpdatedAt:
@@ -5406,6 +5478,8 @@ func (m *AnnouncementMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCreatedBy(ctx)
 	case announcement.FieldAudienceUserID:
 		return m.OldAudienceUserID(ctx)
+	case announcement.FieldAudienceUserIds:
+		return m.OldAudienceUserIds(ctx)
 	case announcement.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case announcement.FieldUpdatedAt:
@@ -5460,6 +5534,13 @@ func (m *AnnouncementMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAudienceUserID(v)
+		return nil
+	case announcement.FieldAudienceUserIds:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAudienceUserIds(v)
 		return nil
 	case announcement.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -5529,6 +5610,9 @@ func (m *AnnouncementMutation) ClearedFields() []string {
 	if m.FieldCleared(announcement.FieldAudienceUserID) {
 		fields = append(fields, announcement.FieldAudienceUserID)
 	}
+	if m.FieldCleared(announcement.FieldAudienceUserIds) {
+		fields = append(fields, announcement.FieldAudienceUserIds)
+	}
 	return fields
 }
 
@@ -5551,6 +5635,9 @@ func (m *AnnouncementMutation) ClearField(name string) error {
 		return nil
 	case announcement.FieldAudienceUserID:
 		m.ClearAudienceUserID()
+		return nil
+	case announcement.FieldAudienceUserIds:
+		m.ClearAudienceUserIds()
 		return nil
 	}
 	return fmt.Errorf("unknown Announcement nullable field %s", name)
@@ -5577,6 +5664,9 @@ func (m *AnnouncementMutation) ResetField(name string) error {
 		return nil
 	case announcement.FieldAudienceUserID:
 		m.ResetAudienceUserID()
+		return nil
+	case announcement.FieldAudienceUserIds:
+		m.ResetAudienceUserIds()
 		return nil
 	case announcement.FieldCreatedAt:
 		m.ResetCreatedAt()

@@ -21,6 +21,7 @@ func (Announcement) Fields() []ent.Field {
 		field.Time("published_at").Optional().Nillable(),
 		field.Int("created_by").Optional(),
 		field.Int("audience_user_id").Optional().Nillable().Comment("定向用户：仅该用户可见；空表示全员公告"),
+		field.JSON("audience_user_ids", []int{}).Optional().Comment("定向用户列表；空/nil 且 audience_user_id 为空表示全员"),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

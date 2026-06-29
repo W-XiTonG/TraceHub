@@ -365,6 +365,16 @@ func AudienceUserIDNotNil() predicate.Announcement {
 	return predicate.Announcement(sql.FieldNotNull(FieldAudienceUserID))
 }
 
+// AudienceUserIdsIsNil applies the IsNil predicate on the "audience_user_ids" field.
+func AudienceUserIdsIsNil() predicate.Announcement {
+	return predicate.Announcement(sql.FieldIsNull(FieldAudienceUserIds))
+}
+
+// AudienceUserIdsNotNil applies the NotNil predicate on the "audience_user_ids" field.
+func AudienceUserIdsNotNil() predicate.Announcement {
+	return predicate.Announcement(sql.FieldNotNull(FieldAudienceUserIds))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Announcement {
 	return predicate.Announcement(sql.FieldEQ(FieldCreatedAt, v))

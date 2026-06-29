@@ -6,6 +6,7 @@ import (
 	"tracehub/internal/ent"
 	"tracehub/internal/ent/announcement"
 	"tracehub/internal/middleware"
+	"tracehub/internal/pkg/announcementaudience"
 	"tracehub/internal/pkg/httpx"
 
 	"github.com/gin-gonic/gin"
@@ -20,10 +21,7 @@ func LatestAnnouncement(client *ent.Client) gin.HandlerFunc {
 			Where(
 				announcement.PublishedEQ(true),
 				announcement.PublishedAtNotNil(),
-				announcement.Or(
-					announcement.AudienceUserIDIsNil(),
-					announcement.AudienceUserIDEQ(u.ID),
-				),
+				announcementaudience.VisibleToUser(u.ID),
 			).
 			Order(ent.Desc(announcement.FieldPublishedAt), ent.Desc(announcement.FieldID)).
 			First(ctx)
@@ -52,10 +50,7 @@ func ListPublishedAnnouncements(client *ent.Client) gin.HandlerFunc {
 			Where(
 				announcement.PublishedEQ(true),
 				announcement.PublishedAtNotNil(),
-				announcement.Or(
-					announcement.AudienceUserIDIsNil(),
-					announcement.AudienceUserIDEQ(u.ID),
-				),
+				announcementaudience.VisibleToUser(u.ID),
 			).
 			Order(ent.Desc(announcement.FieldPublishedAt), ent.Desc(announcement.FieldID)).
 			Limit(limit).

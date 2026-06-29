@@ -13,6 +13,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 )
 
@@ -138,6 +139,24 @@ func (_u *AnnouncementUpdate) ClearAudienceUserID() *AnnouncementUpdate {
 	return _u
 }
 
+// SetAudienceUserIds sets the "audience_user_ids" field.
+func (_u *AnnouncementUpdate) SetAudienceUserIds(v []int) *AnnouncementUpdate {
+	_u.mutation.SetAudienceUserIds(v)
+	return _u
+}
+
+// AppendAudienceUserIds appends value to the "audience_user_ids" field.
+func (_u *AnnouncementUpdate) AppendAudienceUserIds(v []int) *AnnouncementUpdate {
+	_u.mutation.AppendAudienceUserIds(v)
+	return _u
+}
+
+// ClearAudienceUserIds clears the value of the "audience_user_ids" field.
+func (_u *AnnouncementUpdate) ClearAudienceUserIds() *AnnouncementUpdate {
+	_u.mutation.ClearAudienceUserIds()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *AnnouncementUpdate) SetUpdatedAt(v time.Time) *AnnouncementUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -260,6 +279,17 @@ func (_u *AnnouncementUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if _u.mutation.AudienceUserIDCleared() {
 		_spec.ClearField(announcement.FieldAudienceUserID, field.TypeInt)
+	}
+	if value, ok := _u.mutation.AudienceUserIds(); ok {
+		_spec.SetField(announcement.FieldAudienceUserIds, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAudienceUserIds(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, announcement.FieldAudienceUserIds, value)
+		})
+	}
+	if _u.mutation.AudienceUserIdsCleared() {
+		_spec.ClearField(announcement.FieldAudienceUserIds, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(announcement.FieldUpdatedAt, field.TypeTime, value)
@@ -422,6 +452,24 @@ func (_u *AnnouncementUpdateOne) ClearAudienceUserID() *AnnouncementUpdateOne {
 	return _u
 }
 
+// SetAudienceUserIds sets the "audience_user_ids" field.
+func (_u *AnnouncementUpdateOne) SetAudienceUserIds(v []int) *AnnouncementUpdateOne {
+	_u.mutation.SetAudienceUserIds(v)
+	return _u
+}
+
+// AppendAudienceUserIds appends value to the "audience_user_ids" field.
+func (_u *AnnouncementUpdateOne) AppendAudienceUserIds(v []int) *AnnouncementUpdateOne {
+	_u.mutation.AppendAudienceUserIds(v)
+	return _u
+}
+
+// ClearAudienceUserIds clears the value of the "audience_user_ids" field.
+func (_u *AnnouncementUpdateOne) ClearAudienceUserIds() *AnnouncementUpdateOne {
+	_u.mutation.ClearAudienceUserIds()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *AnnouncementUpdateOne) SetUpdatedAt(v time.Time) *AnnouncementUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -574,6 +622,17 @@ func (_u *AnnouncementUpdateOne) sqlSave(ctx context.Context) (_node *Announceme
 	}
 	if _u.mutation.AudienceUserIDCleared() {
 		_spec.ClearField(announcement.FieldAudienceUserID, field.TypeInt)
+	}
+	if value, ok := _u.mutation.AudienceUserIds(); ok {
+		_spec.SetField(announcement.FieldAudienceUserIds, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAudienceUserIds(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, announcement.FieldAudienceUserIds, value)
+		})
+	}
+	if _u.mutation.AudienceUserIdsCleared() {
+		_spec.ClearField(announcement.FieldAudienceUserIds, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(announcement.FieldUpdatedAt, field.TypeTime, value)

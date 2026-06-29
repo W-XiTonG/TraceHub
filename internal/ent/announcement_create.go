@@ -89,6 +89,12 @@ func (_c *AnnouncementCreate) SetNillableAudienceUserID(v *int) *AnnouncementCre
 	return _c
 }
 
+// SetAudienceUserIds sets the "audience_user_ids" field.
+func (_c *AnnouncementCreate) SetAudienceUserIds(v []int) *AnnouncementCreate {
+	_c.mutation.SetAudienceUserIds(v)
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *AnnouncementCreate) SetCreatedAt(v time.Time) *AnnouncementCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -257,6 +263,10 @@ func (_c *AnnouncementCreate) createSpec() (*Announcement, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.AudienceUserID(); ok {
 		_spec.SetField(announcement.FieldAudienceUserID, field.TypeInt, value)
 		_node.AudienceUserID = &value
+	}
+	if value, ok := _c.mutation.AudienceUserIds(); ok {
+		_spec.SetField(announcement.FieldAudienceUserIds, field.TypeJSON, value)
+		_node.AudienceUserIds = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(announcement.FieldCreatedAt, field.TypeTime, value)

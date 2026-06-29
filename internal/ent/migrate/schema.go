@@ -180,6 +180,7 @@ var (
 		{Name: "published", Type: field.TypeBool, Default: false},
 		{Name: "published_at", Type: field.TypeTime, Nullable: true},
 		{Name: "audience_user_id", Type: field.TypeInt, Nullable: true},
+		{Name: "audience_user_ids", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "created_by", Type: field.TypeInt, Nullable: true},
@@ -192,7 +193,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "announcements_users_created_announcements",
-				Columns:    []*schema.Column{AnnouncementsColumns[8]},
+				Columns:    []*schema.Column{AnnouncementsColumns[9]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
