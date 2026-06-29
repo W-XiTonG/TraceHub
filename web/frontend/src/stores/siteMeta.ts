@@ -10,6 +10,22 @@ export type PublicContactPayload = {
   emails?: string[]
 }
 
+/** 与 /api/pub/site-meta 中 recharge_shops 一致 */
+export type RechargeShopItem = {
+  label: string
+  url: string
+  description?: string
+  sort?: number
+  show_qr?: boolean
+  qr_image_url?: string
+}
+
+export type RechargeShopsPayload = {
+  title?: string
+  hint?: string
+  shops?: RechargeShopItem[]
+}
+
 type PubSiteMeta = {
   brand_name?: string
   brand_icon_url?: string
@@ -26,6 +42,10 @@ type PubSiteMeta = {
   declared_model_count_badge?: string
   /** 在线支付总开关 */
   online_payment_enabled?: boolean
+  /** 是否通过外部商铺充值（配置后替代在线支付展示） */
+  recharge_via_external_shop?: boolean
+  /** 外部充值商铺 */
+  recharge_shops?: RechargeShopsPayload | null
   /** 全站页脚备案等多行文案 */
   beian_footer_lines?: string[]
 }
@@ -51,6 +71,30 @@ function normalizePublicContact(raw: unknown): PublicContactPayload | null {
   }
   if (!title && qr_items.length === 0 && emails.length === 0) return null
   return { title, qr_items, emails }
+}
+
+function normalizeRechargeShops(raw: unknown): RechargeShopsPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const title = typeof o.title === 'string' ? o.title.trim() : ''
+  const hint = typeof o.hint === 'string' ? o.hint.trim() : ''
+  const shopsRaw = Array.isArray(o.shops) ? o.shops : []
+  const shops: RechargeShopItem[] = []
+  for (const x of shopsRaw) {
+    if (!x || typeof x !== 'object') continue
+    const r = x as Record<string, unknown>
+    const label = typeof r.label === 'string' ? r.label.trim() : ''
+    const url = typeof r.url === 'string' ? r.url.trim() : ''
+    if (!label || !url) continue
+    const description = typeof r.description === 'string' ? r.description.trim() : ''
+    const sort = typeof r.sort === 'number' ? r.sort : 0
+    const show_qr = r.show_qr === true
+    const qr_image_url = typeof r.qr_image_url === 'string' ? r.qr_image_url.trim() : ''
+    shops.push({ label, url, description, sort, show_qr, qr_image_url: qr_image_url || undefined })
+  }
+  shops.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.label.localeCompare(b.label))
+  if (!shops.length) return null
+  return { title, hint, shops }
 }
 
 function normalizeBeianFooterLines(raw: unknown): string[] {
@@ -91,6 +135,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   /** 全站渠道声明模型数展示文案（如 300+），来自 /api/pub/site-meta */
   const declaredModelCountBadge = ref('')
   const onlinePaymentEnabled = ref(false)
+  const rechargeViaExternalShop = ref(false)
+  const rechargeShops = ref<RechargeShopsPayload | null>(null)
   /** 全站页脚备案等多行文案 */
   const beianFooterLines = ref<string[]>([])
   const loaded = ref(false)
@@ -136,6 +182,7 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
   })
 
   const hasPublicContact = computed(() => publicContact.value != null)
+  const hasRechargeShops = computed(() => rechargeViaExternalShop.value && rechargeShops.value != null)
   const hasBeianFooter = computed(() => beianFooterLines.value.length > 0)
 
   async function pullPubSiteMeta(): Promise<void> {
@@ -176,6 +223,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
           declaredModelCountBadge.value = ''
         }
         onlinePaymentEnabled.value = data.data.online_payment_enabled === true
+        rechargeViaExternalShop.value = data.data.recharge_via_external_shop === true
+        rechargeShops.value = normalizeRechargeShops(data.data.recharge_shops)
       }
     } catch (e: unknown) {
       if (!axios.isAxiosError(e) || e.response?.status !== 404) {
@@ -215,6 +264,8 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     beianFooterLines.value = []
     declaredModelCountBadge.value = ''
     onlinePaymentEnabled.value = false
+    rechargeViaExternalShop.value = false
+    rechargeShops.value = null
     inflight = (async () => {
       try {
         await pullPubSiteMeta()
@@ -238,6 +289,9 @@ export const useSiteMetaStore = defineStore('siteMeta', () => {
     publicContact,
     declaredModelCountBadge,
     onlinePaymentEnabled,
+    rechargeViaExternalShop,
+    rechargeShops,
+    hasRechargeShops,
     hasPublicContact,
     beianFooterLines,
     hasBeianFooter,

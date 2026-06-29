@@ -48,6 +48,7 @@ function onNavClick() {
     <RouterLink to="/admin/announcements" class="th-nav-link th-nav-link--amber" @click="onNavClick">{{ t('layout.adminNavAnnouncements') }}</RouterLink>
     <RouterLink to="/admin/redeem-codes" class="th-nav-link th-nav-link--amber" @click="onNavClick">{{ t('layout.adminNavRedeem') }}</RouterLink>
     <RouterLink to="/admin/payment/config" class="th-nav-link th-nav-link--amber" @click="onNavClick">{{ t('layout.adminNavPayment') }}</RouterLink>
+    <RouterLink to="/admin/payment/shops" class="th-nav-link th-nav-link--amber" @click="onNavClick">{{ t('layout.adminNavRechargeShops') }}</RouterLink>
     <RouterLink v-if="siteMeta.onlinePaymentEnabled" to="/admin/payment/orders" class="th-nav-link th-nav-link--amber" @click="onNavClick">
       {{ t('layout.adminNavPaymentOrders') }}
     </RouterLink>

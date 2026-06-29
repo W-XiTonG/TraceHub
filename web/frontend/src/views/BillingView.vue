@@ -5,14 +5,41 @@ import { useI18n } from 'vue-i18n'
 import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
 import contactCardImg from '../assets/xunji-contact-card.png'
-import { useSiteMetaStore } from '../stores/siteMeta'
+import { useSiteMetaStore, type RechargeShopItem } from '../stores/siteMeta'
 import { checkoutQrImageSrc, paymentCheckoutUrl } from '../utils/paymentCheckout'
 
 const { t } = useI18n()
 const route = useRoute()
 const siteMeta = useSiteMetaStore()
 
-const onlinePay = computed(() => siteMeta.onlinePaymentEnabled)
+const shopMode = computed(() => siteMeta.rechargeViaExternalShop && siteMeta.rechargeShops != null)
+const onlinePay = computed(() => !shopMode.value && siteMeta.onlinePaymentEnabled)
+const shopTitle = computed(() => {
+  const t0 = siteMeta.rechargeShops?.title?.trim()
+  return t0 || t('billingPage.shopDefaultTitle')
+})
+const shopHint = computed(() => {
+  const h = siteMeta.rechargeShops?.hint?.trim()
+  return h || t('billingPage.shopDefaultHint')
+})
+const shopItems = computed(() => siteMeta.rechargeShops?.shops ?? [])
+
+function openShop(url: string) {
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+function shopQrImageSrc(shop: RechargeShopItem): string {
+  if (!shop.show_qr) return ''
+  const custom = shop.qr_image_url?.trim()
+  if (custom) return custom
+  return checkoutQrImageSrc(shop.url)
+}
+
+const shopQrFailed = ref<Record<number, boolean>>({})
+
+function onShopQrError(idx: number) {
+  shopQrFailed[idx] = true
+}
 
 type Package = {
   id: number
@@ -258,11 +285,77 @@ onUnmounted(() => stopPoll())
   <div class="max-w-2xl min-w-0">
     <h1 class="mb-2 text-2xl font-bold">{{ t('billingPage.title') }}</h1>
     <p class="th-billing-panel__hint mb-6">
-      {{ onlinePay ? t('billingPage.descOnline') : t('billingPage.desc') }}
+      {{
+        shopMode
+          ? shopHint
+          : onlinePay
+            ? t('billingPage.descOnline')
+            : t('billingPage.desc')
+      }}
     </p>
 
+    <!-- 外部商铺充值模式 -->
+    <template v-if="shopMode">
+      <section class="th-console-panel mb-8 p-6">
+        <h2 class="th-billing-panel__title">{{ shopTitle }}</h2>
+        <div class="mt-5 grid gap-4">
+          <article
+            v-for="(shop, idx) in shopItems"
+            :key="`${shop.url}-${idx}`"
+            class="rounded-xl border border-cyan-500/25 bg-cyan-950/20 p-5"
+          >
+            <h3 class="text-base font-semibold text-cyan-100">{{ shop.label }}</h3>
+            <p v-if="shop.description" class="mt-2 text-sm text-slate-400">{{ shop.description }}</p>
+            <div
+              v-if="shop.show_qr && shopQrImageSrc(shop) && !shopQrFailed[idx]"
+              class="th-billing-qr-box mt-4 max-w-xs"
+            >
+              <p class="mb-3 text-center text-xs th-billing-panel__hint">{{ t('billingPage.shopScanQr') }}</p>
+              <img
+                :src="shopQrImageSrc(shop)"
+                alt=""
+                class="th-billing-qr-img mx-auto block"
+                @error="onShopQrError(idx)"
+              />
+              <p class="mt-2 text-center text-xs text-slate-500">{{ t('billingPage.shopScanHint') }}</p>
+            </div>
+            <button type="button" class="th-btn-primary mt-4 text-sm" @click="openShop(shop.url)">
+              {{ t('billingPage.shopBuyBtn') }}
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <div class="th-console-panel space-y-4 p-6">
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 text-cyan-400">①</span>
+          <div>
+            <p class="font-medium text-slate-200">{{ t('billingPage.shopStep1Title') }}</p>
+            <p class="mt-1 text-sm text-slate-400">{{ t('billingPage.shopStep1Desc') }}</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 text-cyan-400">②</span>
+          <div>
+            <p class="font-medium text-slate-200">{{ t('billingPage.shopStep2Title') }}</p>
+            <p class="mt-1 text-sm text-slate-400">{{ t('billingPage.shopStep2Desc') }}</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 text-cyan-400">③</span>
+          <div>
+            <p class="font-medium text-slate-200">{{ t('billingPage.redeemTitle') }}</p>
+            <p class="mt-1 text-sm text-slate-400">{{ t('billingPage.shopStep3Desc') }}</p>
+            <RouterLink to="/console/redeem" class="mt-2 inline-block text-sm text-cyan-400 hover:underline">
+              {{ t('billingPage.redeemLink') }}
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- 在线支付关闭：原兑换码 + 企微 + 对公说明 -->
-    <template v-if="!onlinePay">
+    <template v-else-if="!onlinePay">
       <section
         class="th-billing-wecom mb-8 rounded-2xl border-2 border-cyan-500/40 bg-gradient-to-br from-cyan-950/45 via-slate-900/80 to-slate-950/90 p-6 shadow-[0_20px_50px_-28px_rgba(34,211,238,0.35)] ring-1 ring-cyan-400/15"
         aria-labelledby="billing-wecom-heading"

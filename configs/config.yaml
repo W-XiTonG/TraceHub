@@ -39,6 +39,7 @@ site:
   # 80 端口运营：Origin 不写端口号；本地 Vite 开发时可加 http://127.0.0.1:5173
   cors_origins:
     - "http://182.92.159.29"
+    - "http://127.0.0.1:5173"
     - "*"
   # Realtime 通话子资源（POST .../realtime/calls/{id}/accept 等）：可选 Redis 映射，见 docs/P3-Realtime通话子资源产品设计.md
   # realtime_call_mapping_enabled: false

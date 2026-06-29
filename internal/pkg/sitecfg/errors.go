@@ -45,6 +45,18 @@ var (
 	errPublicContactEmailInvalid   = errors.New("site.public_contact.emails 中存在无效邮箱（仅支持纯邮箱，不含显示名）")
 	errPublicContactEmailTooLong   = errors.New("site.public_contact.emails 单项过长")
 
+	errRechargeShopsTooLarge       = errors.New("site.recharge_shops 体积过大")
+	errRechargeShopsJSON           = errors.New("site.recharge_shops 须为合法 JSON")
+	errRechargeShopsTitleTooLong   = errors.New("site.recharge_shops.title 过长")
+	errRechargeShopsHintTooLong    = errors.New("site.recharge_shops.hint 过长")
+	errRechargeShopsTooMany        = errors.New("site.recharge_shops.shops 数量过多")
+	errRechargeShopsLabelRequired  = errors.New("site.recharge_shops.shops 须填写名称")
+	errRechargeShopsURLRequired    = errors.New("site.recharge_shops.shops 须填写链接")
+	errRechargeShopsLabelTooLong   = errors.New("site.recharge_shops.shops[].label 过长")
+	errRechargeShopsDescTooLong    = errors.New("site.recharge_shops.shops[].description 过长")
+	errRechargeShopsURLTooLong     = errors.New("site.recharge_shops.shops[].url 过长")
+	errRechargeShopsQRURLTooLong   = errors.New("site.recharge_shops.shops[].qr_image_url 过长")
+
 	errInvalidUpstreamProbeEnabled = errors.New("upstream_model_probe.enabled 须为 true 或 false")
 	errInvalidUpstreamProbeInterval = errors.New("upstream_model_probe.interval_minutes 须为整数")
 	errUpstreamProbeIntervalRange    = errors.New("upstream_model_probe.interval_minutes 须在 15–1440 之间")

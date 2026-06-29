@@ -417,6 +417,8 @@ func NewRouter(opt Options) (*gin.Engine, error) {
 	a.PUT("/feedbacks/:id/review", adminhandler.ReviewFeedback(opt.Client))
 	a.GET("/payment/config", adminhandler.GetPaymentConfig(payAdmin))
 	a.PUT("/payment/config", adminhandler.PutPaymentConfig(payAdmin))
+	a.GET("/payment/recharge-shops", adminhandler.GetRechargeShops(opt.Client))
+	a.PUT("/payment/recharge-shops", adminhandler.PutRechargeShops(opt.Client))
 	aPay := a.Group("/payment")
 	aPay.Use(payOnline)
 	aPay.GET("/orders", adminhandler.ListPaymentOrders(opt.Client))

@@ -151,6 +151,7 @@ export default {
     navBilling: '充值中心',
     navPaymentOrders: '充值订单',
     adminNavPayment: '支付配置',
+    adminNavRechargeShops: '充值商铺',
     adminNavPaymentOrders: '支付订单',
     adminNavPaymentPackages: '充值套餐',
     navRedeem: '兑换码',

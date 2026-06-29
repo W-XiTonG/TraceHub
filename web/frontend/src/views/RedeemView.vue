@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RouterLink } from 'vue-router'
 import { http, type Envelope } from '../api/http'
 import { apiErrorMessage } from '../stores/auth'
+import { useSiteMetaStore } from '../stores/siteMeta'
 import ContactCardDisclosure from '../components/ContactCardDisclosure.vue'
 import DateTimeLocalFilterInput from '../components/DateTimeLocalFilterInput.vue'
 import { localDateTimeToRFC3339 } from '../utils/datetimeLocal'
@@ -13,6 +15,9 @@ import ThTableSkeleton from '../components/ui/ThTableSkeleton.vue'
 import { useSmoothLoading } from '../composables/useSmoothLoading'
 
 const { t } = useI18n()
+const siteMeta = useSiteMetaStore()
+
+const firstShopUrl = computed(() => siteMeta.rechargeShops?.shops?.[0]?.url ?? '')
 
 const code = ref('')
 const msg = ref('')
@@ -122,7 +127,8 @@ async function redeem() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await siteMeta.ensureLoaded()
   void loadLedger()
 })
 </script>
@@ -131,6 +137,16 @@ onMounted(() => {
   <div class="max-w-3xl space-y-10">
     <section>
       <h1 class="mb-6 text-2xl font-bold">{{ t('redeemPage.title') }}</h1>
+      <p v-if="siteMeta.hasRechargeShops" class="mb-4 text-sm text-slate-400">
+        {{ t('redeemPage.shopHint') }}
+        <RouterLink to="/console/billing" class="text-cyan-400 hover:underline">{{ t('redeemPage.shopHintLink') }}</RouterLink>
+        <template v-if="firstShopUrl">
+          {{ t('redeemPage.shopHintOr') }}
+          <a :href="firstShopUrl" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">
+            {{ t('redeemPage.shopHintDirect') }}
+          </a>
+        </template>
+      </p>
       <div class="flex w-full max-w-md min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
         <input
           v-model="code"

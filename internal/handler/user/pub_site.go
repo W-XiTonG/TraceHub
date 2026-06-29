@@ -62,6 +62,30 @@ func PubSiteMeta(client *ent.Client, cfg *config.Config, payStore *payment.Confi
 		} else {
 			out["online_payment_enabled"] = false
 		}
+		if shops := sitecfg.EffectiveRechargeShopsData(ctx, client); sitecfg.RechargeShopsHasVisibleContent(shops) {
+			out["recharge_via_external_shop"] = true
+			items := make([]gin.H, 0, len(shops.Shops))
+			for _, it := range shops.Shops {
+				item := gin.H{
+					"label":       it.Label,
+					"url":         it.URL,
+					"description": it.Description,
+					"sort":        it.Sort,
+				}
+				if it.ShowQR {
+					item["show_qr"] = true
+					if it.QRImageURL != "" {
+						item["qr_image_url"] = it.QRImageURL
+					}
+				}
+				items = append(items, item)
+			}
+			out["recharge_shops"] = gin.H{
+				"title": shops.Title,
+				"hint":  shops.Hint,
+				"shops": items,
+			}
+		}
 		httpx.OK(c, out)
 	}
 }

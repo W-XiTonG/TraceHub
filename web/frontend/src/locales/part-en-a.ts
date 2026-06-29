@@ -147,6 +147,7 @@ export default {
     navBilling: 'Billing',
     navPaymentOrders: 'Payment orders',
     adminNavPayment: 'Payment config',
+    adminNavRechargeShops: 'Recharge shops',
     adminNavPaymentOrders: 'Payment orders',
     adminNavPaymentPackages: 'Recharge packages',
     navRedeem: 'Redeem code',

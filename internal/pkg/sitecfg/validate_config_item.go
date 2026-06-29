@@ -38,6 +38,8 @@ func ValidateSystemConfigPut(key, value string) error {
 		return ValidateNoBillModelsJSON(value)
 	case SystemConfigKeyPublicContactJSON:
 		return ValidatePublicContactJSON(value)
+	case SystemConfigKeyRechargeShopsJSON:
+		return ValidateRechargeShopsJSON(value)
 	case SystemConfigKeyUpstreamModelProbeEnabled:
 		return ValidateUpstreamModelProbeEnabled(value)
 	case SystemConfigKeyUpstreamModelProbeIntervalMinutes:

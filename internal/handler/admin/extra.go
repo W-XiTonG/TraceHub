@@ -1739,6 +1739,7 @@ func ResetAdminSiteSettingsDefaults(client *ent.Client) gin.HandlerFunc {
 			sitecfg.SystemConfigKeyNoBillModels,
 			sitecfg.SystemConfigKeyAPIPublicBaseURL,
 			sitecfg.SystemConfigKeyPublicContactJSON,
+			sitecfg.SystemConfigKeyRechargeShopsJSON,
 			sitecfg.SystemConfigKeyBeianFooterText,
 			sitecfg.SystemConfigKeyRoutingStrategyDefault,
 			sitecfg.SystemConfigKeyRoutingFailoverEnabledDefault,

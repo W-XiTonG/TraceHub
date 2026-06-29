@@ -45,6 +45,7 @@ const router = createRouter({
         { path: 'redeem-ledger', name: 'admin-redeem-ledger', component: () => import('../views/AdminRedeemLedger.vue') },
         { path: 'feedbacks', name: 'admin-feedbacks', component: () => import('../views/AdminFeedbacks.vue') },
         { path: 'payment/config', name: 'admin-payment-config', component: () => import('../views/AdminPaymentConfig.vue') },
+        { path: 'payment/shops', name: 'admin-payment-shops', component: () => import('../views/AdminRechargeShops.vue') },
         { path: 'payment/orders', name: 'admin-payment-orders', component: () => import('../views/AdminPaymentOrders.vue') },
         { path: 'payment/packages', name: 'admin-payment-packages', component: () => import('../views/AdminRechargePackages.vue') },
         {
