@@ -15,7 +15,7 @@
     "pinia": "^3.0.4",
     "simple-icons": "^16.19.0",
     "vue": "^3.5.32",
-    "vue-i18n": "^9.14.4",
+    "vue-i18n": "^11.4.8",
     "vue-router": "^5.0.6"
   },
   "devDependencies": {
