@@ -1,6 +1,6 @@
 module tracehub
 
-go 1.25.0
+go 1.26.0
 
 require (
 	entgo.io/ent v0.14.6
@@ -16,7 +16,7 @@ require (
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/spf13/viper v1.21.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.56.0
 )
 
 require (
@@ -75,10 +75,10 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/image v0.23.0 // indirect
-	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
